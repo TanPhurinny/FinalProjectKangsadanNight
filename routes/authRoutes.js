@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 // หน้า UI: Login & Register
 router.get('/login', (req, res) => {
-    if (req.session.user) return res.redirect('/'); // ถ้า Login แล้วให้กลับหน้าแรก
+    if (req.session.user) return res.redirect('/slots');
     res.render('login', { error: null });
 });
 
@@ -15,12 +15,9 @@ router.post('/login', async (req, res) => {
     try {
         const user = await prisma.user.findUnique({ where: { username } });
         if (user && user.password === password) {
-            req.session.user = { 
-                id: user.id, 
-                name: user.name, 
-                role: user.role 
-            };
-            return res.redirect('/'); // Login สำเร็จกลับหน้าแรก
+            req.session.user = { id: user.id, name: user.name, role: user.role };
+            if (user.role === 'ADMIN') return res.redirect('/admin/dashboard');
+            return res.redirect('/slots');
         }
         res.render('login', { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
     } catch (err) {
@@ -33,14 +30,9 @@ router.post('/register', async (req, res) => {
     const { username, password, name, role } = req.body;
     try {
         await prisma.user.create({
-            data: { 
-                username, 
-                password, 
-                name, 
-                role: role || 'CUSTOMER' 
-            }
+            data: { username, password, name, role: role || 'CUSTOMER' }
         });
-        res.render('login', { error: "สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ" });
+        res.render('login', { error: "สมัครสำเร็จ! กรุณาเข้าสู่ระบบ" });
     } catch (err) {
         res.render('login', { error: "ชื่อผู้ใช้นี้ถูกใช้ไปแล้ว" });
     }
