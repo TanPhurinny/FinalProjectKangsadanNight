@@ -7,29 +7,87 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// กำหนดสิทธิ์ตามขอบเขตงานของคุณ
 enum Role {
-  ADMIN      // ผู้ดูแลตลาด
-  SELLER     // ผู้ขาย (Merchant)
-  CUSTOMER   // ลูกค้า
-  STAFF      // พนักงานตลาด
+  ADMIN
+  STAFF
+  SELLER
+  CUSTOMER
+}
+
+enum Status {
+  PENDING
+  APPROVED
+  REJECTED
+  IN_PROGRESS
+  SUCCESS
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  password  String
-  name      String
-  role      Role     @default(CUSTOMER)
-  createdAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  username    String   @unique
+  password    String
+  name        String
+  phoneNumber String?
+  birthDate   DateTime?
+  role        Role     @default(CUSTOMER)
+  createdAt   DateTime @default(now())
+
+  shop        ShopDetail?
+  requests    MaintenanceReport[]
+  bookings    Booking[]
+}
+
+model ShopDetail {
+  id            Int     @id @default(autoincrement())
+  shopName      String?
+  productType   String?
+  productDetail String? @db.Text
+  productImage  String?
+  userId        Int     @unique
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// แนะนำให้เพิ่มความสัมพันธ์กับ Slot เพื่อให้ Admin ทำงานง่ายขึ้น
+model BookingRequest {
+  id            Int      @id @default(autoincrement())
+  productName   String
+  description   String   @db.Text
+  sellerName    String
+  phone         String
+  zone          String
+  // slotId     Int?     // หากต้องการให้ระบุแผงที่จะจองตั้งแต่แรก
+  productImage  String?
+  status        Status   @default(PENDING)
+  createdAt     DateTime @default(now())
 }
 
 model Slot {
-  id          Int      @id @default(autoincrement())
-  slotNumber  String   @unique
+  id          Int       @id @default(autoincrement())
+  slotNumber  String    @unique
   zone        String
   price       Float
-  isAvailable Boolean  @default(true)
-  merchant    String?
-  createdAt   DateTime @default(now()) // เพิ่มบรรทัดนี้หากยังไม่มี
+  isAvailable Boolean   @default(true)
+  bookings    Booking[]
+}
+
+model Booking {
+  id        Int      @id @default(autoincrement())
+  slotId    Int
+  userId    Int
+  status    Status   @default(PENDING)
+  createdAt DateTime @default(now())
+  
+  slot      Slot     @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MaintenanceReport {
+  id          Int      @id @default(autoincrement())
+  location    String   // อาจเปลี่ยนเป็น Int และโยงกับ Slot.id เพื่อความแม่นยำ
+  category    String
+  description String   @db.Text
+  status      Status   @default(PENDING)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
 }

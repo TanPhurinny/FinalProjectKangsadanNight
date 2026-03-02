@@ -1,0 +1,52 @@
+/* public/css/users.css */
+.users-container {
+    padding: 30px 0;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+.table-card {
+    background: #ffffff;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+    border: none;
+    overflow: hidden;
+}
+
+/* ตกแต่งส่วนหัวตาราง */
+.thead-custom {
+    background-color: #1a1a2e;
+    color: #ffffff;
+}
+
+.thead-custom th {
+    padding: 15px 20px;
+    font-weight: 500;
+    border: none;
+}
+
+/* ระบบ Badge แยกตามบทบาท (Role) */
+.role-badge {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.bg-admin { background-color: #ffe5e5; color: #b91c1c; }   /* แดง - Admin */
+.bg-staff { background-color: #dcfce7; color: #15803d; }   /* เขียว - Staff */
+.bg-seller { background-color: #fef9c3; color: #a16207; }  /* เหลือง - Seller */
+.bg-customer { background-color: #e0f2fe; color: #0369a1; } /* ฟ้า - Customer */
+
+/* ปุ่มจัดการ */
+.btn-action {
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: 0.2s;
+}
+
+.btn-edit { background-color: #ffc107; color: #000; border: none; }
+.btn-delete { background-color: #dc3545; color: #fff; border: none; }
+.btn-edit:hover, .btn-delete:hover { opacity: 0.8; transform: scale(1.05); }

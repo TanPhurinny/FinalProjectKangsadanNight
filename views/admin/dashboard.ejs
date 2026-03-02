@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Intelligence | Kangsadan Night Market</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/css/navbar.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <%- include('../partials/navbar') %>
+
+    <div class="dashboard-container">
+        <header class="d-flex justify-content-between align-items-end mb-5">
+            <div>
+                <h1 class="fw-bold mb-1 text-dark">Market Overview</h1>
+                <p class="text-muted mb-0">Dashboard วิเคราะห์โครงสร้างและประสิทธิภาพการดำเนินงานตลาดกังสดาล</p>
+            </div>
+            <div class="text-end d-none d-md-block">
+                <div class="badge bg-white text-dark shadow-sm p-2 px-3 rounded-pill border mb-2">
+                    <i class="fas fa-circle text-success me-2 small"></i>ระบบสถานะ: ปกติ
+                </div>
+                <div class="text-muted small" id="live-date">กำลังโหลด...</div>
+            </div>
+        </header>
+
+        <div class="stat-grid mb-5">
+            <% const dStats = locals.stats || { unpaidCount: 0, occupiedCount: 0, totalSlots: 0, availableCount: 0, pendingRepairs: 0 }; %>
+            
+            <div class="stat-card border-0 shadow-sm">
+                <div class="icon-box" style="background: rgba(46, 204, 113, 0.1); color: #2ecc71;">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <div>
+                    <small class="text-muted d-block">ประสิทธิภาพการเช่า</small>
+                    <h3 class="fw-bold mb-0">
+                        <%= ((dStats.occupiedCount / dStats.totalSlots) * 100).toFixed(1) %>%
+                    </h3>
+                    <div class="progress mt-2" style="height: 4px; width: 100px;">
+                        <div class="progress-bar bg-success" style="width: <%= (dStats.occupiedCount / dStats.totalSlots) * 100 %>%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card border-0 shadow-sm">
+                <div class="icon-box" style="background: rgba(52, 152, 219, 0.1); color: #3498db;">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div>
+                    <small class="text-muted d-block">ผู้เช่าปัจจุบัน</small>
+                    <h3 class="fw-bold mb-0"><%= dStats.occupiedCount %> <small class="fs-6 text-muted fw-normal">/ <%= dStats.totalSlots %> แผง</small></h3>
+                </div>
+            </div>
+
+            <div class="stat-card border-0 shadow-sm">
+                <div class="icon-box" style="background: rgba(231, 76, 60, 0.1); color: #e74c3c;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <small class="text-muted d-block">งานซ่อมเร่งด่วน</small>
+                    <h3 class="fw-bold mb-0 text-danger"><%= dStats.pendingRepairs %> <small class="fs-6 fw-normal">รายการ</small></h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-12">
+                <h4 class="fw-bold mb-4 d-flex align-items-center">
+                    <i class="fas fa-th-large me-2 text-primary"></i>
+                    สถานะพื้นที่รายโซน (Spatial Analytics)
+                </h4>
+            </div>
+
+            <% if (locals.zones && zones.length > 0) { %>
+                <% zones.forEach(zone => { %>
+                <div class="col-xl-6">
+                    <div class="zone-section border-0 shadow-sm rounded-4 overflow-hidden bg-white h-100">
+                        <div class="zone-header p-4 text-white d-flex justify-content-between align-items-start" style="background-color: <%= zone.color || '#1a1a2e' %>;">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="bg-white bg-opacity-25 rounded-3 p-2">
+                                    <i class="fas <%= zone.icon || 'fa-store' %> fs-4"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-0 fw-bold"><%= zone.name %></h5>
+                                    <small class="opacity-75"><%= zone.description %></small>
+                                </div>
+                            </div>
+                            <span class="badge bg-white bg-opacity-25 rounded-pill px-3">
+                                ประสิทธิภาพ: <%= (( (zone.available + zone.unpaid + zone.repairs) > 0) ? '92%' : '100%') %>
+                            </span>
+                        </div>
+                        
+                        <div class="zone-body p-4">
+                            <div class="grid-metrics mb-4 row text-center g-0">
+                                <div class="col-4 border-end">
+                                    <small class="text-muted d-block mb-1">แผงว่าง</small>
+                                    <b class="text-success fs-4"><%= zone.available %></b>
+                                </div>
+                                <div class="col-4 border-end">
+                                    <small class="text-muted d-block mb-1">ค้างชำระ</small>
+                                    <b class="text-danger fs-4"><%= zone.unpaid %></b>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block mb-1">งานซ่อม</small>
+                                    <b class="text-warning fs-4"><%= zone.repairs %></b>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <a href="/admin/slots?zone=<%= zone.slug %>" class="btn btn-primary flex-grow-1 rounded-3 py-2 fw-bold border-0" style="background-color: <%= zone.color || '#1a1a2e' %>;">
+                                    <i class="fas fa-map me-2"></i>ผังแผงค้า
+                                </a>
+                                <a href="/admin/requests?zone=<%= zone.slug %>" class="btn btn-light rounded-3 px-3">
+                                    <i class="fas fa-tools"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <% }) %>
+            <% } else { %>
+                <div class="col-12">
+                    <div class="alert alert-light border shadow-sm rounded-4 p-5 text-center">
+                        <i class="fas fa-database fa-3x mb-3 text-light"></i>
+                        <h5>ไม่พบข้อมูลโครงสร้างโซน</h5>
+                        <p class="text-muted">กรุณาตรวจสอบการตั้งค่าพื้นที่ในฐานข้อมูล</p>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+                    <h6 class="fw-bold mb-3">สรุปสถานะการเงิน (Financial Summary)</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">รายการค้างชำระรวม</span>
+                        <span class="text-danger fw-bold"><%= dStats.unpaidCount %> แผง</span>
+                    </div>
+                    <div class="progress mb-4" style="height: 8px;">
+                        <div class="progress-bar bg-danger" style="width: <%= (dStats.unpaidCount / dStats.totalSlots * 100) %>%"></div>
+                    </div>
+                    <a href="/admin/invoices" class="btn btn-outline-danger btn-sm w-100 rounded-pill">ตรวจสอบรายการค้างชำระ</a>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm rounded-4 p-4 h-100 bg-primary text-white">
+                    <h6 class="fw-bold mb-3">คำแนะนำสำหรับวันนี้ (AI Insight)</h6>
+                    <p class="small opacity-75">
+                        <% if(dStats.pendingRepairs > 5) { %> 
+                            มีงานซ่อมค้างเกินเกณฑ์มาตรฐาน แนะนำให้เร่งประสานงานช่างโซน A 
+                        <% } else { %>
+                            สถานะตลาดโดยรวมอยู่ในเกณฑ์ดี พื้นที่ว่างในโซนแฟชั่นมีการเข้าชมสูงขึ้น
+                        <% } %>
+                    </p>
+                    <div class="mt-auto">
+                        <button class="btn btn-light btn-sm rounded-pill px-4">ดูรายงานฉบับเต็ม</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+        document.getElementById('live-date').innerHTML = `ข้อมูล ณ ${new Date().toLocaleDateString('th-TH', options)} น.`;
+    </script>
+</body>
+</html>

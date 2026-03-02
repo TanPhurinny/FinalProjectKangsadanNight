@@ -1,37 +1,24 @@
 <nav class="management-nav">
-    <a href="/" class="nav-brand">Kangsadan <span style="color: #333;">Night Market</span></a>
+    <div class="nav-container">
+        <a href="/admin/dashboard" class="nav-brand">
+            <i class="fas fa-store-alt"></i> Kangsadan <span style="font-weight: 300; opacity: 0.7;">Night Market</span>
+        </a>
 
-    <div class="nav-links">
-        <% if (user) { %>
-            <% if (user.role === 'ADMIN' || user.role === 'STAFF') { %>
-                <a href="/admin/dashboard" class="nav-item">แดชบอร์ด</a>
-                <a href="/slots" class="nav-item">ผังตลาด</a>
-                <a href="/admin/requests" class="nav-item">การแจ้งคำร้อง</a>
-                <a href="/admin/approvals" class="nav-item">รายการอนุมัติ</a>
-                <% if (user.role === 'ADMIN') { %>
-                    <a href="/admin/users" class="nav-item">สิทธิ์การใช้งาน</a>
-                <% } %>
-            <% } %>
-
-            <% if (user.role === 'SELLER') { %>
-                <a href="/slots" class="nav-item">จองล็อกออนไลน์</a>
-                <a href="/products/create" class="nav-item">ลงทะเบียนสินค้า/โปรโมชั่น</a>
-                <a href="/seller/my-shop" class="nav-item">คะแนนและรีวิวร้านตนเอง</a>
-            <% } %>
-
-            <% if (user.role === 'CUSTOMER') { %>
-                <a href="/slots" class="nav-item">ดูผังตลาด</a>
-                <a href="/promotions" class="nav-item">คูปองของฉัน</a>
-            <% } %>
-        <% } %>
-    </div>
-
-    <div class="nav-auth">
-        <% if (user) { %>
-            <span class="user-badge"><%= user.name %> (<%= user.role %>)</span>
-            <a href="/logout" class="btn btn-outline-danger btn-sm">Logout</a>
-        <% } else { %>
-            <a href="/login" class="btn btn-primary btn-sm">Login</a>
-        <% } %>
+        <div class="nav-links">
+            <a href="/admin/dashboard" class="nav-item">แดชบอร์ด</a>
+            <a href="/admin/slots" class="nav-item">
+                <i class="fas fa-map-marked-alt me-1"></i>ผังตลาด
+            </a>
+            <a href="/admin/requests" class="nav-item">การแจ้งคำร้อง</a>
+            <a href="/admin/approvals" class="nav-item">รายการอนุมัติ</a>
+            <a href="/admin/users" class="nav-item">สิทธิ์การใช้งาน</a>
+            
+            <div class="user-badge shadow-sm">
+                <i class="fas fa-user-circle"></i>
+                <%= user.name %> (<%= user.role %>)
+            </div>
+            
+            <a href="/logout" class="logout-link">ออกจากระบบ</a>
+        </div>
     </div>
 </nav>

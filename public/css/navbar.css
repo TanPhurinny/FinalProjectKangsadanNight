@@ -1,48 +1,79 @@
 /* public/css/navbar.css */
 .management-nav {
-    background: #ffffff;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 10px 50px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px); /* Glassmorphism effect */
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    padding: 15px 0;
     position: sticky;
     top: 0;
     z-index: 1000;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.nav-container {
+    max-width: 1200px; /* คุมความกว้างให้พอดีกับ Dashboard */
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
 }
 
 .nav-brand {
-    font-size: 1.5em;
-    font-weight: bold;
-    color: #A73B24; /* สีหลักของ Kangsadan */
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #A73B24; /* แดงอิฐกังสดาล */
     text-decoration: none;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
+
+.nav-brand:hover { color: #8e321e; }
 
 .nav-links {
     display: flex;
-    gap: 20px;
+    gap: 10px; /* ใช้ระยะห่างที่พอดี */
     align-items: center;
 }
 
 .nav-item {
     text-decoration: none;
-    color: #555;
-    font-size: 0.95rem;
+    color: #666;
+    font-size: 0.9rem;
     font-weight: 500;
-    padding: 5px 0;
-    transition: 0.2s;
-    border-bottom: 2px solid transparent;
+    padding: 8px 18px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
 }
 
+/* เปลี่ยนจากขีดเส้นใต้เป็น Soft Glow */
 .nav-item:hover, .nav-item.active {
-    color: #000;
-    border-bottom: 2px solid #333; /* ขีดเส้นใต้ตามรูป UI ที่ส่งมา */
+    color: #A73B24;
+    background: rgba(167, 59, 36, 0.08);
 }
 
 .user-badge {
-    background: #f8f9fa;
-    padding: 5px 15px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    border: 1px solid #eee;
+    background: #1a1a2e; /* สีน้ำเงินเข้มตามธีมหลัก */
+    color: white;
+    padding: 6px 18px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    margin-left: 10px;
 }
+
+.logout-link {
+    color: #e74c3c;
+    font-size: 0.85rem;
+    text-decoration: none;
+    margin-left: 15px;
+    font-weight: 500;
+}
+
+.logout-link:hover { text-decoration: underline; }

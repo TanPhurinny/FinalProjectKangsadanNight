@@ -1,0 +1,42 @@
+/* public/css/requests.css */
+
+/* ปรับแต่ง Badge สถานะให้ดูแพง */
+.badge-status {
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.status-pending {
+    background-color: rgba(241, 196, 15, 0.1);
+    color: #d97706;
+    border: 1px solid rgba(241, 196, 15, 0.2);
+}
+
+.status-in_progress {
+    background-color: rgba(52, 152, 219, 0.1);
+    color: #2563eb;
+    border: 1px solid rgba(52, 152, 219, 0.2);
+}
+
+.status-success {
+    background-color: rgba(46, 204, 113, 0.1);
+    color: #059669;
+    border: 1px solid rgba(46, 204, 113, 0.2);
+}
+
+.x-small {
+    font-size: 0.7rem;
+}
+
+/* ตกแต่ง Table Hover */
+.table-hover tbody tr:hover {
+    background-color: #fcfdfe !important;
+}
+
+/* เงาเล็กๆ ให้ Badge หมวดหมู่ */
+.shadow-xs {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}

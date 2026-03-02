@@ -9,17 +9,28 @@ router.get('/login', (req, res) => {
     res.render('login', { error: null });
 });
 
-// ระบบ Login
+// routes/authRoutes.js
+
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
         const user = await prisma.user.findUnique({ where: { username } });
+
         if (user && user.password === password) {
+            // 1. เก็บข้อมูลลง Session
             req.session.user = { id: user.id, name: user.name, role: user.role };
-            if (user.role === 'ADMIN') return res.redirect('/admin/dashboard');
-            return res.redirect('/slots');
+
+            // 2. แก้ไขจุดนี้: เช็ค Role แล้วส่งไปหน้า Dashboard
+            if (user.role === 'ADMIN' || user.role === 'STAFF') {
+                return res.redirect('/admin/dashboard'); // ถ้าเป็นแอดมินหรือสตาฟ ให้ไปหน้า Dashboard
+            } else if (user.role === 'SELLER') {
+                return res.redirect('/'); // ถ้าเป็นผู้ขาย ให้ไปหน้าผังตลาด
+            } else {
+                return res.redirect('/'); // ลูกค้าทั่วไปกลับหน้าแรก
+            }
+        } else {
+            res.render('login', { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
         }
-        res.render('login', { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
     } catch (err) {
         res.render('login', { error: "Database Error: " + err.message });
     }

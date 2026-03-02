@@ -1,0 +1,53 @@
+/* การโต้ตอบกับรูปภาพ */
+.product-image-wrapper {
+    cursor: zoom-in;
+    position: relative;
+}
+
+.zoom-hint {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.5);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.product-image-wrapper:hover .zoom-hint {
+    opacity: 1;
+}
+
+/* Seller Profile Box */
+.seller-profile-box {
+    background: #fcfdfe;
+    border: 1px dashed #d1d5db;
+    transition: 0.3s;
+}
+
+.seller-profile-box:hover {
+    background: #f8fafc;
+    border-color: var(--primary-color);
+}
+
+/* Empty State */
+.empty-state-card {
+    border: 2px dashed #eee;
+    background: white;
+}
+
+/* Custom Buttons (ล้อตาม Dashboard) */
+.btn-primary-custom {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 500;
+}
+
+.btn-primary-custom:hover {
+    background-color: #8e321e;
+    color: white;
+}
