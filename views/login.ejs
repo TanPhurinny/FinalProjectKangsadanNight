@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kangsadan Night Market | เข้าสู่ระบบ</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/css/auth.css">
+</head>
+
+<body>
+    <div class="particles">
+        <div class="particle" style="width: 80px; height: 80px; left: 10%; animation-delay: 0s;"></div>
+        <div class="particle" style="width: 40px; height: 40px; left: 80%; animation-delay: 2s;"></div>
+        <div class="particle" style="width: 60px; height: 60px; left: 45%; animation-delay: 5s;"></div>
+    </div>
+
+    <div class="auth-container">
+        <div class="logo-section text-center mb-4">
+            <div class="logo fw-bold">Kangsadan</div>
+            <div class="text-white-50 small mt-1">NIGHT MARKET SYSTEM</div>
+            <div class="text-white-50 x-small">เข้าสู่ระบบเพื่อจัดการแผงค้าและสินค้า</div>
+        </div>
+
+        <div class="form-section card shadow-sm p-4">
+            <div id="loginPage" class="page-section">
+                <h3 class="text-center mb-4 fw-bold">เข้าสู่ระบบ</h3>
+                
+                <% if (error) { %>
+                    <div class="alert alert-danger text-center small"><%= error %></div>
+                <% } %>
+
+                <form method="POST" action="/login">
+                    <div class="input-group mb-3">
+                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        <input type="text" name="username" class="form-control" placeholder="ชื่อผู้ใช้งาน (Username)" required>
+                    </div>
+
+                    <div class="input-group mb-3">
+                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                        <input type="password" name="password" class="form-control" placeholder="รหัสผ่าน" required>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-4 small">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="remember">
+                            <label class="form-check-label" for="remember">จดจำฉัน</label>
+                        </div>
+                        <a href="#" class="text-decoration-none">ลืมรหัสผ่าน?</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 mb-3 shadow-sm">
+                        <i class="fas fa-sign-in-alt me-2"></i>เข้าสู่ระบบ
+                    </button>
+                </form>
+
+                <div class="toggle-form text-center small">
+                    ยังไม่มีบัญชี? <a href="#" onclick="showRegister()" class="fw-bold text-decoration-none">ลงทะเบียนใหม่</a>
+                </div>
+            </div>
+
+            <div id="registerPage" class="page-section d-none">
+                <h3 class="text-center mb-4 fw-bold">สมัครสมาชิก</h3>
+                <form method="POST" action="/register">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">ประเภทผู้ใช้งาน</label>
+                        <select name="role" class="form-select form-select-sm">
+                            <option value="CUSTOMER">ลูกค้า (Customer)</option>
+                            <option value="SELLER">พ่อค้า/แม่ค้า (Seller)</option>
+                            <option value="STAFF">พนักงานตลาด (Staff)</option>
+                        </select>
+                    </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text"><i class="fas fa-id-card"></i></span>
+                        <input type="text" name="name" class="form-control" placeholder="ชื่อ-นามสกุล" required>
+                    </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text"><i class="fas fa-user-plus"></i></span>
+                        <input type="text" name="username" class="form-control" placeholder="ตั้งชื่อผู้ใช้งาน" required>
+                    </div>
+                    <div class="input-group mb-4">
+                        <span class="input-group-text"><i class="fas fa-key"></i></span>
+                        <input type="password" name="password" class="form-control" placeholder="ตั้งรหัสผ่าน" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 py-2 shadow-sm">สร้างบัญชี</button>
+                </form>
+                <div class="text-center mt-4 small">
+                    <a href="#" onclick="showLogin()" class="text-decoration-none fw-bold text-muted">
+                        <i class="fas fa-arrow-left me-1"></i>กลับไปหน้าเข้าสู่ระบบ
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showRegister() {
+            document.getElementById('loginPage').classList.add('d-none');
+            document.getElementById('registerPage').classList.remove('d-none');
+        }
+        function showLogin() {
+            document.getElementById('registerPage').classList.add('d-none');
+            document.getElementById('loginPage').classList.remove('d-none');
+        }
+    </script>
+</body>
+</html>

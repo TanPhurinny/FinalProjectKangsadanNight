@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kangsadan Night Market | ยินดีต้อนรับ</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-store-alt me-2"></i>KANGSADAN
+            </a>
+            <div class="ms-auto">
+                <% if (user) { %>
+                    <span class="text-light me-3 small">สวัสดี, <%= user.name %></span>
+                    <a href="/logout" class="btn btn-outline-light btn-sm rounded-pill">ออกจากระบบ</a>
+                <% } else { %>
+                    <a href="/login" class="btn btn-kangsadan btn-sm">เข้าสู่ระบบ / สมัครสมาชิก</a>
+                <% } %>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="container">
+            <h1 class="hero-title">ตลาดกังสดาล มข.</h1>
+            <p class="hero-subtitle text-uppercase">แหล่งรวมสตรีทฟู้ดและแฟชั่นที่ใหญ่ที่สุดในย่านกังสดาล</p>
+            <div class="d-flex justify-content-center gap-3">
+                <a href="#about" class="btn btn-light rounded-pill px-4">สำรวจตลาด</a>
+                <% if (!user) { %>
+                    <a href="/login" class="btn btn-kangsadan px-4">เริ่มจองแผงค้า</a>
+                <% } %>
+            </div>
+        </div>
+    </header>
+
+    <section id="about" class="py-5">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold">ทำไมต้องมาที่นี่?</h2>
+                <p class="text-muted">ความสะดวกสบายที่มาพร้อมกับบรรยากาศสุดชิลล์</p>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="feature-card text-center h-100">
+                        <div class="icon-box mx-auto"><i class="fas fa-utensils"></i></div>
+                        <h4>สตรีทฟู้ดเจ้าดัง</h4>
+                        <p class="text-muted small">รวมร้านอาหารเด็ดทั่วขอนแก่นมาไว้ที่เดียว กินคาวต่อนมได้ทันที</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card text-center h-100">
+                        <div class="icon-box mx-auto"><i class="fas fa-tshirt"></i></div>
+                        <h4>แฟชั่นสุดฮิต</h4>
+                        <p class="text-muted small">อัปเดตเทรนด์เสื้อผ้าและของสะสม ราคาเป็นกันเองสไตล์นักศึกษา</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card text-center h-100">
+                        <div class="icon-box mx-auto"><i class="fas fa-calendar-check"></i></div>
+                        <h4>จองแผงออนไลน์</h4>
+                        <p class="text-muted small">พ่อค้าแม่ค้าจองแผงได้ง่ายๆ ผ่านระบบออนไลน์ ไม่ต้องรอนาน</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-1 small">&copy; 2026 Kangsadan Night Market System</p>
+            <div class="social-links small opacity-50">
+                <i class="fab fa-facebook me-3"></i>
+                <i class="fab fa-instagram me-3"></i>
+                <i class="fab fa-line"></i>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
