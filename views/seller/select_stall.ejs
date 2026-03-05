@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>แผงที่คุณต้องการเช่า</title>
+<link rel="stylesheet" href="seller.css">
+<link rel="stylesheet" href="/css/navbar.css">
+</head>
+
+<body>
+
+<%- include('../components/navbar') %>
+
+<div style="margin-top:70px">
+  <h1>หน้าตลาด</h1>
+</div>
+
+<!-- TITLE -->
+<div class="title">
+    <span class="back">←</span>
+    <h2>แผงที่คุณต้องการเช่า</h2>
+</div>
+
+<!-- STATUS FILTER -->
+<div class="status">
+    <div class="status-box available"></div> ว่าง
+    <div class="status-box booked"></div> จองแล้ว
+    <div class="status-box selected"></div> เลือกอยู่
+</div>
+
+<!-- MARKET MAP -->
+<div class="market-map">
+
+    <!-- row -->
+    <div class="row">
+        <div class="stall">H001</div>
+        <div class="stall">H001</div>
+        <div class="stall selected">H001</div>
+        <div class="stall">H001</div>
+        <div class="stall">H001</div>
+        <div class="stall">H002</div>
+    </div>
+
+    <div class="row">
+        <div class="stall">H001</div>
+        <div class="stall">H001</div>
+        <div class="stall">H001</div>
+        <div class="stall booked">H001</div>
+        <div class="stall">H001</div>
+        <div class="stall">H003</div>
+    </div>
+
+    <div class="row">
+        <div class="stall">H001</div>
+        <div class="stall">H001</div>
+        <div class="stall">H001</div>
+        <div class="stall">H001</div>
+        <div class="stall">H001</div>
+        <div class="stall">H003</div>
+    </div>
+
+</div>
+
+<!-- DETAIL CARD -->
+<div class="detail-card">
+
+<h3>แผง H 001</h3>
+
+<p>แผงขายของขนาด 2x2 เมตร</p>
+
+<ul>
+<li>💰 ราคา 500 บาท / วัน</li>
+<li>⚡ มีไฟฟ้าในแผง</li>
+<li>📍 อยู่ในตำแหน่งที่มองเห็นง่าย</li>
+</ul>
+
+<button class="reserve">จองแผง</button>
+
+</div>
+
+<!-- FOOTNOTE -->
+<div class="note">
+
+<p>🔌 เครื่องใช้ไฟฟ้าเล็ก เครื่องละ <span>20 บาท/วัน</span></p>
+
+<p class="warning">
+หมายเหตุ เครื่องใช้ไฟฟ้าขนาดเล็กกำลังต่ำกว่า 1200 วัตต์ เช่น เครื่องปั่น เครื่องปิ้งขนมปัง
+</p>
+
+</div>
+
+</body>
+</html>
+<script src="/js/navbar.js"></script>

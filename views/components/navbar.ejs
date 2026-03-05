@@ -1,0 +1,101 @@
+<header class="navbar">
+
+  <div class="navbar-left">
+    <span class="brand">ตลาดกังสดาลไนท์</span>
+  </div>
+
+  <button class="hamburger" id="hamburger">
+    ☰
+  </button>
+
+  <nav class="navbar-menu" id="navbarMenu">
+    <a href="#">แดชบอร์ด</a>
+    <a href="#">พื้นตลาด</a>
+    <a href="#">การแจ้งคำร้อง</a>
+    <a href="#">รายการอนุมัติ</a>
+    <a href="#">สิทธิการใช้งาน</a>
+    <a href="#">คะแนนร้านค้า</a>
+    <a href="#">โปรโมชั่นและคูปอง</a>
+    <a href="#">สรุปผลการประเมินร้านค้า</a>
+    <a href="#" class="active">ประกาศ</a>
+  </nav>
+
+</header>
+
+<script src="navbar.js">
+    const hamburger = document.getElementById("hamburger");
+const navbarMenu = document.getElementById("navbarMenu");
+
+hamburger.addEventListener("click", () => {
+  navbarMenu.classList.toggle("open");
+});
+</script>
+
+
+<style>.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 56px;
+  background: #ffd400;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 1000;
+}
+
+.brand {
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.navbar-menu {
+  display: flex;
+  gap: 16px;
+}
+
+.navbar-menu a {
+  text-decoration: none;
+  color: #000;
+  font-size: 14px;
+}
+
+.navbar-menu a.active {
+  font-weight: bold;
+  border-bottom: 2px solid #000;
+}
+
+.hamburger {
+  display: none;
+  font-size: 22px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* ===== Mobile ===== */
+
+@media (max-width: 768px) {
+
+  .hamburger {
+    display: block;
+  }
+
+  .navbar-menu {
+    position: absolute;
+    top: 56px;
+    left: 0;
+    right: 0;
+    background: #ffd400;
+    flex-direction: column;
+    display: none;
+    padding: 10px 20px;
+  }
+
+  .navbar-menu.open {
+    display: flex;
+  }
+
+}</style>

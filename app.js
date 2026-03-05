@@ -40,6 +40,10 @@ app.use('/', authRoutes);        // จัดการ Login, Register, Logout
 app.use('/admin', adminRoutes);  // จัดการ Dashboard, Users, Requests (เฉพาะ Admin/Staff)
 app.use('/market', marketRoutes); // จัดการ Slots, Products (สำหรับ Seller/Customer)
 
+//สำหรับผู้ขาย
+const sellerRoute = require('./routes/sellerRoute');
+app.use('/', sellerRoute);//เลือกแผง
+
 // --- 6. การจัดการ Error 404 (หน้าไม่พบ) ---
 app.use((req, res) => {
     res.status(404).render('index', { 
@@ -53,3 +57,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Kangsadan Night Market System running at http://localhost:${PORT}`);
 });
+
+
