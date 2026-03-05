@@ -42,11 +42,10 @@ app.get('/', (req, res) => {
     res.render('index', { user: req.session.user || null, error: null });
 });
 
-// ใช้งาน Routes
-// หมายเหตุ: หาก authRoutes มีการส่งไฟล์รูป ให้ใช้ upload.single() ในไฟล์ route นั้นๆ
-app.use('/', authRoutes);
-app.use('/admin', adminRoutes);
-app.use('/market', marketRoutes);
+// ใช้งาน Route ที่แยกไฟล์ไว้
+app.use('/', authRoutes);        // จัดการ Login, Register, Logout
+app.use('/admin', adminRoutes);  // จัดการ Dashboard, Users, Requests (เฉพาะ Admin/Staff)
+app.use('/market', marketRoutes); // จัดการ Slots, Products (สำหรับ Seller/Customer)
 
 // --- 6. Error Handling 404 ---
 app.use((req, res) => {
@@ -56,21 +55,8 @@ app.use((req, res) => {
     });
 });
 
-// --- 7. เริ่มต้นเชื่อมต่อฐานข้อมูลและรัน Server ---
-async function start() {
-    try {
-        await prisma.$connect();
-        console.log('✅ Connected to TiDB Cloud (MySQL) Successfully');
-        
-        const PORT = process.env.PORT || 3000;
-        app.listen(PORT, () => {
-            console.log(`🚀 System running at http://localhost:${PORT}`);
-        });
-    } catch (err) {
-        console.error('❌ Database connection error:', err.message);
-        // ตรวจสอบ DATABASE_URL ในไฟล์ .env และ IP Access List ใน TiDB
-        process.exit(1);
-    }
-}
-
-start();
+// --- 7. เริ่มต้นเซิร์ฟเวอร์ ---
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`🚀 Kangsadan Night Market System running at http://localhost:${PORT}`);
+});
