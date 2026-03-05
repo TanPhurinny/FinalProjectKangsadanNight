@@ -2,54 +2,75 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
+const multer = require('multer'); // เพิ่ม multer สำหรับจัดการรูปภาพ
+require('dotenv').config();
 
 const app = express();
 const prisma = new PrismaClient();
+const upload = multer(); // ตั้งค่า multer พื้นฐาน
 
-// --- 1. การตั้งค่าพื้นฐาน (Configuration) ---
+// --- 1. การตั้งค่าพื้นฐาน ---
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// --- 2. Middleware สำคัญ (วาง Static ไว้บนสุดเพื่อแก้ปัญหา CSS) ---
+// --- 2. Middleware (สำคัญมาก: ต้องวางก่อนเรียกใช้ Routes) ---
 app.use(express.static(path.join(__dirname, 'public'))); 
-app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // --- 3. การจัดการ Session ---
 app.use(session({
-    secret: 'kangsadan_night_market_key',
+    secret: process.env.SESSION_SECRET || 'kangsadan_night_market_key',
     resave: false,
-    saveUninitialized: false, // ปรับเป็น false เพื่อความปลอดภัย
-    cookie: { maxAge: 3600000 } // เซสชันอยู่ได้ 1 ชั่วโมง
+    saveUninitialized: false,
+    cookie: { 
+        maxAge: 3600000, 
+        httpOnly: true,
+        secure: false // เปลี่ยนเป็น true ถ้าใช้ https
+    }
 }));
 
-// --- 4. นำเข้า Route แยกไฟล์ตามขอบเขตงาน ---
+// --- 4. นำเข้า Route (ต้องแน่ใจว่าไฟล์เหล่านี้มี module.exports = router) ---
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const marketRoutes = require('./routes/marketRoutes');
 
 // --- 5. การกำหนดเส้นทาง (Routing) ---
 
-// หน้าแรกสำหรับคนทั่วไป (Index)
+// หน้าแรก
 app.get('/', (req, res) => {
-    res.render('index', { user: req.session.user || null });
+    res.render('index', { user: req.session.user || null, error: null });
 });
 
-// ใช้งาน Route ที่แยกไฟล์ไว้
-app.use('/', authRoutes);        // จัดการ Login, Register, Logout
-app.use('/admin', adminRoutes);  // จัดการ Dashboard, Users, Requests (เฉพาะ Admin/Staff)
-app.use('/market', marketRoutes); // จัดการ Slots, Products (สำหรับ Seller/Customer)
+// ใช้งาน Routes
+// หมายเหตุ: หาก authRoutes มีการส่งไฟล์รูป ให้ใช้ upload.single() ในไฟล์ route นั้นๆ
+app.use('/', authRoutes);
+app.use('/admin', adminRoutes);
+app.use('/market', marketRoutes);
 
-// --- 6. การจัดการ Error 404 (หน้าไม่พบ) ---
+// --- 6. Error Handling 404 ---
 app.use((req, res) => {
     res.status(404).render('index', { 
         user: req.session.user || null, 
-        error: 'ไม่พบหน้าที่คุณต้องการ' 
+        error: 'ไม่พบหน้าที่คุณต้องการ (404 Not Found)' 
     });
 });
 
-// --- 7. เริ่มต้นเซิร์ฟเวอร์ ---
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Kangsadan Night Market System running at http://localhost:${PORT}`);
-});
+// --- 7. เริ่มต้นเชื่อมต่อฐานข้อมูลและรัน Server ---
+async function start() {
+    try {
+        await prisma.$connect();
+        console.log('✅ Connected to TiDB Cloud (MySQL) Successfully');
+        
+        const PORT = process.env.PORT || 3000;
+        app.listen(PORT, () => {
+            console.log(`🚀 System running at http://localhost:${PORT}`);
+        });
+    } catch (err) {
+        console.error('❌ Database connection error:', err.message);
+        // ตรวจสอบ DATABASE_URL ในไฟล์ .env และ IP Access List ใน TiDB
+        process.exit(1);
+    }
+}
+
+start();

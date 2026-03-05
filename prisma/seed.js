@@ -41,9 +41,9 @@ async function main() {
   // 4. เพิ่มรายการแจ้งซ่อม (MaintenanceReport)
   await prisma.maintenanceReport.create({
     data: {
-      location: 'A-02',
+      location: 'A-03',
       category: 'ไฟฟ้า',
-      description: 'ปลั๊กไฟที่แผงใช้งานไม่ได้ รบกวนตรวจสอบด่วนครับ',
+      description: 'หลดไฟฟ้าชำรุด ต้องการการซ่อมแซมด่วน',
       status: 'PENDING',
       userId: admin.id,
     },

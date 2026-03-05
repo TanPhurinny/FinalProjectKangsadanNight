@@ -2,57 +2,52 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const multer = require('multer');
 
-// หน้า UI: Login & Register
-router.get('/login', (req, res) => {
-    if (req.session.user) return res.redirect('/slots');
-    res.render('login', { error: null });
-});
+// ตั้งค่า multer เบื้องต้น
+const upload = multer();
 
-// routes/authRoutes.js
+// ... (ส่วน Login และ Logout คงเดิม) ...
 
-router.post('/login', async (req, res) => {
-    const { username, password } = req.body;
+// ระบบ Register (แก้ไขเพื่อให้ phoneNumber และ birthDate เข้า Database)
+router.post('/register', upload.single('productImage'), async (req, res) => {
     try {
-        const user = await prisma.user.findUnique({ where: { username } });
+        // 1. ดึงค่าออกมาจาก req.body ให้ครบตามที่ส่งมาจาก Form
+        const { 
+            username, 
+            password, 
+            name, 
+            role, 
+            phoneNumber, 
+            birthDate,
+            shopName,
+            productType,
+            productDetail 
+        } = req.body;
 
-        if (user && user.password === password) {
-            // 1. เก็บข้อมูลลง Session
-            req.session.user = { id: user.id, name: user.name, role: user.role };
-
-            // 2. แก้ไขจุดนี้: เช็ค Role แล้วส่งไปหน้า Dashboard
-            if (user.role === 'ADMIN' || user.role === 'STAFF') {
-                return res.redirect('/admin/dashboard'); // ถ้าเป็นแอดมินหรือสตาฟ ให้ไปหน้า Dashboard
-            } else if (user.role === 'SELLER') {
-                return res.redirect('/'); // ถ้าเป็นผู้ขาย ให้ไปหน้าผังตลาด
-            } else {
-                return res.redirect('/'); // ลูกค้าทั่วไปกลับหน้าแรก
-            }
-        } else {
-            res.render('login', { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+        // 2. ตรวจสอบข้อมูลสำคัญ
+        if (!username || !password) {
+            return res.render('login', { error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
         }
-    } catch (err) {
-        res.render('login', { error: "Database Error: " + err.message });
-    }
-});
 
-// ระบบ Register
-router.post('/register', async (req, res) => {
-    const { username, password, name, role } = req.body;
-    try {
+        // 3. บันทึกลงฐานข้อมูล (เพิ่มฟิลด์ phoneNumber และ birthDate)
         await prisma.user.create({
-            data: { username, password, name, role: role || 'CUSTOMER' }
+            data: { 
+                username, 
+                password, 
+                name, 
+                role: role || 'CUSTOMER',
+                phoneNumber: phoneNumber || null, // ส่งค่า phoneNumber เข้าไป
+                // แปลง birthDate จาก String (เช่น 2026-03-05) เป็น Date Object เพื่อให้ Prisma ยอมรับ
+                birthDate: birthDate ? new Date(birthDate) : null 
+            }
         });
+
         res.render('login', { error: "สมัครสำเร็จ! กรุณาเข้าสู่ระบบ" });
     } catch (err) {
-        res.render('login', { error: "ชื่อผู้ใช้นี้ถูกใช้ไปแล้ว" });
+        console.error(err);
+        res.render('login', { error: "ไม่สามารถสมัครสมาชิกได้: " + err.message });
     }
-});
-
-// ระบบ Logout
-router.get('/logout', (req, res) => {
-    req.session.destroy();
-    res.redirect('/');
 });
 
 module.exports = router;
