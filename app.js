@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer'); // <--- เพิ่มบรรทัดนี้เข้าไปครับ
 const session = require('express-session');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
@@ -6,7 +7,7 @@ const announceCtrl = require('./controllers/announcementController');
 
 const app = express();
 const prisma = new PrismaClient();
-const upload = multer(); // ตั้งค่า multer พื้นฐาน
+const upload = multer(); // ตอนนี้บรรทัดนี้จะใช้งานได้แล้ว
 
 // --- 1. การตั้งค่าพื้นฐาน ---
 app.set('view engine', 'ejs');
