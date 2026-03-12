@@ -1,0 +1,129 @@
+/* public/css/admin/announcements.css */
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --customer-color: #36b9cc;
+    --seller-color: #f6c23e;
+}
+
+body {
+    background-color: #f4f7f6;
+    font-family: 'Kanit', sans-serif;
+}
+
+/* Form Styling */
+.sticky-form {
+    position: sticky;
+    top: 20px;
+}
+
+.create-card {
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.icon-badge {
+    background: var(--primary-gradient);
+    color: white;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+.custom-input {
+    border: 2px solid #edf2f7;
+    border-radius: 12px;
+    padding: 12px;
+    transition: all 0.3s ease;
+}
+
+.custom-input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+/* Post Card Styling */
+.post-card {
+    border-radius: 20px;
+    transition: transform 0.3s ease;
+}
+
+.post-card:hover {
+    transform: translateY(-5px);
+}
+
+.post-img {
+    height: 280px;
+    object-fit: cover;
+}
+
+.category-badge {
+    background: #f0f4f8;
+    color: #4a5568;
+    font-weight: 500;
+    padding: 6px 16px;
+    border-radius: 50px;
+}
+
+.target-role {
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 50px;
+}
+
+.target-role.customer { background: rgba(54, 185, 204, 0.1); color: var(--customer-color); }
+.target-role.seller { background: rgba(246, 194, 62, 0.1); color: var(--seller-color); }
+
+.author-avatar {
+    width: 32px;
+    height: 32px;
+    background: var(--primary-gradient);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: bold;
+}
+
+.post-content {
+    color: #4a5568;
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+/* เพิ่มเติมจากของเดิม */
+#announcementTabs .nav-link {
+    border-radius: 12px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+#announcementTabs .nav-link:hover {
+    background: rgba(0,0,0,0.05);
+}
+
+#announcementTabs .nav-link.active {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.category-badge {
+    background: #f1f3f9;
+    color: #4e73df;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.post-card {
+    border-radius: 20px;
+    transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+}
+
+.post-card:hover {
+    box-shadow: 0 14px 28px rgba(0,0,0,0.1) !important;
+}

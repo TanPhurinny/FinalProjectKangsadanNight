@@ -2,8 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
-const multer = require('multer'); // เพิ่ม multer สำหรับจัดการรูปภาพ
-require('dotenv').config();
+const announceCtrl = require('./controllers/announcementController');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -13,7 +12,8 @@ const upload = multer(); // ตั้งค่า multer พื้นฐาน
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// --- 2. Middleware (สำคัญมาก: ต้องวางก่อนเรียกใช้ Routes) ---
+// --- 2. Middleware สำคัญ ---
+// ให้มั่นใจว่าโฟลเดอร์ public มีโครงสร้าง /uploads/announcements
 app.use(express.static(path.join(__dirname, 'public'))); 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -22,55 +22,70 @@ app.use(express.urlencoded({ extended: true }));
 app.use(session({
     secret: process.env.SESSION_SECRET || 'kangsadan_night_market_key',
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: false, 
     cookie: { 
-        maxAge: 3600000, 
-        httpOnly: true,
-        secure: false // เปลี่ยนเป็น true ถ้าใช้ https
-    }
+        maxAge: 3600000,
+        httpOnly: true // เพิ่มความปลอดภัยป้องกัน XSS
+    } 
 }));
 
-// --- 4. นำเข้า Route (ต้องแน่ใจว่าไฟล์เหล่านี้มี module.exports = router) ---
+// --- 4. นำเข้า Route แยกไฟล์ ---
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const marketRoutes = require('./routes/marketRoutes');
 
 // --- 5. การกำหนดเส้นทาง (Routing) ---
 
-// หน้าแรก
-app.get('/', (req, res) => {
-    res.render('index', { user: req.session.user || null, error: null });
+// หน้าแรก (Index) - ดึงประกาศตาม Role ของผู้ใช้งาน
+app.get('/', async (req, res) => {
+    try {
+        const user = req.session.user || null;
+        let announcements = [];
+
+        // เลือก Role ที่ต้องการดึงประกาศ (ถ้าไม่ Login ให้เป็น CUSTOMER)
+        const targetRole = user ? user.role : 'CUSTOMER';
+        
+        // สำหรับแอดมินหรือเจ้าหน้าที่ อาจจะอยากให้เห็นประกาศของทุกคน หรือเห็นของ CUSTOMER เป็นหลัก
+        // ในที่นี้กำหนดให้ถ้าไม่ใช่ SELLER ให้เห็นของ CUSTOMER ทั้งหมด
+        const roleToFetch = (targetRole === 'SELLER') ? 'SELLER' : 'CUSTOMER';
+
+        announcements = await announceCtrl.getAnnouncementsForUser(roleToFetch);
+
+        res.render('index', { 
+            user, 
+            announcements,
+            error: null 
+        });
+    } catch (err) {
+        console.error("Index Error:", err);
+        res.render('index', { 
+            user: req.session.user || null, 
+            announcements: [], 
+            error: "เกิดข้อผิดพลาดในการโหลดข้อมูลประกาศ" 
+        });
+    }
 });
 
-// ใช้งาน Routes
-// หมายเหตุ: หาก authRoutes มีการส่งไฟล์รูป ให้ใช้ upload.single() ในไฟล์ route นั้นๆ
-app.use('/', authRoutes);
-app.use('/admin', adminRoutes);
+// ใช้งาน Route ที่แยกไฟล์ไว้
+app.use('/', authRoutes);        
+app.use('/admin', adminRoutes);  
 app.use('/market', marketRoutes);
 
 // --- 6. Error Handling 404 ---
 app.use((req, res) => {
     res.status(404).render('index', { 
         user: req.session.user || null, 
-        error: 'ไม่พบหน้าที่คุณต้องการ (404 Not Found)' 
+        announcements: [],
+        error: 'ขออภัย ไม่พบหน้าที่คุณต้องการ' 
     });
 });
 
-// --- 7. เริ่มต้นเชื่อมต่อฐานข้อมูลและรัน Server ---
-async function start() {
-    try {
-        await prisma.$connect();
-        console.log('✅ Connected to TiDB Cloud (MySQL) Successfully');
-        
-        const PORT = process.env.PORT || 3000;
-        app.listen(PORT, () => {
-            console.log(`🚀 System running at http://localhost:${PORT}`);
-        });
-    } catch (err) {
-        console.error('❌ Database connection error:', err.message);
-        // ตรวจสอบ DATABASE_URL ในไฟล์ .env และ IP Access List ใน TiDB
-        process.exit(1);
-    }
-}
-
-start();
+app.use((req, res, next) => {
+    res.locals.path = req.path; // ส่ง Path ปัจจุบันไปให้ทุก View อัตโนมัติ
+    next();
+});
+// --- 7. เริ่มต้นเซิร์ฟเวอร์ ---
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`🚀 Kangsadan Night Market System running at http://localhost:${PORT}`);
+});
