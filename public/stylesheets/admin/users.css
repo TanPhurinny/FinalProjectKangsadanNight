@@ -1,52 +1,196 @@
-/* public/css/users.css */
-.users-container {
-    padding: 30px 0;
-    background-color: #f8f9fa;
-    min-height: 100vh;
+/* --- User Table Custom Design --- */
+.user-row {
+    transition: all 0.2s ease;
 }
 
-.table-card {
-    background: #ffffff;
-    border-radius: 15px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-    border: none;
-    overflow: hidden;
+.user-row:hover {
+    background-color: rgba(167, 59, 36, 0.02) !important;
 }
 
-/* ตกแต่งส่วนหัวตาราง */
-.thead-custom {
-    background-color: #1a1a2e;
-    color: #ffffff;
+.user-info-cell {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
 
-.thead-custom th {
-    padding: 15px 20px;
-    font-weight: 500;
-    border: none;
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    background: #f1f3f5;
+    color: #a73b24;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-/* ระบบ Badge แยกตามบทบาท (Role) */
-.role-badge {
-    padding: 5px 12px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 500;
+.clickable-name:hover {
+    color: #e74c3c;
+    text-decoration: underline;
+}
+
+/* --- Detail Modal Styling --- */
+.profile-avatar-wrapper {
+    position: relative;
     display: inline-block;
 }
 
-.bg-admin { background-color: #ffe5e5; color: #b91c1c; }   /* แดง - Admin */
-.bg-staff { background-color: #dcfce7; color: #15803d; }   /* เขียว - Staff */
-.bg-seller { background-color: #fef9c3; color: #a16207; }  /* เหลือง - Seller */
-.bg-customer { background-color: #e0f2fe; color: #0369a1; } /* ฟ้า - Customer */
+.profile-avatar {
+    width: 100px;
+    height: 100px;
+    background: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #dee2e6;
+}
 
-/* ปุ่มจัดการ */
+.status-indicator {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+}
+
+.info-group {
+    background: #fff;
+    border-radius: 20px;
+}
+
+.info-item {
+    padding: 12px 0;
+    border-bottom: 1px dashed #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.info-item label {
+    font-size: 0.85rem;
+    color: #888;
+    margin: 0;
+}
+
+.info-item .value {
+    font-weight: 600;
+    color: #333;
+}
+
+.shop-card-detail {
+    background-color: #fff9f8;
+    border: 1px solid #ffe5e0;
+    color: #a73b24;
+}
+
+/* --- Role Colors --- */
+.role-admin { background-color: #a73b24 !important; color: white !important; }
+.role-staff { background-color: #0d47a1 !important; color: white !important; }
+.role-seller { background-color: #2e7d32 !important; color: white !important; }
+.role-customer { background-color: #6c757d !important; color: white !important; }
+
+/* public/stylesheets/admin/users.css */
+
+/* --- สไตล์ของปุ่ม (Action Buttons) --- */
 .btn-action {
-    padding: 5px 10px;
-    border-radius: 8px;
-    font-size: 0.9rem;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    border: none;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    /* เพิ่มมิตินิดๆ */
+}
+
+/* ปุ่มดูรายละเอียด (Eye) - สีน้ำเงิน Soft */
+.btn-view {
+    background-color: #eef2ff;
+    color: #4338ca;
+}
+
+.btn-view:hover {
+    background-color: #4338ca;
+    color: white;
+    transform: translateY(-2px);
+}
+
+/* ปุ่มแก้ไขสิทธิ์ (Shield) - สีส้ม Soft */
+.btn-edit {
+    background-color: #fff4e5;
+    color: #ff922b;
+    margin: 0 5px;
+}
+
+.btn-edit:hover {
+    background-color: #ff922b;
+    color: white;
+    transform: translateY(-2px);
+}
+
+/* ปุ่มลบ (Trash) - สีแดง Soft */
+.btn-delete {
+    background-color: #fff0f0;
+    color: #fa5252;
+}
+
+.btn-delete:hover {
+    background-color: #fa5252;
+    color: white;
+    transform: translateY(-2px);
+}
+
+/* --- สไตล์ของ Badge แยกตามบทบาท --- */
+.role-badge {
+    padding: 6px 15px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+}
+
+.role-admin {
+    background-color: #ffe8e8;
+    color: #a73b24;
+}
+
+.role-staff {
+    background-color: #e3f2fd;
+    color: #0d47a1;
+}
+
+.role-seller {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.role-customer {
+    background-color: #f1f3f5;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+/* จังหวะ Hover บนชื่อ */
+.clickable-name {
+    color: #a73b24;
+    font-weight: 600;
     transition: 0.2s;
 }
 
-.btn-edit { background-color: #ffc107; color: #000; border: none; }
-.btn-delete { background-color: #dc3545; color: #fff; border: none; }
-.btn-edit:hover, .btn-delete:hover { opacity: 0.8; transform: scale(1.05); }
+.clickable-name:hover {
+    color: #e74c3c;
+    text-decoration: underline;
+}

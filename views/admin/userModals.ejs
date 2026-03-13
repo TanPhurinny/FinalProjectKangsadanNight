@@ -1,0 +1,51 @@
+<div class="modal fade" id="userDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-light border-0 py-3 px-4 rounded-top-4">
+                <h5 class="modal-title fw-bold text-dark">ข้อมูลสมาชิกอย่างละเอียด</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="detailBody">
+                </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editRoleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <h5 class="fw-bold text-dark">เปลี่ยนสิทธิ์ผู้ใช้</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/admin/users/update-role" method="POST">
+                <div class="modal-body px-4">
+                    <input type="hidden" name="userId" id="modalUserId">
+                    <div class="mb-3">
+                        <label class="small text-muted mb-2">สมาชิก: <b id="modalUserName" class="text-dark"></b></label>
+                        <select name="newRole" id="modalRoleSelect" class="form-select bg-light border-0 rounded-3 py-2">
+                            <option value="ADMIN">ADMIN (ผู้ดูแล)</option>
+                            <option value="STAFF">STAFF (พนักงาน)</option>
+                            <option value="SELLER">SELLER (พ่อค้าแม่ค้า)</option>
+                            <option value="CUSTOMER">CUSTOMER (ลูกค้า)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill shadow-sm" style="background: #a73b24; border:none;">บันทึกการเปลี่ยนแปลง</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="modal fade" id="userDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 30px;">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 pt-0" id="detailBody">
+                </div>
+        </div>
+    </div>
+</div>
+</div>

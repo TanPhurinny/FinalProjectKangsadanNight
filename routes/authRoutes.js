@@ -7,37 +7,9 @@ const multer = require('multer');
 // ตั้งค่า multer รับข้อมูลฟอร์มที่มีรูปภาพ
 const upload = multer();
 
-// หน้า Login & Register UI
-router.get('/login', (req, res) => {
-    if (req.session.user) return res.redirect('/');
-    res.render('login', { error: null, success: null });
-});
+// ... (ส่วน Login และ Logout คงเดิม) ...
 
-// ระบบ Login
-router.post('/login', async (req, res) => {
-    const { username, password } = req.body;
-    try {
-        const user = await prisma.user.findUnique({ where: { username } });
-
-        if (user && user.password === password) {
-            req.session.user = { id: user.id, name: user.name, role: user.role };
-
-            if (user.role === 'ADMIN' || user.role === 'STAFF') {
-                return res.redirect('/admin/dashboard');
-            } else {
-                return res.redirect('/');
-            }
-        } else {
-            // กรณีล็อกอินผิดพลาด แสดงสีแดง (error)
-            res.render('login', { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", success: null });
-        }
-    } catch (err) {
-        res.render('login', { error: "เกิดข้อผิดพลาด: " + err.message, success: null });
-    }
-});
-
-
-// ระบบ Register
+// ระบบ Register (แก้ไขเพื่อให้ phoneNumber และ birthDate เข้า Database)
 router.post('/register', upload.single('productImage'), async (req, res) => {
     try {
         const { 

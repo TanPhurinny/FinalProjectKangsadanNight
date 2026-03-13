@@ -1,24 +1,59 @@
+<% 
+    // ตรวจสอบหน้าปัจจุบันจาก URL path
+    const currentPath = locals.path || ''; 
+%>
+
 <nav class="management-nav">
     <div class="nav-container">
         <a href="/admin/dashboard" class="nav-brand">
-            <i class="fas fa-store-alt"></i> Kangsadan <span style="font-weight: 300; opacity: 0.7;">Night Market</span>
+            <i class="fas fa-store-alt"></i> Kangsadan
         </a>
 
-        <div class="nav-links">
-            <a href="/admin/dashboard" class="nav-item">แดชบอร์ด</a>
-            <a href="/admin/slots" class="nav-item">
-                <i class="fas fa-map-marked-alt me-1"></i>ผังตลาด
+        <button class="nav-toggle" id="navToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <div class="nav-links" id="navMenu">
+            <a href="/admin/dashboard" class="nav-item <%= currentPath.includes('dashboard') ? 'active' : '' %>">
+                <i class="fas fa-th-large"></i> แดชบอร์ด
             </a>
-            <a href="/admin/requests" class="nav-item">การแจ้งคำร้อง</a>
-            <a href="/admin/approvals" class="nav-item">รายการอนุมัติ</a>
-            <a href="/admin/users" class="nav-item">สิทธิ์การใช้งาน</a>
-            
-            <div class="user-badge shadow-sm">
-                <i class="fas fa-user-circle"></i>
-                <%= user.name %> (<%= user.role %>)
+            <a href="/admin/slots" class="nav-item <%= currentPath.includes('slots') ? 'active' : '' %>">
+                <i class="fas fa-map-marked-alt"></i> ผังตลาด
+            </a>
+            <a href="/admin/requests" class="nav-item <%= currentPath.includes('requests') ? 'active' : '' %>">
+                <i class="fas fa-tools"></i> การแจ้งคำร้อง
+            </a>
+            <a href="/admin/approvals" class="nav-item <%= currentPath.includes('approvals') ? 'active' : '' %>">
+                <i class="fas fa-check-circle"></i> รายการอนุมัติ
+            </a>
+            <a href="/admin/announcements" class="nav-item <%= currentPath.includes('announcements') ? 'active' : '' %>">
+                <i class="fas fa-bullhorn"></i> จัดการประกาศ
+            </a>
+            <a href="/admin/users" class="nav-item <%= currentPath.includes('users') ? 'active' : '' %>">
+                <i class="fas fa-users"></i> จัดการผู้ใช้
+            </a>
+
+            <div class="nav-actions d-flex align-items-center">
+                <div class="user-badge shadow-sm">
+                    <i class="fas fa-user-circle"></i>
+                    <%= user.name %>
+                </div>
+                <a href="/logout" class="logout-link">
+                    <i class="fas fa-sign-out-alt me-1"></i>ออก
+                </a>
             </div>
-            
-            <a href="/logout" class="logout-link">ออกจากระบบ</a>
         </div>
     </div>
 </nav>
+
+<script>
+    const navToggle = document.getElementById('navToggle');
+    const navMenu = document.getElementById('navMenu');
+
+    navToggle.addEventListener('click', () => {
+        navMenu.classList.toggle('active');
+        const icon = navToggle.querySelector('i');
+        icon.classList.toggle('fa-bars');
+        icon.classList.toggle('fa-times');
+    });
+</script>

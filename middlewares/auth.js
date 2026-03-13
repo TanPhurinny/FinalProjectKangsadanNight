@@ -25,7 +25,6 @@ exports.isStaffOrAdmin = (req, res, next) => {
     res.redirect('/login?error=unauthorized');
 };
 
-
 exports.isAdminOnly = (req, res, next) => {
     if (req.session.user && req.session.user.role === 'ADMIN') {
         return next();

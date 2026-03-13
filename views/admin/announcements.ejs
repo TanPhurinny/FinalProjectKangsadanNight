@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>จัดการประกาศ | Kangsadan Admin</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+    <link rel="stylesheet" href="/stylesheets/admin/announcements.css">
+</head>
+<body class="bg-light">
+    <%- include('../partials/navbar') %>
+
+    <div class="container py-5">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h2 class="fw-bold text-dark"><i class="fas fa-bullhorn me-2 text-primary"></i>ระบบจัดการประกาศ</h2>
+                <p class="text-muted">สร้างและบริหารจัดการข้อมูลข่าวสารสำหรับชาวกังสดาล</p>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <div class="sticky-form">
+                    <div class="card create-card border-0 shadow-lg">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold mb-4 d-flex align-items-center text-primary">
+                                <span class="icon-badge-box me-2"><i class="fas fa-edit"></i></span>
+                                เขียนประกาศใหม่
+                            </h5>
+                            
+                            <form action="/admin/announcements/create" method="POST" enctype="multipart/form-data" id="announceForm">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">หัวข้อประกาศ</label>
+                                    <input type="text" name="title" class="form-control custom-input" placeholder="ระบุหัวข้อที่น่าสนใจ..." required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">กลุ่มเป้าหมาย</label>
+                                    <div class="role-group-selector">
+                                        <input type="radio" name="targetRole" value="CUSTOMER" id="roleCust" checked>
+                                        <label for="roleCust" class="role-label cust">ผู้ใช้ทั่วไป</label>
+
+                                        <input type="radio" name="targetRole" value="SELLER" id="roleSell">
+                                        <label for="roleSell" class="role-label sell">พ่อค้า/แม่ค้า</label>
+                                    </div>
+                                </div>
+
+                                <div class="row g-2 mb-3">
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold small">หมวดหมู่</label>
+                                        <select name="category" class="form-select custom-input">
+                                            <option value="ข่าวสาร">📢 ข่าวสาร</option>
+                                            <option value="กฎระเบียบ">⚖️ กฎระเบียบ</option>
+                                            <option value="โปรโมชั่น">🔥 โปรโมชั่น</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">รูปภาพประกอบ</label>
+                                    <div class="upload-area" id="dropZone">
+                                        <input type="file" name="announcementImage" class="d-none" accept="image/*" id="imgInput">
+                                        <div class="upload-placeholder" id="uploadPlaceholder">
+                                            <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
+                                            <p class="mb-0 small">คลิกหรือลากรูปมาวางที่นี่</p>
+                                        </div>
+                                        <div id="previewContainer" class="d-none position-relative">
+                                            <img id="imgPreview" src="#" alt="Preview" class="img-fluid rounded-3">
+                                            <button type="button" class="btn-remove-img" id="removeImg"><i class="fas fa-times"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold small">เนื้อหา</label>
+                                    <textarea name="content" class="form-control custom-input" rows="4" placeholder="พิมพ์รายละเอียดที่นี่..." required></textarea>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-pill shadow btn-publish">
+                                    <i class="fas fa-paper-plane me-2"></i> เผยแพร่ประกาศ
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-7">
+                <div class="glass-tabs mb-4 p-2 shadow-sm">
+                    <button class="tab-btn active" data-role="ALL">ทั้งหมด</button>
+                    <button class="tab-btn" data-role="CUSTOMER">ผู้ใช้ทั่วไป</button>
+                    <button class="tab-btn" data-role="SELLER">พ่อค้า/แม่ค้า</button>
+                </div>
+
+                <div id="postsContainer">
+                    <% posts.forEach(post => { %>
+                        <div class="card post-card border-0 shadow-sm mb-4 announcement-item" data-role="<%= post.targetRole %>">
+                            <% if (post.image) { %>
+                                <div class="img-wrapper">
+                                    <img src="/uploads/announcements/<%= post.image %>" class="card-img-top" alt="news">
+                                </div>
+                            <% } %>
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="badge-custom <%= post.category %>"><%= post.category %></span>
+                                    <span class="role-indicator <%= post.targetRole.toLowerCase() %>">
+                                        <%= post.targetRole === 'SELLER' ? 'SELLER' : 'CUSTOMER' %>
+                                    </span>
+                                </div>
+                                <h4 class="fw-bold mb-3"><%= post.title %></h4>
+                                <p class="text-secondary small"><%= post.content %></p>
+                                <div class="post-footer mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+                                    <div class="user-meta">
+                                        <div class="meta-avatar"><%= post.author.name.charAt(0) %></div>
+                                        <div>
+                                            <div class="meta-name"><%= post.author.name %></div>
+                                            <div class="meta-date"><%= new Date(post.createdAt).toLocaleDateString('th-TH') %></div>
+                                        </div>
+                                    </div>
+                                    <a href="/admin/announcements/delete/<%= post.id %>" class="btn-delete-circle" title="ลบ" onclick="return confirm('ลบประกาศนี้ใช่ไหม?')">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+
+                <div id="noData" class="text-center py-5 d-none bg-white rounded-4 shadow-sm">
+                    <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" width="100" class="mb-3 opacity-50">
+                    <p class="text-muted fw-bold">ไม่พบประกาศในหมวดหมู่นี้</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/admin/announcements.js"></script>
+</body>
+</html>
