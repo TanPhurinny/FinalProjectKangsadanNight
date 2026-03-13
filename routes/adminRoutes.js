@@ -27,5 +27,34 @@ router.post('/approvals/confirm', approvalCtrl.confirmApproval);
 // --- Maintenance Requests ---
 router.get('/requests', requestCtrl.getRequestsPage);
 router.post('/requests/update-status', requestCtrl.updateStatus);
+// หน้า admin ดูรายการจอง ทำโปรเกรส
+router.get("/admin-booking", async (req, res) => {
+
+  if (!req.session.user) {
+    return res.redirect("/login");
+  }
+
+  // ถ้าต้องการให้เฉพาะ admin เข้า
+  if (req.session.user.role !== "ADMIN") {
+    return res.status(403).send("คุณไม่มีสิทธิ์เข้าใช้งานหน้านี้");
+  }
+
+  res.render("seller/admin_booking", {
+    user: req.session.user
+  });
+
+});
+//โปรเกรส
+router.get("/booking-stall", (req, res) => {
+
+  if (!req.session.user) {
+    return res.redirect("/login");
+  }
+
+  res.render("seller/admin_booking_stall", {
+    user: req.session.user
+  });
+
+});
 
 module.exports = router;

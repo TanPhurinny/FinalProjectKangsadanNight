@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สถานะการจอง</title>
+
+<link rel="stylesheet" href="/css/booking_status.css">
+<link rel="stylesheet" href="/css/navbar.css">
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+</head>
+
+<body>
+
+<%- include('../components/navbar') %>
+
+<div class="container">
+
+    <div class="top-bar">
+        <a href="javascript:history.back()" class="back">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <h2>สถานะการจอง</h2>
+    </div>
+
+    <h1 class="title">การจองของฉัน</h1>
+
+    <div class="status-container">
+
+        <div class="status-item active">
+            <i class="fa-solid fa-clipboard-check icon"></i>
+            <p>รอการอนุมัติ</p>
+        </div>
+
+        <div class="status-item">
+            <i class="fa-solid fa-wallet icon"></i>
+            <p>ชำระเงิน</p>
+        </div>
+
+        <div class="status-item">
+            <i class="fa-solid fa-store icon"></i>
+            <p>เสร็จสิ้น</p>
+        </div>
+
+    </div>
+
+    <div class="btn-zone">
+        <button class="pay-btn" onclick="goToPayment()">ชำระเงิน</button>
+    </div>
+
+</div>
+
+<script src="/js/booking_status.js"></script>
+
+</body>
+</html>
+<style>
+    body{
+    margin:0;
+    font-family: 'Prompt', sans-serif;
+    background:#f5f5f5;
+}
+
+.container{
+    padding:40px;
+}
+
+.top-bar{
+    display:flex;
+    align-items:center;
+    gap:15px;
+}
+
+.back{
+    font-size:20px;
+    color:black;
+}
+
+.title{
+    margin-top:20px;
+    font-size:28px;
+}
+
+.status-container{
+    margin-top:80px;
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+}
+
+.status-item{
+    text-align:center;
+    color:#3BB8D4;
+}
+
+.status-item .icon{
+    font-size:80px;
+}
+
+.status-item p{
+    margin-top:15px;
+    font-size:18px;
+}
+
+.status-item.active{
+    color:#3BB8D4;
+}
+
+.btn-zone{
+    display:flex;
+    justify-content:center;
+    margin-top:120px;
+}
+
+.pay-btn{
+    width:300px;
+    padding:15px;
+    border:none;
+    background:#3BB8D4;
+    color:white;
+    font-size:18px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:0.3s;
+}
+
+.pay-btn:hover{
+    background:#2da5c0;
+}
+</style>
+<script>
+    function goToPayment(){
+
+    window.location.href = "/payment";
+
+}
+</script>

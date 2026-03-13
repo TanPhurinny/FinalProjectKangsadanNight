@@ -43,9 +43,15 @@ app.get('/', (req, res) => {
 });
 
 // ใช้งาน Route ที่แยกไฟล์ไว้
-app.use('/', authRoutes);        // จัดการ Login, Register, Logout
+app.use('/', authRoutes);        // จัดการ Login, Register, Logout,รายการจองใช้โปรเกรส
 app.use('/admin', adminRoutes);  // จัดการ Dashboard, Users, Requests (เฉพาะ Admin/Staff)
 app.use('/market', marketRoutes); // จัดการ Slots, Products (สำหรับ Seller/Customer)
+const sellerRoute = require('./routes/sellerRoute');
+
+
+app.use('/', sellerRoute); // เลือกแผง,แจ้งซ่อม,จองแผง
+
+
 
 // --- 6. Error Handling 404 ---
 app.use((req, res) => {

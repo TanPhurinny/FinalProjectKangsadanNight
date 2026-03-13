@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <title>แจ้งซ่อม</title>
+    <link rel="stylesheet" href="/seller.css">
+    <link rel="stylesheet" href="/css/navbar.css">
+</head>
+
+<body>
+    <%- include('../components/navbar') %>
+
+    <h2 class="title">แจ้งซ่อม</h2>
+
+    <div class="form-container">
+<form action="/repair" method="POST">
+
+<label>ชื่อ - นามสกุล</label>
+<input type="text" name="name" class="input-blue">
+
+<label>เบอร์โทรศัพท์</label>
+<input type="text" name="phone" class="input-blue">
+
+<label>แผงที่ต้องการซ่อม</label>
+<input type="text" name="location">
+
+<label>ประเภท</label>
+<select name="category">
+    <option value="ไฟฟ้า">ไฟฟ้า</option>
+    <option value="โครงสร้าง">โครงสร้าง</option>
+    <option value="อื่นๆ">อื่นๆ</option>
+</select>
+
+<label>รายละเอียด</label>
+<textarea name="description"></textarea>
+
+<button type="submit" class="submit-btn">
+ยืนยันการแจ้งซ่อม
+</button>
+
+</form>
+
+    </div>
+
+</body>
+
+</html>

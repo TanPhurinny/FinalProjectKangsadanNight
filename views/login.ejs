@@ -20,7 +20,17 @@
             <div class="form-card shadow-lg">
                 <div id="loginPage" class="auth-page">
                     <h3 class="text-center mb-4 fw-bold">เข้าสู่ระบบ</h3>
-                    <% if (error) { %><div class="alert alert-danger small text-center"><%= error %></div><% } %>
+                    
+                    <% if (typeof error !== 'undefined' && error) { %>
+                        <div class="alert alert-danger small text-center"><%= error %></div>
+                    <% } %>
+                    
+                    <% if (typeof success !== 'undefined' && success) { %>
+                        <div class="alert alert-success small text-center fw-bold">
+                            <i class="fas fa-check-circle me-1"></i> <%= success %>
+                        </div>
+                    <% } %>
+
                     <form method="POST" action="/login">
                         <div class="input-group mb-3">
                             <span class="input-group-text"><i class="fas fa-user"></i></span>

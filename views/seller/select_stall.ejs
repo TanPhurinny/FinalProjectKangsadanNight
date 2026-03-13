@@ -1,94 +1,163 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<title>แผงที่คุณต้องการเช่า</title>
-<link rel="stylesheet" href="seller.css">
-<link rel="stylesheet" href="/css/navbar.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>เลือกแผงค้า - กังสดาลไนท์</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/seller.css">
+    
 </head>
 
 <body>
+    <!-- Popup Stall Detail -->
+<div id="stallPopup" class="stall-popup">
 
-<%- include('../components/navbar') %>
+  <div class="popup-card">
 
-<div style="margin-top:70px">
-  <h1>หน้าตลาด</h1>
-</div>
-
-<!-- TITLE -->
-<div class="title">
-    <span class="back">←</span>
-    <h2>แผงที่คุณต้องการเช่า</h2>
-</div>
-
-<!-- STATUS FILTER -->
-<div class="status">
-    <div class="status-box available"></div> ว่าง
-    <div class="status-box booked"></div> จองแล้ว
-    <div class="status-box selected"></div> เลือกอยู่
-</div>
-
-<!-- MARKET MAP -->
-<div class="market-map">
-
-    <!-- row -->
-    <div class="row">
-        <div class="stall">H001</div>
-        <div class="stall">H001</div>
-        <div class="stall selected">H001</div>
-        <div class="stall">H001</div>
-        <div class="stall">H001</div>
-        <div class="stall">H002</div>
+    <div class="popup-header">
+      <span id="popupTitle">แถว A101-A117</span>
+      <span id="closePopup">✕</span>
     </div>
 
-    <div class="row">
-        <div class="stall">H001</div>
-        <div class="stall">H001</div>
-        <div class="stall">H001</div>
-        <div class="stall booked">H001</div>
-        <div class="stall">H001</div>
-        <div class="stall">H003</div>
+    <div class="popup-body">
+
+      <p>แผงขายของขนาด 2x2 เมตร</p>
+
+      <p>💎 ราคา <b>500 บาท</b> /วัน</p>
+
+      <p>🔌 มีไฟฟ้าในแผง</p>
+
+      <p>📍 อยู่ในตำแหน่งที่มองเห็นง่าย</p>
+
+    <button class="popup-btn" id="bookBtn">
+จองแถวนี้
+</button>
+
     </div>
 
-    <div class="row">
-        <div class="stall">H001</div>
-        <div class="stall">H001</div>
-        <div class="stall">H001</div>
-        <div class="stall">H001</div>
-        <div class="stall">H001</div>
-        <div class="stall">H003</div>
+  </div>
+
+</div>
+
+<div class="page-wrapper">
+
+  <!-- Zone Selector -->
+  <div class="zone-selector">
+    <span class="zone-label-title">โซน</span>
+    <span class="zone-label-sub">ระบุโซนที่ต้องการจอง</span>
+    <select id="zoneDropdown" class="zone-dropdown">
+      <option value="">-- เลือกโซน --</option>
+      <option value="A">โซน A</option>
+      <option value="B">โซน B</option>
+      <option value="C">โซน C</option>
+      <option value="D">โซน D</option>
+      <option value="E">โซน E</option>
+      <option value="F">โซน F</option>
+    </select>
+  </div>
+
+  <!-- Market Map -->
+  <div class="map-outer">
+
+    <!-- Left road label -->
+    <div class="road-left">
+      <div class="road-left-stripe"></div>
+      <span class="road-left-text">ทางเข้าถนน 62 บล็อก</span>
+      <div class="road-left-arrow">↓</div>
     </div>
 
+    <!-- Map inner -->
+    <div class="map-inner">
+
+      <div class="road-top-sign">📍 เจริญหมูกระทะ</div>
+
+      <!-- Zone E -->
+      <div class="zone-block zone-e" id="zone-E-block">
+        <span class="zone-label">โซน E</span>
+        <div class="stall-grid" id="stalls-E"></div>
+      </div>
+
+      <!-- Zone D -->
+      <div class="zone-block zone-d" id="zone-D-block">
+        <span class="zone-label">โซน D</span>
+        <div class="stall-grid" id="stalls-D"></div>
+      </div>
+
+      <!-- Zone A -->
+      <div class="zone-block zone-a" id="zone-A-block">
+        <span class="zone-label">โซน A</span>
+        <div class="stall-grid stall-grid-vertical" id="stalls-A"></div>
+      </div>
+
+      <!-- Zone F -->
+      <div class="zone-block zone-f" id="zone-F-block">
+        <span class="zone-label">โซน F</span>
+        <div class="stall-grid stall-grid-vertical" id="stalls-F"></div>
+      </div>
+
+      <!-- Zone B -->
+      <div class="zone-block zone-b" id="zone-B-block">
+        <span class="zone-label">โซน B</span>
+        <div class="stall-grid stall-grid-vertical" id="stalls-B"></div>
+      </div>
+
+      <!-- Zone C -->
+      <div class="zone-block zone-c" id="zone-C-block">
+        <span class="zone-label">โซน C</span>
+        <div class="stall-grid" id="stalls-C"></div>
+      </div>
+
+      <!-- Bottom buttons -->
+      <div class="bottom-buttons">
+        <button class="btn-facility">🚻 ห้องน้ำ</button>
+        <button class="btn-facility">👨‍💼 ออฟฟิศ</button>
+      </div>
+
+      <!-- Bottom road stripe -->
+      <div class="bottom-stripe"></div>
+      <div class="bottom-entry-label">เข้า-ออก</div>
+
+    </div><!-- end map-inner -->
+
+    <!-- Right road label -->
+    <div class="road-right">
+      <span class="road-right-text">ลานจอดรถ กังสดาลไนท์</span>
+    </div>
+
+  </div><!-- end map-outer -->
+
+  <!-- Pricing Info -->
+  <div class="pricing-info">
+    <div class="pricing-title">ค่าไฟสว่าง</div>
+    <div class="pricing-row">
+      <strong style="color:#b00000">พิเศษ</strong>ร้านเปิดไหม่ค่าไฟแสงสว่างจากล็อคละ <strong style="color: #27C840;">5 บาท</strong>/วัน
+      <span class="pricing-note">(จำกัดแค่ 30 บาท)</span>
+      <span class="pricing-note-sub">*หมายเหตุ หลอดไฟติดล็อค ไม่เกิน 4 ดวงใหญ่ หรือ 10 ดวงเล็ก หรือ รวมกันไม่เกิน 150 วัตต์ ต้องล็อคกระและต้องเป็นหลอดขนิด LED เท่านั้น</span>
+    </div>
+    <div class="pricing-row">
+      ⚡ เครื่องใช้ไฟฟ้าเล็ก <u>เครื่องละ</u> <strong>20 บาท</strong>/วัน
+      <span class="pricing-note-sub">หมายเหตุ เครื่องใช้ไฟฟ้าขนาดเล็กต้องต่ำกว่า 1200 วัตต์ เช่น เครื่องปั๊ม, เครื่องปั้งขนมปัง, กาน้ำร้อน ฯลฯ</span>
+    </div>
+    <div class="pricing-row">
+      🔌 เครื่องใช้ไฟฟ้าใหญ่ <u>เครื่องละ</u> <strong>40 บาท</strong>/วัน เช่น กระทะไฟฟ้า, เตาอบ, หม้อทอด, ตู้แช่ ฯลฯ
+    </div>
+  </div>
+
 </div>
+<script src="/js/market.js"></script>
+<script>document.addEventListener("DOMContentLoaded", function(){
 
-<!-- DETAIL CARD -->
-<div class="detail-card">
+  const btn = document.getElementById("bookBtn");
 
-<h3>แผง H 001</h3>
+  if(btn){
+    btn.addEventListener("click", function(){
+      window.location.href = "/booking-stall";
+    });
+  }
 
-<p>แผงขายของขนาด 2x2 เมตร</p>
-
-<ul>
-<li>💰 ราคา 500 บาท / วัน</li>
-<li>⚡ มีไฟฟ้าในแผง</li>
-<li>📍 อยู่ในตำแหน่งที่มองเห็นง่าย</li>
-</ul>
-
-<button class="reserve">จองแผง</button>
-
-</div>
-
-<!-- FOOTNOTE -->
-<div class="note">
-
-<p>🔌 เครื่องใช้ไฟฟ้าเล็ก เครื่องละ <span>20 บาท/วัน</span></p>
-
-<p class="warning">
-หมายเหตุ เครื่องใช้ไฟฟ้าขนาดเล็กกำลังต่ำกว่า 1200 วัตต์ เช่น เครื่องปั่น เครื่องปิ้งขนมปัง
-</p>
-
-</div>
+});</script>
 
 </body>
 </html>
-<script src="/js/navbar.js"></script>
