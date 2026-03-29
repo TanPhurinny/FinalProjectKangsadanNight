@@ -87,6 +87,7 @@ model MaintenanceReport {
   location    String
   category    String
   description String   @db.Text
+  image       String? // เส้นทางรูปภาพ
   status      Status   @default(PENDING)
   userId      Int
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)

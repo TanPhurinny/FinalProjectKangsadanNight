@@ -1,415 +1,236 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>รายการจองรออนุมัติ - Admin</title>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>รายการจองรออนุมัติ - Admin</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  
-  <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+            rel="stylesheet">
+        <link rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet">
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/approvals.css">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body class="bg-light">
 
-  <style>
-    :root {
-      --primary: #3BB8D4;
-      --primary-dark: #2a9ab5;
-      --primary-light: #e0f6fb;
-      --success: #27C840;
-      --danger: #E51837;
-      --warning: #FF9F1C;
-      --bg: #f4f5f7;
-      --card-bg: #ffffff;
-      --text-main: #1a2b2b;
-      --text-sub: #6b8a8a;
-      --border: #eaeaea;
-      --radius: 12px;
-    }
+        <%- include('../partials/navbar') %>
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+        <div class="approvals-page">
 
-    body {
-      font-family: 'Sarabun', sans-serif;
-      background: var(--bg);
-      color: var(--text-main);
-      min-height: 100vh;
-    }
+            <header class="site-header">
+                <a href="javascript:history.back()" class="btn-back"><i
+                        class="fa-solid fa-arrow-left"></i></a>
+                <h2 class="header-title">รายการจองรออนุมัติ</h2>
+                <div class="header-spacer"></div>
+            </header>
 
-    /* ── HEADER ── */
-    .site-header {
-      background: var(--card-bg);
-      border-bottom: 1px solid var(--border);
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-    }
-    .btn-back {
-      width: 40px; height: 40px;
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--text-main); text-decoration: none; font-size: 18px;
-      background: var(--bg); transition: 0.2s;
-    }
-    .btn-back:hover { background: #e2e6ea; }
-    .header-title {
-      flex: 1; text-align: center; font-family: 'Prompt', sans-serif;
-      font-size: 20px; font-weight: 600;
-    }
-    .header-spacer { width: 40px; }
+            <div class="container">
 
-    .container {
-      max-width: 800px;
-      margin: 30px auto 60px;
-      padding: 0 16px;
-    }
+                <div class="filter-section">
+                    <div class="summary-strip">
+                        <div class="summary-card">
+                            <span class="summary-label">ทั้งหมด</span>
+                            <span class="summary-value" id="count-all">0</span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-label">รออนุมัติ</span>
+                            <span class="summary-value"
+                                id="count-pending">0</span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-label">อนุมัติแล้ว</span>
+                            <span class="summary-value"
+                                id="count-approved">0</span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-label">ปฏิเสธ</span>
+                            <span class="summary-value"
+                                id="count-rejected">0</span>
+                        </div>
+                    </div>
 
-    /* ── FILTER SECTION ── */
-    .filter-section {
-      background: var(--card-bg);
-      padding: 20px;
-      border-radius: var(--radius);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-      margin-bottom: 24px;
-    }
-    .filter-title {
-      font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 600; margin-bottom: 12px;
-    }
-    
-    .filter-group {
-      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
-    }
-    .filter-group:last-child { margin-bottom: 0; }
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="shopSearch"
+                            placeholder="ค้นหาร้านค้า...">
+                    </div>
 
-    .btn-filter {
-      padding: 8px 20px;
-      border-radius: 20px;
-      border: 1px solid #ccc;
-      background: var(--card-bg);
-      color: #555;
-      font-family: inherit; font-size: 14px; font-weight: 500;
-      cursor: pointer; transition: 0.2s;
-    }
-    .btn-filter:hover { border-color: var(--primary); color: var(--primary); }
-    .btn-filter.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+                    <div class="filter-title">สถานะการจอง</div>
+                    <div class="filter-group" id="statusFilters">
+                        <button class="btn-filter active"
+                            data-status="all">ทั้งหมด</button>
+                        <button class="btn-filter"
+                            data-status="pending">รออนุมัติ</button>
+                        <button class="btn-filter"
+                            data-status="approved">อนุมัติแล้ว</button>
+                        <button class="btn-filter"
+                            data-status="rejected">ปฏิเสธ</button>
+                    </div>
 
-    /* ── BOOKING CARDS ── */
-    .card-list {
-      display: flex; flex-direction: column; gap: 16px;
-    }
-    .booking-card {
-      background: var(--card-bg);
-      border-radius: var(--radius);
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      border: 1px solid var(--border);
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
+                    <div
+                        class="filter-title filter-title-spaced">โซน</div>
+                    <div class="filter-group" id="zoneFilters">
+                        <button class="btn-filter active"
+                            data-zone="all">ทุกโซน</button>
+                        <button class="btn-filter" data-zone="A">โซน A</button>
+                        <button class="btn-filter" data-zone="B">โซน B</button>
+                        <button class="btn-filter" data-zone="C">โซน C</button>
+                        <button class="btn-filter" data-zone="D">โซน D</button>
+                        <button class="btn-filter" data-zone="E">โซน E</button>
+                        <button class="btn-filter" data-zone="F">โซน F</button>
+                    </div>
 
-    .card-header {
-      display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;
-    }
-    .shop-name {
-      font-family: 'Prompt', sans-serif; font-size: 18px; font-weight: 600; color: var(--primary-dark);
-    }
-    
-    /* Status Badges */
-    .badge {
-      padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block;
-    }
-    .badge.pending { background: #fff0d4; color: #d97706; border: 1px solid #fcd34d; }
-    .badge.approved { background: #dcfce7; color: #059669; border: 1px solid #86efac; }
-    .badge.rejected { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+                    <div class="type-summary" id="typeSummary">
+                        <span>A: <strong id="count-A">0</strong></span>
+                        <span>B: <strong id="count-B">0</strong></span>
+                        <span>C: <strong id="count-C">0</strong></span>
+                        <span>D: <strong id="count-D">0</strong></span>
+                        <span>E: <strong id="count-E">0</strong></span>
+                        <span>F: <strong id="count-F">0</strong></span>
+                    </div>
+                </div>
 
-    .card-body {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; color: var(--text-sub);
-    }
-    .card-body p { display: flex; align-items: center; gap: 8px; margin: 0; }
-    .card-body i { color: var(--primary); width: 16px; text-align: center; }
+                <div class="list-meta">พบ <span id="visibleCount">0</span>
+                    ร้าน</div>
 
-    .card-actions {
-      display: flex; gap: 12px; margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 16px;
-    }
-    .btn-action {
-      flex: 1; padding: 10px; border-radius: 8px; border: none; font-family: 'Prompt', sans-serif;
-      font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s;
-    }
-    .btn-reject { background: #ff3b3b; color: white; }
-    .btn-reject:hover { background: #ff3b3b; }
-    .btn-approve { background: var(--primary); color: #fff; }
-    .btn-approve:hover { background: var(--primary); }
+                <div class="card-list" id="bookingList">
 
-    /* ── POPUP MODAL ── */
-    .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999;
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; visibility: hidden; transition: 0.3s; padding: 16px;
-    }
-    .modal-overlay.active { opacity: 1; visibility: visible; }
-    
-    .modal-content {
-      background: #fff; width: 100%; max-width: 480px; border-radius: var(--radius);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2); transform: scale(0.95); transition: 0.3s;
-      overflow: hidden;
-    }
-    .modal-overlay.active .modal-content { transform: scale(1); }
+                    <div class="booking-card" data-status="pending"
+                        data-zone="F" data-stall="F101-F117"
+                        data-shop="ร้านหมูปิ้งเจ๊จู"
+                        onclick="openDetail('ร้านหมูปิ้งเจ๊จู', 'F101-F117', 'อาหาร', '14 ต.ค. 68', '16 ต.ค. 68', 'นางสาวสมหญิง ใจดี', '081-234-5678', 'pending', 'ขอพื้นที่ใกล้ทางเดินหลักค่ะ')">
+                        <div class="card-header">
+                            <h3 class="shop-name">ร้านหมูปิ้งเจ๊จู</h3>
+                            <span class="badge pending">รออนุมัติ</span>
+                        </div>
+                        <div class="card-body">
+                            <p><i class="fa-solid fa-map-location-dot"></i> โซน:
+                                F (อาหาร)</p>
+                            <p><i class="fa-solid fa-store"></i> แถวที่เลือก:
+                                F101-F117</p>
+                            <p><i class="fa-solid fa-calendar-check"></i> เริ่ม:
+                                14 ต.ค. 68</p>
+                            <p><i class="fa-solid fa-user"></i> ผู้จอง: สมหญิง
+                                ใจดี</p>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn-action btn-reject"
+                                onclick="event.stopPropagation(); rejectBooking('F101-F117', 'ร้านหมูปิ้งเจ๊จู');">ปฏิเสธ</button>
+                            <button class="btn-action btn-approve"
+                                onclick="event.stopPropagation(); confirmArrangeStall('F101-F117');">จัดแผง</button>
+                        </div>
+                    </div>
 
-    .modal-header {
-      background: var(--primary); color: #fff; padding: 16px 20px;
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .modal-header h3 { font-family: 'Prompt', sans-serif; font-size: 18px; font-weight: 600; margin: 0; }
-    .btn-close {
-      background: transparent; border: none; color: #fff; font-size: 20px; cursor: pointer;
-    }
+                    <div class="booking-card" data-status="pending"
+                        data-zone="A" data-stall="A101-A119"
+                        data-shop="เสื้อผ้าแฟชั่นวินเทจ"
+                        onclick="openDetail('เสื้อผ้าแฟชั่นวินเทจ', 'A101-A119', 'แฟชั่น', '15 ต.ค. 68', '15 ต.ค. 68', 'นายสมชาย รักดี', '082-333-9999', 'pending', 'ไม่มี')">
+                        <div class="card-header">
+                            <h3 class="shop-name">เสื้อผ้าแฟชั่นวินเทจ</h3>
+                            <span class="badge pending">รออนุมัติ</span>
+                        </div>
+                        <div class="card-body">
+                            <p><i class="fa-solid fa-map-location-dot"></i> โซน:
+                                A (แฟชั่น)</p>
+                            <p><i class="fa-solid fa-store"></i> แถวที่เลือก:
+                                A101-A119</p>
+                            <p><i class="fa-solid fa-calendar-check"></i> เริ่ม:
+                                15 ต.ค. 68</p>
+                            <p><i class="fa-solid fa-user"></i> ผู้จอง: สมชาย
+                                รักดี</p>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn-action btn-reject"
+                                onclick="event.stopPropagation(); rejectBooking('A101-A119', 'เสื้อผ้าแฟชั่นวินเทจ');">ปฏิเสธ</button>
+                            <button class="btn-action btn-approve"
+                                onclick="event.stopPropagation(); confirmArrangeStall('A101-A119');">จัดแผง</button>
+                        </div>
+                    </div>
 
-    .modal-body { padding: 20px; }
-    .detail-grid {
-      display: grid; grid-template-columns: 120px 1fr; gap: 12px 16px; align-items: baseline;
-      font-size: 15px; margin-bottom: 20px;
-    }
-    .detail-label { font-weight: 600; color: var(--text-sub); }
-    .detail-value { font-weight: 500; color: var(--text-main); }
-    .detail-highlight { color: var(--primary-dark); font-weight: 700; }
+                    <div class="booking-card" data-status="approved"
+                        data-zone="D" data-stall="D201-D212"
+                        data-shop="Burger Truck BKK"
+                        onclick="openDetail('Burger Truck BKK', 'D201-D212', 'ฟู้ดทรัค', '10 ต.ค. 68', '20 ต.ค. 68', 'นายเอกพล คนขยัน', '089-987-6543', 'approved', 'ใช้ไฟเยอะครับ (มีตู้แช่)')">
+                        <div class="card-header">
+                            <h3 class="shop-name">Burger Truck BKK</h3>
+                            <span class="badge approved">อนุมัติแล้ว</span>
+                        </div>
+                        <div class="card-body">
+                            <p><i class="fa-solid fa-map-location-dot"></i> โซน:
+                                D (ฟู้ดทรัค)</p>
+                            <p><i class="fa-solid fa-store"></i> แถวที่เลือก:
+                                D201-D212</p>
+                            <p><i class="fa-solid fa-calendar-check"></i> เริ่ม:
+                                10 ต.ค. 68</p>
+                            <p><i class="fa-solid fa-user"></i> ผู้จอง: เอกพล
+                                คนขยัน</p>
+                        </div>
+                        <div class="card-actions" style="display: none;"></div>
+                    </div>
 
-    .note-box {
-      background: #fff8e1; border-left: 4px solid var(--warning); padding: 12px;
-      border-radius: 4px; font-size: 14px; margin-bottom: 20px;
-    }
+                </div>
 
-    .modal-footer {
-      display: flex; gap: 12px;
-    }
+            </div>
 
-    /* ซ่อน Card ที่ไม่ตรง Filter */
-    .d-none { display: none !important; }
+            <div class="modal-overlay" id="detailModal"
+                onclick="closeModalOnOverlay(event)">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>รายละเอียดการจอง</h3>
+                        <button class="btn-close" onclick="closePopup()"><i
+                                class="fa-solid fa-xmark"></i></button>
+                    </div>
 
-  </style>
-</head>
-<body>
+                    <div class="modal-body">
+                        <div class="detail-grid">
+                            <span class="detail-label">ชื่อร้านค้า:</span>
+                            <span class="detail-value detail-highlight"
+                                id="m-shop"></span>
 
-<%- include('../partials/navbar') %>
+                            <span class="detail-label">ประเภท/โซน:</span>
+                            <span class="detail-value" id="m-zone"></span>
 
-<header class="site-header">
-  <a href="javascript:history.back()" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
-  <h2 class="header-title">รายการจองรออนุมัติ</h2>
-  <div class="header-spacer"></div>
-</header>
+                            <span class="detail-label">แถวที่เลือก:</span>
+                            <span class="detail-value detail-highlight"
+                                id="m-stall"></span>
 
-<div class="container">
+                            <span class="detail-label">วันที่เริ่ม:</span>
+                            <span class="detail-value" id="m-start"></span>
 
-  <div class="filter-section">
-    <div class="filter-title">สถานะการจอง</div>
-    <div class="filter-group" id="statusFilters">
-      <button class="btn-filter active" data-status="all">ทั้งหมด</button>
-      <button class="btn-filter" data-status="pending">รออนุมัติ</button>
-      <button class="btn-filter" data-status="approved">อนุมัติแล้ว</button>
-      <button class="btn-filter" data-status="rejected">ปฏิเสธ</button>
-    </div>
+                            <span class="detail-label">วันที่สิ้นสุด:</span>
+                            <span class="detail-value" id="m-end"></span>
 
-    <div class="filter-title" style="margin-top: 20px;">ประเภทโซน</div>
-    <div class="filter-group" id="zoneFilters">
-      <button class="btn-filter active" data-zone="all">ทุกโซน</button>
-      <button class="btn-filter" data-zone="fashion">แฟชั่น (A, C, E)</button>
-      <button class="btn-filter" data-zone="food">อาหาร (F, B)</button>
-      <button class="btn-filter" data-zone="truck">ฟู้ดทรัค (D)</button>
-    </div>
-  </div>
+                            <span class="detail-label">ผู้จอง:</span>
+                            <span class="detail-value" id="m-name"></span>
 
-  <div class="card-list" id="bookingList">
-    
-    <div class="booking-card" data-status="pending" data-zone="food" 
-         onclick="openDetail('ร้านหมูปิ้งเจ๊จู', 'F101-F117', 'อาหาร', '14 ต.ค. 68', '16 ต.ค. 68', 'นางสาวสมหญิง ใจดี', '081-234-5678', 'pending', 'ขอพื้นที่ใกล้ทางเดินหลักค่ะ')">
-      <div class="card-header">
-        <h3 class="shop-name">ร้านหมูปิ้งเจ๊จู</h3>
-        <span class="badge pending">รออนุมัติ</span>
-      </div>
-      <div class="card-body">
-        <p><i class="fa-solid fa-map-location-dot"></i> โซน: F (อาหาร)</p>
-        <p><i class="fa-solid fa-store"></i> แถวที่เลือก: F101-F117</p>
-        <p><i class="fa-solid fa-calendar-check"></i> เริ่ม: 14 ต.ค. 68</p>
-        <p><i class="fa-solid fa-user"></i> ผู้จอง: สมหญิง ใจดี</p>
-      </div>
-      <div class="card-actions">
-        <button class="btn-action btn-reject" onclick="event.stopPropagation(); alert('ปฏิเสธการจอง');">ปฏิเสธ</button>
-        <button class="btn-action btn-approve" onclick="event.stopPropagation(); window.location.href='/admin/booking-stall?zone=F&stall=F101-F117'">จัดแผง</button>
-      </div>
-    </div>
+                            <span class="detail-label">เบอร์โทรศัพท์:</span>
+                            <span class="detail-value" id="m-phone"></span>
+                        </div>
 
-    <div class="booking-card" data-status="pending" data-zone="fashion" 
-         onclick="openDetail('เสื้อผ้าแฟชั่นวินเทจ', 'A101-A119', 'แฟชั่น', '15 ต.ค. 68', '15 ต.ค. 68', 'นายสมชาย รักดี', '082-333-9999', 'pending', 'ไม่มี')">
-      <div class="card-header">
-        <h3 class="shop-name">เสื้อผ้าแฟชั่นวินเทจ</h3>
-        <span class="badge pending">รออนุมัติ</span>
-      </div>
-      <div class="card-body">
-        <p><i class="fa-solid fa-map-location-dot"></i> โซน: A (แฟชั่น)</p>
-        <p><i class="fa-solid fa-store"></i> แถวที่เลือก: A101-A119</p>
-        <p><i class="fa-solid fa-calendar-check"></i> เริ่ม: 15 ต.ค. 68</p>
-        <p><i class="fa-solid fa-user"></i> ผู้จอง: สมชาย รักดี</p>
-      </div>
-      <div class="card-actions">
-        <button class="btn-action btn-reject" onclick="event.stopPropagation(); alert('ปฏิเสธการจอง');">ปฏิเสธ</button>
-        <button class="btn-action btn-approve" onclick="event.stopPropagation(); window.location.href='/admin/booking-stall?zone=A&stall=A101-A119'">จัดแผง</button>
-      </div>
-    </div>
+                        <div class="note-box">
+                            <strong>หมายเหตุจากผู้เช่า:</strong><br>
+                            <span id="m-note"></span>
+                        </div>
 
-    <div class="booking-card" data-status="approved" data-zone="truck" 
-         onclick="openDetail('Burger Truck BKK', 'D201-D212', 'ฟู้ดทรัค', '10 ต.ค. 68', '20 ต.ค. 68', 'นายเอกพล คนขยัน', '089-987-6543', 'approved', 'ใช้ไฟเยอะครับ (มีตู้แช่)')">
-      <div class="card-header">
-        <h3 class="shop-name">Burger Truck BKK</h3>
-        <span class="badge approved">อนุมัติแล้ว</span>
-      </div>
-      <div class="card-body">
-        <p><i class="fa-solid fa-map-location-dot"></i> โซน: D (ฟู้ดทรัค)</p>
-        <p><i class="fa-solid fa-store"></i> แถวที่เลือก: D201-D212</p>
-        <p><i class="fa-solid fa-calendar-check"></i> เริ่ม: 10 ต.ค. 68</p>
-        <p><i class="fa-solid fa-user"></i> ผู้จอง: เอกพล คนขยัน</p>
-      </div>
-      <div class="card-actions" style="display: none;"></div>
-    </div>
+                        <div class="modal-footer" id="m-footer-actions">
+                            <button class="btn-action btn-reject"
+                                onclick="rejectCurrentBooking()">ปฏิเสธการจอง</button>
+                            <button class="btn-action btn-approve"
+                                id="m-approve-btn">ไปหน้าจัดแผง</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-  </div>
+        </div>
+        <script src="/js/admin/approvals.js"></script>
 
-</div>
-
-<div class="modal-overlay" id="detailModal" onclick="closeModalOnOverlay(event)">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>รายละเอียดการจอง</h3>
-      <button class="btn-close" onclick="closePopup()"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    
-    <div class="modal-body">
-      <div class="detail-grid">
-        <span class="detail-label">ชื่อร้านค้า:</span>
-        <span class="detail-value detail-highlight" id="m-shop"></span>
-        
-        <span class="detail-label">ประเภท/โซน:</span>
-        <span class="detail-value" id="m-zone"></span>
-
-        <span class="detail-label">แถวที่เลือก:</span>
-        <span class="detail-value detail-highlight" id="m-stall"></span>
-
-        <span class="detail-label">วันที่เริ่ม:</span>
-        <span class="detail-value" id="m-start"></span>
-
-        <span class="detail-label">วันที่สิ้นสุด:</span>
-        <span class="detail-value" id="m-end"></span>
-
-        <span class="detail-label">ผู้จอง:</span>
-        <span class="detail-value" id="m-name"></span>
-
-        <span class="detail-label">เบอร์โทรศัพท์:</span>
-        <span class="detail-value" id="m-phone"></span>
-      </div>
-
-      <div class="note-box">
-        <strong>หมายเหตุจากผู้เช่า:</strong><br>
-        <span id="m-note"></span>
-      </div>
-
-      <div class="modal-footer" id="m-footer-actions">
-        <button class="btn-action btn-reject" onclick="closePopup()">ปฏิเสธการจอง</button>
-        <button class="btn-action btn-approve" id="m-approve-btn">ไปหน้าจัดแผง</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-  // =====================================
-  // FILTER LOGIC
-  // =====================================
-  const statusBtns = document.querySelectorAll('#statusFilters .btn-filter');
-  const zoneBtns = document.querySelectorAll('#zoneFilters .btn-filter');
-  const cards = document.querySelectorAll('.booking-card');
-
-  let currentStatus = 'all';
-  let currentZone = 'all';
-
-  function applyFilters() {
-    cards.forEach(card => {
-      const cStatus = card.dataset.status;
-      const cZone = card.dataset.zone;
-
-      const matchStatus = (currentStatus === 'all' || cStatus === currentStatus);
-      const matchZone = (currentZone === 'all' || cZone === currentZone);
-
-      if (matchStatus && matchZone) {
-        card.classList.remove('d-none');
-      } else {
-        card.classList.add('d-none');
-      }
-    });
-  }
-
-  statusBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      statusBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentStatus = btn.dataset.status;
-      applyFilters();
-    });
-  });
-
-  zoneBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      zoneBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentZone = btn.dataset.zone;
-      applyFilters();
-    });
-  });
-
-  // =====================================
-  // MODAL LOGIC
-  // =====================================
-  const modal = document.getElementById('detailModal');
-
-  function openDetail(shop, stall, zoneType, start, end, name, phone, status, note) {
-    document.getElementById('m-shop').innerText = shop;
-    document.getElementById('m-stall').innerText = stall;
-    document.getElementById('m-zone').innerText = zoneType;
-    document.getElementById('m-start').innerText = start;
-    document.getElementById('m-end').innerText = end;
-    document.getElementById('m-name').innerText = name;
-    document.getElementById('m-phone').innerText = phone;
-    document.getElementById('m-note').innerText = note;
-
-    // ตั้งค่า URL ให้ปุ่มจัดแผง
-    const approveBtn = document.getElementById('m-approve-btn');
-    approveBtn.onclick = function() {
-      // ดึงตัวอักษรตัวแรกของ stall มาเป็นชื่อ Zone (เช่น A101-A119 -> Zone A)
-      let zoneChar = stall.charAt(0); 
-      window.location.href = `/admin/booking-stall?zone=${zoneChar}&stall=${stall}`;
-    };
-
-    // ซ่อนปุ่มจัดการถ้าไม่อยู่ในสถานะ "รออนุมัติ"
-    const footer = document.getElementById('m-footer-actions');
-    if(status === 'pending') {
-      footer.style.display = 'flex';
-    } else {
-      footer.style.display = 'none';
-    }
-
-    modal.classList.add('active');
-  }
-
-  function closePopup() {
-    modal.classList.remove('active');
-  }
-
-  function closeModalOnOverlay(e) {
-    if (e.target === modal) closePopup();
-  }
-</script>
-
-</body>
+    </body>
 </html>

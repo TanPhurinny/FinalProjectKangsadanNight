@@ -56,22 +56,25 @@
 
 .nav-links {
     display: flex;
-    gap: 4px;
+    gap: 8px;
     align-items: center;
     transition: all 0.3s ease;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .nav-item {
     text-decoration: none;
     color: #666;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 500;
-    padding: 10px 16px;
+    padding: 8px 14px;
     border-radius: 12px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .nav-item:hover,

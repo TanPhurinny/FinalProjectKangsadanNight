@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>แจ้งซ่อม - กังสดาลไนท์</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    
-    <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>แจ้งซ่อม - กังสดาลไนท์</title>
 
-    <style>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet">
+        <link rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+
+        <style>
         :root {
             --primary: #3BB8D4;
             --primary-dark: #2a9ab5;
@@ -212,73 +215,130 @@
             .form-card { padding: 24px 20px; }
         }
     </style>
-</head>
+    </head>
 
-<body>
-    <%- include('../partials/navbar2') %>
+    <body>
+        <%- include('../partials/navbar2') %>
 
-    <header class="site-header">
-        <button class="btn-back" onclick="history.back()"><i class="fa-solid fa-arrow-left"></i></button>
-        <h2 class="header-title">แจ้งซ่อม</h2>
-        <div class="header-spacer"></div>
-    </header>
+        <header class="site-header">
+            <button class="btn-back" onclick="history.back()"><i
+                    class="fa-solid fa-arrow-left"></i></button>
+            <h2 class="header-title">แจ้งซ่อม</h2>
+            <div class="header-spacer"></div>
+        </header>
 
-    <div class="container">
-        <div class="form-card">
-            <form action="/repair" method="POST" enctype="multipart/form-data">
-                
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>ชื่อ - นามสกุล</label>
-                        <input type="text" name="name" class="input-blue" value="<%= user ? user.name : '' %>" readonly>
-                    </div>
+        <div class="container">
+            <div class="form-card">
+                <%
+                const errorParam = (typeof error !== 'undefined' && error) ?
+                error : null;
+                const successParam = (typeof success !== 'undefined' && success)
+                ? success : null;
+                const successMsg = successParam ? 'แจ้งซ่อมสำเร็จแล้ว!' : null;
+                const errorMsg = {
+                'missing_fields': 'กรุณากรอกข้อมูลให้ครบถ้วน',
+                'upload_failed': 'อัปโหลดรูปภาพล้มเหลว กรุณาลองใหม่',
+                'db_error': 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่'
+                }[errorParam] || null;
+                %>
 
-                    <div class="form-group">
-                        <label>เบอร์โทรศัพท์</label>
-                        <input type="tel" name="phone" class="input-blue" value="<%= user ? user.phoneNumber : '' %>" readonly>
-                    </div>
-
-                    <div class="form-group">
-                        <label>แผงที่ต้องการซ่อม</label>
-                        <input type="text" name="location" class="input-white" placeholder="เช่น A105, โซน F" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>ประเภทปัญหา</label>
-                        <select name="category" class="input-white" required>
-                            <option value="" disabled selected>เลือกประเภท...</option>
-                            <option value="ไฟฟ้า">ไฟฟ้า (หลอดไฟขาด, ปลั๊กพัง)</option>
-                            <option value="โครงสร้าง">โครงสร้าง (หลังคารั่ว, พื้นทรุด)</option>
-                            <option value="อื่นๆ">อื่นๆ</option>
-                        </select>
-                    </div>
+                <% if (successMsg) { %>
+                <div
+                    style="background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fa-solid fa-check-circle"
+                        style="font-size: 18px;"></i>
+                    <span><%= successMsg %></span>
                 </div>
+                <% } %>
 
-                <div class="form-group full-width">
-                    <label>รายละเอียด</label>
-                    <textarea name="description" class="input-white" placeholder="เพิ่มรายละเอียด..." required></textarea>
+                <% if (errorMsg) { %>
+                <div
+                    style="background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fa-solid fa-exclamation-circle"
+                        style="font-size: 18px;"></i>
+                    <span><%= errorMsg %></span>
                 </div>
+                <% } %>
 
-                <div class="form-group full-width">
-                    <label>แนบรูปภาพเพิ่มเติม</label>
-                    <div class="upload-wrapper">
-                        <label for="imageUpload" class="upload-box" id="uploadLabel">
-                            <img id="imagePreview" src="" alt="Preview">
-                        </label>
-                        <input type="file" name="image" id="imageUpload" class="upload-input" accept="image/*">
+                <form action="/repair" method="POST"
+                    enctype="multipart/form-data">
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>ชื่อ - นามสกุล</label>
+                            <input type="text" name="name" class="input-blue"
+                                value="<%= user ? user.name : '' %>" readonly>
+                        </div>
+
+                        <div class="form-group">
+                            <label>เบอร์โทรศัพท์</label>
+                            <input type="tel" name="phone" class="input-blue"
+                                value="<%= user ? user.phoneNumber : '' %>"
+                                readonly>
+                        </div>
+
+                        <div class="form-group">
+                            <label>แผงที่ต้องการซ่อม</label>
+                            <input type="text" name="location"
+                                class="input-white"
+                                placeholder="เช่น A105, โซน F" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>ประเภทปัญหา</label>
+                            <select name="category" class="input-white"
+                                required>
+                                <option value disabled
+                                    selected>เลือกประเภท...</option>
+                                <option value="ไฟฟ้า">ไฟฟ้า (หลอดไฟขาด,
+                                    ปลั๊กพัง)</option>
+                                <option value="โครงสร้าง">โครงสร้าง (หลังคารั่ว,
+                                    พื้นทรุด)</option>
+                                <option value="อื่นๆ">อื่นๆ</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
 
-                <button type="submit" class="submit-btn">ยืนยันการแจ้งซ่อม</button>
+                    <div class="form-group full-width">
+                        <label>รายละเอียด</label>
+                        <textarea name="description" class="input-white"
+                            placeholder="เพิ่มรายละเอียด..."
+                            required></textarea>
+                    </div>
 
-            </form>
+                    <div class="form-group full-width">
+                        <label>แนบรูปภาพเพิ่มเติม</label>
+                        <div class="upload-wrapper">
+                            <label for="imageUpload" class="upload-box"
+                                id="uploadLabel">
+                                <img id="imagePreview" src alt="Preview">
+                            </label>
+                            <input type="file" name="image" id="imageUpload"
+                                class="upload-input" accept="image/*">
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                        class="submit-btn"
+                        id="submitBtn">ยืนยันการแจ้งซ่อม</button>
+
+                </form>
+
+                <% if (successMsg) { %>
+                <script>
+                    // รีเซ็ตฟอร์มเมื่อสำเร็จ
+                    document.querySelector('form').reset();
+                    document.getElementById('imagePreview').style.display = 'none';
+                </script>
+                <% } %>
+            </div>
         </div>
-    </div>
 
-    <script>
+        <script>
         // Script สำหรับ Preview รูปภาพเมื่อผู้ใช้อัปโหลด
         const imageUpload = document.getElementById('imageUpload');
         const imagePreview = document.getElementById('imagePreview');
+        const submitBtn = document.getElementById('submitBtn');
 
         imageUpload.addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -294,6 +354,30 @@
                 imagePreview.style.display = 'none';
             }
         });
+
+        // ปิดการส่งฟอร์มซ้อนและแสดง loading state
+        document.querySelector('form').addEventListener('submit', function(e) {
+            if (!submitBtn.disabled) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'กำลังส่งข้อมูล...';
+            }
+        });
+
+        // ซ่อนข้อความ success/error หลังจาก 5 วินาที
+        window.addEventListener('load', function() {
+            const alertDivs = document.querySelectorAll('[style*="background-color"]');
+            alertDivs.forEach(alertDiv => {
+                if (window.location.search.includes('success=true') || window.location.search.includes('error=')) {
+                    setTimeout(() => {
+                        alertDiv.style.opacity = '0';
+                        alertDiv.style.transition = 'opacity 0.3s ease';
+                        setTimeout(() => {
+                            alertDiv.style.display = 'none';
+                        }, 300);
+                    }, 5000);
+                }
+            });
+        });
     </script>
-</body>
+    </body>
 </html>

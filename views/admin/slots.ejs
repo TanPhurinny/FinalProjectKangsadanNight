@@ -1,526 +1,207 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ผังตลาด — Admin</title>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ผังตลาด — Admin</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
- <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
-  <style>
-    :root {
-      --primary:      #3BB8D4;
-      --primary-dark: #2a9ab5;
-      --bg:           #ebebeb;
-      --card:         #ffffff;
-      --border:       #d0d0d0;
-      --text:         #1a2330;
-      --sub:          #6b7a8a;
-      --road:         #d5d5d5;
-      --stripe1:      #f5c200;
-      --stripe2:      #1a1a1a;
-      --zone-E-bg:#FFB5DA; --zone-E-cl:#c0006e;
-      --zone-D-bg:#C8FFE0; --zone-D-cl:#0a7a5a;
-      --zone-A-bg:#E5D9F2; --zone-A-cl:#441752;
-      --zone-F-bg:#FDBF60; --zone-F-cl:#a84800;
-      --zone-B-bg:#FDBF60; --zone-B-cl:#a84800;
-      --zone-C-bg:#FFB5DA; --zone-C-cl:#c0006e;
-    }
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:'Sarabun',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap"
+            rel="stylesheet" />
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+            rel="stylesheet" />
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet" />
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/slots.css">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body class="bg-light">
+        <%- include('../partials/navbar') %>
 
-    /* ── TOP BAR ── */
-    .top-bar {
-      position:sticky; top:0; z-index:500;
-      background:var(--card); border-bottom:1px solid var(--border);
-      display:flex; align-items:center; gap:10px; padding:10px 18px;
-      box-shadow:0 2px 8px rgba(0,0,0,.06);
-    }
-    .bar-title { font-family:'Prompt',sans-serif; font-size:16px; font-weight:600; white-space:nowrap; }
-    .search-box {
-      flex:1; max-width:420px;
-      display:flex; align-items:center; gap:7px;
-      background:#f4f5f7; border:1px solid var(--border); border-radius:30px; padding:0 13px;
-      transition:border-color .2s, box-shadow .2s;
-    }
-    .search-box:focus-within { border-color:var(--primary); box-shadow:0 0 0 3px rgba(59,184,212,.12); }
-    .search-box i { font-size:13px; color:var(--sub); }
-    .search-box input { border:none; background:transparent; outline:none; padding:8px 0; font-size:13px; color:var(--text); font-family:inherit; width:100%; }
-    .search-box input::placeholder { color:#adb5bd; }
-    #clearBtn { background:none; border:none; cursor:pointer; color:#aaa; font-size:14px; display:none; }
-    #clearBtn.show { display:block; }
-    #resultBadge { font-size:12px; font-weight:600; padding:4px 11px; border-radius:20px; background:#fef9c3; color:#854f0b; border:1px solid #fac775; white-space:nowrap; display:none; }
-    #resultBadge.show { display:inline-block; animation:fadeUp .2s ease; }
+        <div class="slots-page">
 
-    /* ── QUICK TAGS ── */
-    .tag-bar { background:var(--card); border-bottom:1px solid var(--border); padding:6px 18px; display:flex; align-items:center; gap:6px; overflow-x:auto; white-space:nowrap; }
-    .tag-bar::-webkit-scrollbar { display:none; }
-    .tag-lbl { font-size:11px; color:var(--sub); flex-shrink:0; }
-    .qtag { padding:3px 12px; border-radius:20px; font-size:12px; font-weight:500; border:1px solid var(--border); background:var(--card); color:var(--sub); cursor:pointer; transition:all .15s; font-family:inherit; }
-    .qtag:hover { border-color:var(--primary); color:var(--primary); }
-    .qtag.active { background:var(--primary); color:#fff; border-color:var(--primary-dark); }
+            <!-- TOP BAR -->
+            <div class="top-bar">
+                <div class="bar-title"><i class="fa-solid fa-map fa-sm me-1"
+                        style="color:var(--primary)"></i> ผังตลาด</div>
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="searchInput"
+                        placeholder="ค้นหา เช่น หมูปิ้ง, เสื้อผ้า, ก๋วยเตี๋ยว..." />
+                    <button id="clearBtn" onclick="clearSearch()">✕</button>
+                </div>
+                <span id="resultBadge"></span>
+            </div>
 
-    /* ── PAGE BODY ── */
-    .page-body { padding:16px 18px 40px; }
+            <!-- QUICK TAGS -->
+            <div class="tag-bar">
+                <span class="tag-lbl">ค้นหาด่วน:</span>
+                <button class="qtag"
+                    onclick="quickSearch(this,'หมูปิ้ง')">หมูปิ้ง</button>
+                <button class="qtag"
+                    onclick="quickSearch(this,'เสื้อผ้า')">เสื้อผ้า</button>
+                <button class="qtag"
+                    onclick="quickSearch(this,'ก๋วยเตี๋ยว')">ก๋วยเตี๋ยว</button>
+                <button class="qtag"
+                    onclick="quickSearch(this,'ผัดไทย')">ผัดไทย</button>
+                <button class="qtag"
+                    onclick="quickSearch(this,'ของทอด')">ของทอด</button>
+                <button class="qtag"
+                    onclick="quickSearch(this,'ขนม')">ขนม</button>
+                <button class="qtag"
+                    onclick="quickSearch(this,'เครื่องดื่ม')">เครื่องดื่ม</button>
+                <button class="qtag"
+                    onclick="quickSearch(this,'ฟู้ดทรัค')">ฟู้ดทรัค</button>
+                <button class="qtag"
+                    onclick="quickSearch(this,'ไก่ย่าง')">ไก่ย่าง</button>
+            </div>
 
-    /* ── MAP SHELL ── */
-    .map-shell { background:var(--road); border:2px solid #b8b8b8; border-radius:14px; overflow:hidden; }
-    .road-top { height:42px; background:var(--road); border-bottom:2px solid #b8b8b8; display:flex; align-items:center; justify-content:flex-end; padding:0 16px; }
-    .sign-charoen { background:var(--stripe1); font-family:'Prompt',sans-serif; font-weight:700; font-size:13px; padding:5px 12px; border-radius:5px; display:flex; align-items:center; gap:6px; }
-    .sign-dot { width:8px; height:8px; background:red; border-radius:50%; }
-    .map-mid { display:flex; }
-    .road-left { width:44px; flex-shrink:0; background:var(--road); border-right:2px solid #b8b8b8; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; padding:10px 0; }
-    .stripe-v { position:absolute; top:0; bottom:0; left:6px; width:9px; background:repeating-linear-gradient(180deg,var(--stripe1) 0,var(--stripe1) 16px,var(--stripe2) 16px,var(--stripe2) 32px); }
-    .road-left-text { writing-mode:vertical-rl; transform:rotate(180deg); font-size:11px; font-weight:700; position:relative; z-index:2; margin-left:8px; }
-    .road-arrow { position:absolute; bottom:12px; font-size:14px; z-index:2; color:#444; }
-    .road-right { width:44px; flex-shrink:0; background:var(--road); border-left:2px solid #b8b8b8; display:flex; align-items:center; justify-content:center; }
-    .road-right-text { writing-mode:vertical-rl; font-size:11px; font-weight:700; }
-    .road-bottom { height:42px; background:var(--road); border-top:2px solid #b8b8b8; display:flex; align-items:center; padding:0 16px; gap:10px; }
-    .stripe-h { flex:1; height:9px; background:repeating-linear-gradient(90deg,var(--stripe1) 0,var(--stripe1) 20px,var(--stripe2) 20px,var(--stripe2) 40px); border-radius:2px; }
-    .sign-inout { font-weight:700; font-size:13px; }
+            <!-- PAGE BODY -->
+            <div class="page-body">
+                <div class="map-shell">
+                    <div class="road-top">
+                        <div class="sign-charoen"><div class="sign-dot"></div>
+                            เจริญหมูกระทะ</div>
+                    </div>
+                    <div class="map-mid">
+                        <div class="road-left">
+                            <div class="stripe-v"></div>
+                            <span class="road-left-text">ทางเข้าตลาด 62
+                                บล็อค</span>
+                            <span class="road-arrow"><i
+                                    class="fa-solid fa-arrow-down"></i></span>
+                        </div>
 
-    /* ── ZONE CANVAS ── */
-    .zone-canvas { flex:1; background:#fff; position:relative; min-height:480px; }
+                        <div class="zone-canvas">
+                            <div class="zone-block" id="zone-E"
+                                onclick="openZone('E')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        E</div><div
+                                        class="z-sub">แฟชั่น</div></div>
+                            </div>
+                            <div class="zone-block" id="zone-D"
+                                onclick="openZone('D')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        D</div><div
+                                        class="z-sub">ฟู้ดทรัค</div></div>
+                            </div>
+                            <div class="zone-block" id="zone-A"
+                                onclick="openZone('A')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        A</div><div
+                                        class="z-sub">แฟชั่นและอาหาร</div></div>
+                            </div>
+                            <div class="zone-block" id="zone-F"
+                                onclick="openZone('F')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        F</div><div
+                                        class="z-sub">อาหาร</div></div>
+                            </div>
+                            <div class="zone-block" id="zone-B"
+                                onclick="openZone('B')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        B</div><div
+                                        class="z-sub">อาหาร</div></div>
+                            </div>
+                            <div class="zone-block" id="zone-C"
+                                onclick="openZone('C')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        C</div><div
+                                        class="z-sub">แฟชั่น</div></div>
+                            </div>
+                            <div class="facility-btns">
+                                <button class="btn-facility"><i
+                                        class="fa-solid fa-restroom fa-xs"></i>
+                                    ห้องน้ำ</button>
+                                <button class="btn-facility"><i
+                                        class="fa-solid fa-user-tie fa-xs"></i>
+                                    ออฟฟิศ</button>
+                            </div>
+                        </div>
 
-    .zone-block {
-      position:absolute; border-radius:14px; cursor:pointer;
-      display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
-      transition:opacity .25s, filter .25s, transform .18s, box-shadow .2s;
-      border:3px solid transparent; overflow:hidden;
-    }
-    .zone-block:hover { filter:brightness(.91); transform:scale(1.016); box-shadow:0 8px 24px rgba(0,0,0,.15); z-index:10; }
-    .zone-block.dimmed { opacity:.32; filter:saturate(.2); pointer-events:none; }
-    .zone-block.zone-active { border-color:var(--primary) !important; box-shadow:0 0 0 5px rgba(59,184,212,.28) !important; filter:none !important; opacity:1 !important; transform:none !important; z-index:15; }
-    .zone-block.search-match { border-color:#f5c200 !important; box-shadow:0 0 0 3px rgba(245,194,0,.35) !important; }
+                        <div class="road-right">
+                            <span class="road-right-text">ลานจอดรถ
+                                กังสดาลไนท์</span>
+                        </div>
+                    </div>
+                    <div class="road-bottom">
+                        <div class="stripe-h"></div>
+                        <span class="sign-inout">เข้า-ออก</span>
+                    </div>
+                </div>
+            </div>
 
-    .zone-label { pointer-events:none; padding:8px; }
-    .z-title { font-family:'Prompt',sans-serif; font-size:22px; font-weight:700; }
-    .z-sub   { font-size:12px; font-weight:500; margin-top:3px; opacity:.8; }
+            <!-- BACKDROP -->
+            <div class="backdrop" id="backdrop" onclick="closeZone()"></div>
 
-    /* zone fill colours */
-    #zone-E { background:var(--zone-E-bg); color:var(--zone-E-cl); }
-    #zone-D { background:var(--zone-D-bg); color:var(--zone-D-cl); }
-    #zone-A { background:var(--zone-A-bg); color:var(--zone-A-cl); }
-    #zone-F { background:var(--zone-F-bg); color:var(--zone-F-cl); }
-    #zone-B { background:var(--zone-B-bg); color:var(--zone-B-cl); }
-    #zone-C { background:var(--zone-C-bg); color:var(--zone-C-cl); }
+            <!-- BOTTOM DRAWER -->
+            <div class="drawer" id="drawer">
 
-    /* absolute positions — same as original image */
-    #zone-E { top:2%;  left:2%;  width:27%; height:17%; }
-    #zone-D { top:2%;  left:38%; width:59%; height:17%; }
-    #zone-A { top:22%; left:2%;  width:34%; height:60%; }
-    #zone-F { top:22%; left:38%; width:20%; height:60%; }
-    #zone-B { top:22%; left:60%; width:38%; height:60%; }
-    #zone-C { top:84%; left:2%;  width:96%; height:14%; }
+                <div class="drawer-handle-wrap">
+                    <div class="drawer-handle"></div>
+                </div>
 
-    .facility-btns { position:absolute; bottom:17%; right:1%; display:flex; flex-direction:column; gap:5px; z-index:20; }
-    .btn-facility { background:var(--stripe1); border:1px solid #d4a000; font-family:'Sarabun',sans-serif; font-weight:600; font-size:11px; padding:4px 9px; border-radius:5px; cursor:pointer; display:flex; align-items:center; gap:5px; white-space:nowrap; }
-    .btn-facility:hover { background:#e0b000; }
+                <div class="drawer-head">
+                    <div>
+                        <div class="zone-pill" id="zonePill">
+                            <div class="zone-dot" id="zoneDot"></div>
+                            <span id="drawerTitle">—</span>
+                        </div>
+                        <div class="head-sub" id="drawerSub"></div>
+                    </div>
+                    <div class="head-right">
+                        <div class="drawer-stats" id="drawerStats"></div>
+                        <button class="btn-close-drawer"
+                            onclick="closeZone()">✕</button>
+                    </div>
+                </div>
 
-    /* ═══════════════════════════════════════════
-       BOTTOM DRAWER — slides up, full screen width
-    ═══════════════════════════════════════════ */
-    .backdrop {
-      position:fixed; inset:0; z-index:590;
-      background:rgba(0,0,0,0); pointer-events:none;
-      transition:background .3s;
-    }
-    .backdrop.show { background:rgba(0,0,0,.28); pointer-events:auto; }
+                <div class="drawer-legend">
+                    <div class="leg"><div class="leg-box"
+                            style="background:#fff;"></div>ว่าง</div>
+                    <div class="leg"><div class="leg-box"
+                            style="background:#9ca3af;border-color:#555;"></div>จองแล้ว</div>
+                    <div class="leg"><div class="leg-box"
+                            style="background:#3BB8D4;border-color:#2a9ab5;"></div>กำลังดู</div>
+                    <div class="leg"><div class="leg-box"
+                            style="border:2px solid #f5c200;background:#fff;"></div>ผลค้นหา</div>
+                </div>
 
-    .drawer {
-      position:fixed; bottom:0; left:0; right:0; height:0;
-      background:var(--card);
-      border-top-left-radius:22px; border-top-right-radius:22px;
-      box-shadow:0 -10px 50px rgba(0,0,0,.18);
-      z-index:600; overflow:hidden;
-      transition:height .36s cubic-bezier(.4,0,.2,1);
-      display:flex; flex-direction:column;
-    }
-    .drawer.open { height:88vh; }
+                <div class="info-card" id="infoCard">
+                    <div class="ic-title"><i
+                            class="fa-solid fa-store fa-xs"></i><span
+                            id="ic-head"></span></div>
+                    <div class="ic-grid">
+                        <div class="ig"><label>ชื่อร้านค้า</label><span
+                                id="ic-shop"></span></div>
+                        <div class="ig"><label>ประเภทสินค้า</label><span
+                                id="ic-product"></span></div>
+                        <div class="ig"><label>วันที่จอง</label><span
+                                id="ic-date"></span></div>
+                        <div class="ig"><label>ผู้จอง</label><span
+                                id="ic-name"></span></div>
+                        <div class="ig"><label>เบอร์โทรศัพท์</label><span
+                                id="ic-phone"></span></div>
+                        <div class="ig"><label>หมายเหตุ</label><span
+                                id="ic-note"></span></div>
+                    </div>
+                </div>
 
-    /* handle + header */
-    .drawer-handle-wrap { padding:10px 20px 0; flex-shrink:0; }
-    .drawer-handle { width:40px; height:4px; border-radius:2px; background:#d0d0d0; margin:0 auto; }
+                <div class="drawer-grid">
+                    <div class="stall-flex" id="stallGrid"></div>
+                </div>
 
-    .drawer-head {
-      display:flex; align-items:flex-start; justify-content:space-between;
-      padding:10px 20px 12px; border-bottom:1px solid var(--border); flex-shrink:0;
-    }
-    .zone-pill {
-      display:inline-flex; align-items:center; gap:8px;
-      padding:5px 14px 5px 8px; border-radius:30px;
-      font-family:'Prompt',sans-serif; font-size:15px; font-weight:700;
-    }
-    .zone-dot { width:10px; height:10px; border-radius:50%; }
-    .head-sub { font-size:12px; color:var(--sub); margin-top:3px; }
-    .head-right { display:flex; align-items:center; gap:12px; }
-    .drawer-stats { font-size:12px; color:var(--sub); text-align:right; line-height:1.7; }
-    .btn-close-drawer { width:32px; height:32px; border-radius:50%; background:#f0f0f0; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--text); transition:background .15s; }
-    .btn-close-drawer:hover { background:#e0e0e0; }
+            </div>
 
-    /* legend strip */
-    .drawer-legend { flex-shrink:0; display:flex; gap:16px; align-items:center; padding:7px 20px; background:#f8f9fa; border-bottom:1px solid var(--border); flex-wrap:wrap; }
-    .leg { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--sub); }
-    .leg-box { width:16px; height:16px; border-radius:3px; border:1px solid #999; flex-shrink:0; }
-
-    /* INFO card (inside drawer, above grid) */
-    .info-card {
-      flex-shrink:0; margin:0 20px 4px;
-      background:#f0fbff; border-radius:10px;
-      border:1px solid #caeef6; border-left:4px solid var(--primary);
-      padding:12px 16px; display:none; animation:fadeUp .18s ease;
-    }
-    .info-card.show { display:block; }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-    .ic-title { font-family:'Prompt',sans-serif; font-size:13px; font-weight:600; color:var(--primary-dark); margin-bottom:10px; display:flex; align-items:center; gap:7px; }
-    .ic-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px 14px; }
-    .ig label { display:block; font-size:11px; color:var(--sub); font-weight:600; margin-bottom:1px; }
-    .ig span  { font-size:13px; font-weight:500; }
-
-    /* stall grid scroll area */
-    .drawer-grid { flex:1; overflow:auto; padding:14px 20px 20px; }
-
-    .stall-flex { display:flex; gap:14px; width:max-content; }
-
-    .col-wrap { display:flex; flex-direction:column; align-items:center; }
-    .col-lbl { font-size:10px; font-weight:700; color:var(--sub); letter-spacing:.04em; padding:3px 0 4px; border-bottom:2px solid var(--border); margin-bottom:1px; width:62px; text-align:center; }
-    .stall-col { display:flex; flex-direction:column; }
-
-    .stall-cell {
-      width:62px; height:32px;
-      border:1px solid #111;
-      display:flex; align-items:center; justify-content:center;
-      font-size:11px; font-weight:700; color:#111;
-      cursor:pointer; margin-top:-1px; margin-left:-1px;
-      background:#fff; transition:background .1s;
-      position:relative; z-index:1; user-select:none;
-    }
-    .stall-cell:hover:not(.booked) { background:#e0f6fb; z-index:2; }
-    .stall-cell.booked   { background:#9ca3af; color:#fff; }
-    .stall-cell.booked:hover { background:#6b7280; }
-    .stall-cell.selected { background:var(--primary) !important; color:#fff; border-color:var(--primary-dark) !important; z-index:3; }
-    .stall-cell.s-match  { border:2px solid #f5c200 !important; z-index:4; }
-    .stall-cell.s-match.booked { box-shadow:inset 0 0 0 2px #f5c200; }
-
-    /* zone pill colour pairs */
-    .pill-E{background:#FFB5DA;color:#c0006e;} .dot-E{background:#c0006e;}
-    .pill-D{background:#C8FFE0;color:#0a7a5a;} .dot-D{background:#0a7a5a;}
-    .pill-A{background:#E5D9F2;color:#441752;} .dot-A{background:#441752;}
-    .pill-F{background:#FDBF60;color:#a84800;} .dot-F{background:#a84800;}
-    .pill-B{background:#FDBF60;color:#a84800;} .dot-B{background:#a84800;}
-    .pill-C{background:#FFB5DA;color:#c0006e;} .dot-C{background:#c0006e;}
-
-    @media(max-width:600px){
-      .drawer.open{height:92vh;}
-      .ic-grid{grid-template-columns:1fr 1fr;}
-    }
-  </style>
-</head>
-<body>
-    <%- include('../partials/navbar') %>
-
-<!-- TOP BAR -->
-<div class="top-bar">
-  <div class="bar-title"><i class="fa-solid fa-map fa-sm me-1" style="color:var(--primary)"></i> ผังตลาด</div>
-  <div class="search-box">
-    <i class="fa-solid fa-magnifying-glass"></i>
-    <input type="text" id="searchInput" placeholder="ค้นหา เช่น หมูปิ้ง, เสื้อผ้า, ก๋วยเตี๋ยว..."/>
-    <button id="clearBtn" onclick="clearSearch()">✕</button>
-  </div>
-  <span id="resultBadge"></span>
-</div>
-
-<!-- QUICK TAGS -->
-<div class="tag-bar">
-  <span class="tag-lbl">ค้นหาด่วน:</span>
-  <button class="qtag" onclick="quickSearch(this,'หมูปิ้ง')">หมูปิ้ง</button>
-  <button class="qtag" onclick="quickSearch(this,'เสื้อผ้า')">เสื้อผ้า</button>
-  <button class="qtag" onclick="quickSearch(this,'ก๋วยเตี๋ยว')">ก๋วยเตี๋ยว</button>
-  <button class="qtag" onclick="quickSearch(this,'ผัดไทย')">ผัดไทย</button>
-  <button class="qtag" onclick="quickSearch(this,'ของทอด')">ของทอด</button>
-  <button class="qtag" onclick="quickSearch(this,'ขนม')">ขนม</button>
-  <button class="qtag" onclick="quickSearch(this,'เครื่องดื่ม')">เครื่องดื่ม</button>
-  <button class="qtag" onclick="quickSearch(this,'ฟู้ดทรัค')">ฟู้ดทรัค</button>
-  <button class="qtag" onclick="quickSearch(this,'ไก่ย่าง')">ไก่ย่าง</button>
-</div>
-
-<!-- PAGE BODY -->
-<div class="page-body">
-  <div class="map-shell">
-    <div class="road-top">
-      <div class="sign-charoen"><div class="sign-dot"></div> เจริญหมูกระทะ</div>
-    </div>
-    <div class="map-mid">
-      <div class="road-left">
-        <div class="stripe-v"></div>
-        <span class="road-left-text">ทางเข้าตลาด 62 บล็อค</span>
-        <span class="road-arrow"><i class="fa-solid fa-arrow-down"></i></span>
-      </div>
-
-      <div class="zone-canvas">
-        <div class="zone-block" id="zone-E" onclick="openZone('E')">
-          <div class="zone-label"><div class="z-title">โซน E</div><div class="z-sub">แฟชั่น</div></div>
         </div>
-        <div class="zone-block" id="zone-D" onclick="openZone('D')">
-          <div class="zone-label"><div class="z-title">โซน D</div><div class="z-sub">ฟู้ดทรัค</div></div>
-        </div>
-        <div class="zone-block" id="zone-A" onclick="openZone('A')">
-          <div class="zone-label"><div class="z-title">โซน A</div><div class="z-sub">แฟชั่นและอาหาร</div></div>
-        </div>
-        <div class="zone-block" id="zone-F" onclick="openZone('F')">
-          <div class="zone-label"><div class="z-title">โซน F</div><div class="z-sub">อาหาร</div></div>
-        </div>
-        <div class="zone-block" id="zone-B" onclick="openZone('B')">
-          <div class="zone-label"><div class="z-title">โซน B</div><div class="z-sub">อาหาร</div></div>
-        </div>
-        <div class="zone-block" id="zone-C" onclick="openZone('C')">
-          <div class="zone-label"><div class="z-title">โซน C</div><div class="z-sub">แฟชั่น</div></div>
-        </div>
-        <div class="facility-btns">
-          <button class="btn-facility"><i class="fa-solid fa-restroom fa-xs"></i> ห้องน้ำ</button>
-          <button class="btn-facility"><i class="fa-solid fa-user-tie fa-xs"></i> ออฟฟิศ</button>
-        </div>
-      </div>
 
-      <div class="road-right">
-        <span class="road-right-text">ลานจอดรถ กังสดาลไนท์</span>
-      </div>
-    </div>
-    <div class="road-bottom">
-      <div class="stripe-h"></div>
-      <span class="sign-inout">เข้า-ออก</span>
-    </div>
-  </div>
-</div>
-
-<!-- BACKDROP -->
-<div class="backdrop" id="backdrop" onclick="closeZone()"></div>
-
-<!-- BOTTOM DRAWER -->
-<div class="drawer" id="drawer">
-
-  <div class="drawer-handle-wrap">
-    <div class="drawer-handle"></div>
-  </div>
-
-  <div class="drawer-head">
-    <div>
-      <div class="zone-pill" id="zonePill">
-        <div class="zone-dot" id="zoneDot"></div>
-        <span id="drawerTitle">—</span>
-      </div>
-      <div class="head-sub" id="drawerSub"></div>
-    </div>
-    <div class="head-right">
-      <div class="drawer-stats" id="drawerStats"></div>
-      <button class="btn-close-drawer" onclick="closeZone()">✕</button>
-    </div>
-  </div>
-
-  <div class="drawer-legend">
-    <div class="leg"><div class="leg-box" style="background:#fff;"></div>ว่าง</div>
-    <div class="leg"><div class="leg-box" style="background:#9ca3af;border-color:#555;"></div>จองแล้ว</div>
-    <div class="leg"><div class="leg-box" style="background:#3BB8D4;border-color:#2a9ab5;"></div>กำลังดู</div>
-    <div class="leg"><div class="leg-box" style="border:2px solid #f5c200;background:#fff;"></div>ผลค้นหา</div>
-  </div>
-
-  <div class="info-card" id="infoCard">
-    <div class="ic-title"><i class="fa-solid fa-store fa-xs"></i><span id="ic-head"></span></div>
-    <div class="ic-grid">
-      <div class="ig"><label>ชื่อร้านค้า</label><span id="ic-shop"></span></div>
-      <div class="ig"><label>ประเภทสินค้า</label><span id="ic-product"></span></div>
-      <div class="ig"><label>วันที่จอง</label><span id="ic-date"></span></div>
-      <div class="ig"><label>ผู้จอง</label><span id="ic-name"></span></div>
-      <div class="ig"><label>เบอร์โทรศัพท์</label><span id="ic-phone"></span></div>
-      <div class="ig"><label>หมายเหตุ</label><span id="ic-note"></span></div>
-    </div>
-  </div>
-
-  <div class="drawer-grid">
-    <div class="stall-flex" id="stallGrid"></div>
-  </div>
-
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-/* ─── DATA ─── */
-const ZONES = {
-  A:{ name:'โซน A', sub:'แฟชั่น / อาหาร',
-      cols:[['A1',19],['A2',19],['A3',19],['A4',21],['A5',21],['A6',22],['A7',22],['A8',23],['A9',23]] },
-  B:{ name:'โซน B', sub:'อาหาร',
-      cols:[['B1',15],['B2',15],['B3',15],['B4',15],['B5',15],['B6',15],['B7',15],['B8',10],['B9',10]] },
-  C:{ name:'โซน C', sub:'แฟชั่น',   cols:[['C1',12]] },
-  D:{ name:'โซน D', sub:'ฟู้ดทรัค', cols:[['D1',6],['D2',6]] },
-  E:{ name:'โซน E', sub:'แฟชั่น',   cols:[['E1',4]] },
-  F:{ name:'โซน F', sub:'อาหาร',
-      cols:[['F1',15],['F2',15],['F3',15],['F4',15],['F5',15],['F6',15],['F7',15]] }
-};
-
-const BOOKED = {
-  'A205':{ shop:'ร้านเสื้อผ้าวินเทจ',  product:'เสื้อผ้า',   name:'สมชาย รักดี',    phone:'082-333-9999', date:'15 ต.ค. 68', note:'ต้องการไฟเพิ่ม' },
-  'A306':{ shop:'แฟชั่นเกาหลีสยาม',    product:'เสื้อผ้า',   name:'มาลี สวยงาม',    phone:'089-111-2233', date:'14 ต.ค. 68', note:'-' },
-  'A307':{ shop:'ร้านกระเป๋าหนัง',     product:'กระเป๋า',    name:'ปรีชา ค้าดี',    phone:'085-000-1122', date:'12 ต.ค. 68', note:'-' },
-  'A104':{ shop:'หมูปิ้งป้าแดง',        product:'หมูปิ้ง',    name:'แดง มีสุข',      phone:'081-999-3344', date:'16 ต.ค. 68', note:'-' },
-  'A502':{ shop:'เสื้อยืดสกรีน',        product:'เสื้อผ้า',   name:'ก้อง อินดี้',    phone:'091-555-7788', date:'15 ต.ค. 68', note:'-' },
-  'B205':{ shop:'ของทอดสดใหม่',        product:'ของทอด',     name:'กนิษฐา ขยัน',   phone:'089-321-9876', date:'13 ต.ค. 68', note:'-' },
-  'B306':{ shop:'ขนมไทยโบราณ',         product:'ขนม',        name:'สุนีย์ หวานใจ',  phone:'082-100-2020', date:'11 ต.ค. 68', note:'-' },
-  'B507':{ shop:'ก๋วยเตี๋ยวเรือป้าลี', product:'ก๋วยเตี๋ยว', name:'ลี ขายดี',       phone:'083-456-7890', date:'15 ต.ค. 68', note:'-' },
-  'B410':{ shop:'ผัดไทยลุงแสง',        product:'ผัดไทย',     name:'แสง มีฝีมือ',    phone:'087-000-5566', date:'14 ต.ค. 68', note:'-' },
-  'C101':{ shop:'เครื่องดื่มชาไทย',    product:'เครื่องดื่ม',name:'วิชัย ธุรกิจ',   phone:'083-500-6060', date:'16 ต.ค. 68', note:'-' },
-  'C106':{ shop:'น้ำผลไม้ปั่น',         product:'เครื่องดื่ม',name:'สิริ แก้วสวย',   phone:'088-123-4567', date:'14 ต.ค. 68', note:'-' },
-  'D101':{ shop:'Burger Truck BKK',     product:'ฟู้ดทรัค',   name:'เอกพล คนขยัน',  phone:'089-987-6543', date:'10 ต.ค. 68', note:'ใช้ไฟเยอะ มีตู้แช่' },
-  'D204':{ shop:'ไก่ย่างธัญพืช',        product:'ไก่ย่าง',   name:'ประวิทย์ ดีมาก', phone:'084-777-5533', date:'15 ต.ค. 68', note:'-' },
-  'F201':{ shop:'หมูปิ้งเจ๊จู',          product:'หมูปิ้ง',    name:'สมหญิง ใจดี',   phone:'081-234-5678', date:'14 ต.ค. 68', note:'ใกล้ทางเดินหลัก' },
-  'F305':{ shop:'ผัดไทยคุณแม่',         product:'ผัดไทย',    name:'วาสนา มีสุข',    phone:'086-777-8899', date:'15 ต.ค. 68', note:'-' },
-  'F406':{ shop:'ก๋วยเตี๋ยวเรือโบราณ',  product:'ก๋วยเตี๋ยว',name:'ทวีศักดิ์ ดีงาม', phone:'087-654-3210', date:'10 ต.ค. 68', note:'-' },
-  'F512':{ shop:'ของทอดกรอบทอง',        product:'ของทอด',     name:'อัมพร คีรี',     phone:'085-999-1234', date:'12 ต.ค. 68', note:'-' },
-  'E102':{ shop:'กระโปรงย้อมสี',         product:'เสื้อผ้า',  name:'พิม สุดชิค',    phone:'092-333-5555', date:'16 ต.ค. 68', note:'-' },
-};
-
-/* ─── STATE ─── */
-let activeZone = null, selectedStall = null, currentQuery = '';
-
-/* ─── OPEN / CLOSE ─── */
-function openZone(z) {
-  activeZone = z; selectedStall = null; hideInfo();
-
-  document.querySelectorAll('.zone-block').forEach(el => {
-    el.id === 'zone-'+z
-      ? (el.classList.add('zone-active'), el.classList.remove('dimmed'))
-      : (el.classList.add('dimmed'), el.classList.remove('zone-active'));
-  });
-
-  const zd = ZONES[z];
-  document.getElementById('drawerTitle').textContent = zd.name;
-  document.getElementById('drawerSub').textContent   = zd.sub;
-  document.getElementById('zonePill').className = 'zone-pill pill-'+z;
-  document.getElementById('zoneDot').className  = 'zone-dot dot-'+z;
-
-  renderGrid(z);
-  document.getElementById('drawer').classList.add('open');
-  document.getElementById('backdrop').classList.add('show');
-}
-
-function closeZone() {
-  activeZone = null; selectedStall = null; hideInfo();
-  document.querySelectorAll('.zone-block').forEach(el => el.classList.remove('zone-active','dimmed'));
-  document.getElementById('drawer').classList.remove('open');
-  document.getElementById('backdrop').classList.remove('show');
-}
-
-/* ─── RENDER GRID ─── */
-function renderGrid(z) {
-  const grid = document.getElementById('stallGrid');
-  grid.innerHTML = '';
-  let total = 0, booked = 0;
-
-  ZONES[z].cols.forEach(([prefix, count]) => {
-    const wrap = document.createElement('div');
-    wrap.className = 'col-wrap';
-
-    const lbl = document.createElement('div');
-    lbl.className = 'col-lbl'; lbl.textContent = prefix;
-    wrap.appendChild(lbl);
-
-    const col = document.createElement('div');
-    col.className = 'stall-col';
-    total += count;
-
-    for (let i = 1; i <= count; i++) {
-      const id = prefix + i.toString().padStart(2,'0');
-      const cell = document.createElement('div');
-      cell.className = 'stall-cell';
-      cell.textContent = id;
-      cell.dataset.stall = id;
-
-      const bk = BOOKED[id];
-      if (bk) {
-        booked++;
-        cell.classList.add('booked'); cell.title = bk.shop;
-        cell.addEventListener('click', e => { e.stopPropagation(); showInfo(id); });
-      } else {
-        cell.addEventListener('click', e => { e.stopPropagation(); selectEmpty(id, cell); });
-      }
-      if (id === selectedStall) cell.classList.add('selected');
-      if (currentQuery) tryHighlight(cell, id);
-      col.appendChild(cell);
-    }
-    wrap.appendChild(col);
-    grid.appendChild(wrap);
-  });
-
-  document.getElementById('drawerStats').innerHTML =
-    `ทั้งหมด <b>${total}</b> ล็อก &nbsp;·&nbsp; จอง <b>${booked}</b> &nbsp;·&nbsp; ว่าง <b>${total-booked}</b>`;
-}
-
-/* ─── SELECT / INFO ─── */
-function selectEmpty(id, cell) {
-  document.querySelectorAll('.stall-cell.selected').forEach(c => c.classList.remove('selected'));
-  cell.classList.add('selected'); selectedStall = id; hideInfo();
-}
-function showInfo(id) {
-  const d = BOOKED[id]; if (!d) return;
-  document.querySelectorAll('.stall-cell.selected').forEach(c => c.classList.remove('selected'));
-  const cell = document.querySelector(`[data-stall="${id}"]`);
-  if (cell) cell.classList.add('selected');
-  selectedStall = id;
-  document.getElementById('ic-head').textContent    = `แผง ${id} — ${d.shop}`;
-  document.getElementById('ic-shop').textContent    = d.shop;
-  document.getElementById('ic-product').textContent = d.product;
-  document.getElementById('ic-date').textContent    = d.date;
-  document.getElementById('ic-name').textContent    = d.name;
-  document.getElementById('ic-phone').textContent   = d.phone;
-  document.getElementById('ic-note').textContent    = d.note;
-  document.getElementById('infoCard').classList.add('show');
-  document.getElementById('infoCard').scrollIntoView({ behavior:'smooth', block:'nearest' });
-}
-function hideInfo() { document.getElementById('infoCard').classList.remove('show'); }
-
-/* ─── SEARCH ─── */
-function tryHighlight(cell, id) {
-  const d = BOOKED[id]; if (!d) return;
-  if ((d.shop+d.product+d.name+d.note).toLowerCase().includes(currentQuery.toLowerCase()))
-    cell.classList.add('s-match');
-}
-function doSearch(q) {
-  currentQuery = q.trim();
-  const badge = document.getElementById('resultBadge');
-  const clrBtn = document.getElementById('clearBtn');
-  document.querySelectorAll('.qtag').forEach(t => t.classList.remove('active'));
-  if (!currentQuery) {
-    badge.classList.remove('show'); clrBtn.classList.remove('show');
-    document.querySelectorAll('.zone-block').forEach(el => el.classList.remove('search-match'));
-    if (activeZone) renderGrid(activeZone); return;
-  }
-  clrBtn.classList.add('show');
-  let total = 0; const mz = new Set();
-  Object.entries(BOOKED).forEach(([id,d]) => {
-    if ((d.shop+d.product+d.name+d.note).toLowerCase().includes(currentQuery.toLowerCase())) {
-      total++; mz.add(id.match(/^[A-Z]+/)[0]);
-    }
-  });
-  document.querySelectorAll('.zone-block').forEach(el => {
-    const z = el.id.replace('zone-','');
-    mz.has(z) ? el.classList.add('search-match') : el.classList.remove('search-match');
-  });
-  badge.textContent = `พบ ${total} ร้าน`; badge.classList.add('show');
-  if (activeZone) renderGrid(activeZone);
-}
-function clearSearch() {
-  document.getElementById('searchInput').value = '';
-  document.querySelectorAll('.qtag').forEach(t => t.classList.remove('active'));
-  doSearch('');
-}
-function quickSearch(btn, q) {
-  document.getElementById('searchInput').value = q;
-  document.querySelectorAll('.qtag').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active'); doSearch(q);
-}
-document.getElementById('searchInput').addEventListener('input', e => doSearch(e.target.value));
-</script>
-</body>
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+        <script src="/js/admin/slots.js"></script>
+    </body>
 </html>
