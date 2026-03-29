@@ -1,48 +1,299 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
     <meta charset="UTF-8">
-    <title>แจ้งซ่อม</title>
-    <link rel="stylesheet" href="/seller.css">
-    <link rel="stylesheet" href="/css/navbar.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แจ้งซ่อม - กังสดาลไนท์</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+
+    <style>
+        :root {
+            --primary: #3BB8D4;
+            --primary-dark: #2a9ab5;
+            --bg-body: #f4f5f7;
+            --bg-card: #ffffff;
+            --text-main: #111111;
+            --text-label: #333333;
+            --input-blue: #D4EFF4; /* สีฟ้าอ่อนตามรูป */
+            --input-border: #e2e8f0;
+            --box-gray: #dbdbdb; /* สีเทากล่องอัปโหลด */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Prompt', 'Sarabun', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        /* ── HEADER ── */
+        .site-header {
+            background: var(--bg-card);
+            border-bottom: 1px solid #eaeaea;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+        .btn-back {
+            width: 40px; height: 40px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-main); text-decoration: none; font-size: 18px;
+            background: var(--bg-body); transition: 0.2s; border: none; cursor: pointer;
+        }
+        .btn-back:hover { background: #e2e6ea; }
+        .header-title {
+            flex: 1; text-align: center; font-size: 20px; font-weight: 600; margin: 0;
+        }
+        .header-spacer { width: 40px; }
+
+        /* ── FORM CONTAINER (Desktop Centered) ── */
+        .container {
+            max-width: 650px;
+            margin: 40px auto 60px;
+            padding: 0 16px;
+        }
+
+        .form-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            border: 1px solid #eaeaea;
+        }
+
+        /* ── FORM ELEMENTS ── */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-label);
+            margin-bottom: 8px;
+        }
+
+        /* Input สีฟ้าแบบในรูป */
+        .input-blue {
+            background-color: var(--input-blue);
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            font-family: inherit;
+            font-size: 16px;
+            color: var(--text-main);
+            outline: none;
+            transition: all 0.2s;
+        }
+        .input-blue:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 184, 212, 0.2);
+        }
+
+        /* Input ปกติ (สีขาวขอบเทา) */
+        .input-white {
+            background-color: #fff;
+            border: 1px solid var(--input-border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            font-family: inherit;
+            font-size: 16px;
+            color: var(--text-main);
+            outline: none;
+            transition: all 0.2s;
+        }
+        .input-white:focus {
+            border-color: var(--primary);
+        }
+
+        textarea.input-white {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        /* ── UPLOAD BOX (กล่องสี่เหลี่ยมสีเทามี +) ── */
+        .upload-wrapper {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .upload-box {
+            width: 80px;
+            height: 80px;
+            background-color: var(--box-gray);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .upload-box:hover {
+            background-color: #c9c9c9;
+        }
+        /* สร้างตัวบวก (+) สีขาว */
+        .upload-box::before, .upload-box::after {
+            content: '';
+            position: absolute;
+            background-color: #fff;
+            border-radius: 2px;
+        }
+        .upload-box::before { width: 30px; height: 4px; }
+        .upload-box::after { width: 4px; height: 30px; }
+        
+        .upload-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0; left: 0;
+            z-index: 2;
+            display: none; /* ซ่อนไว้ก่อนมีรูป */
+        }
+        .upload-input {
+            display: none;
+        }
+
+        /* ── SUBMIT BUTTON ── */
+        .submit-btn {
+            width: 100%;
+            background-color: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            font-family: inherit;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .submit-btn:hover {
+            background-color: var(--primary-dark);
+        }
+        .submit-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Responsive สำหรับมือถือ */
+        @media (max-width: 600px) {
+            .form-grid { grid-template-columns: 1fr; gap: 0; }
+            .form-card { padding: 24px 20px; }
+        }
+    </style>
 </head>
 
 <body>
-    <%- include('../components/navbar') %>
+    <%- include('../partials/navbar2') %>
 
-    <h2 class="title">แจ้งซ่อม</h2>
+    <header class="site-header">
+        <button class="btn-back" onclick="history.back()"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2 class="header-title">แจ้งซ่อม</h2>
+        <div class="header-spacer"></div>
+    </header>
 
-    <div class="form-container">
-<form action="/repair" method="POST">
+    <div class="container">
+        <div class="form-card">
+            <form action="/repair" method="POST" enctype="multipart/form-data">
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>ชื่อ - นามสกุล</label>
+                        <input type="text" name="name" class="input-blue" value="<%= user ? user.name : '' %>" readonly>
+                    </div>
 
-<label>ชื่อ - นามสกุล</label>
-<input type="text" name="name" class="input-blue">
+                    <div class="form-group">
+                        <label>เบอร์โทรศัพท์</label>
+                        <input type="tel" name="phone" class="input-blue" value="<%= user ? user.phoneNumber : '' %>" readonly>
+                    </div>
 
-<label>เบอร์โทรศัพท์</label>
-<input type="text" name="phone" class="input-blue">
+                    <div class="form-group">
+                        <label>แผงที่ต้องการซ่อม</label>
+                        <input type="text" name="location" class="input-white" placeholder="เช่น A105, โซน F" required>
+                    </div>
 
-<label>แผงที่ต้องการซ่อม</label>
-<input type="text" name="location">
+                    <div class="form-group">
+                        <label>ประเภทปัญหา</label>
+                        <select name="category" class="input-white" required>
+                            <option value="" disabled selected>เลือกประเภท...</option>
+                            <option value="ไฟฟ้า">ไฟฟ้า (หลอดไฟขาด, ปลั๊กพัง)</option>
+                            <option value="โครงสร้าง">โครงสร้าง (หลังคารั่ว, พื้นทรุด)</option>
+                            <option value="อื่นๆ">อื่นๆ</option>
+                        </select>
+                    </div>
+                </div>
 
-<label>ประเภท</label>
-<select name="category">
-    <option value="ไฟฟ้า">ไฟฟ้า</option>
-    <option value="โครงสร้าง">โครงสร้าง</option>
-    <option value="อื่นๆ">อื่นๆ</option>
-</select>
+                <div class="form-group full-width">
+                    <label>รายละเอียด</label>
+                    <textarea name="description" class="input-white" placeholder="เพิ่มรายละเอียด..." required></textarea>
+                </div>
 
-<label>รายละเอียด</label>
-<textarea name="description"></textarea>
+                <div class="form-group full-width">
+                    <label>แนบรูปภาพเพิ่มเติม</label>
+                    <div class="upload-wrapper">
+                        <label for="imageUpload" class="upload-box" id="uploadLabel">
+                            <img id="imagePreview" src="" alt="Preview">
+                        </label>
+                        <input type="file" name="image" id="imageUpload" class="upload-input" accept="image/*">
+                    </div>
+                </div>
 
-<button type="submit" class="submit-btn">
-ยืนยันการแจ้งซ่อม
-</button>
+                <button type="submit" class="submit-btn">ยืนยันการแจ้งซ่อม</button>
 
-</form>
-
+            </form>
+        </div>
     </div>
 
-</body>
+    <script>
+        // Script สำหรับ Preview รูปภาพเมื่อผู้ใช้อัปโหลด
+        const imageUpload = document.getElementById('imageUpload');
+        const imagePreview = document.getElementById('imagePreview');
 
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block'; // แสดงรูปภาพทับเครื่องหมายบวก
+                }
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.src = '';
+                imagePreview.style.display = 'none';
+            }
+        });
+    </script>
+</body>
 </html>
