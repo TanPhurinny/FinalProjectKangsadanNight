@@ -1,141 +1,252 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <title>จัดการประกาศ | Kangsadan Admin</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
-    <link rel="stylesheet" href="/stylesheets/admin/announcements.css">
-</head>
-<body class="bg-light">
-    <%- include('../partials/navbar') %>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>จัดการประกาศ | Kangsadan Admin</title>
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+            rel="stylesheet">
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap"
+            rel="stylesheet">
+        <link rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
-    <div class="container py-5">
-        <div class="row mb-4">
-            <div class="col-12">
-                <h2 class="fw-bold text-dark"><i class="fas fa-bullhorn me-2 text-primary"></i>ระบบจัดการประกาศ</h2>
-                <p class="text-muted">สร้างและบริหารจัดการข้อมูลข่าวสารสำหรับชาวกังสดาล</p>
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+        <link rel="stylesheet" href="/stylesheets/admin/announcements.css">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body class="bg-light">
+        <%- include('../partials/navbar') %>
+
+        <div class="container py-4">
+            <div
+                class="page-header d-flex justify-content-between align-items-center bg-white p-4 rounded-4 shadow-custom mb-4"
+                style="border-left: 6px solid #3BB8D4;">
+                <div>
+                    <h2 class="fw-bold mb-1 text-dark">จัดการประกาศ</h2>
+                    <p class="text-muted mb-0 small" id="live-date"></p>
+                </div>
+                <button class="btn-primary-custom" data-bs-toggle="modal"
+                    data-bs-target="#announcementModal"
+                    onclick="prepareCreate()">
+                    <i class="fas fa-plus-circle me-1"></i> สร้างประกาศใหม่
+                </button>
             </div>
-        </div>
 
-        <div class="row g-4">
-            <div class="col-lg-5">
-                <div class="sticky-form">
-                    <div class="card create-card border-0 shadow-lg">
-                        <div class="card-body p-4">
-                            <h5 class="fw-bold mb-4 d-flex align-items-center text-primary">
-                                <span class="icon-badge-box me-2"><i class="fas fa-edit"></i></span>
-                                เขียนประกาศใหม่
-                            </h5>
-                            
-                            <form action="/admin/announcements/create" method="POST" enctype="multipart/form-data" id="announceForm">
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold small">หัวข้อประกาศ</label>
-                                    <input type="text" name="title" class="form-control custom-input" placeholder="ระบุหัวข้อที่น่าสนใจ..." required>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold small">กลุ่มเป้าหมาย</label>
-                                    <div class="role-group-selector">
-                                        <input type="radio" name="targetRole" value="CUSTOMER" id="roleCust" checked>
-                                        <label for="roleCust" class="role-label cust">ผู้ใช้ทั่วไป</label>
-
-                                        <input type="radio" name="targetRole" value="SELLER" id="roleSell">
-                                        <label for="roleSell" class="role-label sell">พ่อค้า/แม่ค้า</label>
-                                    </div>
-                                </div>
-
-                                <div class="row g-2 mb-3">
-                                    <div class="col-12">
-                                        <label class="form-label fw-bold small">หมวดหมู่</label>
-                                        <select name="category" class="form-select custom-input">
-                                            <option value="ข่าวสาร">📢 ข่าวสาร</option>
-                                            <option value="กฎระเบียบ">⚖️ กฎระเบียบ</option>
-                                            <option value="โปรโมชั่น">🔥 โปรโมชั่น</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold small">รูปภาพประกอบ</label>
-                                    <div class="upload-area" id="dropZone">
-                                        <input type="file" name="announcementImage" class="d-none" accept="image/*" id="imgInput">
-                                        <div class="upload-placeholder" id="uploadPlaceholder">
-                                            <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
-                                            <p class="mb-0 small">คลิกหรือลากรูปมาวางที่นี่</p>
-                                        </div>
-                                        <div id="previewContainer" class="d-none position-relative">
-                                            <img id="imgPreview" src="#" alt="Preview" class="img-fluid rounded-3">
-                                            <button type="button" class="btn-remove-img" id="removeImg"><i class="fas fa-times"></i></button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="mb-4">
-                                    <label class="form-label fw-bold small">เนื้อหา</label>
-                                    <textarea name="content" class="form-control custom-input" rows="4" placeholder="พิมพ์รายละเอียดที่นี่..." required></textarea>
-                                </div>
-
-                                <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-pill shadow btn-publish">
-                                    <i class="fas fa-paper-plane me-2"></i> เผยแพร่ประกาศ
-                                </button>
-                            </form>
+            <div class="card border-0 shadow-custom rounded-4 mb-4">
+                <div class="card-body p-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span
+                                    class="input-group-text bg-transparent border-end-0 text-muted"><i
+                                        class="fas fa-search"></i></span>
+                                <input type="text" id="searchInput"
+                                    class="form-control border-start-0 ps-0"
+                                    placeholder="ค้นหาประกาศ...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select id="roleFilter"
+                                class="form-select border-0 bg-light rounded-3">
+                                <option
+                                    value="ALL">กลุ่มเป้าหมายทั้งหมด</option>
+                                <option value="CUSTOMER">ลูกค้า
+                                    (Customer)</option>
+                                <option value="SELLER">พ่อค้าแม่ค้า
+                                    (Seller)</option>
+                                <option value="GUEST">ผู้เยี่ยมชม
+                                    (Guest)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select id="sortBy"
+                                class="form-select border-0 bg-light rounded-3">
+                                <option value="newest">อัปเดตล่าสุด</option>
+                                <option value="oldest">เก่าที่สุด</option>
+                            </select>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-lg-7">
-                <div class="glass-tabs mb-4 p-2 shadow-sm">
-                    <button class="tab-btn active" data-role="ALL">ทั้งหมด</button>
-                    <button class="tab-btn" data-role="CUSTOMER">ผู้ใช้ทั่วไป</button>
-                    <button class="tab-btn" data-role="SELLER">พ่อค้า/แม่ค้า</button>
-                </div>
-
-                <div id="postsContainer">
-                    <% posts.forEach(post => { %>
-                        <div class="card post-card border-0 shadow-sm mb-4 announcement-item" data-role="<%= post.targetRole %>">
+            <div class="row g-4" id="announcementsContainer">
+                <% if (locals.announcements && announcements.length > 0) { %>
+                <% announcements.forEach(post => { %>
+                <div class="col-md-6 col-lg-4 announcement-item"
+                    data-id="<%= post.id %>"
+                    data-roles="<%= (post.targetRoles || [post.targetRole]).join(',') %>"
+                    data-created-at="<%= post.createdAt %>">
+                    <div
+                        class="card h-100 border-0 shadow-custom rounded-4 overflow-hidden bg-white hover-up">
+                        <div class="card-img-container">
                             <% if (post.image) { %>
-                                <div class="img-wrapper">
-                                    <img src="/uploads/announcements/<%= post.image %>" class="card-img-top" alt="news">
-                                </div>
+                            <img src="/uploads/announcements/<%= post.image %>"
+                                class="announcement-card-image"
+                                onclick="openAnnouncementImage('/uploads/announcements/<%= encodeURIComponent(post.image) %>', '<%= encodeURIComponent(post.title) %>')"
+                                alt="news">
+                            <% } else { %>
+                            <div class="img-placeholder"><i
+                                    class="fas fa-image fa-2x"></i></div>
                             <% } %>
-                            <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <span class="badge-custom <%= post.category %>"><%= post.category %></span>
-                                    <span class="role-indicator <%= post.targetRole.toLowerCase() %>">
-                                        <%= post.targetRole === 'SELLER' ? 'SELLER' : 'CUSTOMER' %>
+                            <div class="badge-overlay">
+                                <span
+                                    class="badge bg-blur rounded-pill shadow-sm"><%=
+                                    post.category %></span>
+                            </div>
+                        </div>
+                        <div class="card-body p-4 d-flex flex-column">
+                            <div
+                                class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="text-muted"><i
+                                        class="far fa-calendar-alt me-1"></i>
+                                    <%= new
+                                    Date(post.createdAt).toLocaleDateString('th-TH')
+                                    %></small>
+                                <div class="audience-chips">
+                                    <% (post.targetRoles ||
+                                    [post.targetRole]).forEach(role => { %>
+                                    <span
+                                        class="audience-chip <%= role.toLowerCase() %>">
+                                        <%= role === 'GUEST' ? 'ผู้เยี่ยมชม' :
+                                        role %>
                                     </span>
+                                    <% }) %>
                                 </div>
-                                <h4 class="fw-bold mb-3"><%= post.title %></h4>
-                                <p class="text-secondary small"><%= post.content %></p>
-                                <div class="post-footer mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
-                                    <div class="user-meta">
-                                        <div class="meta-avatar"><%= post.author.name.charAt(0) %></div>
-                                        <div>
-                                            <div class="meta-name"><%= post.author.name %></div>
-                                            <div class="meta-date"><%= new Date(post.createdAt).toLocaleDateString('th-TH') %></div>
-                                        </div>
+                            </div>
+                            <h5
+                                class="card-title fw-bold text-dark text-truncate"><%=
+                                post.title %></h5>
+                            <p
+                                class="card-text text-muted small mb-3 text-truncate-3"><%=
+                                post.content %></p>
+
+                            <div
+                                class="d-flex justify-content-end gap-2 pt-3 border-top mt-auto">
+                                <button class="btn-action-view"
+                                    title="ดูรายละเอียด"
+                                    onclick="viewAnnouncementDetail(decodeURIComponent('<%= encodeURIComponent(JSON.stringify(post)) %>'))">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-action-edit" title="แก้ไข"
+                                    onclick="prepareEdit(decodeURIComponent('<%= encodeURIComponent(JSON.stringify(post)) %>'))">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn-action-delete" title="ลบ"
+                                    onclick="confirmDelete('<%= post.id %>', '<%= post.title %>')">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <% }) %>
+                <% } else { %>
+                <div class="col-12 text-center py-5">
+                    <i
+                        class="fas fa-inbox fa-4x text-muted mb-3 opacity-25"></i>
+                    <h5 class="text-muted fw-bold">ไม่พบข้อมูลประกาศในระบบ</h5>
+                </div>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="modal fade" id="announcementModal" tabindex="-1"
+            aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg rounded-4">
+                    <div class="modal-header border-0 pb-0 pt-4 px-4">
+                        <h5 class="fw-bold text-dark"
+                            id="modalTitle">สร้างประกาศใหม่</h5>
+                        <button type="button" class="btn-close"
+                            data-bs-dismiss="modal"></button>
+                    </div>
+                    <form id="announcementForm" method="POST"
+                        enctype="multipart/form-data">
+                        <div class="modal-body p-4">
+                            <div class="mb-3">
+                                <label class="form-label-custom">หัวข้อประกาศ
+                                    <span class="text-danger">*</span></label>
+                                <input type="text" name="title" id="formTitle"
+                                    class="form-control-custom w-100" required>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label
+                                        class="form-label-custom">หมวดหมู่</label>
+                                    <select name="category" id="formCategory"
+                                        class="form-select-custom w-100">
+                                        <option value="ทั่วไป">ทั่วไป</option>
+                                        <option value="ข่าวสาร">ข่าวสาร</option>
+                                        <option value="กฎเกณฑ์">กฎเกณฑ์</option>
+                                        <option
+                                            value="เหตุฉุกเฉิน">เหตุฉุกเฉิน</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label
+                                        class="form-label-custom">กลุ่มเป้าหมาย</label>
+                                    <div class="audience-selector">
+                                        <label class="audience-option">
+                                            <input type="checkbox"
+                                                name="targetRoles" value="GUEST"
+                                                id="audienceGuest">
+                                            <span>ผู้เยี่ยมชม
+                                                (ยังไม่เป็นสมาชิก)</span>
+                                        </label>
+                                        <label class="audience-option">
+                                            <input type="checkbox"
+                                                name="targetRoles"
+                                                value="CUSTOMER"
+                                                id="audienceCustomer" checked>
+                                            <span>ลูกค้า (Customer)</span>
+                                        </label>
+                                        <label class="audience-option">
+                                            <input type="checkbox"
+                                                name="targetRoles"
+                                                value="SELLER"
+                                                id="audienceSeller">
+                                            <span>พ่อค้าแม่ค้า (Seller)</span>
+                                        </label>
                                     </div>
-                                    <a href="/admin/announcements/delete/<%= post.id %>" class="btn-delete-circle" title="ลบ" onclick="return confirm('ลบประกาศนี้ใช่ไหม?')">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </a>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label-custom">เนื้อหาประกาศ
+                                    <span class="text-danger">*</span></label>
+                                <textarea name="content" id="formContent"
+                                    class="form-control-custom w-100" rows="5"
+                                    required></textarea>
+                            </div>
+                            <div class="mb-0">
+                                <label
+                                    class="form-label-custom">รูปภาพหน้าปก</label>
+                                <div class="upload-box">
+                                    <input type="file" name="image"
+                                        id="formImage" class="form-control"
+                                        accept="image/*">
                                 </div>
                             </div>
                         </div>
-                    <% }) %>
-                </div>
-
-                <div id="noData" class="text-center py-5 d-none bg-white rounded-4 shadow-sm">
-                    <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" width="100" class="mb-3 opacity-50">
-                    <p class="text-muted fw-bold">ไม่พบประกาศในหมวดหมู่นี้</p>
+                        <div class="modal-footer border-0 p-4 pt-0">
+                            <button type="submit"
+                                class="btn-primary-custom w-100">
+                                <i class="fas fa-save me-1"></i> ยืนยันข้อมูล
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script src="/js/admin/announcements.js"></script>
-</body>
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="/js/admin/announcements.js"></script>
+    </body>
 </html>

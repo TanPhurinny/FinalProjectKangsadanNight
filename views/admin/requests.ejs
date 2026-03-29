@@ -1,202 +1,390 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Repair Requests | Kangsadan Night Market</title>
-    
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
-    <link rel="stylesheet" href="/stylesheets/admin/dashboard.css">
-    <link rel="stylesheet" href="/stylesheets/admin/requests.css">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Repair Requests | Kangsadan Night Market</title>
 
-    <style>
-        /* สไตล์เพิ่มเติมเพื่อให้เข้ากับหน้า Dashboard ที่คุณส่งมา */
-        :root {
-            --primary-color: #A73B24;
-            --secondary-color: #1a1a2e;
-        }
-        
-        /* ปรับแต่ง Badge สถานะ */
-        .badge-status {
-            padding: 7px 15px;
-            border-radius: 10px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            display: inline-block;
-        }
-        .status-pending { background-color: rgba(241, 196, 15, 0.1); color: #d97706; border: 1px solid rgba(241, 196, 15, 0.2); }
-        .status-in_progress { background-color: rgba(52, 152, 219, 0.1); color: #2563eb; border: 1px solid rgba(52, 152, 219, 0.2); }
-        .status-success { background-color: rgba(46, 204, 113, 0.1); color: #059669; border: 1px solid rgba(46, 204, 113, 0.2); }
-        
-        .x-small { font-size: 0.75rem; }
-        .category-pill {
-            background: #f8f9fa;
-            border: 1px solid #e2e8f0;
-            padding: 4px 12px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-        }
-    </style>
-</head>
-<body>
-    <%- include('../partials/navbar') %>
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+            rel="stylesheet">
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap"
+            rel="stylesheet">
 
-    <div class="dashboard-container">
-        
-        <header class="d-flex justify-content-between align-items-end mb-5">
-            <div>
-                <h1 class="fw-bold mb-1">Repair Requests</h1>
-                <p class="text-muted mb-0">ศูนย์จัดการคำร้องและติดตามสถานะการซ่อมบำรุง</p>
-            </div>
-            <div class="text-end">
-                <% if (user.role === 'SELLER') { %>
-                    <button class="btn btn-manage px-4" data-bs-toggle="modal" data-bs-target="#requestModal">
-                        <i class="fas fa-plus me-2"></i>สร้างคำร้องใหม่
-                    </button>
-                <% } else { %>
-                    <div class="badge bg-white text-dark shadow-sm p-2 px-3 rounded-pill border">
-                        <i class="far fa-calendar-alt me-2 text-primary"></i>
-                        <span id="live-date">กำลังโหลดวันที่...</span>
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/requests.css">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body>
+        <%- include('../partials/navbar') %>
+
+        <div class="container requests-layout py-4">
+            <%
+            const rStats = {
+            pending: (locals.requests) ? requests.filter(r => r.status ===
+            'PENDING').length : 0,
+            inProgress: (locals.requests) ? requests.filter(r => r.status ===
+            'IN_PROGRESS').length : 0,
+            completed: (locals.requests) ? requests.filter(r => r.status ===
+            'SUCCESS').length : 0,
+            total: (locals.requests) ? requests.length : 0
+            };
+            %>
+
+            <section class="requests-hero mb-4">
+                <div>
+                    <h1 class="display-6 fw-bold mb-2">
+                        <i
+                            class="fas fa-screwdriver-wrench me-2"></i>จัดการคำร้องซ่อมบำรุง
+                    </h1>
+                    
+                </div>
+                <div class="hero-meta">
+                    <div class="meta-chip">
+                        <i class="far fa-calendar-alt me-2"></i><span
+                            id="live-date"></span>
                     </div>
-                <% } %>
-            </div>
-        </header>
+                    <div class="meta-chip strong">ทั้งหมด <span
+                            id="totalVisibleCount"><%= rStats.total %></span>
+                        รายการ</div>
+                </div>
+            </section>
 
-        <div class="stat-grid mb-5">
-            <div class="stat-card">
-                <div class="icon-box" style="background: rgba(241, 196, 15, 0.1); color: var(--warning);">
-                    <i class="fas fa-hourglass-half"></i>
-                </div>
-                <div>
-                    <small class="text-muted d-block">รอรับเรื่อง</small>
-                    <h3 class="fw-bold mb-0">
-                        <%= (locals.requests) ? requests.filter(r => r.status === 'PENDING').length : 0 %> 
-                        <small class="fs-6 fw-normal">รายการ</small>
-                    </h3>
-                </div>
+            <% if (success) { %>
+            <div class="alert alert-success border-0 shadow-sm rounded-4">
+                <i
+                    class="fas fa-circle-check me-2"></i>อัปเดตสถานะคำร้องเรียบร้อยแล้ว
             </div>
-
-            <div class="stat-card">
-                <div class="icon-box" style="background: rgba(52, 152, 219, 0.1); color: #3498db;">
-                    <i class="fas fa-tools"></i>
-                </div>
-                <div>
-                    <small class="text-muted d-block">กำลังดำเนินการ</small>
-                    <h3 class="fw-bold mb-0">
-                        <%= (locals.requests) ? requests.filter(r => r.status === 'IN_PROGRESS').length : 0 %> 
-                        <small class="fs-6 fw-normal">รายการ</small>
-                    </h3>
-                </div>
+            <% } %>
+            <% if (error) { %>
+            <div class="alert alert-danger border-0 shadow-sm rounded-4">
+                <i
+                    class="fas fa-triangle-exclamation me-2"></i>เกิดข้อผิดพลาดในการอัปเดตคำร้อง
             </div>
+            <% } %>
 
-            <div class="stat-card">
-                <div class="icon-box" style="background: rgba(46, 204, 113, 0.1); color: var(--success);">
-                    <i class="fas fa-check-double"></i>
-                </div>
-                <div>
-                    <small class="text-muted d-block">เสร็จสิ้นแล้ว</small>
-                    <h3 class="fw-bold mb-0">
-                        <%= (locals.requests) ? requests.filter(r => r.status === 'SUCCESS').length : 0 %> 
-                        <small class="fs-6 fw-normal">รายการ</small>
-                    </h3>
-                </div>
-            </div>
-        </div>
-
-        <div class="zone-section shadow-sm border-0">
-            <div class="zone-header">
-                <div class="d-flex align-items-center gap-3">
-                    <i class="fas fa-clipboard-list fs-4"></i>
-                    <div>
-                        <h5 class="mb-0 fw-bold">รายการคำร้องทั้งหมด</h5>
-                        <small class="opacity-75">ตารางสรุปปัญหาและสถานะการแก้ไข</small>
+            <section class="row g-3 mb-4">
+                <div class="col-6 col-lg-3">
+                    <div class="summary-card is-pending">
+                        <div class="summary-icon"><i
+                                class="fas fa-hourglass-half"></i></div>
+                        <div class="summary-content">
+                            <small>รอรับเรื่อง</small>
+                            <h3><%= rStats.pending %></h3>
+                            <p class="summary-note">รายการใหม่ที่รอเริ่มงาน</p>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="zone-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr class="text-muted small">
-                                <th class="ps-4 py-3">พื้นที่ / ผู้แจ้ง</th>
-                                <th class="py-3">หมวดหมู่</th>
-                                <th class="py-3">รายละเอียด</th>
-                                <th class="py-3 text-center">สถานะปัจจุบัน</th>
-                                <th class="py-3 text-end pe-4">การจัดการ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% if (locals.requests && requests.length > 0) { %>
-                                <% requests.forEach(function(req) { %>
-                                    <tr>
-                                        <td class="ps-4">
-                                            <div class="fw-bold text-dark"><%= req.location %></div>
-                                            <div class="x-small text-muted">โดย: <%= req.user ? req.user.name : 'ไม่ระบุ' %></div>
-                                        </td>
-                                        <td>
-                                            <span class="category-pill">
-                                                <i class="fas fa-wrench me-1 text-primary small"></i> <%= req.category %>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="small text-dark fw-medium text-wrap" style="max-width: 250px;"><%= req.description %></div>
-                                            <div class="x-small text-muted mt-1">
-                                                <i class="far fa-clock me-1"></i><%= new Date(req.createdAt).toLocaleString('th-TH') %>
-                                            </div>
-                                        </td>
-                                        <td class="text-center">
-                                            <span class="badge-status status-<%= req.status.toLowerCase() %>">
-                                                <%= req.status === 'PENDING' ? 'รอรับเรื่อง' : req.status === 'IN_PROGRESS' ? 'กำลังดำเนินการ' : 'เสร็จสิ้น' %>
-                                            </span>
-                                        </td>
-                                        <td class="text-end pe-4">
-                                            <% if (user.role === 'ADMIN' || user.role === 'STAFF') { %>
-                                                <div class="d-flex justify-content-end gap-2">
-                                                    <% if (req.status === 'PENDING') { %>
-                                                        <form action="/admin/requests/update-status" method="POST">
-                                                            <input type="hidden" name="id" value="<%= req.id %>">
-                                                            <input type="hidden" name="status" value="IN_PROGRESS">
-                                                            <button class="btn btn-sm btn-outline-primary rounded-pill px-3">รับเรื่อง</button>
-                                                        </form>
-                                                    <% } else if (req.status === 'IN_PROGRESS') { %>
-                                                        <form action="/admin/requests/update-status" method="POST">
-                                                            <input type="hidden" name="id" value="<%= req.id %>">
-                                                            <input type="hidden" name="status" value="SUCCESS">
-                                                            <button class="btn btn-sm btn-success rounded-pill px-3 text-white">ปิดงาน</button>
-                                                        </form>
-                                                    <% } else { %>
-                                                        <span class="text-success small fw-bold"><i class="fas fa-check-circle me-1"></i>ปิดงานแล้ว</span>
-                                                    <% } %>
-                                                </div>
-                                            <% } %>
-                                        </td>
-                                    </tr>
-                                <% }); %>
-                            <% } else { %>
+                <div class="col-6 col-lg-3">
+                    <div class="summary-card is-progressing">
+                        <div class="summary-icon"><i
+                                class="fas fa-screwdriver-wrench"></i></div>
+                        <div class="summary-content">
+                            <small>กำลังดำเนินการ</small>
+                            <h3><%= rStats.inProgress %></h3>
+                            <p class="summary-note">งานที่ทีมกำลังติดตาม</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="summary-card is-done">
+                        <div class="summary-icon"><i
+                                class="fas fa-check-double"></i></div>
+                        <div class="summary-content">
+                            <small>เสร็จสิ้นแล้ว</small>
+                            <h3><%= rStats.completed %></h3>
+                            <p class="summary-note">งานที่ปิดเคสเรียบร้อย</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="summary-card is-total">
+                        <div class="summary-icon"><i
+                                class="fas fa-layer-group"></i></div>
+                        <div class="summary-content">
+                            <small>คำร้องทั้งหมด</small>
+                            <h3><%= rStats.total %></h3>
+                            <p class="summary-note">ภาพรวมทุกสถานะ</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="controls-bar mb-3">
+                <div class="controls-left">
+                    <div class="input-group search-group">
+                        <span class="input-group-text"><i
+                                class="fas fa-search"></i></span>
+                        <input type="text" id="searchInput" class="form-control"
+                            placeholder="ค้นหาจากพื้นที่ ผู้แจ้ง หรือหมวดหมู่">
+                    </div>
+                </div>
+                <div class="controls-right" role="group"
+                    aria-label="ตัวกรองสถานะ">
+                    <button class="status-filter active"
+                        data-filter="ALL">ทั้งหมด</button>
+                    <button class="status-filter"
+                        data-filter="PENDING">รอรับเรื่อง</button>
+                    <button class="status-filter"
+                        data-filter="IN_PROGRESS">กำลังดำเนินการ</button>
+                    <button class="status-filter"
+                        data-filter="SUCCESS">เสร็จสิ้น</button>
+                </div>
+            </section>
+
+            <section class="desktop-view d-none d-lg-block">
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
                                 <tr>
-                                    <td colspan="5" class="text-center py-5">
-                                        <i class="fas fa-inbox fa-3x text-light mb-3"></i>
-                                        <p class="text-muted">ไม่พบข้อมูลคำร้องแจ้งซ่อมในขณะนี้</p>
+                                    <th class="ps-4">พื้นที่ / ผู้แจ้ง</th>
+                                    <th>หมวดหมู่</th>
+                                    <th>รายละเอียด</th>
+                                    <th class="text-center">สถานะ</th>
+                                    <th class="text-end pe-4">การจัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requestsTableBody">
+                                <% if (locals.requests && requests.length > 0) {
+                                %>
+                                <% requests.forEach(function(req) { %>
+                                <tr class="request-row"
+                                    data-status="<%= req.status %>"
+                                    data-search="<%= `${req.location} ${req.category} ${req.description} ${(req.user ? req.user.name : '')}`.toLowerCase() %>">
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-dark"><%=
+                                            req.location %></div>
+                                        <div class="small text-muted">โดย: <%=
+                                            req.user ? req.user.name : 'ไม่ระบุ'
+                                            %></div>
+                                    </td>
+                                    <td>
+                                        <span
+                                            class="badge bg-light text-dark border">
+                                            <i
+                                                class="fas fa-wrench me-1"></i><%=
+                                            req.category %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="desc-wrap"><%=
+                                            req.description %></div>
+                                        <div class="small text-muted mt-1">
+                                            <i class="far fa-clock me-1"></i><%=
+                                            new
+                                            Date(req.createdAt).toLocaleString('th-TH')
+                                            %>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span
+                                            class="badge <%= req.status === 'PENDING' ? 'bg-warning text-dark' : req.status === 'IN_PROGRESS' ? 'bg-info text-dark' : 'bg-success' %>">
+                                            <%= req.status === 'PENDING' ?
+                                            'รอรับเรื่อง' : req.status ===
+                                            'IN_PROGRESS' ? 'กำลังดำเนินการ' :
+                                            'เสร็จสิ้น' %>
+                                        </span>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <% if (user.role === 'ADMIN' ||
+                                        user.role === 'STAFF') { %>
+                                        <% if (req.status === 'PENDING') { %>
+                                        <form
+                                            action="/admin/requests/update-status"
+                                            method="POST" class="d-inline">
+                                            <input type="hidden" name="id"
+                                                value="<%= req.id %>">
+                                            <input type="hidden" name="status"
+                                                value="IN_PROGRESS">
+                                            <button
+                                                class="btn btn-outline-primary btn-sm action-btn">รับเรื่อง</button>
+                                        </form>
+                                        <% } else if (req.status ===
+                                        'IN_PROGRESS') { %>
+                                        <form
+                                            action="/admin/requests/update-status"
+                                            method="POST" class="d-inline">
+                                            <input type="hidden" name="id"
+                                                value="<%= req.id %>">
+                                            <input type="hidden" name="status"
+                                                value="SUCCESS">
+                                            <button
+                                                class="btn btn-success btn-sm action-btn">ปิดงาน</button>
+                                        </form>
+                                        <% } else { %>
+                                        <span
+                                            class="badge bg-success-subtle text-success-emphasis border">ปิดงานแล้ว</span>
+                                        <% } %>
+                                        <% } %>
                                     </td>
                                 </tr>
-                            <% } %>
-                        </tbody>
-                    </table>
+                                <% }); %>
+                                <% } else { %>
+                                <tr id="emptyTableRow">
+                                    <td colspan="5"
+                                        class="text-center py-5 text-muted">
+                                        <i
+                                            class="fas fa-inbox fa-3x opacity-25 d-block mb-3"></i>
+                                        ไม่พบข้อมูลคำร้องแจ้งซ่อมในขณะนี้
+                                    </td>
+                                </tr>
+                                <% } %>
+                                <tr id="emptyFilteredTableRow" class="d-none">
+                                    <td colspan="5"
+                                        class="text-center py-5 text-muted">
+                                        <i
+                                            class="fas fa-filter fa-2x opacity-25 d-block mb-3"></i>
+                                        ไม่พบคำร้องที่ตรงกับการค้นหา/ตัวกรอง
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
+            </section>
 
-    <script>
-        // แสดงวันที่ปัจจุบัน
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const liveDate = document.getElementById('live-date');
-        if (liveDate) liveDate.innerHTML = new Date().toLocaleDateString('th-TH', options);
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-</body>
+            <section class="mobile-view d-lg-none" id="requestsCardList">
+                <% if (locals.requests && requests.length > 0) { %>
+                <% requests.forEach(function(req) { %>
+                <article class="request-card"
+                    data-status="<%= req.status %>"
+                    data-search="<%= `${req.location} ${req.category} ${req.description} ${(req.user ? req.user.name : '')}`.toLowerCase() %>">
+                    <div class="request-card-head">
+                        <div>
+                            <h6 class="mb-1 fw-bold"><%= req.location %></h6>
+                            <small class="text-muted">โดย: <%= req.user ?
+                                req.user.name : 'ไม่ระบุ' %></small>
+                        </div>
+                        <span
+                            class="badge <%= req.status === 'PENDING' ? 'bg-warning text-dark' : req.status === 'IN_PROGRESS' ? 'bg-info text-dark' : 'bg-success' %>">
+                            <%= req.status === 'PENDING' ? 'รอรับเรื่อง' :
+                            req.status === 'IN_PROGRESS' ? 'กำลังดำเนินการ' :
+                            'เสร็จสิ้น' %>
+                        </span>
+                    </div>
+
+                    <div class="mb-2">
+                        <span class="badge bg-light text-dark border"><i
+                                class="fas fa-wrench me-1"></i><%= req.category
+                            %></span>
+                    </div>
+
+                    <p class="small mb-2"><%= req.description %></p>
+                    <div class="small text-muted mb-3"><i
+                            class="far fa-clock me-1"></i><%= new
+                        Date(req.createdAt).toLocaleString('th-TH') %></div>
+
+                    <% if (user.role === 'ADMIN' || user.role === 'STAFF') { %>
+                    <div class="d-flex gap-2">
+                        <% if (req.status === 'PENDING') { %>
+                        <form action="/admin/requests/update-status"
+                            method="POST" class="flex-grow-1">
+                            <input type="hidden" name="id"
+                                value="<%= req.id %>">
+                            <input type="hidden" name="status"
+                                value="IN_PROGRESS">
+                            <button
+                                class="btn btn-outline-primary w-100 action-btn">รับเรื่อง</button>
+                        </form>
+                        <% } else if (req.status === 'IN_PROGRESS') { %>
+                        <form action="/admin/requests/update-status"
+                            method="POST" class="flex-grow-1">
+                            <input type="hidden" name="id"
+                                value="<%= req.id %>">
+                            <input type="hidden" name="status" value="SUCCESS">
+                            <button
+                                class="btn btn-success w-100 action-btn">ปิดงาน</button>
+                        </form>
+                        <% } else { %>
+                        <span
+                            class="badge bg-success-subtle text-success-emphasis border px-3 py-2">ปิดงานแล้ว</span>
+                        <% } %>
+                    </div>
+                    <% } %>
+                </article>
+                <% }); %>
+                <% } else { %>
+                <div id="emptyCardRow" class="text-center py-5 text-muted">
+                    <i class="fas fa-inbox fa-3x opacity-25 d-block mb-3"></i>
+                    ไม่พบข้อมูลคำร้องแจ้งซ่อมในขณะนี้
+                </div>
+                <% } %>
+                <div id="emptyFilteredCardRow"
+                    class="text-center py-5 text-muted d-none">
+                    <i class="fas fa-filter fa-2x opacity-25 d-block mb-3"></i>
+                    ไม่พบคำร้องที่ตรงกับการค้นหา/ตัวกรอง
+                </div>
+            </section>
+        </div>
+
+        <script>
+            const liveDate = document.getElementById('live-date');
+            if (liveDate) {
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                liveDate.textContent = new Date().toLocaleDateString('th-TH', options);
+            }
+
+            const searchInput = document.getElementById('searchInput');
+            const filters = document.querySelectorAll('.status-filter');
+            const rows = document.querySelectorAll('.request-row');
+            const cards = document.querySelectorAll('.request-card');
+            const visibleCounter = document.getElementById('totalVisibleCount');
+            const emptyFilteredTableRow = document.getElementById('emptyFilteredTableRow');
+            const emptyFilteredCardRow = document.getElementById('emptyFilteredCardRow');
+            let currentFilter = 'ALL';
+
+            function applyFilters() {
+                const term = (searchInput ? searchInput.value : '').toLowerCase().trim();
+                let visibleRows = 0;
+                let visibleCards = 0;
+
+                rows.forEach(row => {
+                    const matchText = row.dataset.search.includes(term);
+                    const matchStatus = currentFilter === 'ALL' || row.dataset.status === currentFilter;
+                    const show = matchText && matchStatus;
+                    row.style.display = show ? '' : 'none';
+                    if (show) visibleRows += 1;
+                });
+
+                cards.forEach(card => {
+                    const matchText = card.dataset.search.includes(term);
+                    const matchStatus = currentFilter === 'ALL' || card.dataset.status === currentFilter;
+                    const show = matchText && matchStatus;
+                    card.style.display = show ? '' : 'none';
+                    if (show) visibleCards += 1;
+                });
+
+                if (emptyFilteredTableRow) {
+                    emptyFilteredTableRow.classList.toggle('d-none', rows.length === 0 || visibleRows > 0);
+                }
+
+                if (emptyFilteredCardRow) {
+                    emptyFilteredCardRow.classList.toggle('d-none', cards.length === 0 || visibleCards > 0);
+                }
+
+                const visible = rows.length > 0 ? visibleRows : visibleCards;
+                if (visibleCounter) visibleCounter.textContent = String(visible);
+            }
+
+            if (searchInput) searchInput.addEventListener('input', applyFilters);
+            filters.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filters.forEach(el => el.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentFilter = btn.dataset.filter;
+                    applyFilters();
+                });
+            });
+
+            applyFilters();
+        </script>
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    </body>
 </html>

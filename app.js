@@ -1,13 +1,11 @@
 const express = require('express');
-const multer = require('multer'); // <--- เพิ่มบรรทัดนี้เข้าไปครับ
 const session = require('express-session');
 const path = require('path');
+const methodOverride = require('method-override');
 const { PrismaClient } = require('@prisma/client');
-const announceCtrl = require('./controllers/announcementController');
 
 const app = express();
 const prisma = new PrismaClient();
-const upload = multer(); // ตอนนี้บรรทัดนี้จะใช้งานได้แล้ว
 
 // --- 1. การตั้งค่าพื้นฐาน ---
 app.set('view engine', 'ejs');
@@ -18,6 +16,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public'))); 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(methodOverride('_method'));
 
 // --- 3. การจัดการ Session ---
 app.use(session({
@@ -30,10 +29,17 @@ app.use(session({
     } 
 }));
 
+// ส่ง Path ปัจจุบันไปให้ทุก View ก่อนเข้า routes
+app.use((req, res, next) => {
+    res.locals.path = req.path;
+    next();
+});
+
 // --- 4. นำเข้า Route แยกไฟล์ ---
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const marketRoutes = require('./routes/marketRoutes');
+const announceCtrl = require('./controllers/announcementController');
 
 // --- 5. การกำหนดเส้นทาง (Routing) ---
 
@@ -43,12 +49,12 @@ app.get('/', async (req, res) => {
         const user = req.session.user || null;
         let announcements = [];
 
-        // เลือก Role ที่ต้องการดึงประกาศ (ถ้าไม่ Login ให้เป็น CUSTOMER)
-        const targetRole = user ? user.role : 'CUSTOMER';
-        
-        // สำหรับแอดมินหรือเจ้าหน้าที่ อาจจะอยากให้เห็นประกาศของทุกคน หรือเห็นของ CUSTOMER เป็นหลัก
-        // ในที่นี้กำหนดให้ถ้าไม่ใช่ SELLER ให้เห็นของ CUSTOMER ทั้งหมด
-        const roleToFetch = (targetRole === 'SELLER') ? 'SELLER' : 'CUSTOMER';
+        // ผู้ใช้ที่ยังไม่เป็นสมาชิก ให้มองเป็น GUEST
+        // ผู้ใช้ที่เป็นระบบหลังบ้าน (ADMIN/STAFF) ให้เห็นประกาศกลุ่มลูกค้าเป็นค่าเริ่มต้น
+        let roleToFetch = 'GUEST';
+        if (user?.role === 'SELLER') roleToFetch = 'SELLER';
+        else if (user?.role === 'CUSTOMER') roleToFetch = 'CUSTOMER';
+        else if (user?.role === 'ADMIN' || user?.role === 'STAFF') roleToFetch = 'CUSTOMER';
 
         announcements = await announceCtrl.getAnnouncementsForUser(roleToFetch);
 
@@ -79,11 +85,6 @@ app.use((req, res) => {
         announcements: [],
         error: 'ขออภัย ไม่พบหน้าที่คุณต้องการ' 
     });
-});
-
-app.use((req, res, next) => {
-    res.locals.path = req.path; // ส่ง Path ปัจจุบันไปให้ทุก View อัตโนมัติ
-    next();
 });
 // --- 7. เริ่มต้นเซิร์ฟเวอร์ ---
 const PORT = process.env.PORT || 3000;

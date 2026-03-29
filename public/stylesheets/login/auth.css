@@ -1,18 +1,15 @@
 /* public/css/auth.css */
 :root {
-    --primary: #A73B24;
-    --navy: #1a1a2e;
+    --primary: #3BB8D4;
+    --primary-dark: #2c97b1;
+    --navy: #1f5a6c;
     --white: #ffffff;
-    --bg-main: #f0f2f5;
+    --bg-main: #f4fbfd;
 }
 
 body {
     font-family: 'Kanit', sans-serif;
-    /* เปลี่ยนสีพื้นหลังให้ดูแพงและเข้ากับเว็บ */
-    background: radial-gradient(at 0% 0%, rgba(167, 59, 36, 0.1) 0, transparent 50%), 
-                radial-gradient(at 50% 0%, rgba(26, 26, 46, 0.05) 0, transparent 50%), 
-                radial-gradient(at 100% 0%, rgba(167, 59, 36, 0.1) 0, transparent 50%), 
-                var(--bg-main);
+    background: var(--bg-main);
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -29,29 +26,36 @@ body {
     font-size: 2.8rem;
     font-weight: 700;
     color: var(--primary);
-    letter-spacing: -1.5px;
+    letter-spacing: -1px;
     margin-bottom: -5px;
 }
 
 .logo-sub {
-    color: #888;
+    color: #5d7e8b;
     font-size: 0.75rem;
-    letter-spacing: 3px;
+    letter-spacing: 2px;
     font-weight: 400;
 }
 
 .form-card {
     background: var(--white);
-    border-radius: 35px;
+    border-radius: 26px;
     padding: 40px;
-    border: 1px solid rgba(0,0,0,0.03);
+    border: 1px solid #d9edf3;
+    box-shadow: 0 16px 34px rgba(31, 90, 108, 0.12);
     max-height: 90vh;
     overflow-y: auto;
 }
 
 /* Scrollbar Style */
-.form-card::-webkit-scrollbar { width: 4px; }
-.form-card::-webkit-scrollbar-thumb { background: #eee; border-radius: 10px; }
+.form-card::-webkit-scrollbar {
+    width: 4px;
+}
+
+.form-card::-webkit-scrollbar-thumb {
+    background: #eee;
+    border-radius: 10px;
+}
 
 .btn-primary {
     background: var(--primary);
@@ -62,32 +66,76 @@ body {
 }
 
 .btn-primary:hover {
-    background: #8e321e;
+    background: var(--primary-dark);
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(167, 59, 36, 0.2);
+    box-shadow: 0 8px 20px rgba(59, 184, 212, 0.28);
 }
 
 .input-group-text {
-    background: #f9f9f9;
+    background: #f6fbfd;
     border-right: none;
-    color: #bbb;
+    color: #78a0af;
     border-radius: 15px 0 0 15px;
-    border-color: #eee;
+    border-color: #dcecf2;
 }
 
-.form-control, .form-select {
+.form-control,
+.form-select {
     border-left: none;
     border-radius: 0 15px 15px 0;
     font-size: 0.9rem;
     padding: 11px;
-    background: #f9f9f9;
-    border-color: #eee;
+    background: #f6fbfd;
+    border-color: #dcecf2;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #b8e2ec;
+    box-shadow: 0 0 0 0.2rem rgba(59, 184, 212, 0.15);
+}
+
+.password-input-group {
+    position: relative;
+}
+
+.password-toggle {
+    border-radius: 0 15px 15px 0;
+    border-left: none;
+    border-color: #dcecf2;
+    color: #78a0af;
+    padding: 11px 14px;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.password-toggle:hover,
+.password-toggle.active {
+    background: #e8f5f9;
+    color: var(--primary);
+    border-color: #b8e2ec;
+}
+
+.password-toggle.active {
+    box-shadow: inset 0 0 0 0.2rem rgba(59, 184, 212, 0.1);
 }
 
 .seller-box {
-    background: #fcfcfc;
-    border: 1px dashed #e0e0e0;
+    background: #f9fdff;
+    border: 1px dashed #cfe8f0;
     border-radius: 20px;
 }
 
-.label-upload { font-size: 0.7rem; color: #999; text-transform: uppercase; }
+.label-upload {
+    font-size: 0.7rem;
+    color: #628a98;
+    text-transform: uppercase;
+}
+
+.auth-page a {
+    color: #2d8ea7;
+}
+
+.auth-page a:hover {
+    color: #236f84;
+}

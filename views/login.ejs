@@ -1,148 +1,299 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kangsadan Night Market | Portal</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/stylesheets/login/auth.css">
-</head>
-<body>
-    <div class="auth-wrapper">
-        <div class="auth-container">
-            <div class="logo-section text-center mb-4">
-                <div class="logo-brand">Kangsadan</div>
-                <div class="logo-sub">NIGHT MARKET SYSTEM</div>
-            </div>
-
-            <div class="form-card shadow-lg">
-                <div id="loginPage" class="auth-page">
-                    <h3 class="text-center mb-4 fw-bold">เข้าสู่ระบบ</h3>
-                    
-                    <% if (typeof error !== 'undefined' && error) { %>
-                        <div class="alert alert-danger small text-center"><%= error %></div>
-                    <% } %>
-                    
-                    <% if (typeof success !== 'undefined' && success) { %>
-                        <div class="alert alert-success small text-center fw-bold">
-                            <i class="fas fa-check-circle me-1"></i> <%= success %>
-                        </div>
-                    <% } %>
-
-                    <form method="POST" action="/login">
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="fas fa-user"></i></span>
-                            <input type="text" name="username" class="form-control" placeholder="Username" required>
-                        </div>
-                        <div class="input-group mb-4">
-                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                            <input type="password" name="password" class="form-control" placeholder="Password" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100 py-2 mb-3 shadow-sm">LOG IN</button>
-                    </form>
-                    <div class="text-center small">
-                        ยังไม่มีบัญชี? <a href="#" onclick="showRegister()" class="fw-bold">สมัครสมาชิกใหม่</a>
-                    </div>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Kangsadan Night Market | Portal</title>
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+            rel="stylesheet">
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet">
+        <link rel="stylesheet" href="/stylesheets/login/auth.css">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body
+        data-active-tab="<%= typeof activeTab !== 'undefined' ? activeTab : 'login' %>">
+        <div class="auth-wrapper">
+            <div class="auth-container">
+                <div class="logo-section text-center mb-4">
+                    <div class="logo-brand">Kangsadan</div>
+                    <div class="logo-sub">NIGHT MARKET SYSTEM</div>
                 </div>
 
-                <div id="registerPage" class="auth-page d-none">
-                    <h3 class="text-center mb-4 fw-bold">สมัครสมาชิก</h3>
-                    <form method="POST" action="/register" enctype="multipart/form-data">
-                        
-                        <div class="mb-3">
-                            <label class="form-label small text-muted">ประเภทผู้ใช้งาน</label>
-                            <select name="role" id="roleSelect" class="form-select" onchange="toggleSellerFields()" required>
-                                <option value="CUSTOMER">ลูกค้าทั่วไป (Customer)</option>
-                                <option value="SELLER">พ่อค้า/แม่ค้า (Seller)</option>
-                            </select>
-                        </div>
+                <div class="form-card shadow-lg">
+                    <div id="loginPage" class="auth-page">
+                        <h3 class="text-center mb-4 fw-bold">เข้าสู่ระบบ</h3>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="fas fa-user-circle"></i></span>
-                            <input type="text" name="name" class="form-control" placeholder="ชื่อ-นามสกุลจริง" required>
-                        </div>
+                        <% if (typeof error !== 'undefined' && error) { %>
+                        <div class="alert alert-danger small text-center"><%=
+                            error %></div>
+                        <% } %>
 
-                        <div class="row g-2 mb-3">
-                            <div class="col-7">
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
-                                    <input type="tel" name="phoneNumber" class="form-control" placeholder="เบอร์โทรศัพท์" required>
+                        <% if (typeof success !== 'undefined' && success) { %>
+                        <div
+                            class="alert alert-success small text-center fw-bold">
+                            <i class="fas fa-check-circle me-1"></i> <%= success
+                            %>
+                        </div>
+                        <% } %>
+
+                        <form method="POST" action="/login">
+                            <div class="input-group mb-3">
+                                <span class="input-group-text"><i
+                                        class="fas fa-user"></i></span>
+                                <input type="text" name="username"
+                                    class="form-control" placeholder="Username"
+                                    required>
+                            </div>
+                            <div class="input-group mb-4 password-input-group">
+                                <span class="input-group-text"><i
+                                        class="fas fa-lock"></i></span>
+                                <input type="password" name="password"
+                                    class="form-control password-field"
+                                    placeholder="Password"
+                                    required>
+                                <button
+                                    class="btn btn-outline-secondary password-toggle"
+                                    type="button" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div
+                                class="d-flex justify-content-between align-items-center mb-3 small">
+                                <label
+                                    class="form-check-label d-flex align-items-center gap-2">
+                                    <input class="form-check-input m-0"
+                                        type="checkbox" name="rememberMe"
+                                        value="1">
+                                    จดจำการเข้าสู่ระบบ
+                                </label>
+                                <a href="#"
+                                    onclick="showForgotPassword(); return false;"
+                                    class="fw-semibold">ลืมรหัสผ่าน?</a>
+                            </div>
+                            <button type="submit"
+                                class="btn btn-primary w-100 py-2 mb-3 shadow-sm">LOG
+                                IN</button>
+                        </form>
+                        <div class="text-center small">
+                            ยังไม่มีบัญชี? <a href="#" onclick="showRegister()"
+                                class="fw-bold">สมัครสมาชิกใหม่</a>
+                        </div>
+                    </div>
+
+                    <div id="forgotPage" class="auth-page d-none">
+                        <h3 class="text-center mb-3 fw-bold">ลืมรหัสผ่าน</h3>
+                        <p class="text-center small text-muted mb-3">ยืนยันด้วย
+                            Username และ Gmail เพื่อรีเซ็ตรหัสผ่าน</p>
+
+                        <% if (typeof forgotError !== 'undefined' &&
+                        forgotError) { %>
+                        <div class="alert alert-danger small text-center"><%=
+                            forgotError %></div>
+                        <% } %>
+
+                        <% if (typeof forgotSuccess !== 'undefined' &&
+                        forgotSuccess) { %>
+                        <div
+                            class="alert alert-success small text-center fw-bold"><%=
+                            forgotSuccess %></div>
+                        <% } %>
+
+                        <form method="POST" action="/forgot-password">
+                            <div class="input-group mb-3">
+                                <span class="input-group-text"><i
+                                        class="fas fa-id-badge"></i></span>
+                                <input type="text" name="username"
+                                    class="form-control" placeholder="Username"
+                                    required>
+                            </div>
+                            <div class="input-group mb-3">
+                                <span class="input-group-text"><i
+                                        class="fas fa-envelope"></i></span>
+                                <input type="email" name="email"
+                                    class="form-control"
+                                    placeholder="Gmail (example@gmail.com)"
+                                    required>
+                            </div>
+                            <div class="input-group mb-3 password-input-group">
+                                <span class="input-group-text"><i
+                                        class="fas fa-lock"></i></span>
+                                <input type="password" name="newPassword"
+                                    class="form-control password-field"
+                                    placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)"
+                                    minlength="6" required>
+                                <button
+                                    class="btn btn-outline-secondary password-toggle"
+                                    type="button" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="input-group mb-4 password-input-group">
+                                <span class="input-group-text"><i
+                                        class="fas fa-check-circle"></i></span>
+                                <input type="password" name="confirmPassword"
+                                    class="form-control password-field"
+                                    placeholder="ยืนยันรหัสผ่านใหม่"
+                                    minlength="6" required>
+                                <button
+                                    class="btn btn-outline-secondary password-toggle"
+                                    type="button" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <button type="submit"
+                                class="btn btn-primary w-100 py-2 mb-3">ยืนยันรีเซ็ตรหัสผ่าน</button>
+                        </form>
+                        <div class="text-center">
+                            <a href="#" onclick="showLogin(); return false;"
+                                class="text-muted small"><i
+                                    class="fas fa-chevron-left"></i>
+                                กลับไปหน้าเข้าสู่ระบบ</a>
+                        </div>
+                    </div>
+
+                    <div id="registerPage" class="auth-page d-none">
+                        <h3 class="text-center mb-4 fw-bold">สมัครสมาชิก</h3>
+
+                        <% if (typeof registerError !== 'undefined' &&
+                        registerError) { %>
+                        <div class="alert alert-danger small text-center"><%=
+                            registerError %></div>
+                        <% } %>
+
+                        <form method="POST" action="/register"
+                            enctype="multipart/form-data">
+
+                            <div class="mb-3">
+                                <label
+                                    class="form-label small text-muted">ประเภทผู้ใช้งาน</label>
+                                <select name="role" id="roleSelect"
+                                    class="form-select"
+                                    onchange="toggleSellerFields()" required>
+                                    <option value="CUSTOMER">ลูกค้าทั่วไป
+                                        (Customer)</option>
+                                    <option value="SELLER">พ่อค้า/แม่ค้า
+                                        (Seller)</option>
+                                </select>
+                            </div>
+
+                            <div class="input-group mb-3">
+                                <span class="input-group-text"><i
+                                        class="fas fa-user-circle"></i></span>
+                                <input type="text" name="name"
+                                    class="form-control"
+                                    placeholder="ชื่อ-นามสกุลจริง" required>
+                            </div>
+
+                            <div class="input-group mb-3">
+                                <span class="input-group-text"><i
+                                        class="fas fa-envelope"></i></span>
+                                <input type="email" name="email"
+                                    class="form-control"
+                                    placeholder="Gmail (example@gmail.com)"
+                                    required>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-7">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i
+                                                class="fas fa-phone"></i></span>
+                                        <input type="tel" name="phoneNumber"
+                                            class="form-control"
+                                            placeholder="เบอร์โทรศัพท์"
+                                            required>
+                                    </div>
+                                </div>
+                                <div class="col-5">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i
+                                                class="fas fa-calendar-alt"></i></span>
+                                        <input type="date" name="birthDate"
+                                            class="form-control" required>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-5">
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
-                                    <input type="date" name="birthDate" class="form-control" required>
+
+                            <div id="sellerFields" class="d-none">
+                                <div class="seller-box p-3 mb-3">
+                                    <h6
+                                        class="fw-bold small text-primary mb-3"><i
+                                            class="fas fa-store me-2"></i>ข้อมูลธุรกิจ
+                                        / ร้านค้า</h6>
+                                    <div class="mb-2">
+                                        <input type="text" name="shopName"
+                                            class="form-control form-control-sm"
+                                            placeholder="ชื่อร้านค้า">
+                                    </div>
+                                    <div class="mb-2">
+                                        <select name="productType"
+                                            class="form-select form-select-sm">
+                                            <option value disabled
+                                                selected>ประเภทสินค้า</option>
+                                            <option
+                                                value="FOOD">อาหาร/เครื่องดื่ม</option>
+                                            <option
+                                                value="FASHION">เสื้อผ้า/แฟชั่น</option>
+                                            <option value="OTHER">อื่นๆ</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <textarea name="productDetail"
+                                            class="form-control form-control-sm"
+                                            rows="2"
+                                            placeholder="รายละเอียดสินค้า..."></textarea>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label
+                                            class="label-upload mb-1">รูปตัวอย่างสินค้า</label>
+                                        <input type="file" name="productImage"
+                                            class="form-control form-control-sm"
+                                            accept="image/*">
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div id="sellerFields" class="d-none">
-                            <div class="seller-box p-3 mb-3">
-                                <h6 class="fw-bold small text-primary mb-3"><i class="fas fa-store me-2"></i>ข้อมูลธุรกิจ / ร้านค้า</h6>
-                                <div class="mb-2">
-                                    <input type="text" name="shopName" class="form-control form-control-sm" placeholder="ชื่อร้านค้า">
-                                </div>
-                                <div class="mb-2">
-                                    <select name="productType" class="form-select form-select-sm">
-                                        <option value="" disabled selected>ประเภทสินค้า</option>
-                                        <option value="FOOD">อาหาร/เครื่องดื่ม</option>
-                                        <option value="FASHION">เสื้อผ้า/แฟชั่น</option>
-                                        <option value="OTHER">อื่นๆ</option>
-                                    </select>
-                                </div>
-                                <div class="mb-2">
-                                    <textarea name="productDetail" class="form-control form-control-sm" rows="2" placeholder="รายละเอียดสินค้า..."></textarea>
-                                </div>
-                                <div class="mb-0">
-                                    <label class="label-upload mb-1">รูปตัวอย่างสินค้า</label>
-                                    <input type="file" name="productImage" class="form-control form-control-sm" accept="image/*">
-                                </div>
+                            <div class="input-group mb-3">
+                                <span class="input-group-text"><i
+                                        class="fas fa-id-badge"></i></span>
+                                <input type="text" name="username"
+                                    class="form-control" placeholder="Username"
+                                    required>
                             </div>
-                        </div>
+                            <div class="input-group mb-4 password-input-group">
+                                <span class="input-group-text"><i
+                                        class="fas fa-key"></i></span>
+                                <input type="password" name="password"
+                                    class="form-control password-field"
+                                    placeholder="Password"
+                                    required>
+                                <button
+                                    class="btn btn-outline-secondary password-toggle"
+                                    type="button" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="fas fa-id-badge"></i></span>
-                            <input type="text" name="username" class="form-control" placeholder="Username" required>
+                            <button type="submit"
+                                class="btn btn-primary w-100 py-2 mb-3">สร้างบัญชี</button>
+                        </form>
+                        <div class="text-center">
+                            <a href="#" onclick="showLogin()"
+                                class="text-muted small"><i
+                                    class="fas fa-chevron-left"></i>
+                                กลับไปหน้าเข้าสู่ระบบ</a>
                         </div>
-                        <div class="input-group mb-4">
-                            <span class="input-group-text"><i class="fas fa-key"></i></span>
-                            <input type="password" name="password" class="form-control" placeholder="Password" required>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100 py-2 mb-3">สร้างบัญชี</button>
-                    </form>
-                    <div class="text-center">
-                        <a href="#" onclick="showLogin()" class="text-muted small"><i class="fas fa-chevron-left"></i> กลับไปหน้าเข้าสู่ระบบ</a>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script>
-        function showRegister() {
-            document.getElementById('loginPage').classList.add('d-none');
-            document.getElementById('registerPage').classList.remove('d-none');
-        }
-        function showLogin() {
-            document.getElementById('registerPage').classList.add('d-none');
-            document.getElementById('loginPage').classList.remove('d-none');
-        }
-        function toggleSellerFields() {
-            const role = document.getElementById('roleSelect').value;
-            const sellerFields = document.getElementById('sellerFields');
-            const inputs = sellerFields.querySelectorAll('input, select, textarea');
-            if (role === 'SELLER') {
-                sellerFields.classList.remove('d-none');
-                inputs.forEach(i => { if(i.type !== 'file') i.setAttribute('required', ''); });
-            } else {
-                sellerFields.classList.add('d-none');
-                inputs.forEach(i => i.removeAttribute('required'));
-            }
-        }
-    </script>
-</body>
+        <script src="/js/login/auth.js"></script>
+    </body>
 </html>

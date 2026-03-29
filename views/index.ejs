@@ -1,162 +1,742 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kangsadan Night Market | ยินดีต้อนรับ</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/stylesheets/index/style.css">
-    <style>
-        /* สไตล์เพิ่มเติมสำหรับหน้าประกาศ */
-        .announcement-card { border-radius: 20px; transition: 0.3s; border: none; overflow: hidden; }
-        .announcement-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
-        .announcement-img { height: 200px; object-fit: cover; }
-        .badge-news { background: #3498db; }
-        .badge-promo { background: #e74c3c; }
-        .badge-rule { background: #f39c12; }
-    </style>
-</head>
-<body>
-
-    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="/">
-                <i class="fas fa-store-alt me-2"></i>KANGSADAN
-            </a>
-            <div class="ms-auto">
-                <% if (user) { %>
-                    <span class="text-light me-3 small d-none d-md-inline">สวัสดี, <b><%= user.name %></b></span>
-                    <a href="/logout" class="btn btn-outline-light btn-sm rounded-pill px-3">ออกจากระบบ</a>
-                <% } else { %>
-                    <a href="/login" class="btn btn-kangsadan btn-sm px-4 rounded-pill">เข้าสู่ระบบ / สมัครสมาชิก</a>
-                <% } %>
-            </div>
-        </div>
-    </nav>
-
-    <header class="hero-section">
-        <div class="container">
-            <h1 class="hero-title">ตลาดกังสดาล มข.</h1>
-            <p class="hero-subtitle text-uppercase">แหล่งรวมสตรีทฟู้ดและแฟชั่นที่ใหญ่ที่สุดในย่านกังสดาล</p>
-            <div class="d-flex justify-content-center gap-3">
-                <a href="#about" class="btn btn-light rounded-pill px-4 py-2">สำรวจตลาด</a>
-                <% if (!user) { %>
-                    <a href="/login" class="btn btn-kangsadan px-4 py-2 rounded-pill">เริ่มจองแผงค้า</a>
-                <% } else if (user.role === 'ADMIN' || user.role === 'STAFF') { %>
-                    <a href="/admin/dashboard" class="btn btn-kangsadan px-4 py-2 rounded-pill">ไปที่แผงควบคุม</a>
-                <% } %>
-            </div>
-        </div>
-    </header>
-
-    <section class="py-5 bg-light">
-        <div class="container">
-            <div class="d-flex justify-content-between align-items-end mb-4">
-                <div>
-                    <h2 class="fw-bold mb-0">ประกาศและข่าวสาร</h2>
-                    <p class="text-muted small mb-0">ข้อมูลล่าสุดสำหรับคุณโดยเฉพาะ</p>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Kangsadan Night Market | ยินดีต้อนรับ</title>
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+            rel="stylesheet">
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet">
+        <link rel="stylesheet"
+            href="/stylesheets/index/style.css?v=20260329-12">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body>
+        <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+            <div class="container">
+                <a class="navbar-brand fw-bold index-brand" href="/">
+                    <img src="/img/logo.png" alt="Kangsadan logo"
+                        class="index-nav-logo">
+                    <span>KANGSADAN NIGHT</span>
+                </a>
+                <div
+                    class="d-none d-lg-flex align-items-center gap-2 top-links">
+                    <a href="#visit" class="top-link">เริ่มใช้งาน</a>
+                    <a href="#about" class="top-link">ทำไมต้องสมัคร</a>
+                    <a href="#announcements" class="top-link">ประกาศ</a>
+                    <a href="#zones" class="top-link">โซนตลาด</a>
+                    <a href="#faq" class="top-link">คำถามที่พบบ่อย</a>
                 </div>
-                <span class="badge bg-dark rounded-pill px-3 py-2">
-                    สำหรับ: <%= user ? user.role : 'ลูกค้าทั่วไป' %>
-                </span>
+                <div class="ms-auto d-flex align-items-center gap-2">
+                    <% if (user) { %>
+                    <span class="user-chip d-none d-md-inline">สวัสดี, <b><%=
+                            user.name %></b></span>
+                    <a href="/logout"
+                        class="btn btn-outline-light btn-sm rounded-pill px-3">ออกจากระบบ</a>
+                    <% } else { %>
+                    <a href="/login"
+                        class="btn btn-kangsadan nav-login-btn btn-sm px-4 rounded-pill"><i
+                            class="fas fa-right-to-bracket me-1"></i>เข้าสู่ระบบ
+                        / สมัครสมาชิก</a>
+                    <% } %>
+                </div>
             </div>
+        </nav>
 
-            <div class="row g-4">
-                <% if (locals.announcements && announcements.length > 0) { %>
-                    <% announcements.forEach(post => { %>
-                        <div class="col-md-4">
-                            <div class="card announcement-card h-100 shadow-sm">
-                                <% if (post.image) { %>
-                                    <img src="/uploads/announcements/<%= post.image %>" class="card-img-top announcement-img" alt="news">
+        <header class="hero-section">
+            <div class="hero-banner-wrapper">
+                <img src="/img/banner.png" alt="Kangsadan Night Market Banner"
+                    class="hero-banner">
+            </div>
+            <div class="hero-content-wrapper">
+                <div class="container">
+                    <div class="hero-layout">
+                        <div class="hero-copy">
+                            <div class="hero-badge">แลนด์มาร์คใหม่ ใจกลางกังสดาล
+                                มข.</div>
+                            <h1 class="hero-title">เฟสติวัลทุกวัน
+                                มันส์ทุกก้าว</h1>
+                            <p
+                                class="hero-subtitle">รวมของกิน ของช้อป
+                                และกิจกรรมในบรรยากาศคึกคักทุกคืน
+                                พร้อมระบบสมัครร้านค้าและจัดการแผงที่ใช้งานง่าย</p>
+                            <div class="hero-highlights">
+                                <span><i
+                                        class="fas fa-music"></i>เวทีดนตรีสดทุกสัปดาห์</span>
+                                <span><i
+                                        class="fas fa-utensils"></i>โซนอาหารหลากหลาย</span>
+                                <span><i
+                                        class="fas fa-store"></i>โซนร้านค้าครีเอทีฟ</span>
+                            </div>
+                            <div class="hero-stats">
+                                <article>
+                                    <strong>150+</strong>
+                                    <small>ร้านค้าในตลาด</small>
+                                </article>
+                                <article>
+                                    <strong>7 วัน</strong>
+                                    <small>เปิดทุกสัปดาห์</small>
+                                </article>
+                                <article>
+                                    <strong>17:00-00:00</strong>
+                                    <small>ช่วงเวลา</small>
+                                </article>
+                            </div>
+                            <div class="hero-actions">
+                                <a href="#announcements"
+                                    class="btn btn-hero-main rounded-pill px-4 py-2"><i
+                                        class="fas fa-bullhorn me-2"></i>ดูประกาศล่าสุด</a>
+                                <% if (!user) { %>
+                                <a href="/login"
+                                    class="btn btn-kangsadan hero-login-btn hero-cta px-4 py-2 rounded-pill"><i
+                                        class="fas fa-user-plus me-2"></i>สมัครใช้งาน</a>
+                                <% } else if (user.role === 'ADMIN' || user.role
+                                ===
+                                'STAFF') { %>
+                                <a href="/admin/dashboard"
+                                    class="btn btn-kangsadan hero-cta px-4 py-2 rounded-pill"><i
+                                        class="fas fa-gauge-high me-2"></i>ไปที่แผงควบคุม</a>
                                 <% } else { %>
-                                    <div class="bg-secondary d-flex align-items-center justify-content-center text-white announcement-img">
-                                        <i class="fas fa-bullhorn fa-3x opacity-25"></i>
-                                    </div>
+                                <a href="/market/slots"
+                                    class="btn btn-kangsadan hero-cta px-4 py-2 rounded-pill"><i
+                                        class="fas fa-shop me-2"></i>ดูผังแผงตลาด</a>
                                 <% } %>
-                                <div class="card-body p-4">
-                                    <div class="mb-2">
-                                        <% 
-                                            let badgeClass = 'badge-news';
-                                            if(post.category === 'โปรโมชั่น') badgeClass = 'badge-promo';
-                                            if(post.category === 'กฎระเบียบ') badgeClass = 'badge-rule';
-                                        %>
-                                        <span class="badge <%= badgeClass %> rounded-pill"><%= post.category %></span>
+                            </div>
+                        </div>
+                        <aside class="hero-side-panel">
+                            <h5>ไฮไลต์คืนนี้</h5>
+                            <p class="mb-3">เลือกโซนที่ชอบ
+                                แล้ววางแผนเดินตลาดได้ทันที</p>
+                            <ul class="hero-timeline">
+                                <li><span>18:00</span>เริ่มดนตรีสดหน้าโซนกิจกรรม</li>
+                                <li><span>19:30</span>ช่วงพีคของโซนอาหาร</li>
+                                <li><span>21:00</span>โปรโมชันร้านค้าพิเศษประจำคืน</li>
+                            </ul>
+                            <a href="#zones"
+                                class="btn btn-hero-ghost rounded-pill w-100 py-2"><i
+                                    class="fas fa-compass me-2"></i>สำรวจโซนทั้งหมด</a>
+                            <div class="hero-note"><i
+                                    class="fas fa-circle-info me-2"></i>คำแนะนำ:
+                                มาหลัง 18:30 บรรยากาศคึกคักที่สุด</div>
+                        </aside>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <section class="market-facts">
+            <div class="container">
+                <div class="facts-grid">
+                    <article class="fact-item">
+                        <i class="fas fa-map-location-dot"></i>
+                        <div>
+                            <small>ทำเลเด่น</small>
+                            <strong>ใจกลางกังสดาล มข.</strong>
+                        </div>
+                    </article>
+                    <article class="fact-item">
+                        <i class="fas fa-road"></i>
+                        <div>
+                            <small>การเดินทางสะดวก</small>
+                            <strong>ติดถนนกัลปฤกษ์</strong>
+                        </div>
+                    </article>
+                    <article class="fact-item">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <small>เปิดให้บริการ</small>
+                            <strong>ทุกวัน 17.00น.-00.00น.</strong>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <main>
+            <section id="visit" class="visit-section py-5">
+                <div class="container">
+                    <div class="visit-card">
+                        <div class="visit-main">
+                            <h2 class="fw-bold mb-2">เริ่มใช้งานง่ายใน 3
+                                ขั้นตอน</h2>
+                            <p class="text-muted mb-3">สมัครครั้งเดียว
+                                แล้วจัดการแผง
+                                ติดตามสถานะ และรับประกาศสำคัญได้จากหน้าเดียว</p>
+                            <div class="visit-grid">
+                                <div class="visit-item">
+                                    <div class="visit-step-index">1</div>
+                                    <div>
+                                        <small>สมัครสมาชิก</small>
+                                        <strong>สร้างบัญชีร้านค้าหรือผู้ใช้งานในไม่กี่นาที</strong>
                                     </div>
-                                    <h5 class="fw-bold"><%= post.title %></h5>
-                                    <p class="card-text text-muted small"><%= post.content.substring(0, 120) %>...</p>
-                                    <hr class="my-3 opacity-25">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <small class="text-muted"><i class="far fa-calendar-alt me-1"></i> <%= new Date(post.createdAt).toLocaleDateString('th-TH') %></small>
-                                        <button class="btn btn-link btn-sm text-decoration-none p-0 fw-bold">อ่านต่อ <i class="fas fa-arrow-right ms-1"></i></button>
+                                </div>
+                                <div class="visit-item">
+                                    <div class="visit-step-index">2</div>
+                                    <div>
+                                        <small>เลือกแผงและส่งคำขอ</small>
+                                        <strong>ดูผังแผงว่างและยื่นคำขอผ่านระบบได้ทันที</strong>
+                                    </div>
+                                </div>
+                                <div class="visit-item">
+                                    <div class="visit-step-index">3</div>
+                                    <div>
+                                        <small>ติดตามผลและจัดการร้าน</small>
+                                        <strong>เช็กสถานะอนุมัติและอัปเดตข้อมูลร้านได้ตลอด</strong>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    <% }) %>
-                <% } else { %>
-                    <div class="col-12 text-center py-5">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3 opacity-25"></i>
-                        <p class="text-muted">ยังไม่มีประกาศใหม่ในขณะนี้</p>
-                    </div>
-                <% } %>
-            </div>
-        </div>
-    </section>
-
-    <section id="about" class="py-5">
-        <div class="container">
-            <div class="text-center mb-5">
-                <h2 class="fw-bold">ทำไมต้องมาที่นี่?</h2>
-                <p class="text-muted">ความสะดวกสบายที่มาพร้อมกับบรรยากาศสุดชิลล์</p>
-            </div>
-            
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <div class="feature-card text-center h-100 p-4 shadow-sm border-0 rounded-4">
-                        <div class="icon-box mx-auto mb-3 bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width:70px; height:70px;">
-                            <i class="fas fa-utensils fs-3"></i>
-                        </div>
-                        <h4 class="fw-bold">สตรีทฟู้ดเจ้าดัง</h4>
-                        <p class="text-muted small">รวมร้านอาหารเด็ดทั่วขอนแก่นมาไว้ที่เดียว กินคาวต่อนมได้ทันที</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="feature-card text-center h-100 p-4 shadow-sm border-0 rounded-4">
-                        <div class="icon-box mx-auto mb-3 bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center" style="width:70px; height:70px;">
-                            <i class="fas fa-tshirt fs-3"></i>
-                        </div>
-                        <h4 class="fw-bold">แฟชั่นสุดฮิต</h4>
-                        <p class="text-muted small">อัปเดตเทรนด์เสื้อผ้าและของสะสม ราคาเป็นกันเองสไตล์นักศึกษา</p>
+                        <aside class="visit-side">
+                            <h6 class="fw-bold mb-3">พร้อมเริ่มเลยไหม?</h6>
+                            <ul class="visit-list mb-0">
+                                <li><i class="fas fa-check-circle"></i>
+                                    ใช้งานฟรี ไม่มีค่าธรรมเนียมสมัคร</li>
+                                <li><i class="fas fa-check-circle"></i>
+                                    ระบบแจ้งเตือนประกาศล่าสุดอัตโนมัติ</li>
+                                <li><i class="fas fa-check-circle"></i>
+                                    รองรับทั้งผู้ขายและทีมผู้ดูแล</li>
+                            </ul>
+                            <% if (!user) { %>
+                            <a href="/login"
+                                class="btn btn-kangsadan w-100 rounded-pill mt-3 py-2"><i
+                                    class="fas fa-user-plus me-2"></i>สมัครใช้งานตอนนี้</a>
+                            <% } else if (user.role === 'ADMIN' || user.role ===
+                            'STAFF') { %>
+                            <a href="/admin/dashboard"
+                                class="btn btn-kangsadan w-100 rounded-pill mt-3 py-2"><i
+                                    class="fas fa-gauge-high me-2"></i>จัดการระบบทันที</a>
+                            <% } else { %>
+                            <a href="/market/slots"
+                                class="btn btn-kangsadan w-100 rounded-pill mt-3 py-2"><i
+                                    class="fas fa-shop me-2"></i>เริ่มจองแผงขาย</a>
+                            <% } %>
+                        </aside>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="feature-card text-center h-100 p-4 shadow-sm border-0 rounded-4">
-                        <div class="icon-box mx-auto mb-3 bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center" style="width:70px; height:70px;">
-                            <i class="fas fa-calendar-check fs-3"></i>
+            </section>
+
+            <section id="about" class="about-section py-5">
+                <div class="container">
+                    <div class="text-center mb-5">
+                        <h2 class="fw-bold">ทำไมต้องสมัครผ่านระบบนี้</h2>
+                        <p class="text-muted">จัดการทุกอย่างได้ง่ายขึ้น โปร่งใส
+                            และไม่พลาดทุกการอัปเดตสำคัญ</p>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <article class="feature-card h-100">
+                                <div class="feature-icon food"><i
+                                        class="fas fa-calendar-check"></i></div>
+                                <h4 class="fw-bold">จองแผงได้เป็นระบบ</h4>
+                                <p
+                                    class="text-muted mb-0">เห็นสถานะแผงชัดเจน
+                                    ลดการจองซ้ำ และจัดคิวได้รวดเร็วขึ้น</p>
+                            </article>
                         </div>
-                        <h4 class="fw-bold">จองแผงออนไลน์</h4>
-                        <p class="text-muted small">พ่อค้าแม่ค้าจองแผงได้ง่ายๆ ผ่านระบบออนไลน์ ไม่ต้องรอนาน</p>
+                        <div class="col-md-4">
+                            <article class="feature-card h-100">
+                                <div class="feature-icon fashion"><i
+                                        class="fas fa-bell"></i></div>
+                                <h4 class="fw-bold">ไม่พลาดประกาศสำคัญ</h4>
+                                <p class="text-muted mb-0">ติดตามข่าวสาร
+                                    โปรโมชัน และเงื่อนไขล่าสุดได้ในหน้าเดียว</p>
+                            </article>
+                        </div>
+                        <div class="col-md-4">
+                            <article class="feature-card h-100">
+                                <div class="feature-icon booking"><i
+                                        class="fas fa-chart-line"></i></div>
+                                <h4 class="fw-bold">บริหารร้านได้ต่อเนื่อง</h4>
+                                <p
+                                    class="text-muted mb-0">จัดการข้อมูลร้านและสถานะคำขอ
+                                    ได้สะดวกจากทุกอุปกรณ์</p>
+                            </article>
+                        </div>
+                    </div>
+                    <div class="signup-banner mt-4">
+                        <div>
+                            <h5 class="fw-bold mb-1">พร้อมเริ่มขายที่ Kangsadan
+                                Night แล้วหรือยัง?</h5>
+                            <p class="mb-0">สมัครวันนี้
+                                เพื่อเริ่มจองแผงและรับข่าวสารสำคัญก่อนใคร</p>
+                        </div>
+                        <% if (!user) { %>
+                        <a href="/login"
+                            class="btn btn-light rounded-pill px-4 py-2"><i
+                                class="fas fa-rocket me-2"></i>สมัครใช้งาน</a>
+                        <% } else if (user.role === 'ADMIN' || user.role ===
+                        'STAFF') { %>
+                        <a href="/admin/dashboard"
+                            class="btn btn-light rounded-pill px-4 py-2"><i
+                                class="fas fa-gauge-high me-2"></i>เข้าสู่แผงควบคุม</a>
+                        <% } else { %>
+                        <a href="/market/slots"
+                            class="btn btn-light rounded-pill px-4 py-2"><i
+                                class="fas fa-shop me-2"></i>ไปหน้าเลือกแผง</a>
+                        <% } %>
+                    </div>
+                </div>
+            </section>
+
+            <section id="announcements" class="announcements-section py-5">
+                <div class="container">
+                    <div class="section-head">
+                        <div>
+                            <h2 class="fw-bold mb-1">ประกาศและข่าวสารล่าสุด</h2>
+                            <p class="text-muted mb-0">อัปเดตโปรโมชัน กิจกรรม
+                                และประกาศสำคัญจากตลาดกังสดาลไนท์</p>
+                        </div>
+                        <span class="role-badge-pill">อัปเดตล่าสุด</span>
+                    </div>
+
+                    <div class="announcement-tools mb-4">
+                        <div class="input-group search-bar">
+                            <span class="input-group-text"><i
+                                    class="fas fa-search"></i></span>
+                            <input id="announcementSearch" type="text"
+                                class="form-control"
+                                placeholder="ค้นหาหัวข้อหรือเนื้อหาประกาศ">
+                        </div>
+                        <select id="announcementSort"
+                            class="form-select sort-select">
+                            <option value="newest">ล่าสุดก่อน</option>
+                            <option value="oldest">เก่าสุดก่อน</option>
+                            <option value="title-asc">ชื่อเรื่อง A-Z</option>
+                        </select>
+                        <div class="category-pills" id="categoryPills">
+                            <button class="cat-pill active"
+                                data-category="ALL">ทั้งหมด</button>
+                            <button class="cat-pill"
+                                data-category="ทั่วไป">ทั่วไป</button>
+                            <button class="cat-pill"
+                                data-category="ข่าวสาร">ข่าวสาร</button>
+                            <button class="cat-pill"
+                                data-category="กฎเกณฑ์">กฎเกณฑ์</button>
+                            <button class="cat-pill"
+                                data-category="เหตุฉุกเฉิน">เหตุฉุกเฉิน</button>
+                        </div>
+                    </div>
+
+                    <div class="row g-4" id="announcementGrid">
+                        <% if (locals.announcements && announcements.length > 0)
+                        { %>
+                        <% announcements.forEach(post => { %>
+                        <div class="col-md-6 col-lg-4 announcement-col"
+                            data-category="<%= post.category %>"
+                            data-search="<%= `${post.title} ${post.content}`.toLowerCase() %>"
+                            data-title="<%= post.title.toLowerCase() %>"
+                            data-date="<%= new Date(post.createdAt).getTime() %>">
+                            <article class="announcement-card h-100">
+                                <div class="announcement-media">
+                                    <% if (post.image) { %>
+                                    <img
+                                        src="/uploads/announcements/<%= post.image %>"
+                                        class="announcement-img clickable"
+                                        alt="news"
+                                        onclick="openAnnouncementImage('/uploads/announcements/<%= encodeURIComponent(post.image) %>', '<%= encodeURIComponent(post.title) %>')">
+                                    <% } else { %>
+                                    <div class="img-fallback"><i
+                                            class="fas fa-bullhorn"></i></div>
+                                    <% } %>
+                                    <span class="announcement-category"><%=
+                                        post.category %></span>
+                                </div>
+                                <div class="card-body p-4 d-flex flex-column">
+                                    <small class="date-label"><i
+                                            class="far fa-calendar-alt me-1"></i><%=
+                                        new
+                                        Date(post.createdAt).toLocaleDateString('th-TH')
+                                        %></small>
+                                    <h5 class="fw-bold mt-2 mb-2"><%= post.title
+                                        %></h5>
+                                    <p class="card-text text-muted mb-3"><%=
+                                        post.content.length > 120 ?
+                                        post.content.substring(0, 120) + '...' :
+                                        post.content %></p>
+                                    <button type="button"
+                                        class="btn btn-link announcement-readmore p-0 mt-auto text-decoration-none"
+                                        data-title="<%= post.title %>"
+                                        data-content="<%= post.content.replace(/"/g,
+                                        '&quot;') %>"
+                                        data-image="<%= post.image ?
+                                        `/uploads/announcements/${encodeURIComponent(post.image)}`
+                                        : '' %>"
+                                        data-date="<%= new
+                                        Date(post.createdAt).toLocaleDateString('th-TH')
+                                        %>"
+                                        data-category="<%= post.category %>">
+                                        อ่านรายละเอียด <i
+                                            class="fas fa-arrow-right ms-1"></i>
+                                    </button>
+                                </div>
+                            </article>
+                        </div>
+                        <% }) %>
+                        <% } else { %>
+                        <div class="col-12 text-center py-5">
+                            <i
+                                class="fas fa-inbox fa-3x text-muted mb-3 opacity-25"></i>
+                            <p
+                                class="text-muted mb-0">ยังไม่มีประกาศใหม่ในขณะนี้</p>
+                        </div>
+                        <% } %>
+
+                        <div id="emptyFilteredAnnouncements"
+                            class="col-12 text-center py-5 d-none">
+                            <i
+                                class="fas fa-filter fa-2x text-muted mb-3 opacity-25"></i>
+                            <p
+                                class="text-muted mb-0">ไม่พบประกาศที่ตรงกับการค้นหา</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="zones" class="zones-section py-5">
+                <div class="container">
+                    <div class="text-center mb-5">
+                        <h2 class="fw-bold">โซนเด่นประจำตลาด</h2>
+                        <p class="text-muted">เดินง่าย ครบทุกสไตล์ ชิม ช้อป ชิล
+                            ในคืนเดียว</p>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <article class="zone-highlight h-100">
+                                <div class="zone-head food"><i
+                                        class="fas fa-bowl-food"></i>
+                                    โซนอาหาร</div>
+                                <p class="mb-0">รวมร้านอาหาร เครื่องดื่ม
+                                    และเมนูฮิตที่อัปเดตทุกสัปดาห์</p>
+                            </article>
+                        </div>
+                        <div class="col-md-4">
+                            <article class="zone-highlight h-100">
+                                <div class="zone-head fashion"><i
+                                        class="fas fa-shirt"></i>
+                                    โซนแฟชั่น</div>
+                                <p class="mb-0">เสื้อผ้า แอ็กเซสซอรี
+                                    และสินค้าไลฟ์สไตล์สำหรับทุกวัย</p>
+                            </article>
+                        </div>
+                        <div class="col-md-4">
+                            <article class="zone-highlight h-100">
+                                <div class="zone-head activity"><i
+                                        class="fas fa-music"></i>
+                                    โซนกิจกรรม</div>
+                                <p
+                                    class="mb-0">พื้นที่แสดงดนตรีสดและกิจกรรมพิเศษตามเทศกาลตลอดปี</p>
+                            </article>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="faq" class="faq-section py-5">
+                <div class="container">
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold">คำถามที่พบบ่อย</h2>
+                        <p
+                            class="text-muted mb-0">ข้อมูลเบื้องต้นสำหรับผู้ใช้งานทั่วไปและผู้ที่สนใจเปิดร้าน</p>
+                    </div>
+
+                    <div class="accordion faq-accordion" id="faqAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqOne">
+                                <button class="accordion-button" type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#faqCollapseOne"
+                                    aria-expanded="true"
+                                    aria-controls="faqCollapseOne">
+                                    ตลาดเปิดวันไหนและกี่โมง?
+                                </button>
+                            </h2>
+                            <div id="faqCollapseOne"
+                                class="accordion-collapse collapse show"
+                                aria-labelledby="faqOne"
+                                data-bs-parent="#faqAccordion">
+                                <div
+                                    class="accordion-body">ตลาดกังสดาลไนท์เปิดทุกวัน
+                                    ตั้งแต่ 17.00น.-00.00น.</div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqTwo">
+                                <button class="accordion-button collapsed"
+                                    type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#faqCollapseTwo"
+                                    aria-expanded="false"
+                                    aria-controls="faqCollapseTwo">
+                                    ถ้าต้องการเปิดร้านต้องทำอย่างไร?
+                                </button>
+                            </h2>
+                            <div id="faqCollapseTwo"
+                                class="accordion-collapse collapse"
+                                aria-labelledby="faqTwo"
+                                data-bs-parent="#faqAccordion">
+                                <div
+                                    class="accordion-body">สามารถสมัครสมาชิกผ่านปุ่ม
+                                    สมัครร้านค้า / เข้าสู่ระบบ
+                                    จากนั้นกรอกข้อมูลร้านค้าและทำรายการจองแผงผ่านระบบได้ทันที</div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqThree">
+                                <button class="accordion-button collapsed"
+                                    type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#faqCollapseThree"
+                                    aria-expanded="false"
+                                    aria-controls="faqCollapseThree">
+                                    มีการอัปเดตกิจกรรมและประกาศจากที่ไหน?
+                                </button>
+                            </h2>
+                            <div id="faqCollapseThree"
+                                class="accordion-collapse collapse"
+                                aria-labelledby="faqThree"
+                                data-bs-parent="#faqAccordion">
+                                <div
+                                    class="accordion-body">ทุกประกาศจะอัปเดตในส่วน
+                                    ประกาศและข่าวสารล่าสุด ด้านบนของหน้านี้
+                                    พร้อมระบบค้นหาและกรองหมวดหมู่</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer py-5">
+            <div class="container text-center">
+                <h5 class="fw-bold mb-3">KANGSADAN NIGHT MARKET</h5>
+                <p class="mb-4 small opacity-75">เปิดให้บริการทุกวัน ตั้งแต่เวลา
+                    17.00 - 23.00 น.</p>
+                <div class="social-links mb-4">
+                    <a href="#"
+                        class="text-white mx-3 text-decoration-none opacity-75"><i
+                            class="fab fa-facebook-f fs-5"></i></a>
+                    <a href="#"
+                        class="text-white mx-3 text-decoration-none opacity-75"><i
+                            class="fab fa-instagram fs-5"></i></a>
+                    <a href="#"
+                        class="text-white mx-3 text-decoration-none opacity-75"><i
+                            class="fab fa-line fs-5"></i></a>
+                </div>
+                <p class="mb-0 small opacity-50">&copy; 2026 Kangsadan Night
+                    Market System. All Rights Reserved.</p>
+            </div>
+        </footer>
+
+        <div class="modal fade" id="announcementModal" tabindex="-1"
+            aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 rounded-4">
+                    <div class="modal-header border-0 pb-1">
+                        <div>
+                            <small class="text-muted"
+                                id="modalAnnouncementMeta"></small>
+                            <h5 class="modal-title fw-bold mt-1"
+                                id="modalAnnouncementTitle"></h5>
+                        </div>
+                        <button type="button" class="btn-close"
+                            data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body pt-0">
+                        <div id="modalAnnouncementImageWrap"
+                            class="announcement-modal-image-wrap d-none">
+                            <img id="modalAnnouncementImage"
+                                class="announcement-modal-image"
+                                alt="announcement image">
+                            <small
+                                class="announcement-modal-hint">คลิกรูปเพื่อดูภาพเต็ม</small>
+                        </div>
+                        <p class="mb-0" id="modalAnnouncementContent"></p>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
 
-    <footer class="bg-dark text-white py-5">
-        <div class="container text-center">
-            <h5 class="fw-bold mb-3">KANGSADAN NIGHT MARKET</h5>
-            <p class="mb-4 small opacity-75">เปิดให้บริการทุกวัน ตั้งแต่เวลา 17.00 - 23.00 น.</p>
-            <div class="social-links mb-4">
-                <a href="#" class="text-white mx-3 text-decoration-none opacity-50"><i class="fab fa-facebook-f fs-5"></i></a>
-                <a href="#" class="text-white mx-3 text-decoration-none opacity-50"><i class="fab fa-instagram fs-5"></i></a>
-                <a href="#" class="text-white mx-3 text-decoration-none opacity-50"><i class="fab fa-line fs-5"></i></a>
-            </div>
-            <p class="mb-0 small opacity-50">&copy; 2026 Kangsadan Night Market System. All Rights Reserved.</p>
-        </div>
-    </footer>
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script>
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-</body>
+        window.addEventListener('pageshow', () => {
+            window.scrollTo(0, 0);
+        });
+
+        window.addEventListener('load', () => {
+            window.scrollTo(0, 0);
+        });
+
+        const searchInput = document.getElementById('announcementSearch');
+        const catPills = document.querySelectorAll('.cat-pill');
+        const announcementCols = document.querySelectorAll('.announcement-col');
+        const emptyFilteredAnnouncements = document.getElementById('emptyFilteredAnnouncements');
+        const sortSelect = document.getElementById('announcementSort');
+        const announcementGrid = document.getElementById('announcementGrid');
+        const STORAGE_KEY = 'kangsadan_home_filters';
+        let currentCategory = 'ALL';
+
+        function filterAnnouncements() {
+            const term = (searchInput?.value || '').toLowerCase().trim();
+            let visible = 0;
+
+            announcementCols.forEach((col) => {
+                const matchCategory = currentCategory === 'ALL' || col.dataset.category === currentCategory;
+                const matchSearch = col.dataset.search.includes(term);
+                const show = matchCategory && matchSearch;
+                col.style.display = show ? '' : 'none';
+                if (show) visible += 1;
+            });
+
+            if (emptyFilteredAnnouncements) {
+                emptyFilteredAnnouncements.classList.toggle('d-none', visible > 0 || announcementCols.length === 0);
+            }
+
+            saveFilterState();
+        }
+
+        function sortAnnouncements() {
+            if (!announcementGrid || !sortSelect) return;
+
+            const cols = Array.from(announcementCols);
+            const sortType = sortSelect.value;
+
+            cols.sort((a, b) => {
+                if (sortType === 'oldest') {
+                    return Number(a.dataset.date) - Number(b.dataset.date);
+                }
+                if (sortType === 'title-asc') {
+                    return a.dataset.title.localeCompare(b.dataset.title, 'th');
+                }
+                return Number(b.dataset.date) - Number(a.dataset.date);
+            });
+
+            cols.forEach((col) => announcementGrid.appendChild(col));
+            saveFilterState();
+        }
+
+        function saveFilterState() {
+            const payload = {
+                term: searchInput ? searchInput.value : '',
+                category: currentCategory,
+                sort: sortSelect ? sortSelect.value : 'newest'
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        }
+
+        function loadFilterState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return;
+                const saved = JSON.parse(raw);
+
+                if (searchInput && typeof saved.term === 'string') {
+                    searchInput.value = saved.term;
+                }
+                if (saved.category) {
+                    currentCategory = saved.category;
+                    catPills.forEach((pill) => {
+                        pill.classList.toggle('active', pill.dataset.category === saved.category);
+                    });
+                }
+                if (sortSelect && saved.sort) {
+                    sortSelect.value = saved.sort;
+                }
+            } catch (error) {
+                localStorage.removeItem(STORAGE_KEY);
+            }
+        }
+
+        if (searchInput) searchInput.addEventListener('input', filterAnnouncements);
+        if (sortSelect) {
+            sortSelect.addEventListener('change', () => {
+                sortAnnouncements();
+                filterAnnouncements();
+            });
+        }
+        catPills.forEach((pill) => {
+            pill.addEventListener('click', () => {
+                catPills.forEach((p) => p.classList.remove('active'));
+                pill.classList.add('active');
+                currentCategory = pill.dataset.category;
+                filterAnnouncements();
+            });
+        });
+
+        loadFilterState();
+        sortAnnouncements();
+        filterAnnouncements();
+
+        const modalEl = document.getElementById('announcementModal');
+        function openAnnouncementImage(imageUrl, encodedTitle = '') {
+            if (!imageUrl) return;
+
+            let title = 'รูปประกาศ';
+            if (encodedTitle) {
+                try {
+                    title = decodeURIComponent(encodedTitle);
+                } catch (error) {
+                    title = encodedTitle;
+                }
+            }
+
+            if (window.Swal && typeof Swal.fire === 'function') {
+                Swal.fire({
+                    title,
+                    imageUrl,
+                    imageAlt: title,
+                    width: 'min(92vw, 1100px)',
+                    confirmButtonText: 'ปิด',
+                    confirmButtonColor: '#3BB8D4',
+                    showCloseButton: true
+                });
+                return;
+            }
+
+            window.open(imageUrl, '_blank', 'noopener,noreferrer');
+        }
+
+        window.openAnnouncementImage = openAnnouncementImage;
+
+        if (modalEl) {
+            const modal = new bootstrap.Modal(modalEl);
+            const titleEl = document.getElementById('modalAnnouncementTitle');
+            const contentEl = document.getElementById('modalAnnouncementContent');
+            const metaEl = document.getElementById('modalAnnouncementMeta');
+            const imageWrapEl = document.getElementById('modalAnnouncementImageWrap');
+            const imageEl = document.getElementById('modalAnnouncementImage');
+
+            document.querySelectorAll('.announcement-readmore').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    titleEl.textContent = btn.dataset.title || '';
+                    contentEl.textContent = btn.dataset.content || '';
+                    metaEl.textContent = `${btn.dataset.category || '-'} | ${btn.dataset.date || '-'}`;
+
+                    if (btn.dataset.image && imageEl && imageWrapEl) {
+                        imageEl.src = btn.dataset.image;
+                        imageEl.onclick = () => openAnnouncementImage(btn.dataset.image, encodeURIComponent(btn.dataset.title || 'รูปประกาศ'));
+                        imageWrapEl.classList.remove('d-none');
+                    } else if (imageEl && imageWrapEl) {
+                        imageEl.src = '';
+                        imageEl.onclick = null;
+                        imageWrapEl.classList.add('d-none');
+                    }
+
+                    modal.show();
+                });
+            });
+        }
+    </script>
+    </body>
 </html>

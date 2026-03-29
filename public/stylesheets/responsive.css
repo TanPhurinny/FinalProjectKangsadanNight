@@ -1,0 +1,167 @@
+/* Global responsive rules for all pages */
+
+@media (max-width: 1199.98px) {
+
+    .container,
+    .container-fluid {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+}
+
+@media (max-width: 991.98px) {
+
+    .page-header,
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.75rem;
+    }
+
+    #live-date {
+        min-width: auto;
+    }
+
+    .legend-bar {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 767.98px) {
+
+    html,
+    body {
+        overflow-x: hidden;
+    }
+
+    .container,
+    .container-fluid {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    h1,
+    .display-5 {
+        font-size: 1.55rem !important;
+    }
+
+    h2,
+    .section-title {
+        font-size: 1.25rem !important;
+    }
+
+    .lead {
+        font-size: 0.95rem;
+    }
+
+    .hero-section {
+        padding: 72px 0 !important;
+    }
+
+    .hero-title {
+        font-size: 2rem !important;
+    }
+
+    .hero-subtitle {
+        font-size: 0.95rem !important;
+        margin-bottom: 20px !important;
+    }
+
+    .stats-card-body,
+    .stats-card-small-body {
+        padding: 1rem !important;
+    }
+
+    .stats-icon {
+        width: 54px !important;
+        height: 54px !important;
+        font-size: 1.2rem !important;
+        margin-bottom: 0.85rem !important;
+    }
+
+    .card-body,
+    .modal-body {
+        padding: 1rem !important;
+    }
+
+    .modal-dialog {
+        margin: 0.6rem;
+    }
+
+    .row.g-4,
+    .row.g-3 {
+        --bs-gutter-y: 0.9rem;
+    }
+
+    .btn,
+    .btn-primary-custom,
+    .btn-custom {
+        min-height: 40px;
+        font-size: 0.92rem;
+    }
+
+    .table {
+        font-size: 0.86rem;
+    }
+
+    .table td,
+    .table th {
+        padding: 0.65rem 0.55rem !important;
+        vertical-align: middle;
+    }
+
+    .table-responsive {
+        border-radius: 12px;
+    }
+
+    .market-layout {
+        display: grid;
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+    }
+
+    .slot-grid {
+        gap: 8px;
+    }
+
+    .slot-box {
+        min-height: 40px;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .navbar-brand {
+        font-size: 1rem;
+    }
+
+    .page-header {
+        padding: 1rem !important;
+        margin-bottom: 1rem !important;
+    }
+
+    .header-logo {
+        max-width: 72px !important;
+    }
+
+    .card,
+    .card-custom,
+    .feature-card,
+    .approval-card,
+    .table-card {
+        border-radius: 12px !important;
+    }
+
+    .input-group .form-control,
+    .form-control,
+    .form-select,
+    .form-control-custom,
+    .form-select-custom {
+        font-size: 0.9rem;
+        padding-top: 0.6rem;
+        padding-bottom: 0.6rem;
+    }
+}
