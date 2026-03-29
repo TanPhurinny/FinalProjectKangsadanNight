@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>จองแผงค้า</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+  <style>
+    /* ==========================================
+       book-stall.css (ย้ายมารวมให้จัดการง่าย)
+       ========================================== */
+    :root {
+      --primary:    #3BB8D4;
+      --primary-lt: #A0E3F3;
+      --primary-dk: #2a9ab5;
+      --accent-add: #27C840;
+      --accent-edit:#FFCA08;
+      --accent-del: #E51837;
+      --gray-bg:    #f4f5f7;
+      --gray-border:#d8dde3;
+      --gray-btn:   #b0b8c1;
+      --text-main:  #1a1d23;
+      --text-sub:   #6b7280;
+      --white:      #ffffff;
+      --warn-red:   #E51837;
+      --radius-sm:  6px;
+      --radius-md:  10px;
+      --radius-lg:  14px;
+      --shadow-card:0 2px 12px rgba(0,0,0,0.07);
+      --shadow-modal:0 8px 40px rgba(0,0,0,0.18);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { font-size: 15px; }
+
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: var(--gray-bg);
+      color: var(--text-main);
+      min-height: 100vh;
+    }
+
+    .site-header {
+      position: sticky; top: 0; z-index: 100; background: var(--white);
+      border-bottom: 1.5px solid var(--gray-border); display: flex; align-items: center;
+      padding: 0 24px; height: 58px; box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    }
+
+    .btn-back {
+      display: flex; align-items: center; justify-content: center; width: 38px; height: 38px;
+      border: none; background: transparent; cursor: pointer; border-radius: var(--radius-sm);
+      color: var(--text-main); transition: background 0.15s;
+    }
+    .btn-back:hover { background: var(--gray-bg); }
+
+    .header-title { flex: 1; text-align: center; font-size: 1.2rem; font-weight: 700; color: var(--text-main); }
+    .header-spacer { width: 38px; }
+
+    .main-content { max-width: 720px; margin: 32px auto 60px; padding: 0 16px; }
+    .form-card { background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 32px 36px 36px; }
+
+    .field-group { margin-bottom: 22px; }
+    .field-label { display: block; font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 8px; }
+    .field-input {
+      width: 100%; padding: 11px 14px; background: var(--primary-lt); border: 1.5px solid transparent;
+      border-radius: var(--radius-sm); font-family: 'Sarabun', sans-serif; font-size: 0.97rem; color: var(--text-main);
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,184,212,0.13); }
+    .field-textarea { resize: vertical; min-height: 80px; }
+
+    .date-row { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+    .date-item { display: flex; align-items: center; gap: 8px; }
+    .date-label { font-size: 0.93rem; font-weight: 500; color: var(--text-main); }
+    .date-input { width: 170px; padding: 9px 12px; }
+
+    .upload-box {
+      width: 72px; height: 72px; background: #e8ecef; border-radius: var(--radius-sm);
+      border: 1.5px dashed var(--gray-border); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; overflow: hidden; position: relative; transition: border-color 0.2s, background 0.2s;
+    }
+    .upload-box:hover { border-color: var(--primary); background: #e0f6fb; }
+    .upload-box-sm { width: 60px; height: 60px; }
+    .upload-preview { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+
+    .radio-group { display: flex; flex-direction: column; gap: 8px; }
+    .radio-label { display: flex; align-items: center; gap: 9px; cursor: pointer; font-size: 0.97rem; font-weight: 500; }
+    .radio-label input[type="radio"] { display: none; }
+    .radio-custom {
+      width: 18px; height: 18px; border-radius: 50%; border: 2px solid #b0c4cc;
+      background: #fff; flex-shrink: 0; transition: border-color 0.2s;
+    }
+    .radio-label input[type="radio"]:checked ~ .radio-custom {
+      border-color: var(--primary); background: var(--primary); box-shadow: inset 0 0 0 3px #fff;
+    }
+
+    .table-wrapper { overflow-x: auto; border-radius: var(--radius-md); border: 1.5px solid var(--gray-border); }
+    .elec-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    .elec-table thead tr { background: var(--primary); }
+    .elec-table thead th { padding: 10px 12px; text-align: left; color: var(--white); font-weight: 600; font-size: 0.9rem; }
+    .elec-table tbody tr { border-bottom: 1px solid #edf0f3; transition: background 0.12s; }
+    .elec-table tbody tr:hover { background: #f7fbfd; }
+    .elec-table tbody td { padding: 9px 12px; }
+    .elec-table tfoot tr { border-top: 1.5px solid var(--gray-border); background: #fafbfc; }
+    .elec-table tfoot td { padding: 10px 12px; }
+    .tfoot-label { font-weight: 600; color: var(--text-sub); }
+    .tfoot-sum { font-weight: 700; font-size: 0.97rem; }
+    .action-cell { display: flex; gap: 5px; align-items: center; }
+
+    .btn-edit, .btn-delete, .btn-add {
+      border: none; border-radius: 5px; padding: 5px 12px; font-family: 'Sarabun', sans-serif;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn-edit:hover, .btn-delete:hover, .btn-add:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-edit   { background: var(--accent-edit); color: #111; }
+    .btn-delete { background: var(--accent-del);  color: #fff; }
+    .btn-add    { background: var(--accent-add);  color: #fff; font-size: 0.85rem; padding: 6px 12px; }
+
+    .summary-box { background: var(--primary-lt); border-radius: var(--radius-sm); padding: 16px 20px; margin-bottom: 24px; border: 1.5px solid rgba(59,184,212,0.25); }
+    .summary-line { font-size: 0.97rem; font-weight: 500; margin-bottom: 4px; line-height: 1.6; }
+    .total-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+    .total-label { font-size: 1.25rem; font-weight: 800; }
+    .total-amount { font-size: 1.65rem; font-weight: 800; }
+    .total-note { text-align: right; font-size: 0.82rem; color: var(--text-sub); margin-bottom: 28px; }
+
+    .bottom-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .btn-cancel-main, .btn-confirm {
+      width: 100%; padding: 15px 0; border: none; border-radius: var(--radius-md); font-family: 'Sarabun', sans-serif;
+      font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn-cancel-main:hover, .btn-confirm:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-cancel-main { background: var(--gray-btn); color: #fff; }
+    .btn-confirm { background: var(--primary); color: #fff; box-shadow: 0 4px 16px rgba(59,184,212,0.3); }
+
+    /* ==========================================
+       MODAL (ปรับขนาดเล็กลง และเตรียมให้เลื่อนได้)
+       ========================================== */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; visibility: hidden; transition: opacity 0.22s, visibility 0.22s;
+      padding: 16px;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    
+    .modal-box {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 400px; /* ลดขนาดลงให้กะทัดรัด */
+      box-shadow: var(--shadow-modal);
+      transform: translate(0, 0) scale(1);
+      /* ทำให้มันเป็น Position อิสระเพื่อเลื่อนได้ */
+      position: relative; 
+      margin: auto;
+    }
+
+    .modal-header {
+      background: var(--primary);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      padding: 12px 20px; /* ลด Padding ให้เล็กลง */
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: grab; /* ไอคอนมือเพื่อบ่งบอกว่าลากได้ */
+      user-select: none;
+    }
+    .modal-header:active { cursor: grabbing; }
+
+    .modal-title { font-size: 1.05rem; font-weight: 700; color: var(--white); pointer-events: none; }
+    .modal-close {
+      background: rgba(255,255,255,0.2); border: none; color: var(--white);
+      width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.35); }
+
+    .modal-body { padding: 16px 20px 20px; } /* ลด Padding */
+    .modal-section-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 10px; }
+
+    .radio-card {
+      display: flex; align-items: flex-start; gap: 11px; padding: 10px 12px;
+      border-radius: var(--radius-sm); cursor: pointer; margin-bottom: 8px;
+      border: 1.5px solid transparent; background: #fafbfc;
+    }
+    .radio-card:hover { border-color: var(--primary-lt); background: #f0fafd; }
+    .radio-card input[type="radio"] { display: none; }
+    .radio-card .radio-custom { margin-top: 2px; flex-shrink: 0; }
+    .radio-card input[type="radio"]:checked ~ .radio-custom {
+      border-color: var(--primary); background: var(--primary); box-shadow: inset 0 0 0 3px #fff;
+    }
+    .radio-card-content { flex: 1; }
+    .radio-card-main { font-size: 0.9rem; font-weight: 600; }
+    .radio-card-warn { font-size: 0.75rem; color: var(--warn-red); margin-top: 2px; }
+    .radio-card-sub  { font-size: 0.75rem; color: var(--text-sub);  margin-top: 2px; }
+    .price-tag { color: var(--primary-dk); font-weight: 700; }
+
+    .modal-device-title { font-size: 0.95rem; font-weight: 700; margin: 12px 0 10px; padding-top: 10px; border-top: 1.5px solid #eee; }
+    .modal-form-grid { display: grid; grid-template-columns: 1fr; gap: 10px; } /* ปรับเป็น 1 แถวต่อกล่องให้ดูไม่เบียด */
+    .modal-field { display: flex; flex-direction: column; gap: 4px; }
+    .modal-field-label { font-size: 0.85rem; font-weight: 600; }
+    .required { color: var(--accent-del); }
+    .modal-input { padding: 8px 12px; border: 1.5px solid var(--gray-border); border-radius: var(--radius-sm); font-size: 0.9rem; outline: none; }
+    .modal-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,184,212,0.12); }
+    .qty-input { width: 100%; } /* ขยายให้เต็มใน Modal เล็ก */
+
+    .modal-footer {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+      padding: 14px 20px; border-top: 1.5px solid #eee;
+    }
+    .btn-modal-cancel, .btn-modal-add {
+      padding: 10px 0; border: none; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 700; cursor: pointer;
+    }
+    .btn-modal-cancel:hover, .btn-modal-add:hover { opacity: 0.85; }
+    .btn-modal-cancel { background: var(--gray-btn); color: #fff; }
+    .btn-modal-add    { background: var(--primary);   color: #fff; }
+  </style>
+</head>
+<body>
+<%- include('../partials/navbar2') %>
+  <header class="site-header">
+    <button class="btn-back" onclick="history.back()" title="ย้อนกลับ">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+    <h1 class="header-title" id="pageTitle">จองแผงค้า</h1>
+    <div class="header-spacer"></div>
+  </header>
+
+  <main class="main-content">
+    <div class="form-card">
+      <div class="field-group">
+        <label class="field-label">ชื่อ – นามสกุล</label>
+        <input type="text" class="field-input" id="fullname" placeholder="กรอกชื่อ-นามสกุล" value="<%= user ? user.name : '' %>" readonly />
+      </div>
+      <div class="field-group">
+        <label class="field-label">เบอร์โทรศัพท์</label>
+        <input type="tel" class="field-input" id="phone" placeholder="กรอกเบอร์โทรศัพท์" value="<%= user ? user.phoneNumber : '' %>" readonly />
+      </div>
+      <div class="field-group">
+        <label class="field-label">วันที่ต้องการเช่า</label>
+        <div class="date-row">
+          <div class="date-item"><span class="date-label">เริ่ม :</span><input type="date" class="field-input date-input" id="dateStart" onchange="recalcTotal()" /></div>
+          <div class="date-item"><span class="date-label">สิ้นสุด :</span><input type="date" class="field-input date-input" id="dateEnd" onchange="recalcTotal()" /></div>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">รายละเอียดร้านค้า</label>
+        <textarea class="field-input field-textarea" id="storeDetail" placeholder="เพิ่มรายละเอียด...."></textarea>
+      </div>
+      <div class="field-group">
+        <label class="field-label">รูปภาพสินค้า</label>
+        <div class="upload-box" id="productUploadBox" onclick="document.getElementById('productImageInput').click()">
+          <input type="file" id="productImageInput" accept="image/*" style="display:none" onchange="previewImage(this,'productUploadBox')" />
+          <div class="upload-placeholder" id="productUploadPlaceholder">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <img id="productUploadPreview" class="upload-preview" style="display:none" alt="preview" />
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">ไฟสว่าง</label>
+        <div class="radio-group">
+          <label class="radio-label"><input type="radio" name="light" value="yes" onchange="recalcTotal()" /><span class="radio-custom"></span> ใช้</label>
+          <label class="radio-label"><input type="radio" name="light" value="no" checked onchange="recalcTotal()" /><span class="radio-custom"></span> ไม่ใช้</label>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">เครื่องใช้ไฟฟ้า (หากมี)</label>
+        <div class="table-wrapper">
+          <table class="elec-table" id="elecTable">
+            <thead>
+              <tr><th>เครื่องใช้ไฟฟ้า</th><th>ประเภท</th><th>จำนวน</th><th>ราคา</th><th>จัดการ</th></tr>
+            </thead>
+            <tbody id="elecTableBody">
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2" class="tfoot-label">รวม</td>
+                <td colspan="2" class="tfoot-sum" id="elecSum">0 บาท</td>
+                <td><button class="btn-add" onclick="openAddModal()">เพิ่มเครื่องใช้ไฟฟ้า</button></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="summary-box">
+        <div class="summary-line">ค่าเช่าแผง : <strong id="displayPrice">500 บาท/วัน</strong></div>
+        <div class="summary-line" id="summaryLightLine" style="display:none">ไฟสว่าง : <strong id="displayLight"></strong></div>
+        <div class="summary-line">โซน : <strong id="displayZone">ไม่ระบุ</strong></div>
+      </div>
+
+      <div class="total-row">
+        <span class="total-label">รวมเงิน</span>
+        <span class="total-amount" id="totalAmount">0 บาท</span>
+      </div>
+      <div class="total-note">ท่านจะสามารถชำระเงินได้หลังจากแอดมินอนุมัติ</div>
+
+      <div class="bottom-buttons">
+        <button class="btn-cancel-main" onclick="history.back()">ยกเลิก</button>
+        <button class="btn-confirm" onclick="handleConfirm()">ยืนยันการจอง</button>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModalOnOverlay(event)">
+    <div class="modal-box" id="modalBox">
+      <div class="modal-header" id="modalHeader">
+        <span class="modal-title" id="modalTitle">เครื่องใช้ไฟฟ้า</span>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section-title">ประเภทเครื่องใช้ไฟฟ้า</div>
+        <label class="radio-card" id="radioCardSmall">
+          <input type="radio" name="deviceType" value="small" id="radioSmall" onchange="onDeviceTypeChange()" />
+          <span class="radio-custom"></span>
+          <div class="radio-card-content">
+            <div class="radio-card-main">เครื่องใช้ไฟฟ้าเล็ก &nbsp;<u>เครื่องละ</u> <span class="price-tag">20 บาท/วัน</span></div>
+            <div class="radio-card-warn">หมายเหตุ ต้องต่ำกว่า 1200 วัตต์ (เช่น เครื่องปั่น กาน้ำร้อน)</div>
+          </div>
+        </label>
+        <label class="radio-card" id="radioCardLarge">
+          <input type="radio" name="deviceType" value="large" id="radioLarge" onchange="onDeviceTypeChange()" checked />
+          <span class="radio-custom"></span>
+          <div class="radio-card-content">
+            <div class="radio-card-main">เครื่องใช้ไฟฟ้าใหญ่ &nbsp;<u>เครื่องละ</u> <span class="price-tag">40 บาท/วัน</span></div>
+            <div class="radio-card-sub">เช่น กระทะไฟฟ้า เตาอบ หม้อทอด ตู้แช่ ฯลฯ</div>
+          </div>
+        </label>
+
+        <div class="modal-device-title" id="modalDeviceTitle">เครื่องใช้ไฟฟ้าขนาดใหญ่</div>
+        <div class="modal-form-grid">
+          <div class="modal-field">
+            <label class="modal-field-label">ชื่อเครื่องใช้ไฟฟ้า <span class="required">*</span></label>
+            <input type="text" class="modal-input" id="deviceName" placeholder="เช่น ตู้แช่น้ำ" />
+          </div>
+          <div class="modal-field">
+            <label class="modal-field-label">รายละเอียดเครื่องใช้ไฟฟ้า</label>
+            <input type="text" class="modal-input" id="deviceDetail" placeholder="ยี่ห้อ หรือขนาดความจุ" />
+          </div>
+        </div>
+        <div class="modal-field" style="margin-top:10px">
+          <label class="modal-field-label">จำนวน</label>
+          <input type="number" class="modal-input qty-input" id="deviceQty" placeholder="1" min="1" value="1" />
+        </div>
+        <div class="modal-field" style="margin-top:10px">
+          <label class="modal-field-label">รูปภาพ</label>
+          <div class="upload-box upload-box-sm" id="deviceUploadBox" onclick="document.getElementById('deviceImageInput').click()">
+            <input type="file" id="deviceImageInput" accept="image/*" style="display:none" onchange="previewImage(this,'deviceUploadBox')" />
+            <div class="upload-placeholder" id="deviceUploadPlaceholder">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </div>
+            <img id="deviceUploadPreview" class="upload-preview" style="display:none" alt="preview" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal-cancel" onclick="closeModal()">ยกเลิก</button>
+        <button class="btn-modal-add" id="modalAddBtn" onclick="addDevice()">เพิ่มเครื่องใช้ไฟฟ้า</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.PRICE_SMALL = 20;
+    window.PRICE_LARGE = 40;
+    window.LIGHT_COST_PER_DAY = 15;
+    window.STALL_RENT_PER_DAY = 500; // ค่าเริ่มต้น
+
+    const $ = id => document.getElementById(id);
+    let editingRow = null;
+
+    // ==========================================
+    // 1. ดึงข้อมูล Zone และ Price จาก URL มาอัปเดตอัตโนมัติ
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramZone = urlParams.get('zone');
+      const paramStall = urlParams.get('stall');
+      const paramPrice = urlParams.get('price');
+
+      if (paramStall && paramZone) {
+        $('displayZone').textContent = paramZone + ' แถว ' + paramStall;
+        $('pageTitle').textContent = 'จองแผง โซน ' + paramZone + ' (' + paramStall + ')';
+      }
+      if (paramPrice) {
+        window.STALL_RENT_PER_DAY = parseInt(paramPrice);
+        $('displayPrice').textContent = paramPrice + ' บาท/วัน';
+      }
+
+      document.querySelectorAll('input[name="light"]').forEach(input => {
+        input.addEventListener('change', recalcTotal);
+      });
+
+      recalcTotal();
+    });
+
+    // ==========================================
+    // 2. ทำให้ Popup ขยับ/ลากได้ (Draggable Modal)
+    // ==========================================
+    const modalBox = document.getElementById('modalBox');
+    const modalHeader = document.getElementById('modalHeader');
+    
+    let isDragging = false;
+    let currentX = 0, currentY = 0, initialX, initialY;
+    let xOffset = 0, yOffset = 0;
+
+    modalHeader.addEventListener("mousedown", dragStart);
+    document.addEventListener("mousemove", drag);
+    document.addEventListener("mouseup", dragEnd);
+
+    function dragStart(e) {
+      initialX = e.clientX - xOffset;
+      initialY = e.clientY - yOffset;
+      if (e.target === modalHeader || e.target.parentNode === modalHeader) {
+        isDragging = true;
+      }
+    }
+    function drag(e) {
+      if (isDragging) {
+        e.preventDefault();
+        currentX = e.clientX - initialX;
+        currentY = e.clientY - initialY;
+        xOffset = currentX;
+        yOffset = currentY;
+        modalBox.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+      }
+    }
+    function dragEnd(e) {
+      initialX = currentX;
+      initialY = currentY;
+      isDragging = false;
+    }
+    function resetDrag() {
+      currentX = 0; currentY = 0; xOffset = 0; yOffset = 0;
+      modalBox.style.transform = 'translate3d(0, 0, 0)';
+    }
+
+    // ==========================================
+    // MODAL LOGIC (เครื่องใช้ไฟฟ้า)
+    // ==========================================
+    function openAddModal() {
+      editingRow = null;
+      resetModal();
+      resetDrag(); // รีเซ็ตตำแหน่งให้อยู่ตรงกลางทุกครั้งที่เปิด
+      $('modalTitle').textContent   = 'เครื่องใช้ไฟฟ้า';
+      $('modalAddBtn').textContent  = 'เพิ่มเครื่องใช้ไฟฟ้า';
+      $('modalOverlay').classList.add('active');
+      document.body.style.overflow  = 'hidden';
+    }
+
+    function openEditModal(btn) {
+      const row = btn.closest('tr');
+      editingRow = row;
+      const cells    = row.querySelectorAll('td');
+      const name     = cells[0].textContent.replace(/^\d+\./, '').trim();
+      const typeText = cells[1].textContent.trim();
+      const qty      = cells[2].textContent.trim();
+
+      resetModal();
+      resetDrag(); 
+
+      if (typeText === 'ขนาดเล็ก') { $('radioSmall').checked = true; } 
+      else { $('radioLarge').checked = true; }
+      onDeviceTypeChange();
+
+      $('deviceName').value  = name;
+      $('deviceQty').value   = qty;
+      $('modalTitle').textContent  = 'แก้ไขเครื่องใช้ไฟฟ้า';
+      $('modalAddBtn').textContent = 'บันทึกการแก้ไข';
+      $('modalOverlay').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      $('modalOverlay').classList.remove('active');
+      document.body.style.overflow = '';
+      editingRow = null;
+    }
+
+    function closeModalOnOverlay(e) {
+      if (e.target === $('modalOverlay')) closeModal();
+    }
+
+    function resetModal() {
+      $('deviceName').value   = '';
+      $('deviceDetail').value = '';
+      $('deviceQty').value    = '1';
+      $('radioLarge').checked = true;
+      onDeviceTypeChange();
+      $('deviceUploadPreview').style.display     = 'none';
+      $('deviceUploadPlaceholder').style.display = 'flex';
+    }
+
+    function onDeviceTypeChange() {
+      const isSmall = $('radioSmall').checked;
+      $('modalDeviceTitle').textContent = isSmall ? 'เครื่องใช้ไฟฟ้าขนาดเล็ก' : 'เครื่องใช้ไฟฟ้าขนาดใหญ่';
+    }
+
+    function addDevice() {
+      const name   = $('deviceName').value.trim();
+      const qty    = parseInt($('deviceQty').value) || 1;
+      const isSmall= $('radioSmall').checked;
+
+      if (!name) {
+        $('deviceName').focus();
+        $('deviceName').style.borderColor = '#E51837';
+        setTimeout(() => $('deviceName').style.borderColor = '', 1800);
+        return;
+      }
+
+      const typeText = isSmall ? 'ขนาดเล็ก' : 'ขนาดใหญ่';
+      const unitPrice= isSmall ? PRICE_SMALL : PRICE_LARGE;
+      const total    = unitPrice * qty;
+      const tbody    = $('elecTableBody');
+      const rowCount = tbody.querySelectorAll('tr').length;
+
+      if (editingRow) {
+        const cells = editingRow.querySelectorAll('td');
+        const num   = cells[0].textContent.match(/^\d+/)?.[0] ?? '';
+        cells[0].textContent = `${num}.${name}`;
+        cells[1].textContent = typeText;
+        cells[2].textContent = qty;
+        cells[3].textContent = total;
+        editingRow.dataset.price = total;
+      } else {
+        const newNum = rowCount + 1;
+        const tr     = document.createElement('tr');
+        tr.dataset.price = total;
+        tr.innerHTML = `
+          <td>${newNum}.${name}</td>
+          <td>${typeText}</td>
+          <td>${qty}</td>
+          <td>${total}</td>
+          <td class="action-cell">
+            <button class="btn-edit"   onclick="openEditModal(this)">แก้ไข</button>
+            <button class="btn-delete" onclick="deleteRow(this)">ลบ</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+      renumberRows();
+      recalcTotal();
+      closeModal();
+    }
+
+    function deleteRow(btn) {
+      btn.closest('tr').remove();
+      renumberRows();
+      recalcTotal();
+    }
+
+    function renumberRows() {
+      $('elecTableBody').querySelectorAll('tr').forEach((row, i) => {
+        const cell = row.querySelector('td:first-child');
+        const name = cell.textContent.replace(/^\d+\./, '').trim();
+        cell.textContent = `${i + 1}.${name}`;
+      });
+    }
+
+    // ==========================================
+    // RECALCULATE TOTAL
+    // ==========================================
+    function recalcTotal() {
+      let elecSum = 0;
+      $('elecTableBody').querySelectorAll('tr').forEach(r => { elecSum += parseInt(r.dataset.price || 0); });
+      $('elecSum').textContent = elecSum + ' บาท';
+
+      const startVal = $('dateStart').value;
+      const endVal   = $('dateEnd').value;
+      let days = 1;
+      if (startVal && endVal) {
+        const start = new Date(startVal);
+        const end   = new Date(endVal);
+        const diff  = Math.round((end - start) / (1000 * 60 * 60 * 24));
+        if (diff > 0) days = diff;
+      }
+
+      const rentTotal    = window.STALL_RENT_PER_DAY * days;
+      const lightSelected = document.querySelector('input[name="light"]:checked')?.value === 'yes';
+      const lightTotal   = lightSelected ? window.LIGHT_COST_PER_DAY * days : 0;
+
+      if (lightSelected) {
+        $('summaryLightLine').style.display = 'block';
+        $('displayLight').textContent = `ใช้ (${window.LIGHT_COST_PER_DAY} บาท/วัน x ${days} วัน = ${lightTotal} บาท)`;
+      } else {
+        $('summaryLightLine').style.display = 'none';
+        $('displayLight').textContent = '';
+      }
+
+      const grandTotal = rentTotal + elecSum + lightTotal;
+
+      $('totalAmount').textContent = grandTotal.toLocaleString('th-TH') + ' บาท';
+    }
+
+    function previewImage(input, boxId) {
+      const box = document.getElementById(boxId);
+      if (!box) return;
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        const preview = box.querySelector('.upload-preview');
+        const placeholder = box.querySelector('.upload-placeholder');
+        if (preview) { preview.src = e.target.result; preview.style.display = 'block'; }
+        if (placeholder) placeholder.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleConfirm() {
+      const name  = $('fullname').value.trim();
+      const phone = $('phone').value.trim();
+      const start = $('dateStart').value;
+      const end   = $('dateEnd').value;
+
+      if (!name)  { alert('กรุณากรอกชื่อ-นามสกุล'); $('fullname').focus(); return; }
+      if (!phone) { alert('กรุณากรอกเบอร์โทรศัพท์'); $('phone').focus(); return; }
+      if (!start || !end) { alert('กรุณาเลือกวันที่เช่า'); return; }
+
+      alert("ส่งคำขอจองเรียบร้อย");
+      window.location.href = "/booking-status";
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
+</body>
+</html>

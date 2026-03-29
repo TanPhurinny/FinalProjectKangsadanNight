@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>รายการจองรออนุมัติ</title>
+
+<link rel="stylesheet" href="/css/admin_booking.css">
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+</head>
+
+<body>
+
+<%- include('../partials/navbar') %>
+
+<div class="container">
+
+<div class="header">
+    <a href="javascript:history.back()" class="back">
+        <i class="fa-solid fa-arrow-left"></i>
+    </a>
+
+    <h2>รายการจองรออนุมัติ</h2>
+</div>
+
+
+<div class="filter">
+
+<button class="active">ทั้งหมด</button>
+<button>รออนุมัติ</button>
+<button>อนุมัติแล้ว</button>
+<button>ปฏิเสธ</button>
+
+</div>
+
+
+<!-- CARD -->
+<div class="card" onclick="openDetail('ร้านน้องข้าวเหนียวหมูปิ้ง','A12','14 ตุลาคม 2568','นางสาวสมหญิง ใจดี','081-234-5678')">
+
+<div class="card-header">
+<h3>ร้านน้องข้าวเหนียวหมูปิ้ง</h3>
+<span class="status pending">รออนุมัติ</span>
+</div>
+
+<div class="card-body">
+
+<p><i class="fa-solid fa-store"></i> หมายเลขล็อก: A12</p>
+<p><i class="fa-solid fa-calendar"></i> วันที่จอง: 14 ตุลาคม 2568</p>
+
+</div>
+
+<div class="card-btn">
+
+<button class="reject">ปฏิเสธ</button>
+<button class="approve" onclick="window.location.href='/admin/booking-stall'">
+เลือกแผง
+</button>
+
+</div>
+
+</div>
+
+
+<!-- CARD -->
+<div class="card" onclick="openDetail('ร้านกาแฟโบราณ','A15','11 ตุลาคม 2568','นายสมชาย ใจดี','082-333-9999')">
+
+<div class="card-header">
+<h3>ร้านกาแฟโบราณ</h3>
+<span class="status pending">รออนุมัติ</span>
+</div>
+
+<div class="card-body">
+
+<p><i class="fa-solid fa-store"></i> หมายเลขล็อก: A15</p>
+<p><i class="fa-solid fa-calendar"></i> วันที่จอง: 11 ตุลาคม 2568</p>
+
+</div>
+
+<div class="card-btn">
+
+<button class="reject">ปฏิเสธ</button>
+<button class="approve">เลือกแผง</button>
+
+</div>
+
+</div>
+
+
+</div>
+
+
+<!-- POPUP DETAIL -->
+
+<div id="popup" class="popup">
+
+<div class="popup-box">
+
+<div class="popup-header">
+<h3>รายละเอียดการจอง</h3>
+<i class="fa-solid fa-xmark" onclick="closePopup()"></i>
+</div>
+
+<div class="popup-body">
+
+<p><b>ชื่อร้านค้า</b></p>
+<p id="shop"></p>
+
+<div class="row">
+<div>
+<p><b>หมายเลขล็อก</b></p>
+<p id="lock"></p>
+</div>
+
+<div>
+<p><b>วันที่จอง</b></p>
+<p id="date"></p>
+</div>
+</div>
+
+<p><b>ผู้จอง</b></p>
+<p id="name"></p>
+
+<p><b>เบอร์โทรศัพท์</b></p>
+<p id="phone"></p>
+
+<p><b>สถานะ</b></p>
+<button class="approve" onclick="window.location.href='/admin/booking-stall'">
+เลือกแผง
+</button>
+
+<p><b>หมายเหตุ</b></p>
+<p>ต้องการจองติดต่อกัน 3 วัน</p>
+
+</div>
+
+</div>
+
+</div>
+<div class="filter-popup" id="filterPopup">
+
+<div class="filter-box">
+
+<h3>การกรอง</h3>
+
+<label><input type="checkbox" value="ลูกชิ้น"> ลูกชิ้น</label>
+<label><input type="checkbox" value="น้ำปั่น"> น้ำปั่น</label>
+<label><input type="checkbox" value="ขนมจีนน้ำยา"> ขนมจีนน้ำยา</label>
+<label><input type="checkbox" value="ส้มตำ"> ส้มตำ</label>
+<label><input type="checkbox" value="หมาล่า"> หมาล่า</label>
+<label><input type="checkbox" value="ขนมโตเกียว"> ขนมโตเกียว</label>
+<label><input type="checkbox" value="ขนมเค้ก"> ขนมเค้ก</label>
+<label><input type="checkbox" value="เครป"> เครป</label>
+<label><input type="checkbox" value="กับข้าว"> กับข้าว</label>
+<label><input type="checkbox" value="ข้าวกล่อง"> ข้าวกล่อง</label>
+<label><input type="checkbox" value="สุกี้"> สุกี้</label>
+<label><input type="checkbox" value="ยำ"> ยำ</label>
+<label><input type="checkbox" value="ทาโกะยากิ"> ทาโกะยากิ</label>
+<label><input type="checkbox" value="ซูชิ"> ซูชิ</label>
+
+<button onclick="applyFilter()">ยืนยัน</button>
+
+</div>
+</div>
+
+<script src="/js/admin_booking.js"></script>
+
+</body>
+</html>
+<style>
+    body{
+font-family: 'Prompt', sans-serif;
+background:#f2f2f2;
+margin:0;
+}
+
+.container{
+width:80%;
+margin:auto;
+margin-top:40px;
+}
+
+.header{
+display:flex;
+align-items:center;
+gap:20px;
+}
+
+.filter{
+margin-top:30px;
+display:flex;
+gap:20px;
+}
+
+.filter button{
+padding:8px 20px;
+border-radius:20px;
+border:1px solid #3BB8D4;
+background:white;
+cursor:pointer;
+}
+
+.filter .active{
+background:#3BB8D4;
+color:white;
+}
+
+.card{
+background:white;
+border-radius:12px;
+padding:20px;
+margin-top:20px;
+box-shadow:0 3px 8px rgba(0,0,0,0.15);
+cursor:pointer;
+}
+
+.card-header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.status{
+padding:5px 12px;
+border-radius:20px;
+font-size:12px;
+}
+
+.pending{
+background:#ff8c2a;
+color:white;
+}
+
+.card-body{
+margin-top:10px;
+color:#555;
+}
+
+.card-btn{
+display:flex;
+gap:20px;
+margin-top:15px;
+}
+
+.reject{
+flex:1;
+background:#ff3b3b;
+border:none;
+color:white;
+padding:10px;
+border-radius:20px;
+}
+
+.approve{
+flex:1;
+background:#27C840;
+border:none;
+color:white;
+padding:10px;
+border-radius:20px;
+}
+
+/* POPUP */
+
+.popup{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.5);
+display:none;
+justify-content:center;
+align-items:center;
+}
+
+.popup-box{
+width:400px;
+background:white;
+border-radius:8px;
+overflow:hidden;
+}
+
+.popup-header{
+background:#3BB8D4;
+color:white;
+padding:15px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.popup-body{
+padding:20px;
+}
+
+.row{
+display:flex;
+justify-content:space-between;
+}
+.filter-popup{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.4);
+display:none;
+align-items:center;
+justify-content:center;
+z-index:999;
+}
+
+.filter-box{
+background:white;
+padding:25px;
+border-radius:8px;
+width:260px;
+display:flex;
+flex-direction:column;
+gap:10px;
+}
+
+.filter-box h3{
+margin-bottom:10px;
+}
+
+.filter-box button{
+margin-top:10px;
+background:#3BB8D4;
+color:white;
+border:none;
+padding:10px;
+border-radius:6px;
+cursor:pointer;
+}
+</style>
+<script>function openDetail(shop,lock,date,name,phone){
+
+document.getElementById("shop").innerText = shop
+document.getElementById("lock").innerText = lock
+document.getElementById("date").innerText = date
+document.getElementById("name").innerText = name
+document.getElementById("phone").innerText = phone
+
+document.getElementById("popup").style.display = "flex"
+
+}
+
+function closePopup(){
+
+document.getElementById("popup").style.display = "none"
+
+}booked: ['A101','A102','A205','A307','A412','A515']</script>

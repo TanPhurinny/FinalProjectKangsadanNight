@@ -1,204 +1,415 @@
 <!DOCTYPE html>
 <html lang="th">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Product Verification | Kangsadan Night Market</title>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>รายการจองรออนุมัติ - Admin</title>
 
-        <link
-            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
-            rel="stylesheet">
-        <link
-            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-            rel="stylesheet">
-        <link
-            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap"
-            rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
 
-        <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
-        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
-        <link rel="stylesheet" href="/stylesheets/admin/approvals.css">
-        <link rel="stylesheet" href="/stylesheets/responsive.css">
-    </head>
-    <body>
-        <%- include('../partials/navbar') %>
+  <style>
+    :root {
+      --primary: #3BB8D4;
+      --primary-dark: #2a9ab5;
+      --primary-light: #e0f6fb;
+      --success: #27C840;
+      --danger: #E51837;
+      --warning: #FF9F1C;
+      --bg: #f4f5f7;
+      --card-bg: #ffffff;
+      --text-main: #1a2b2b;
+      --text-sub: #6b8a8a;
+      --border: #eaeaea;
+      --radius: 12px;
+    }
 
-        <div class="dashboard-container">
-            <header class="d-flex justify-content-between align-items-end mb-4">
-                <div>
-                    <h1 class="fw-bold mb-1">Product Verification</h1>
-                    <p
-                        class="text-muted mb-0">ตรวจสอบคุณภาพสินค้าและข้อมูลผู้ค้าก่อนอนุมัติสิทธิ์เข้าพื้นที่</p>
-                </div>
-                <div class="text-end">
-                    <div
-                        class="badge bg-white text-dark shadow-sm p-2 px-4 rounded-pill border">
-                        <i class="fas fa-hourglass-half text-warning me-2"></i>
-                        รออนุมัติ: <b class="text-primary"
-                            id="pending-count"><%= pendingRequests.length %></b>
-                        รายการ
-                    </div>
-                </div>
-            </header>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-            <div class="d-flex gap-2 mb-4 overflow-auto pb-2">
-                <button
-                    class="btn btn-sm btn-dark rounded-pill px-4">ทั้งหมด</button>
-                <button
-                    class="btn btn-sm btn-outline-dark rounded-pill px-4">โซนอาหาร</button>
-                <button
-                    class="btn btn-sm btn-outline-dark rounded-pill px-4">โซนแฟชั่น</button>
-                <button
-                    class="btn btn-sm btn-outline-dark rounded-pill px-4">โซนทั่วไป</button>
-            </div>
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+    }
 
-            <div class="row g-4" id="approval-grid">
-                <% if (locals.pendingRequests && pendingRequests.length > 0) {
-                %>
-                <% pendingRequests.forEach(item => { %>
-                <div class="col-xl-4 col-md-6 approval-item">
-                    <div class="approval-card shadow-sm border-0">
-                        <div class="product-image-wrapper"
-                            data-bs-toggle="modal"
-                            data-bs-target="#imagePreviewModal"
-                            onclick="previewImage('<%= item.productImage %>', '<%= item.productName %>')">
-                            <img
-                                src="<%= item.productImage || '/img/default-product.jpg' %>"
-                                alt="Product" class="product-img">
-                            <div class="zone-tag-overlay">
-                                <i class="fas fa-map-marker-alt me-1"></i><%=
-                                item.zone %>
-                            </div>
-                            <div class="zoom-hint"><i
-                                    class="fas fa-search-plus"></i>
-                                คลิกเพื่อขยาย</div>
-                        </div>
+    /* ── HEADER ── */
+    .site-header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+    }
+    .btn-back {
+      width: 40px; height: 40px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-main); text-decoration: none; font-size: 18px;
+      background: var(--bg); transition: 0.2s;
+    }
+    .btn-back:hover { background: #e2e6ea; }
+    .header-title {
+      flex: 1; text-align: center; font-family: 'Prompt', sans-serif;
+      font-size: 20px; font-weight: 600;
+    }
+    .header-spacer { width: 40px; }
 
-                        <div class="card-body-main p-4">
-                            <div
-                                class="d-flex justify-content-between align-items-start mb-2">
-                                <h4 class="fw-bold text-dark mb-0 text-truncate"
-                                    style="max-width: 70%;"><%= item.productName
-                                    %></h4>
-                                <span class="badge-status-mini">รอตรวจสอบ</span>
-                            </div>
+    .container {
+      max-width: 800px;
+      margin: 30px auto 60px;
+      padding: 0 16px;
+    }
 
-                            <p class="product-description-text text-muted mb-4">
-                                <%= item.description || 'ไม่มีรายละเอียดสินค้า'
-                                %>
-                            </p>
+    /* ── FILTER SECTION ── */
+    .filter-section {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: var(--radius);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+      margin-bottom: 24px;
+    }
+    .filter-title {
+      font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 600; margin-bottom: 12px;
+    }
+    
+    .filter-group {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .filter-group:last-child { margin-bottom: 0; }
 
-                            <div class="seller-profile-box p-3 rounded-4 mb-4">
-                                <h6
-                                    class="fw-bold small text-uppercase text-primary mb-3 border-bottom pb-2">
-                                    <i class="fas fa-user-circle me-1"></i>
-                                    โปรไฟล์ผู้ค้า
-                                </h6>
-                                <div
-                                    class="info-row d-flex justify-content-between mb-1">
-                                    <span
-                                        class="label text-muted small">ชื่อผู้ขาย:</span>
-                                    <span class="value fw-medium small"><%=
-                                        item.sellerName %></span>
-                                </div>
-                                <div
-                                    class="info-row d-flex justify-content-between mb-1">
-                                    <span
-                                        class="label text-muted small">เบอร์โทร:</span>
-                                    <a href="tel:<%= item.phone %>"
-                                        class="value text-primary text-decoration-none fw-medium small">
-                                        <%= item.phone || 'ไม่ระบุ' %>
-                                    </a>
-                                </div>
-                                <div
-                                    class="info-row d-flex justify-content-between">
-                                    <span class="label text-muted small">ID
-                                        สมาชิก:</span>
-                                    <span
-                                        class="value fw-medium small text-secondary">#<%=
-                                        item.sellerId || 'USR-001' %></span>
-                                </div>
-                            </div>
+    .btn-filter {
+      padding: 8px 20px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      background: var(--card-bg);
+      color: #555;
+      font-family: inherit; font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: 0.2s;
+    }
+    .btn-filter:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-filter.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <form action="/admin/approvals/confirm"
-                                        method="POST"
-                                        onsubmit="return confirm('ยืนยันการอนุมัติสินค้าชิ้นนี้?')">
-                                        <input type="hidden" name="requestId"
-                                            value="<%= item.id %>">
-                                        <input type="hidden" name="status"
-                                            value="APPROVED">
-                                        <button type="submit"
-                                            class="btn btn-manage w-100 py-2">
-                                            <i
-                                                class="fas fa-check-circle me-1"></i>อนุมัติ
-                                        </button>
-                                    </form>
-                                </div>
-                                <div class="col-6">
-                                    <form action="/admin/approvals/confirm"
-                                        method="POST"
-                                        onsubmit="return confirm('ต้องการปฏิเสธคำขอนี้ใช่หรือไม่?')">
-                                        <input type="hidden" name="requestId"
-                                            value="<%= item.id %>">
-                                        <input type="hidden" name="status"
-                                            value="REJECTED">
-                                        <button type="submit"
-                                            class="btn btn-outline-secondary w-100 py-2 rounded-3 border-2 fw-bold"
-                                            style="font-size: 0.9rem;">
-                                            ปฏิเสธ
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <% }) %>
-                <% } else { %>
-                <div class="col-12 text-center py-5">
-                    <div
-                        class="empty-state-card shadow-sm p-5 bg-white rounded-5">
-                        <img src="/img/checked.png" alt="Empty"
-                            style="width: 120px; opacity: 0.8;" class="mb-4">
-                        <h3
-                            class="fw-bold text-dark">งานของคุณเสร็จหมดแล้ว!</h3>
-                        <p
-                            class="text-muted">ขณะนี้ไม่มีรายการคำขออนุมัติสินค้าค้างอยู่ในระบบ</p>
-                        <a href="/admin/dashboard"
-                            class="btn btn-primary-custom px-4 rounded-pill mt-2 text-decoration-none d-inline-block">กลับหน้าหลัก</a>
-                    </div>
-                </div>
-                <% } %>
-            </div>
-        </div>
+    /* ── BOOKING CARDS ── */
+    .card-list {
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .booking-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
 
-        <div class="modal fade" id="imagePreviewModal" tabindex="-1"
-            aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 rounded-4 overflow-hidden">
-                    <div class="modal-header border-0 pb-0">
-                        <h5 class="modal-title fw-bold small"
-                            id="previewTitle">รูปภาพสินค้า</h5>
-                        <button type="button" class="btn-close"
-                            data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body p-3 text-center">
-                        <img src id="fullImage"
-                            class="img-fluid rounded-3 shadow-sm" alt="Preview">
-                    </div>
-                </div>
-            </div>
-        </div>
+    .card-header {
+      display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;
+    }
+    .shop-name {
+      font-family: 'Prompt', sans-serif; font-size: 18px; font-weight: 600; color: var(--primary-dark);
+    }
+    
+    /* Status Badges */
+    .badge {
+      padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block;
+    }
+    .badge.pending { background: #fff0d4; color: #d97706; border: 1px solid #fcd34d; }
+    .badge.approved { background: #dcfce7; color: #059669; border: 1px solid #86efac; }
+    .badge.rejected { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
 
-        <script>
-        function previewImage(src, title) {
-            document.getElementById('fullImage').src = src;
-            document.getElementById('previewTitle').innerText = title;
-        }
-    </script>
-        <script
-            src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    </body>
+    .card-body {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; color: var(--text-sub);
+    }
+    .card-body p { display: flex; align-items: center; gap: 8px; margin: 0; }
+    .card-body i { color: var(--primary); width: 16px; text-align: center; }
+
+    .card-actions {
+      display: flex; gap: 12px; margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 16px;
+    }
+    .btn-action {
+      flex: 1; padding: 10px; border-radius: 8px; border: none; font-family: 'Prompt', sans-serif;
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s;
+    }
+    .btn-reject { background: #ff3b3b; color: white; }
+    .btn-reject:hover { background: #ff3b3b; }
+    .btn-approve { background: var(--primary); color: #fff; }
+    .btn-approve:hover { background: var(--primary); }
+
+    /* ── POPUP MODAL ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; visibility: hidden; transition: 0.3s; padding: 16px;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    
+    .modal-content {
+      background: #fff; width: 100%; max-width: 480px; border-radius: var(--radius);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2); transform: scale(0.95); transition: 0.3s;
+      overflow: hidden;
+    }
+    .modal-overlay.active .modal-content { transform: scale(1); }
+
+    .modal-header {
+      background: var(--primary); color: #fff; padding: 16px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-header h3 { font-family: 'Prompt', sans-serif; font-size: 18px; font-weight: 600; margin: 0; }
+    .btn-close {
+      background: transparent; border: none; color: #fff; font-size: 20px; cursor: pointer;
+    }
+
+    .modal-body { padding: 20px; }
+    .detail-grid {
+      display: grid; grid-template-columns: 120px 1fr; gap: 12px 16px; align-items: baseline;
+      font-size: 15px; margin-bottom: 20px;
+    }
+    .detail-label { font-weight: 600; color: var(--text-sub); }
+    .detail-value { font-weight: 500; color: var(--text-main); }
+    .detail-highlight { color: var(--primary-dark); font-weight: 700; }
+
+    .note-box {
+      background: #fff8e1; border-left: 4px solid var(--warning); padding: 12px;
+      border-radius: 4px; font-size: 14px; margin-bottom: 20px;
+    }
+
+    .modal-footer {
+      display: flex; gap: 12px;
+    }
+
+    /* ซ่อน Card ที่ไม่ตรง Filter */
+    .d-none { display: none !important; }
+
+  </style>
+</head>
+<body>
+
+<%- include('../partials/navbar') %>
+
+<header class="site-header">
+  <a href="javascript:history.back()" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+  <h2 class="header-title">รายการจองรออนุมัติ</h2>
+  <div class="header-spacer"></div>
+</header>
+
+<div class="container">
+
+  <div class="filter-section">
+    <div class="filter-title">สถานะการจอง</div>
+    <div class="filter-group" id="statusFilters">
+      <button class="btn-filter active" data-status="all">ทั้งหมด</button>
+      <button class="btn-filter" data-status="pending">รออนุมัติ</button>
+      <button class="btn-filter" data-status="approved">อนุมัติแล้ว</button>
+      <button class="btn-filter" data-status="rejected">ปฏิเสธ</button>
+    </div>
+
+    <div class="filter-title" style="margin-top: 20px;">ประเภทโซน</div>
+    <div class="filter-group" id="zoneFilters">
+      <button class="btn-filter active" data-zone="all">ทุกโซน</button>
+      <button class="btn-filter" data-zone="fashion">แฟชั่น (A, C, E)</button>
+      <button class="btn-filter" data-zone="food">อาหาร (F, B)</button>
+      <button class="btn-filter" data-zone="truck">ฟู้ดทรัค (D)</button>
+    </div>
+  </div>
+
+  <div class="card-list" id="bookingList">
+    
+    <div class="booking-card" data-status="pending" data-zone="food" 
+         onclick="openDetail('ร้านหมูปิ้งเจ๊จู', 'F101-F117', 'อาหาร', '14 ต.ค. 68', '16 ต.ค. 68', 'นางสาวสมหญิง ใจดี', '081-234-5678', 'pending', 'ขอพื้นที่ใกล้ทางเดินหลักค่ะ')">
+      <div class="card-header">
+        <h3 class="shop-name">ร้านหมูปิ้งเจ๊จู</h3>
+        <span class="badge pending">รออนุมัติ</span>
+      </div>
+      <div class="card-body">
+        <p><i class="fa-solid fa-map-location-dot"></i> โซน: F (อาหาร)</p>
+        <p><i class="fa-solid fa-store"></i> แถวที่เลือก: F101-F117</p>
+        <p><i class="fa-solid fa-calendar-check"></i> เริ่ม: 14 ต.ค. 68</p>
+        <p><i class="fa-solid fa-user"></i> ผู้จอง: สมหญิง ใจดี</p>
+      </div>
+      <div class="card-actions">
+        <button class="btn-action btn-reject" onclick="event.stopPropagation(); alert('ปฏิเสธการจอง');">ปฏิเสธ</button>
+        <button class="btn-action btn-approve" onclick="event.stopPropagation(); window.location.href='/admin/booking-stall?zone=F&stall=F101-F117'">จัดแผง</button>
+      </div>
+    </div>
+
+    <div class="booking-card" data-status="pending" data-zone="fashion" 
+         onclick="openDetail('เสื้อผ้าแฟชั่นวินเทจ', 'A101-A119', 'แฟชั่น', '15 ต.ค. 68', '15 ต.ค. 68', 'นายสมชาย รักดี', '082-333-9999', 'pending', 'ไม่มี')">
+      <div class="card-header">
+        <h3 class="shop-name">เสื้อผ้าแฟชั่นวินเทจ</h3>
+        <span class="badge pending">รออนุมัติ</span>
+      </div>
+      <div class="card-body">
+        <p><i class="fa-solid fa-map-location-dot"></i> โซน: A (แฟชั่น)</p>
+        <p><i class="fa-solid fa-store"></i> แถวที่เลือก: A101-A119</p>
+        <p><i class="fa-solid fa-calendar-check"></i> เริ่ม: 15 ต.ค. 68</p>
+        <p><i class="fa-solid fa-user"></i> ผู้จอง: สมชาย รักดี</p>
+      </div>
+      <div class="card-actions">
+        <button class="btn-action btn-reject" onclick="event.stopPropagation(); alert('ปฏิเสธการจอง');">ปฏิเสธ</button>
+        <button class="btn-action btn-approve" onclick="event.stopPropagation(); window.location.href='/admin/booking-stall?zone=A&stall=A101-A119'">จัดแผง</button>
+      </div>
+    </div>
+
+    <div class="booking-card" data-status="approved" data-zone="truck" 
+         onclick="openDetail('Burger Truck BKK', 'D201-D212', 'ฟู้ดทรัค', '10 ต.ค. 68', '20 ต.ค. 68', 'นายเอกพล คนขยัน', '089-987-6543', 'approved', 'ใช้ไฟเยอะครับ (มีตู้แช่)')">
+      <div class="card-header">
+        <h3 class="shop-name">Burger Truck BKK</h3>
+        <span class="badge approved">อนุมัติแล้ว</span>
+      </div>
+      <div class="card-body">
+        <p><i class="fa-solid fa-map-location-dot"></i> โซน: D (ฟู้ดทรัค)</p>
+        <p><i class="fa-solid fa-store"></i> แถวที่เลือก: D201-D212</p>
+        <p><i class="fa-solid fa-calendar-check"></i> เริ่ม: 10 ต.ค. 68</p>
+        <p><i class="fa-solid fa-user"></i> ผู้จอง: เอกพล คนขยัน</p>
+      </div>
+      <div class="card-actions" style="display: none;"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="detailModal" onclick="closeModalOnOverlay(event)">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>รายละเอียดการจอง</h3>
+      <button class="btn-close" onclick="closePopup()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="detail-grid">
+        <span class="detail-label">ชื่อร้านค้า:</span>
+        <span class="detail-value detail-highlight" id="m-shop"></span>
+        
+        <span class="detail-label">ประเภท/โซน:</span>
+        <span class="detail-value" id="m-zone"></span>
+
+        <span class="detail-label">แถวที่เลือก:</span>
+        <span class="detail-value detail-highlight" id="m-stall"></span>
+
+        <span class="detail-label">วันที่เริ่ม:</span>
+        <span class="detail-value" id="m-start"></span>
+
+        <span class="detail-label">วันที่สิ้นสุด:</span>
+        <span class="detail-value" id="m-end"></span>
+
+        <span class="detail-label">ผู้จอง:</span>
+        <span class="detail-value" id="m-name"></span>
+
+        <span class="detail-label">เบอร์โทรศัพท์:</span>
+        <span class="detail-value" id="m-phone"></span>
+      </div>
+
+      <div class="note-box">
+        <strong>หมายเหตุจากผู้เช่า:</strong><br>
+        <span id="m-note"></span>
+      </div>
+
+      <div class="modal-footer" id="m-footer-actions">
+        <button class="btn-action btn-reject" onclick="closePopup()">ปฏิเสธการจอง</button>
+        <button class="btn-action btn-approve" id="m-approve-btn">ไปหน้าจัดแผง</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // =====================================
+  // FILTER LOGIC
+  // =====================================
+  const statusBtns = document.querySelectorAll('#statusFilters .btn-filter');
+  const zoneBtns = document.querySelectorAll('#zoneFilters .btn-filter');
+  const cards = document.querySelectorAll('.booking-card');
+
+  let currentStatus = 'all';
+  let currentZone = 'all';
+
+  function applyFilters() {
+    cards.forEach(card => {
+      const cStatus = card.dataset.status;
+      const cZone = card.dataset.zone;
+
+      const matchStatus = (currentStatus === 'all' || cStatus === currentStatus);
+      const matchZone = (currentZone === 'all' || cZone === currentZone);
+
+      if (matchStatus && matchZone) {
+        card.classList.remove('d-none');
+      } else {
+        card.classList.add('d-none');
+      }
+    });
+  }
+
+  statusBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      statusBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentStatus = btn.dataset.status;
+      applyFilters();
+    });
+  });
+
+  zoneBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      zoneBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentZone = btn.dataset.zone;
+      applyFilters();
+    });
+  });
+
+  // =====================================
+  // MODAL LOGIC
+  // =====================================
+  const modal = document.getElementById('detailModal');
+
+  function openDetail(shop, stall, zoneType, start, end, name, phone, status, note) {
+    document.getElementById('m-shop').innerText = shop;
+    document.getElementById('m-stall').innerText = stall;
+    document.getElementById('m-zone').innerText = zoneType;
+    document.getElementById('m-start').innerText = start;
+    document.getElementById('m-end').innerText = end;
+    document.getElementById('m-name').innerText = name;
+    document.getElementById('m-phone').innerText = phone;
+    document.getElementById('m-note').innerText = note;
+
+    // ตั้งค่า URL ให้ปุ่มจัดแผง
+    const approveBtn = document.getElementById('m-approve-btn');
+    approveBtn.onclick = function() {
+      // ดึงตัวอักษรตัวแรกของ stall มาเป็นชื่อ Zone (เช่น A101-A119 -> Zone A)
+      let zoneChar = stall.charAt(0); 
+      window.location.href = `/admin/booking-stall?zone=${zoneChar}&stall=${stall}`;
+    };
+
+    // ซ่อนปุ่มจัดการถ้าไม่อยู่ในสถานะ "รออนุมัติ"
+    const footer = document.getElementById('m-footer-actions');
+    if(status === 'pending') {
+      footer.style.display = 'flex';
+    } else {
+      footer.style.display = 'none';
+    }
+
+    modal.classList.add('active');
+  }
+
+  function closePopup() {
+    modal.classList.remove('active');
+  }
+
+  function closeModalOnOverlay(e) {
+    if (e.target === modal) closePopup();
+  }
+</script>
+
+</body>
 </html>

@@ -12,7 +12,6 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // --- 2. Middleware สำคัญ ---
-// ให้มั่นใจว่าโฟลเดอร์ public มีโครงสร้าง /uploads/announcements
 app.use(express.static(path.join(__dirname, 'public'))); 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -25,7 +24,7 @@ app.use(session({
     saveUninitialized: false, 
     cookie: { 
         maxAge: 3600000,
-        httpOnly: true // เพิ่มความปลอดภัยป้องกัน XSS
+        httpOnly: true 
     } 
 }));
 
@@ -39,15 +38,21 @@ app.use((req, res, next) => {
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const marketRoutes = require('./routes/marketRoutes');
+const sellerRoute = require('./routes/sellerRoute');
 const announceCtrl = require('./controllers/announcementController');
 
 // --- 5. การกำหนดเส้นทาง (Routing) ---
 
-// หน้าแรก (Index) - ดึงประกาศตาม Role ของผู้ใช้งาน
+// Middleware สำหรับส่ง Path ไปยังทุก View (ต้องอยู่ก่อน Routes)
+app.use((req, res, next) => {
+    res.locals.path = req.path; 
+    next();
+});
+
+// หน้าแรก (Index)
 app.get('/', async (req, res) => {
     try {
         const user = req.session.user || null;
-        let announcements = [];
 
         // ผู้ใช้ที่ยังไม่เป็นสมาชิก ให้มองเป็น GUEST
         // ผู้ใช้ที่เป็นระบบหลังบ้าน (ADMIN/STAFF) ให้เห็นประกาศกลุ่มลูกค้าเป็นค่าเริ่มต้น
@@ -56,7 +61,7 @@ app.get('/', async (req, res) => {
         else if (user?.role === 'CUSTOMER') roleToFetch = 'CUSTOMER';
         else if (user?.role === 'ADMIN' || user?.role === 'STAFF') roleToFetch = 'CUSTOMER';
 
-        announcements = await announceCtrl.getAnnouncementsForUser(roleToFetch);
+        const announcements = await announceCtrl.getAnnouncementsForUser(roleToFetch);
 
         res.render('index', { 
             user, 
@@ -73,12 +78,13 @@ app.get('/', async (req, res) => {
     }
 });
 
-// ใช้งาน Route ที่แยกไฟล์ไว้
-app.use('/', authRoutes);        
-app.use('/admin', adminRoutes);  
-app.use('/market', marketRoutes);
+// ใช้งาน Route (ลบส่วนที่ซ้ำออกแล้ว)
+app.use('/', authRoutes);        // Login, Register, Logout
+app.use('/admin', adminRoutes);  // Dashboard, Users, Requests
+app.use('/market', marketRoutes); // Slots, Products
+app.use('/', sellerRoute);       // เลือกโซน, แจ้งซ่อม, จองแผง
 
-// --- 6. Error Handling 404 ---
+// --- 6. Error Handling 404 (ต้องอยู่ท้ายสุดเสมอ) ---
 app.use((req, res) => {
     res.status(404).render('index', { 
         user: req.session.user || null, 

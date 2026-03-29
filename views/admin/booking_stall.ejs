@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>จัดผังตลาด - Admin</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+
+  <style>
+    :root {
+      --primary: #3BB8D4;
+      --primary-dark: #2a9ab5;
+      --bg: #f4f5f7;
+      --card-bg: #ffffff;
+      --text-main: #1a2b2b;
+      --text-sub: #6b8a8a;
+      --border: #d4d4d4;
+      --radius: 12px;
+      
+      /* Colors for Map Legend */
+      --stall-empty: #ffffff;
+      --stall-booked: #9ca3af;
+      --stall-selected: #3BB8D4;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .site-header {
+      background: var(--card-bg);
+      border-bottom: 1px solid #eaeaea;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+    }
+    .btn-back {
+      width: 40px; height: 40px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-main); text-decoration: none; font-size: 18px;
+      background: var(--bg); transition: 0.2s;
+    }
+    .btn-back:hover { background: #e2e6ea; }
+    .header-title {
+      flex: 1; text-align: center; font-family: 'Prompt', sans-serif;
+      font-size: 20px; font-weight: 600; margin: 0;
+    }
+    .header-spacer { width: 40px; }
+
+    .container {
+      max-width: 1200px;
+      margin: 20px auto 60px;
+      padding: 0 16px;
+    }
+
+    /* ── APPLICANT INFO CARD (ข้อมูลผู้ขอเช่า) ── */
+    .applicant-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+      border: 1px solid #eaeaea;
+      border-left: 5px solid var(--primary);
+    }
+    .applicant-header {
+      font-family: 'Prompt', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--primary-dark);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px dashed var(--border);
+      padding-bottom: 12px;
+    }
+    .applicant-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px 20px;
+    }
+    .info-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .info-group label {
+      font-size: 13px;
+      color: var(--text-sub);
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .info-group span {
+      font-size: 15px;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+    .note-full-width {
+      grid-column: 1 / -1;
+      background: #fdfae8;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border-left: 3px solid #FF9F1C;
+    }
+
+    /* ── MAP CONTROLS (Top Bar) ── */
+    .map-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 16px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #eaeaea;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .zone-select-wrapper {
+      flex: 1;
+    }
+    .zone-select-wrapper label {
+      display: block; font-weight: 600; font-size: 18px; font-family: 'Prompt', sans-serif;
+    }
+    .zone-select-wrapper span {
+      font-size: 13px; color: #666; display: block; margin-bottom: 12px;
+    }
+    
+    /* ปุ่มเลือกโซน */
+    .zone-btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .btn-zone {
+      padding: 8px 20px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      background: #fff;
+      color: #555;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-zone:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .btn-zone.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .btn-zone small {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+    
+    /* Legend */
+    .legend-box {
+      display: flex; gap: 16px; align-items: center;
+      background: #fff; padding: 10px 20px; border-radius: 30px;
+      border: 1px solid #eaeaea; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      margin-top: auto;
+      margin-bottom: auto;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+    .color-box { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #bbb; }
+    .color-empty { background: var(--stall-empty); }
+    .color-booked { background: var(--stall-booked); border-color: #777;}
+    .color-selected { background: var(--stall-selected); border-color: var(--primary-dark); }
+    .color-requested { border: 2px solid var(--primary); background: transparent; }
+
+    /* ── MAP OUTER & INNER ── */
+    .map-outer {
+      display: flex;
+      background: #e5e5e5;
+      border: 2px solid #bbb;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .map-inner {
+      flex: 1;
+      background: #fff;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-width: 800px; 
+    }
+
+    /* Roads */
+    .road-left {
+      width: 50px; min-width: 50px; background: #e5e5e5;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      border-right: 2px solid #bbb; position: relative; gap: 10px;
+    }
+    .road-left-stripe {
+      position: absolute; top: 0; left: 0; bottom: 0; width: 12px; left: 8px;
+      background: repeating-linear-gradient(180deg, #f5c200 0px, #f5c200 20px, #222 20px, #222 40px);
+    }
+    .road-left-text {
+      writing-mode: vertical-rl; transform: rotate(180deg);
+      font-size: 14px; font-weight: 700; position: relative; z-index: 2; margin-left: 10px;
+    }
+    .road-right {
+      width: 50px; min-width: 50px; background: #e5e5e5;
+      display: flex; align-items: center; justify-content: center;
+      border-left: 2px solid #bbb;
+    }
+    .road-right-text {
+      writing-mode: vertical-rl; font-size: 14px; font-weight: 700;
+    }
+
+    .road-top {
+      height: 50px; background: #e5e5e5; border-bottom: 2px solid #bbb;
+      display: flex; align-items: center; justify-content: flex-end; padding: 0 20px;
+    }
+    .road-top-sign {
+      background: #f5c200; font-weight: 700; font-size: 14px; padding: 6px 16px; border-radius: 4px;
+    }
+    .road-bottom {
+      height: 50px; background: #e5e5e5; border-top: 2px solid #bbb;
+      display: flex; align-items: center; justify-content: flex-end; padding: 0 20px;
+    }
+    .road-bottom-stripe {
+      flex: 1; height: 12px; margin-right: 20px;
+      background: repeating-linear-gradient(90deg, #f5c200 0px, #f5c200 24px, #222 24px, #222 48px);
+    }
+
+    /* ── STALL GRID ── */
+    .admin-zone-canvas {
+      padding: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 30px; 
+      min-height: 400px;
+    }
+
+    .col-block {
+      display: flex;
+      gap: 0px; 
+    }
+
+    .stall-column {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stall-cell {
+      width: 55px;
+      height: 28px;
+      border: 1px solid #555;
+      background: var(--stall-empty);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #111;
+      cursor: pointer;
+      margin-top: -1px; 
+      margin-left: -1px;
+      transition: background 0.15s;
+    }
+
+    .stall-cell:hover:not(.booked) { background: #e0f6fb; }
+    
+    .stall-cell.booked { 
+      background: var(--stall-booked); 
+      color: #333; 
+      cursor: help; 
+    }
+    .stall-cell.selected { 
+      background: var(--stall-selected); 
+      color: #fff; 
+      border-color: #2a9ab5; 
+      z-index: 2; 
+    }
+    
+    /* คลาสสำหรับไฮไลต์ "แถวที่รีเควสมา" */
+    .stall-cell.requested-range {
+      border: 2px solid var(--primary) !important;
+      z-index: 1; /* ให้อยู่เหนือขอบสีดำปกติ */
+    }
+
+    .facility-box {
+      position: absolute;
+      bottom: 65px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .btn-facility {
+      background: #f5c200; font-weight: 700; border: 1px solid #d4a000;
+      padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer;
+    }
+
+    /* ── ACTION FOOTER ── */
+    .action-footer {
+      margin-top: 24px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 16px;
+    }
+    .btn-save {
+      background: var(--primary); color: #fff; border: none; padding: 12px 30px;
+      font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 600;
+      border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(59,184,212,0.3);
+      min-width: 210px;
+      text-align: center;
+    }
+    .btn-reject-main {
+      background: var(--stall-booked); color: #ffffff; border: none; padding: 12px 30px;
+      font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 600;
+      border-radius: 8px; cursor: pointer;
+      min-width: 210px;
+      text-align: center;
+    }
+    .btn-reject-main:hover {
+      background: var(--stall-booked);
+    }
+
+
+    /* ==========================================
+       📍 TOOLTIP (สำหรับแผงสีเทาที่ถูกจองแล้ว)
+       ========================================== */
+    .admin-tooltip {
+      position: fixed;
+      z-index: 9999;
+      background: #fff;
+      width: 320px;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      border: 1px solid #ccc;
+      display: none;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .tt-header {
+      background: var(--primary);
+      color: #fff;
+      padding: 12px 16px;
+      font-family: 'Prompt', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .tt-body { padding: 16px; }
+    .tt-row { display: flex; gap: 16px; margin-bottom: 14px; }
+    .tt-group { flex: 1; margin-bottom: 14px; }
+    .tt-group:last-child { margin-bottom: 0; }
+    .tt-label { display: block; font-size: 13px; color: #222; font-weight: 700; margin-bottom: 2px; }
+    .tt-value { display: block; font-size: 14px; color: #555; }
+
+    @media (max-width: 768px) {
+      .applicant-body { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 500px) {
+      .applicant-body { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<%- include('../partials/navbar') %>
+
+<div id="adminTooltip" class="admin-tooltip">
+  <div class="tt-header">แผง <span id="tt-stall-id"></span></div>
+  <div class="tt-body">
+    <div class="tt-group">
+      <span class="tt-label">ชื่อร้านค้า</span>
+      <span class="tt-value" id="tt-shop"></span>
+    </div>
+    
+    <div class="tt-row" style="margin-bottom:0;">
+      <div class="tt-group">
+        <span class="tt-label">หมายเลขล็อก</span>
+        <span class="tt-value" id="tt-lock"></span>
+      </div>
+      <div class="tt-group">
+        <span class="tt-label">วันที่จอง</span>
+        <span class="tt-value" id="tt-date"></span>
+      </div>
+    </div>
+
+    <div class="tt-group" style="margin-top: 14px;">
+      <span class="tt-label">ผู้จอง</span>
+      <span class="tt-value" id="tt-name"></span>
+    </div>
+    <div class="tt-group">
+      <span class="tt-label">เบอร์โทรศัพท์</span>
+      <span class="tt-value" id="tt-phone"></span>
+    </div>
+    <div class="tt-group" style="margin-top: 14px;">
+      <span class="tt-label">หมายเหตุ</span>
+      <span class="tt-value" id="tt-note" style="font-size: 13px;"></span>
+    </div>
+  </div>
+</div>
+
+<header class="site-header">
+  <a href="javascript:history.back()" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+  <h2 class="header-title">จัดตำแหน่งแผงค้า</h2>
+  <div class="header-spacer"></div>
+</header>
+
+<div class="container">
+
+  <div class="applicant-card" id="applicantCard">
+    <div class="applicant-header">
+      <i class="fa-solid fa-clipboard-user"></i> ข้อมูลผู้ที่ส่งคำขอเช่าแผงเข้ามา
+    </div>
+    <div class="applicant-body">
+      <div class="info-group">
+        <label>ชื่อผู้จอง</label>
+        <span id="app-name">-</span>
+      </div>
+      <div class="info-group">
+        <label>ชื่อร้านค้า</label>
+        <span id="app-shop">-</span>
+      </div>
+      <div class="info-group">
+        <label>เบอร์โทรศัพท์</label>
+        <span id="app-phone">-</span>
+      </div>
+      <div class="info-group">
+        <label>โซนที่ต้องการ / แถวเบื้องต้น</label>
+        <span id="app-zone" style="color: var(--primary-dark); font-weight: 700;">-</span>
+      </div>
+      <div class="info-group">
+        <label>ช่วงเวลาที่จอง</label>
+        <span id="app-date">-</span>
+      </div>
+      <div class="info-group"></div> <div class="info-group note-full-width">
+        <label style="color: #d97706; font-size: 12px;">หมายเหตุเพิ่มเติมจากผู้จอง</label>
+        <span id="app-note" style="color: #333; font-size: 13px; margin-top: 4px;">-</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="map-controls">
+    <div class="zone-select-wrapper">
+      <label>โซน</label>
+      <span>ระบุโซนที่ต้องการจอง</span>
+      
+      <div class="zone-btn-group" id="zoneButtons">
+        <button class="btn-zone active" data-zone="A">โซน A <small>(แฟชั่น/พิเศษอาหาร A901-A923)</small></button>
+        <button class="btn-zone" data-zone="B">โซน B <small>(อาหาร)</small></button>
+        <button class="btn-zone" data-zone="C">โซน C <small>(แฟชั่น)</small></button>
+        <button class="btn-zone" data-zone="D">โซน D <small>(ฟู้ดทรัค)</small></button>
+        <button class="btn-zone" data-zone="E">โซน E <small>(แฟชั่น)</small></button>
+        <button class="btn-zone" data-zone="F">โซน F <small>(อาหาร)</small></button>
+      </div>
+
+    </div>
+
+    <div class="legend-box">
+      <div class="legend-item"><div class="color-box color-empty"></div> ว่าง</div>
+      <div class="legend-item"><div class="color-box color-booked"></div> จองแล้ว</div>
+      <div class="legend-item"><div class="color-box color-selected"></div> เลือกอยู่</div>
+      <div class="legend-item"><div class="color-box color-requested"></div> แถวที่คำขอระบุ</div>
+    </div>
+  </div>
+
+  <div class="map-outer">
+    <div class="road-left">
+      <div class="road-left-stripe"></div>
+      <span class="road-left-text">ทางเข้าตลาด 62 บล็อค</span>
+      <i class="fa-solid fa-arrow-down" style="position:absolute; bottom:20px; color:#555;"></i>
+    </div>
+
+    <div class="map-inner">
+      <div class="road-top">
+        <div class="road-top-sign"><i class="fa-solid fa-location-dot" style="color:red;"></i> เจริญหมูกระทะ</div>
+      </div>
+
+      <div class="admin-zone-canvas" id="adminGrid"></div>
+
+      <div class="facility-box">
+        <button class="btn-facility"><i class="fa-solid fa-restroom"></i> ห้องน้ำ</button>
+        <button class="btn-facility"><i class="fa-solid fa-user-tie"></i> ออฟฟิศ</button>
+      </div>
+
+      <div class="road-bottom">
+        <div class="road-bottom-stripe"></div>
+        <span style="font-weight: 700; font-size: 14px;">เข้า-ออก</span>
+      </div>
+    </div>
+
+    <div class="road-right">
+      <span class="road-right-text">ลานจอดรถ กังสดาลไนท์</span>
+    </div>
+  </div>
+
+  <div class="action-footer">
+    <button class="btn-reject-main" onclick="rejectStall()">ปฏิเสธการจอง</button>
+    <button class="btn-save" onclick="confirmStall()">ยืนยันการจัดแผง</button>
+  </div>
+
+</div>
+
+<script>
+  // 1. โครงสร้างของแต่ละโซน [ [Prefix, จำนวนแถว] , ... ]
+  const ZONES_LAYOUT = {
+    A: [ [['A1',19]], [['A2',19],['A3',19]], [['A4',21],['A5',21]], [['A6',22],['A7',22]], [['A8',23],['A9',23]] ],
+    B: [ [['B1',15]], [['B2',15],['B3',15]], [['B4',15],['B5',15]], [['B6',15],['B7',15]], [['B8',10],['B9',10]] ],
+    C: [ [['C1',12]] ],
+    D: [ [['D2',12]] ],
+    E: [ [['E1',4]] ],
+    F: [ [['F1',15]], [['F2',15],['F3',15]], [['F4',15],['F5',15]], [['F6',15],['F7',15]] ]
+  };
+
+  // 2. ข้อมูลจำลองการจอง (ใช้แสดงใน Tooltip และดึงมาแสดงในการ์ดด้านบน)
+  const MOCK_BOOKING_DATA = {
+    'A101-A119': { shop: 'เสื้อผ้าแฟชั่นวินเทจ', date: '15 ต.ค. 68', name: 'นายสมชาย รักดี', phone: '082-333-9999', note: 'ไม่มี', zoneText: 'โซน A (แฟชั่น)' },
+    'F101-F117': { shop: 'ร้านหมูปิ้งเจ๊จู', date: '14 ต.ค. 68 - 16 ต.ค. 68', name: 'นางสาวสมหญิง ใจดี', phone: '081-234-5678', note: 'ขอพื้นที่ใกล้ทางเดินหลักค่ะ', zoneText: 'โซน F (อาหาร)' },
+    'D201-D212': { shop: 'Burger Truck BKK', date: '10 ต.ค. 68 - 20 ต.ค. 68', name: 'นายเอกพล คนขยัน', phone: '089-987-6543', note: 'ใช้ไฟเยอะครับ (มีตู้แช่)', zoneText: 'โซน D (ฟู้ดทรัค)' }
+  };
+
+  // จำลองว่าบางล็อกในโซนถูกจองไปแล้ว (เอาไว้ให้เมาส์ชี้ได้)
+  const fakeBookedStalls = ['A205', 'A306', 'A307', 'F201', 'B205', 'C101'];
+
+  // ฟังก์ชันหาว่าล็อกชื่อ stallName อยู่ในช่วงช่วงที่ส่งมาไหม? 
+  // (เช่น "A105" อยู่ใน "A101-A119" หรือเปล่า)
+  function isStallInRange(stallName, rangeString) {
+    if(!rangeString || !rangeString.includes('-')) return stallName === rangeString;
+    
+    // แปลง "A101-A119" เป็น prefix="A", start=101, end=119
+    const parts = rangeString.split('-');
+    if(parts.length !== 2) return false;
+    
+    const prefix1 = parts[0].substring(0, 1);
+    const prefix2 = parts[1].substring(0, 1);
+    if(prefix1 !== prefix2) return false; // คนละโซน
+    
+    const startNum = parseInt(parts[0].substring(1), 10);
+    const endNum = parseInt(parts[1].substring(1), 10);
+    
+    const stallPrefix = stallName.substring(0, 1);
+    const stallNum = parseInt(stallName.substring(1), 10);
+    
+    return (stallPrefix === prefix1 && stallNum >= startNum && stallNum <= endNum);
+  }
+
+  let currentRequestedRange = null; // แถวที่มาจากการรีเควส (เช่น "A101-A119")
+  let currentSelectedStall = null;  // แผงเดียวที่แอดมินคลิกเลือกอยู่ตอนนี้
+  const tooltip = document.getElementById('adminTooltip');
+  const zoneBtns = document.querySelectorAll('.btn-zone');
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // เช็ค URL Parameter ว่าส่งมาจากหน้าไหน (เช่น ?zone=A&stall=A101-A119)
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramZone = urlParams.get('zone') || 'A';
+    const paramStallRange = urlParams.get('stall');
+
+    if(paramStallRange) {
+      currentRequestedRange = paramStallRange;
+      loadApplicantData(paramStallRange); // ดึงข้อมูลมาใส่ในการ์ดด้านบน
+    }
+
+    // เซ็ตปุ่มที่ Active ตาม URL
+    setActiveZoneBtn(paramZone);
+    // Render โซนเริ่มต้น
+    renderGrid(paramZone);
+
+    // Event เมื่อกดปุ่มเลือกโซน
+    zoneBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const selectedZone = this.dataset.zone;
+        setActiveZoneBtn(selectedZone);
+        renderGrid(selectedZone);
+      });
+    });
+  });
+
+  // เปลี่ยนสีปุ่มที่ถูกเลือก
+  function setActiveZoneBtn(zoneCode) {
+    zoneBtns.forEach(b => {
+      if(b.dataset.zone === zoneCode) {
+        b.classList.add('active');
+      } else {
+        b.classList.remove('active');
+      }
+    });
+  }
+
+  // นำข้อมูลผู้ขอเช่ามาแสดงที่การ์ดด้านบน
+  function loadApplicantData(stallRange) {
+    const data = MOCK_BOOKING_DATA[stallRange];
+    if(data) {
+      document.getElementById('app-name').textContent = data.name;
+      document.getElementById('app-shop').textContent = data.shop;
+      document.getElementById('app-phone').textContent = data.phone;
+      document.getElementById('app-zone').textContent = `${data.zoneText} / แถว ${stallRange}`;
+      document.getElementById('app-date').textContent = data.date;
+      document.getElementById('app-note').textContent = data.note;
+    } else {
+      document.getElementById('app-zone').textContent = `รอการจัดสรร / แถว ${stallRange}`;
+    }
+  }
+
+  // สร้างตารางแผงค้า
+  function renderGrid(zoneKey) {
+    const gridContainer = document.getElementById('adminGrid');
+    gridContainer.innerHTML = '';
+
+    const layout = ZONES_LAYOUT[zoneKey];
+    if(!layout) return;
+
+    layout.forEach(block => {
+      const blockDiv = document.createElement('div');
+      blockDiv.className = 'col-block';
+
+      block.forEach(colData => {
+        const prefix = colData[0];
+        const rowCount = colData[1];
+
+        const colDiv = document.createElement('div');
+        colDiv.className = 'stall-column';
+
+        for (let i = 1; i <= rowCount; i++) {
+          const numStr = i.toString().padStart(2, '0');
+          const stallName = `${prefix}${numStr}`;
+
+          const cell = document.createElement('div');
+          cell.className = 'stall-cell';
+          cell.textContent = stallName;
+
+          // 1. เช็คว่าเป็นล็อคที่ลูกค้ารีเควสมาหรือไม่? (ถ้าใช่ให้ตีกรอบฟ้า)
+          if (currentRequestedRange && isStallInRange(stallName, currentRequestedRange)) {
+            cell.classList.add('requested-range');
+          }
+
+          // 2. เช็คว่าล็อกนี้โดนจองไปก่อนแล้วหรือยัง? (สีเทา)
+          if (fakeBookedStalls.includes(stallName)) {
+            cell.classList.add('booked');
+            
+            // เพิ่ม Event Hover สำหรับ Tooltip
+            cell.addEventListener('mouseenter', (e) => showTooltip(e, stallName));
+            cell.addEventListener('mouseleave', hideTooltip);
+            cell.addEventListener('mousemove', moveTooltip);
+
+          } else {
+            // ถ้าร้านว่าง ให้แอดมินคลิกเลือกได้
+            cell.addEventListener('click', () => {
+              document.querySelectorAll('.stall-cell').forEach(c => c.classList.remove('selected'));
+              cell.classList.add('selected');
+              currentSelectedStall = stallName;
+            });
+          }
+
+          // ไฮไลต์ร้านที่แอดมินกำลัง "คลิกเลือก" (สีฟ้าทึบ)
+          if (stallName === currentSelectedStall) {
+            cell.classList.add('selected');
+          }
+
+          colDiv.appendChild(cell);
+        }
+        blockDiv.appendChild(colDiv);
+      });
+
+      gridContainer.appendChild(blockDiv);
+    });
+  }
+
+  // =====================================
+  // TOOLTIP LOGIC (HOVER)
+  // =====================================
+  function getFakeData(stallName) {
+    return {
+      shop: 'ร้านค้า ' + stallName,
+      date: '17 ตุลาคม 2568',
+      name: 'ผู้จอง ' + stallName,
+      phone: '08X-XXX-XXXX',
+      note: '-'
+    };
+  }
+
+  function showTooltip(e, stallName) {
+    const data = getFakeData(stallName);
+    
+    document.getElementById('tt-stall-id').textContent = stallName;
+    document.getElementById('tt-shop').textContent = data.shop;
+    document.getElementById('tt-lock').textContent = stallName;
+    document.getElementById('tt-date').textContent = data.date;
+    document.getElementById('tt-name').textContent = data.name;
+    document.getElementById('tt-phone').textContent = data.phone;
+    document.getElementById('tt-note').textContent = data.note;
+
+    tooltip.style.display = 'block';
+    moveTooltip(e);
+  }
+
+  function hideTooltip() {
+    tooltip.style.display = 'none';
+  }
+
+  function moveTooltip(e) {
+    let x = e.clientX + 15;
+    let y = e.clientY + 15;
+
+    // ป้องกัน Tooltip ตกขอบจอ
+    if (x + tooltip.offsetWidth > window.innerWidth) {
+      x = e.clientX - tooltip.offsetWidth - 10;
+    }
+    if (y + tooltip.offsetHeight > window.innerHeight) {
+      y = e.clientY - tooltip.offsetHeight - 10;
+    }
+
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+  }
+
+  // ยืนยัน
+  function confirmStall() {
+    if(!currentSelectedStall) {
+      alert("กรุณาคลิกเลือกแผงค้า 1 ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้าครับ");
+      return;
+    }
+    alert(`ยืนยันการจัดแผง ${currentSelectedStall} ให้กับผู้จองเรียบร้อย!`);
+    window.location.href = "/admin/approvals";
+  }
+
+  // ยกเลิก
+  function rejectStall() {
+    if(confirm("คุณแน่ใจหรือไม่ที่จะ 'ยกเลิก' ในรายการนี้?")) {
+      alert("ได้ทำการยกเลิกเรียบร้อยแล้ว");
+      window.location.href = "/admin/approvals";
+    }
+  }
+
+</script>
+</body>
+</html>

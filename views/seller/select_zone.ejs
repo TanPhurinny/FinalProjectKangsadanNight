@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>เลือกแผงค้า - กังสดาลไนท์</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+
+  <style>
+    :root {
+      --primary: #A73B24;
+      --primary-dark: #8e321e;
+      --dark-navy: #1a1a2e;
+      --teal: #3BB8D4;
+      --teal-dark: #2a9ab5;
+    }
+
+    body {
+      font-family: 'Kanit', 'Sarabun', sans-serif;
+      background-color: #fdfdfd;
+      color: #333;
+    }
+
+    /* ===== FILTER ===== */
+    .filter-box {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      border: 1px solid #eaeaea;
+    }
+    .filter-box h5 { margin: 0 0 4px; font-size: 18px; font-weight: 700; }
+    .filter-box p  { margin: 0 0 14px; font-size: 13px; color: #666; }
+    .btn-filter {
+      padding: 7px 22px; border-radius: 20px; font-family: inherit; font-size: 13px;
+      font-weight: 500; cursor: pointer; border: 1px solid #ccc; background: #fff; color: #555;
+      transition: all 0.2s;
+    }
+    .btn-filter:hover { border-color: var(--teal); color: var(--teal); }
+    .btn-filter.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+
+    /* ===== MAP SHELL ===== */
+    .map-outer {
+      display: flex;
+      border: 2px solid #bbb;
+      border-radius: 8px;
+      background: #d4d4d4;
+      min-height: 620px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Side roads */
+    .road-left {
+      width: 48px; min-width: 48px;
+      background: #d4d4d4;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 6px; padding: 8px 0;
+      border-right: 2px solid #bbb;
+      position: relative;
+    }
+    .road-left-stripe {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        180deg,
+        #f5c200 0px, #f5c200 18px,
+        #222 18px, #222 36px
+      );
+      width: 10px; left: 6px;
+    }
+    .road-left-text {
+      writing-mode: vertical-rl; transform: rotate(180deg);
+      font-size: 11px; font-weight: 700; color: #333; letter-spacing: 0.5px;
+      position: relative; z-index: 2;
+    }
+    .road-left-arrow {
+      font-size: 22px; color: #555; position: absolute; bottom: 12px;
+      left: 50%; transform: translateX(-50%); z-index: 2;
+    }
+    .road-right {
+      width: 48px; min-width: 48px;
+      background: #d4d4d4;
+      display: flex; align-items: center; justify-content: center;
+      border-left: 2px solid #bbb;
+    }
+    .road-right-text {
+      writing-mode: vertical-rl;
+      font-size: 11px; font-weight: 700; color: #333; letter-spacing: 0.5px;
+    }
+
+    /* Map inner */
+    .map-inner {
+      flex: 1;
+      background: #fff;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+    }
+
+    /* Top road strip */
+    .road-top {
+      height: 60px; background: #d4d4d4;
+      border-bottom: 2px solid #bbb;
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 0 14px; flex-shrink: 0;
+    }
+    .road-top-sign {
+      background: #f5c200; color: #1a1a2e;
+      font-weight: 700; font-size: 13px;
+      padding: 6px 14px; border-radius: 6px;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    /* Bottom road strip */
+    .road-bottom {
+      height: 60px; background: #d4d4d4;
+      border-top: 2px solid #bbb;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 14px; flex-shrink: 0;
+    }
+    .road-bottom-stripe {
+      flex: 1;
+      height: 14px;
+      background: repeating-linear-gradient(
+        90deg,
+        #f5c200 0px, #f5c200 28px,
+        #222 28px, #222 56px
+      );
+      border-radius: 2px;
+      margin-right: 12px;
+    }
+    .bottom-btns { display: flex; gap: 8px; }
+    .btn-facility {
+      background: #f5c200; border: none; border-radius: 6px;
+      padding: 7px 14px; font-family: inherit; font-size: 12px; font-weight: 600;
+      cursor: default; color: #1a1a2e;
+    }
+    .entry-label {
+      font-size: 13px; font-weight: 700; color: #333;
+      padding: 0 10px;
+    }
+
+    /* ===== ZONE GRID AREA ===== */
+    .zone-canvas {
+      flex: 1;
+      position: relative;
+      padding: 14px;
+      min-height: 440px;
+    }
+
+    /* ===== ZONE BLOCK BASE ===== */
+    .zone-block {
+      position: absolute;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.25s, box-shadow 0.25s, opacity 0.25s, filter 0.25s;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: none;
+      z-index: 5;
+    }
+    .zone-block:hover { transform: scale(1.025); box-shadow: 0 8px 24px rgba(0,0,0,0.14); z-index: 20; }
+    .zone-block.dimmed { opacity: 0.12; pointer-events: none; filter: grayscale(100%); }
+    .zone-block.zone-active { z-index: 30; cursor: default; }
+    .zone-block.zone-active:hover { transform: none; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+
+    /* Zone label header (visible when not active) */
+    .zone-label {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 6px;
+      pointer-events: none;
+    }
+    .z-title { font-size: 17px; font-weight: 700; margin-bottom: 2px; line-height: 1.1; }
+    .z-desc  { font-size: 12px; font-weight: 500; margin-bottom: 3px; }
+    .z-price del { color: #555; font-size: 12px; margin-right: 3px; }
+    .z-price strong { color: #FF0B55; font-size: 15px; }
+
+    /* Zone colors */
+    #zone-E { background: #FFB5DA; }
+    #zone-C { background: #FFB5DA; }
+    #zone-A { background: #E5D9F2; }
+    #zone-F { background: #FDBF60; }
+    #zone-B { background: #FDBF60; }
+    #zone-D { background: #C8FFE0; }
+
+    #zone-E .z-title, #zone-C .z-title, #zone-E .z-desc, #zone-C .z-desc { color: #D20062; }
+    #zone-A .z-title, #zone-A .z-desc { color: #441752; }
+    #zone-F .z-title, #zone-B .z-title, #zone-F .z-desc, #zone-B .z-desc { color: #EB5B00; }
+    #zone-D .z-title, #zone-D .z-desc { color: #37B5B6; }
+
+    /* ===== STALL GRID (shown when active) ===== */
+    .stall-container {
+      display: none;
+      flex: 1;
+      padding: 8px;
+      overflow: hidden;
+    }
+    .zone-active .stall-container { display: flex; }
+    .zone-active .zone-label { display: none; }
+
+    /* Close button */
+    .zone-close-btn {
+      position: absolute;
+      top: 6px; right: 6px;
+      width: 22px; height: 22px;
+      background: rgba(0,0,0,0.18);
+      border: none; border-radius: 50%;
+      color: #fff; font-size: 13px; line-height: 1;
+      cursor: pointer; z-index: 10;
+      display: none;
+      align-items: center; justify-content: center;
+      font-weight: 700;
+    }
+    .zone-active .zone-close-btn { display: flex; }
+
+    /* Stall column (vertical zones A, B, F) */
+    .stall-cols { display: flex; flex-direction: row; gap: 6px; width: 100%; height: 100%; align-items: stretch; }
+    .stall-col {
+      flex: 1;
+      background: #dbeeff;
+      border: 2.5px solid #1a6fcf;
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s;
+      padding: 4px 2px;
+    }
+    .stall-col:hover { background: #b3d9ff; }
+    .stall-col.selected { background: #1a6fcf; }
+    .stall-col span {
+      writing-mode: vertical-rl; transform: rotate(180deg);
+      font-size: 10px; font-weight: 700; color: #0d4a99;
+      white-space: nowrap; font-family: 'Sarabun', sans-serif;
+      user-select: none;
+    }
+    .stall-col.selected span { color: #fff; }
+
+    /* Stall row (horizontal zones C, D, E) */
+    .stall-rows { display: flex; flex-direction: row; gap: 4px; width: 100%; height: 100%; align-items: stretch; }
+    .stall-cell {
+      flex: 1;
+      background: #dbeeff;
+      border: 2px solid #1a6fcf;
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; color: #0d4a99;
+      cursor: pointer; transition: background 0.15s;
+      font-family: 'Sarabun', sans-serif; user-select: none;
+      white-space: nowrap;
+    }
+    .stall-cell:hover { background: #b3d9ff; }
+    .stall-cell.selected { background: #1a6fcf; color: #fff; }
+
+    /* B zone extra small boxes */
+    .stall-b-wrap { display: flex; flex-direction: row; gap: 6px; width: 100%; height: 100%; }
+    .stall-b-long { display: flex; flex-direction: row; gap: 6px; flex: 1; height: 100%; }
+    .stall-b-short { display: flex; flex-direction: column; gap: 6px; height: 100%; }
+    .stall-b-cell {
+      flex: 1;
+      background: #dbeeff;
+      border: 2.5px solid #1a6fcf;
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: background 0.15s; font-family: 'Sarabun', sans-serif;
+    }
+    .stall-b-cell:hover { background: #b3d9ff; }
+    .stall-b-cell.selected { background: #1a6fcf; }
+    .stall-b-cell span {
+      writing-mode: vertical-rl; transform: rotate(180deg);
+      font-size: 9px; font-weight: 700; color: #0d4a99; user-select: none; white-space: nowrap;
+    }
+    .stall-b-cell.selected span { color: #fff; }
+    .stall-b-short .stall-b-cell span {
+      writing-mode: horizontal-tb; transform: none; font-size: 8px;
+    }
+
+    /* ===== ZONE POSITIONS (% based on map-canvas 100%) ===== */
+    #zone-E { top: 0; left: 0; width: 28%; height: 55px; }
+    #zone-D { top: 0; left: 38%; width: 38%; height: 55px; }
+    #zone-A { top: 70px; left: 0; width: 35%; bottom: 70px; }
+    #zone-F { top: 70px; left: 38%; width: 20%; bottom: 70px; }
+    #zone-B { top: 70px; left: 62%; width: 36%; bottom: 70px; }
+    #zone-C { bottom: 0; left: 0; width: 67%; height: 55px; }
+
+    /* Facility buttons overlay */
+    .facility-overlay {
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 33%; height: 55px;
+      display: flex; align-items: center; justify-content: flex-end;
+      gap: 8px; padding-right: 8px; z-index: 10;
+    }
+
+    /* ===== PRICING ===== */
+    .pricing-card {
+      background: #fff; border-radius: 10px; padding: 20px 24px; margin-top: 24px;
+      border-left: 5px solid #f5c200; box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+    .pricing-card h5 { font-size: 17px; font-weight: 700; margin-bottom: 18px; }
+    .price-item {
+      background: #f9f9f9; border: 1px solid #eaeaea; border-radius: 8px; padding: 14px 16px;
+    }
+    .price-note {
+      font-size: 11.5px; color: #666; background: #fff; padding: 10px;
+      border-radius: 4px; border: 1px dashed #ccc; margin-top: 10px; line-height: 1.6;
+    }
+
+    /* ============================================================
+       📍 MODAL POPUP STYLE (ตามแบบรูปภาพ)
+       ============================================================ */
+    .stall-popup {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .popup-content {
+      background: #fff;
+      width: 350px;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      animation: popIn 0.2s ease-out;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .popup-header {
+      background: var(--teal);
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .popup-header h4 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 600;
+      font-family: 'Kanit', sans-serif;
+    }
+    .close-btn {
+      cursor: pointer;
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 400;
+    }
+    .popup-body {
+      padding: 20px 24px;
+    }
+    .popup-zone-type {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 12px;
+      color: #000;
+      font-family: 'Kanit', sans-serif;
+    }
+    .popup-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 20px;
+    }
+    .popup-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 16px;
+      color: #000;
+      margin-bottom: 8px;
+      font-family: 'Sarabun', sans-serif;
+    }
+    .popup-btn-wrap {
+      text-align: center;
+    }
+    .popup-book-btn {
+      background: var(--teal);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 30px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Kanit', sans-serif;
+      transition: background 0.2s;
+    }
+    .popup-book-btn:hover {
+      background: var(--teal-dark);
+    }
+
+    @media (max-width: 768px) {
+      .zone-canvas { min-height: 360px; }
+      #zone-A { bottom: 80px; }
+      #zone-F { bottom: 80px; }
+      #zone-B { bottom: 80px; }
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/navbar2') %>
+
+  <div id="stallPopup" class="stall-popup">
+    <div class="popup-content">
+      <div class="popup-header">
+        <h4>แถว <span id="tt-name">A101-A119</span></h4>
+        <span class="close-btn" id="closeModalBtn">&times;</span>
+      </div>
+      <div class="popup-body">
+        <div class="popup-zone-type">โซน <span id="tt-type">อาหาร</span></div>
+        <ul class="popup-list">
+          <li><span id="tt-size">แผงขายของขนาด 3x3 เมตร</span></li>
+          <li><span id="tt-price">ราคา 209 บาท /วัน</span></li>
+          <li><span>มีไฟฟ้าในแผง</span></li>
+          <li><span>อยู่ในตำแหน่งที่มองเห็นง่าย</span></li>
+        </ul>
+        <div class="popup-btn-wrap">
+          <button class="popup-book-btn" id="bookStallBtn">จองแถวนี้</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid px-3 py-3" style="max-width: 1100px;">
+
+    <div class="filter-box">
+      <h5>เลือกตำแหน่งแผงค้า</h5>
+      <p>คลิกที่โซนบนแผนที่เพื่อดูรายละเอียดแผงค้า</p>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn-filter active" data-filter="all">ทั้งหมด</button>
+        <button class="btn-filter" data-filter="fashion">แฟชั่น</button>
+        <button class="btn-filter" data-filter="food">อาหาร</button>
+        <button class="btn-filter" data-filter="truck">ฟู้ดทรัค</button>
+      </div>
+    </div>
+
+    <div class="map-outer">
+      <div class="road-left">
+        <div class="road-left-stripe"></div>
+        <span class="road-left-text">ทางเข้าตลาด 62 บล็อค</span>
+        <div class="road-left-arrow">↓</div>
+      </div>
+
+      <div class="map-inner">
+        <div class="road-top">
+          <div class="road-top-sign">📍 เจริญหมูกระทะ</div>
+        </div>
+
+        <div class="zone-canvas">
+
+          <div class="zone-block" id="zone-E" data-category="fashion" onclick="toggleZone('E')">
+            <button class="zone-close-btn" onclick="event.stopPropagation(); closeZone('E')">✕</button>
+            <div class="zone-label">
+              <span class="z-title">โซน E</span>
+              <span class="z-desc">แฟชั่น &nbsp;<span class="z-price"><del>250.-</del> <strong>209.-</strong></span></span>
+            </div>
+            <div class="stall-container" id="stalls-E"><div class="stall-rows" id="stall-cells-E"></div></div>
+          </div>
+
+          <div class="zone-block" id="zone-D" data-category="truck" onclick="toggleZone('D')">
+            <button class="zone-close-btn" onclick="event.stopPropagation(); closeZone('D')">✕</button>
+            <div class="zone-label">
+              <span class="z-title">โซน D</span>
+              <span class="z-desc">ฟู้ดทรัค &nbsp;<span class="z-price"><del>270.-</del> <strong>230.-</strong></span></span>
+            </div>
+            <div class="stall-container" id="stalls-D"><div class="stall-rows" id="stall-cells-D"></div></div>
+          </div>
+
+          <div class="zone-block" id="zone-A" data-category="fashion food" onclick="toggleZone('A')">
+            <button class="zone-close-btn" onclick="event.stopPropagation(); closeZone('A')">✕</button>
+            <div class="zone-label">
+              <span class="z-title">โซน A พิเศษ</span>
+              <span class="z-desc">แฟชั่นและอาหาร (3x3)</span>
+              <div class="z-price"> <strong>209.-</strong></div>
+            </div>
+            <div class="stall-container" id="stalls-A"><div class="stall-cols" id="stall-cols-A"></div></div>
+          </div>
+
+          <div class="zone-block" id="zone-F" data-category="food" onclick="toggleZone('F')">
+            <button class="zone-close-btn" onclick="event.stopPropagation(); closeZone('F')">✕</button>
+            <div class="zone-label">
+              <span class="z-title">โซน F</span>
+              <span class="z-desc">อาหาร (2x2)</span>
+              <div class="z-price"><del>250.-</del> <strong>219.-</strong></div>
+            </div>
+            <div class="stall-container" id="stalls-F"><div class="stall-cols" id="stall-cols-F"></div></div>
+          </div>
+
+          <div class="zone-block" id="zone-B" data-category="food" onclick="toggleZone('B')">
+            <button class="zone-close-btn" onclick="event.stopPropagation(); closeZone('B')">✕</button>
+            <div class="zone-label">
+              <span class="z-title">โซน B</span>
+              <span class="z-desc">อาหาร (3x3)</span>
+              <div class="z-price"><del>300.-</del> <strong>259.-</strong></div>
+            </div>
+            <div class="stall-container" id="stalls-B"><div class="stall-b-wrap" id="stall-b-wrap"></div></div>
+          </div>
+
+          <div class="zone-block" id="zone-C" data-category="fashion" onclick="toggleZone('C')">
+            <button class="zone-close-btn" onclick="event.stopPropagation(); closeZone('C')">✕</button>
+            <div class="zone-label">
+              <span class="z-title">โซน C</span>
+              <span class="z-desc">แฟชั่น (3x3) &nbsp;<span class="z-price"><del>250.-</del> <strong>209.-</strong></span></span>
+            </div>
+            <div class="stall-container" id="stalls-C"><div class="stall-rows" id="stall-cells-C"></div></div>
+          </div>
+
+          <div class="facility-overlay">
+            <button class="btn-facility">🚻 ห้องน้ำ</button>
+            <button class="btn-facility">👤 ออฟฟิศ</button>
+          </div>
+
+        </div>
+
+        <div class="road-bottom">
+          <div class="road-bottom-stripe"></div>
+          <span class="entry-label" style="color:#333; font-weight:700; white-space:nowrap;">เข้า-ออก</span>
+        </div>
+
+      </div>
+
+      <div class="road-right">
+        <span class="road-right-text">ลานจอดรถ กังสดาลไนท์</span>
+      </div>
+
+    </div>
+
+    <div class="pricing-card mt-4">
+      <h5>💡 อัตราค่าไฟฟ้าและแสงสว่าง</h5>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="price-item">
+            <h6 style="color:var(--teal); font-weight:700;">ค่าไฟแสงสว่าง</h6>
+            <p style="font-size:14px; margin-bottom:6px;">เปิดใหม่! จากปกติล็อคละ 30 บาท ลดเหลือเพียง <strong style="color:var(--teal); font-size:17px;">15 บาท/วัน</strong></p>
+            <div class="price-note">
+              <strong>เงื่อนไขหลอดไฟ (ชนิด LED เท่านั้น):</strong><br>
+              - ไม่เกิน 4 ดวงใหญ่<br>
+              - หรือ ไม่เกิน 10 ดวงเล็ก<br>
+              - หรือ รวมกำลังไฟทั้งหมดไม่เกิน 150 วัตต์
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="price-item">
+            <h6 style="color:var(--teal); font-weight:700;">เครื่องใช้ไฟฟ้า (เปิดได้ถึง 24:00 น.)</h6>
+            <div class="d-flex justify-content-between border-bottom pb-2 mb-2" style="font-size:13px;">
+              <span>เครื่องใช้ไฟฟ้า รุ่นเล็ก</span><strong style="color:var(--teal);">20 บาท/วัน</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-2" style="font-size:13px;">
+              <span>เครื่องใช้ไฟฟ้า รุ่นใหญ่</span><strong style="color:var(--teal);">40 บาท/วัน</strong>
+            </div>
+            <div class="price-note">
+              หมายเหตุ: เครื่องขนาดเล็กต้องมีกำลังไฟไม่เกิน 1200W และปริมาตรไม่เกิน 250,000 ลบ.ซม. หากเกินจะคิดเป็นเครื่องขนาดใหญ่
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // ============================================================
+    // STALL DATA
+    // ============================================================
+    const ZONE_DATA = {
+      A: { type: 'cols', cols: ['A101–A117','A201–A217','A301–A334','A401–A434','A501–A536','A601–A636'] },
+      F: { type: 'cols', cols: ['F101–F117','F201–F217','F301–F334','F401–F434','F501–F536','F601–F636'] },
+      B: { type: 'B', longCols: ['B100–B123','B200–B223','B299–B323','B401–B423','B501–B523','B601–B623'], shortCols: ['B701–B703','B704–B707','B708–B711','B712–B715','B801–B804'] },
+      C: { type: 'rows', stalls: ['C101','C102','C103','C104','C105','C106','C107','C108','C109','C110','C111','C112'] },
+      D: { type: 'single', label: 'D201–D212' },
+      E: { type: 'single', label: 'E101–E104' }
+    };
+
+    // ============================================================
+    // MODAL LOGIC (สำหรับแสดงเมื่อคลิกแผงค้า)
+    // ============================================================
+    const stallPopup = document.getElementById('stallPopup');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const bookStallBtn = document.getElementById('bookStallBtn');
+    
+    // ตัวแปรเก็บข้อมูลที่จะส่งไปหน้าจอง
+    let selectedZoneData = {}; 
+
+    function openStallModal(zone, label) {
+        let type = "แฟชั่น";
+        let size = "3x3";
+        let price = "209";
+        
+        // กำหนดข้อมูลตาม Zone และ Label
+        if (zone === 'F') { type = "อาหาร"; size = "2x2"; price = "219"; }
+        else if (zone === 'B') { type = "อาหาร"; size = "3x3"; price = "259"; }
+        else if (zone === 'D') { type = "ฟู้ดทรัค"; size = ""; price = "230"; }
+        else if (zone === 'C' || zone === 'E') { type = "แฟชั่น"; size = "3x3"; price = "209"; }
+        else if (zone === 'A') {
+           if (label.includes('A601')) { type = "อาหาร"; }
+           else { type = "แฟชั่น"; }
+           size = "3x3"; price = "209";
+        }
+
+        // อัปเดตข้อมูลใน Popup HTML
+        document.getElementById('tt-name').textContent = label.replace(' (พิเศษอาหาร)', '');
+        document.getElementById('tt-type').textContent = type;
+        
+        if(zone === 'D') {
+          document.getElementById('tt-size').textContent = `พื้นที่สำหรับฟู้ดทรัค`;
+        } else {
+          document.getElementById('tt-size').textContent = `แผงขายของขนาด ${size} เมตร`;
+        }
+        
+        document.getElementById('tt-price').textContent = `ราคา ${price} บาท /วัน`;
+
+        // เก็บข้อมูลเตรียมส่ง URL
+        selectedZoneData = {
+          zone,
+          stall: label.replace(' (พิเศษอาหาร)', ''),
+          type,
+          size,
+          price
+        };
+
+        // แสดง Popup Modal
+        stallPopup.style.display = 'flex';
+    }
+
+    // ปิด Popup เมื่อกด X
+    closeModalBtn.addEventListener('click', () => {
+        stallPopup.style.display = 'none';
+    });
+
+    // ปิด Popup เมื่อคลิกพื้นที่ว่างข้างนอกกรอบ
+    stallPopup.addEventListener('click', (e) => {
+        if (e.target === stallPopup) {
+            stallPopup.style.display = 'none';
+        }
+    });
+
+    // 🚀 ส่งข้อมูลไปหน้าจองเมื่อกดปุ่ม "จองแถวนี้" ใน Modal
+    bookStallBtn.addEventListener('click', () => {
+        const params = new URLSearchParams({
+          zone: selectedZoneData.zone,
+          stall: selectedZoneData.stall,
+          type: selectedZoneData.type || '',
+          size: selectedZoneData.size || '',
+          price: selectedZoneData.price || ''
+        });
+        window.location.href = `/booking-stall?${params.toString()}`;
+    });
+
+    // ============================================================
+    // RENDER STALLS
+    // ============================================================
+    function renderZoneStalls(zone) {
+      const data = ZONE_DATA[zone];
+      if (!data) return;
+
+      if (data.type === 'cols') {
+        const wrap = document.getElementById(`stall-cols-${zone}`);
+        if (!wrap) return;
+        wrap.innerHTML = '';
+        data.cols.forEach(label => {
+          const col = document.createElement('div');
+          col.className = 'stall-col';
+          
+          const sp = document.createElement('span');
+          if (label === 'A601–A636') {
+            col.style.background = '#E5D9F2';
+            col.style.borderColor = '#441752'; 
+            sp.style.color = '#441752';
+            sp.textContent = `${label} (พิเศษอาหาร)`;
+          } else {
+            sp.textContent = label;
+          }
+          col.appendChild(sp);
+          
+          // เมื่อคลิกเรียก Modal
+          col.addEventListener('click', e => {
+            e.stopPropagation();
+            wrap.querySelectorAll('.stall-col').forEach(c => c.classList.remove('selected'));
+            col.classList.add('selected');
+            openStallModal(zone, label);
+          });
+          wrap.appendChild(col);
+        });
+      }
+
+      else if (data.type === 'rows') {
+        const wrap = document.getElementById(`stall-cells-${zone}`);
+        if (!wrap) return;
+        wrap.innerHTML = '';
+        data.stalls.forEach(name => {
+          const cell = document.createElement('div');
+          cell.className = 'stall-cell';
+          cell.textContent = name;
+          cell.addEventListener('click', e => {
+            e.stopPropagation();
+            wrap.querySelectorAll('.stall-cell').forEach(c => c.classList.remove('selected'));
+            cell.classList.add('selected');
+            openStallModal(zone, name);
+          });
+          wrap.appendChild(cell);
+        });
+      }
+
+      else if (data.type === 'single') {
+        const wrap = document.getElementById(`stall-cells-${zone}`);
+        if (!wrap) return;
+        wrap.innerHTML = '';
+        const cell = document.createElement('div');
+        cell.className = 'stall-cell';
+        cell.style.cssText = 'flex:1; font-size:13px; font-weight:700; border-width:3px; border-radius:6px;';
+        cell.textContent = data.label;
+        cell.addEventListener('click', e => {
+          e.stopPropagation();
+          cell.classList.add('selected');
+          openStallModal(zone, data.label);
+        });
+        wrap.appendChild(cell);
+      }
+
+      else if (data.type === 'B') {
+        const wrap = document.getElementById('stall-b-wrap');
+        if (!wrap) return;
+        wrap.innerHTML = '';
+
+        const longWrap = document.createElement('div');
+        longWrap.className = 'stall-b-long';
+        data.longCols.forEach(label => {
+          const col = document.createElement('div');
+          col.className = 'stall-b-cell';
+          const sp = document.createElement('span');
+          sp.textContent = label;
+          col.appendChild(sp);
+          col.addEventListener('click', e => {
+            e.stopPropagation();
+            wrap.querySelectorAll('.stall-b-cell').forEach(c => c.classList.remove('selected'));
+            col.classList.add('selected');
+            openStallModal(zone, label);
+          });
+          longWrap.appendChild(col);
+        });
+        wrap.appendChild(longWrap);
+
+        const shortWrap = document.createElement('div');
+        shortWrap.className = 'stall-b-short';
+        data.shortCols.forEach(label => {
+          const box = document.createElement('div');
+          box.className = 'stall-b-cell';
+          box.style.minWidth = '70px';
+          const sp = document.createElement('span');
+          sp.textContent = label;
+          box.appendChild(sp);
+          box.addEventListener('click', e => {
+            e.stopPropagation();
+            wrap.querySelectorAll('.stall-b-cell').forEach(c => c.classList.remove('selected'));
+            box.classList.add('selected');
+            openStallModal(zone, label);
+          });
+          shortWrap.appendChild(box);
+        });
+        wrap.appendChild(shortWrap);
+      }
+    }
+
+    // ============================================================
+    // TOGGLE / SWITCH ZONE
+    // ============================================================
+    function toggleZone(zone) {
+      const el = document.getElementById(`zone-${zone}`);
+      if (!el) return;
+      
+      const isActive = el.classList.contains('zone-active');
+      document.querySelectorAll('.zone-block').forEach(z => z.classList.remove('zone-active'));
+
+      if (!isActive) {
+        renderZoneStalls(zone);
+        el.classList.add('zone-active');
+      }
+    }
+
+    function closeZone(zone) {
+      const el = document.getElementById(`zone-${zone}`);
+      if (el) el.classList.remove('zone-active');
+    }
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.zone-block')) {
+        document.querySelectorAll('.zone-block').forEach(z => z.classList.remove('zone-active'));
+      }
+    });
+
+    // ============================================================
+    // FILTER
+    // ============================================================
+    document.querySelectorAll('.btn-filter').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const f = this.dataset.filter;
+        document.querySelectorAll('.zone-block').forEach(z => {
+          if (f === 'all' || z.dataset.category.includes(f)) {
+            z.classList.remove('dimmed');
+          } else {
+            z.classList.add('dimmed');
+            z.classList.remove('zone-active');
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

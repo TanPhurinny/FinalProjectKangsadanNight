@@ -5,7 +5,7 @@ const fs = require('fs');
 const multer = require('multer');
 const { isStaffOrAdmin, isAdminOnly } = require('../middlewares/auth');
 
-// --- 1. Import Controllers ทั้งหมด ---
+// --- 1. Import Controllers ---
 const userCtrl = require('../controllers/userController');
 const approvalCtrl = require('../controllers/approvalController');
 const requestCtrl = require('../controllers/requestController');
@@ -23,7 +23,6 @@ const storage = multer.diskStorage({
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-        // ตั้งชื่อไฟล์ใหม่: ann-เวลปัจจุบัน.นามสกุลไฟล์เดิม
         cb(null, 'ann-' + Date.now() + path.extname(file.originalname));
     }
 });
@@ -44,7 +43,6 @@ const upload = multer({
 });
 
 // --- 3. Middleware ตรวจสอบสิทธิ์ ---
-// ทุก Route ด้านล่างนี้ เฉพาะ Staff และ Admin เท่านั้นที่เข้าถึงได้
 router.use(isStaffOrAdmin);
 
 // --- 4. Market & Dashboard ---
@@ -64,17 +62,41 @@ router.post('/announcements/:id/update', upload.single('image'), announceCtrl.up
 // ลบประกาศ (แก้ไขจากเดิมที่อาจจะส่ง ID ผิด)
 router.post('/announcements/:id/delete', announceCtrl.deleteAnnouncement);
 
-// --- 6. User Management (เฉพาะ Admin เท่านั้น) ---
+// --- 6. User Management (เฉพาะ Admin) ---
 router.get('/users', isAdminOnly, userCtrl.getUsersPage);
 router.post('/users/update-role', isAdminOnly, userCtrl.updateRole);
 router.get('/users/delete/:id', isAdminOnly, userCtrl.deleteUser);
 
-// --- 7. Approvals (รายการอนุมัติจองแผง) ---
+// --- 7. Approvals & Requests ---
 router.get('/approvals', approvalCtrl.getApprovalsPage);
 router.post('/approvals/confirm', approvalCtrl.confirmApproval);
-
-// --- 8. Maintenance Requests (การแจ้งซ่อม/คำร้อง) ---
 router.get('/requests', requestCtrl.getRequestsPage);
 router.post('/requests/update-status', requestCtrl.updateStatus);
+
+// --- 8. Booking Management (แก้ไข Path ไฟล์ EJS) ---
+
+// หน้าสำหรับแอดมินดูรายการจองรวม (ใช้ไฟล์ booking.ejs)
+router.get("/admin-booking", async (req, res) => {
+    if (!req.session.user) return res.redirect("/login");
+    
+    if (req.session.user.role !== "ADMIN") {
+        return res.status(403).send("คุณไม่มีสิทธิ์เข้าใช้งานหน้านี้");
+    }
+
+    // ชี้ไปที่ views/admin/booking.ejs
+    res.render("admin/booking", {
+        user: req.session.user
+    });
+});
+
+// หน้าสำหรับดูรายละเอียด/โปรเกรสการจอง (ใช้ไฟล์ booking_stall.ejs)
+router.get("/booking-stall", (req, res) => {
+    if (!req.session.user) return res.redirect("/login");
+
+    // ชี้ไปที่ views/admin/booking_stall.ejs
+    res.render("admin/booking_stall", {
+        user: req.session.user
+    });
+});
 
 module.exports = router;
