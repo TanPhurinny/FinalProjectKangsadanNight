@@ -1,120 +1,285 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Market Intelligence | Dashboard</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/stylesheets/admin/dashboard.css">
-      <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
-    <link rel="stylesheet" href="/stylesheets/admin/dashboard.css">
-    <link rel="stylesheet" href="/stylesheets/admin/requests.css">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Market Intelligence | Dashboard</title>
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+            rel="stylesheet">
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet">
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/dashboard.css">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body class="bg-light">
+        <%- include('../partials/navbar') %>
 
-</head>
-<body>
-    <%- include('../partials/navbar') %>
-
-    <div class="container-fluid py-4 px-md-5">
-        <header class="d-flex justify-content-between align-items-end mb-4">
-            <div>
-                <h1 class="fw-bold mb-1">Market Overview</h1>
-                <p class="text-muted">วิเคราะห์โครงสร้างและประสิทธิภาพการดำเนินงานตลาด</p>
-            </div>
-            <div id="live-date" class="text-muted small"></div>
-        </header>
-
-        <div class="row g-3 mb-5">
-            <% 
-                const dStats = locals.stats || { unpaidCount: 0, occupiedCount: 0, totalSlots: 0, pendingRepairs: 0 }; 
-                const occupancyRate = dStats.totalSlots > 0 ? ((dStats.occupiedCount / dStats.totalSlots) * 100).toFixed(1) : 0;
+        <div class="container dashboard-shell py-4">
+            <%
+            const dStats = locals.stats || { unpaidCount: 0, occupiedCount: 0,
+            totalSlots: 0, pendingRepairs: 0, availableSlots: 0,
+            pendingRequests: 0, announcements: 0 };
+            const availableRate = dStats.totalSlots > 0 ?
+            ((dStats.availableSlots
+            / dStats.totalSlots) * 100).toFixed(1) : 0;
+            const zoneList = locals.zones || [];
+            const totalZoneRepairs = zoneList.reduce((sum, z) => sum +
+            (z.repairs || 0), 0);
             %>
-            
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm p-3 h-100">
-                    <div class="d-flex align-items-center">
-                        <div class="rounded-3 p-3 me-3" style="background: rgba(46, 204, 113, 0.1); color: #2ecc71;">
-                            <i class="fas fa-chart-pie fa-2x"></i>
+
+            <section class="db-hero mb-4">
+                <div class="hero-main">
+                    
+                    <div>
+                        <h1 class="hero-title mb-2">
+                            <i class="fas fa-chart-line me-2"></i>Market
+                            Intelligence Dashboard
+                        </h1>
+                        <p
+                            class="hero-subtitle mb-0">ภาพรวมการบริหารตลาดแบบเรียลไทม์
+                            พร้อมปุ่มทางลัดและการวิเคราะห์โซน</p>
+                    </div>
+                </div>
+                <div class="hero-side">
+                    <div id="live-date" class="hero-date"></div>
+                    <div class="hero-actions">
+                        <a href="/admin/announcements" class="hero-btn"><i
+                                class="fas fa-bullhorn"></i> ประกาศ</a>
+                        <a href="/admin/approvals" class="hero-btn"><i
+                                class="fas fa-file-signature"></i> อนุมัติ</a>
+                        <a href="/admin/requests" class="hero-btn"><i
+                                class="fas fa-tools"></i> ซ่อมบำรุง</a>
+                        <a href="/admin/users" class="hero-btn"><i
+                                class="fas fa-users-cog"></i> ผู้ใช้</a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="row g-3 mb-4" id="kpiSection">
+                <div class="col-6 col-lg-3">
+                    <article class="kpi-card c-primary">
+                        <div class="kpi-icon"><i
+                                class="fas fa-chart-pie"></i></div>
+                        <div class="kpi-label">แผงที่ถูกใช้งาน</div>
+                        <h3 class="kpi-value count-up"
+                            data-target="<%= dStats.occupiedCount %>"><%=
+                            dStats.occupiedCount
+                            %></h3>
+                        <small class="kpi-meta">จากทั้งหมด <%= dStats.totalSlots
+                            %> แผง</small>
+                    </article>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <article class="kpi-card c-success">
+                        <div class="kpi-icon"><i
+                                class="fas fa-door-open"></i></div>
+                        <div class="kpi-label">แผงว่าง</div>
+                        <h3 class="kpi-value count-up"
+                            data-target="<%= dStats.availableSlots %>"><%=
+                            dStats.availableSlots %></h3>
+                        <small class="kpi-meta">พร้อมให้จองทันที</small>
+                    </article>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <article class="kpi-card c-warning">
+                        <div class="kpi-icon"><i
+                                class="fas fa-file-circle-check"></i></div>
+                        <div class="kpi-label">คำขออนุมัติ</div>
+                        <h3 class="kpi-value count-up"
+                            data-target="<%= dStats.pendingRequests %>"><%=
+                            dStats.pendingRequests %></h3>
+                        <small class="kpi-meta">รายการรอตรวจสอบ</small>
+                    </article>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <article class="kpi-card c-info">
+                        <div class="kpi-icon"><i
+                                class="fas fa-screwdriver-wrench"></i></div>
+                        <div class="kpi-label">งานซ่อมค้าง</div>
+                        <h3 class="kpi-value count-up"
+                            data-target="<%= dStats.pendingRepairs %>"><%=
+                            dStats.pendingRepairs %></h3>
+                        <small class="kpi-meta">ต้องดำเนินการ</small>
+                    </article>
+                </div>
+            </section>
+
+            <section class="row g-3 mb-4">
+                <div class="col-lg-8">
+                    <div class="insight-card h-100">
+                        <div
+                            class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="mb-0 fw-bold"><i
+                                    class="fas fa-wave-square me-2"></i>สรุปการดำเนินงานวันนี้</h5>
+                            <span
+                                class="badge rounded-pill text-bg-light">อัปเดตอัตโนมัติ</span>
                         </div>
-                        <div>
-                            <small class="text-muted">ประสิทธิภาพการเช่า</small>
-                            <h3 class="fw-bold mb-0"><%= occupancyRate %>%</h3>
+                        <div class="progress-track mt-3">
+                            <div class="progress-head">
+                                <span>สัดส่วนแผงว่าง</span>
+                                <strong><%= availableRate %>%</strong>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar"
+                                    style="--occupancy: <%= availableRate %>;"
+                                    aria-valuenow="<%= availableRate %>"
+                                    aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        <div class="quick-stats-grid mt-3">
+                            <div class="mini-stat">
+                                <span>ค้างชำระ</span>
+                                <strong class="count-up"
+                                    data-target="<%= dStats.unpaidCount %>"><%=
+                                    dStats.unpaidCount %></strong>
+                            </div>
+                            <div class="mini-stat">
+                                <span>ประกาศทั้งหมด</span>
+                                <strong class="count-up"
+                                    data-target="<%= dStats.announcements %>"><%=
+                                    dStats.announcements %></strong>
+                            </div>
+                            <div class="mini-stat">
+                                <span>งานซ่อมรวมทุกโซน</span>
+                                <strong class="count-up"
+                                    data-target="<%= totalZoneRepairs %>"><%=
+                                    totalZoneRepairs %></strong>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm p-3 h-100">
-                    <div class="d-flex align-items-center">
-                        <div class="rounded-3 p-3 me-3" style="background: rgba(52, 152, 219, 0.1); color: #3498db;">
-                            <i class="fas fa-users fa-2x"></i>
-                        </div>
-                        <div>
-                            <small class="text-muted">ผู้เช่าปัจจุบัน</small>
-                            <h3 class="fw-bold mb-0"><%= dStats.occupiedCount %> <small class="fs-6 fw-normal">/ <%= dStats.totalSlots %></small></h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm p-3 h-100">
-                    <div class="d-flex align-items-center">
-                        <div class="rounded-3 p-3 me-3" style="background: rgba(231, 76, 60, 0.1); color: #e74c3c;">
-                            <i class="fas fa-tools fa-2x"></i>
-                        </div>
-                        <div>
-                            <small class="text-muted">งานซ่อมค้าง</small>
-                            <h3 class="fw-bold mb-0 text-danger"><%= dStats.pendingRepairs %></h3>
+                <div class="col-lg-4">
+                    <div class="insight-card h-100">
+                        <h5 class="mb-3 fw-bold"><i
+                                class="fas fa-bolt me-2"></i>ทางลัดการจัดการ</h5>
+                        <div class="d-grid gap-2 quick-links">
+                            <a href="/admin/slots" class="quick-link-item"><i
+                                    class="fas fa-map"></i> จัดการผังแผง</a>
+                            <a href="/admin/approvals"
+                                class="quick-link-item"><i
+                                    class="fas fa-stamp"></i>
+                                ตรวจใบขออนุมัติ</a>
+                            <a href="/admin/requests" class="quick-link-item"><i
+                                    class="fas fa-clipboard-check"></i>
+                                อัปเดตสถานะงานซ่อม</a>
+                            <a href="/admin/announcements"
+                                class="quick-link-item"><i
+                                    class="fas fa-bullhorn"></i>
+                                เผยแพร่ประกาศใหม่</a>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <h4 class="fw-bold mb-4">สถานะพื้นที่รายโซน</h4>
-        <div class="row g-4 mb-5">
-            <% if (locals.zones && zones.length > 0) { %>
-                <% zones.forEach(zone => { %>
-                <div class="col-xl-6">
-                    <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
-                        <div class="p-4 text-white d-flex justify-content-between" style="background-color: <%= zone.color %>;">
-                            <div class="d-flex align-items-center gap-3">
-                                <i class="fas <%= zone.icon %> fs-3"></i>
+            <section class="zone-panel mb-3">
+                <div class="zone-panel-head">
+                    <h3 class="fw-bold mb-0"><i
+                            class="fas fa-map-marked-alt me-2"></i>สถานะพื้นที่รายโซน</h3>
+                    <div class="zone-tools">
+                        <div class="input-group">
+                            <span class="input-group-text"><i
+                                    class="fas fa-search"></i></span>
+                            <input type="text" id="zoneSearchInput"
+                                class="form-control" placeholder="ค้นหาโซน">
+                        </div>
+                        <select id="zoneSortSelect" class="form-select">
+                            <option value="name-asc">เรียงตามชื่อโซน</option>
+                            <option
+                                value="available-desc">แผงว่างมากสุด</option>
+                            <option value="repairs-desc">งานซ่อมมากสุด</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section class="row g-4 mb-5" id="zonesGrid">
+                <% if (zoneList.length > 0) { %>
+                <% zoneList.forEach((zone, index) => { %>
+                <div class="col-lg-6 zone-col"
+                    data-zone-name="<%= zone.name.toLowerCase() %>"
+                    data-available="<%= zone.available || 0 %>"
+                    data-repairs="<%= zone.repairs || 0 %>">
+                    <div
+                        class="zone-card <%= index % 4 === 0 ? 'primary' : index % 4 === 1 ? 'success' : index % 4 === 2 ? 'warning' : 'info' %>">
+                        <div class="zone-card-header">
+                            <div class="zone-header-content">
+                                <i class="fas <%= zone.icon %> zone-icon"></i>
                                 <div>
-                                    <h5 class="mb-0 fw-bold"><%= zone.name %></h5>
-                                    <small class="opacity-75"><%= zone.description %></small>
+                                    <h5 class="zone-title"><%= zone.name %></h5>
+                                    <small class="zone-description"><%=
+                                        zone.description %></small>
                                 </div>
                             </div>
                         </div>
-                        <div class="card-body p-4 text-center">
-                            <div class="row">
-                                <div class="col-4 border-end">
-                                    <small class="text-muted">แผงว่าง</small>
-                                    <div class="fs-4 fw-bold text-success"><%= zone.available %></div>
+                        <div class="zone-card-body">
+                            <div class="zone-stats">
+                                <div class="stat-item">
+                                    <div class="stat-icon available"><i
+                                            class="fas fa-check-circle"></i></div>
+                                    <small class="stat-label">แผงว่าง</small>
+                                    <h4 class="stat-value count-up"
+                                        data-target="<%= zone.available || 0 %>"><%=
+                                        zone.available || 0 %></h4>
                                 </div>
-                                <div class="col-4 border-end">
-                                    <small class="text-muted">ค้างชำระ</small>
-                                    <div class="fs-4 fw-bold text-danger"><%= zone.unpaid %></div>
+                                <div class="stat-item">
+                                    <div class="stat-icon unpaid"><i
+                                            class="fas fa-ban"></i></div>
+                                    <small class="stat-label">ค้างชำระ</small>
+                                    <h4 class="stat-value count-up"
+                                        data-target="<%= zone.unpaid || 0 %>"><%=
+                                        zone.unpaid || 0 %></h4>
                                 </div>
-                                <div class="col-4">
-                                    <small class="text-muted">งานซ่อม</small>
-                                    <div class="fs-4 fw-bold text-warning"><%= zone.repairs %></div>
+                                <div class="stat-item">
+                                    <div class="stat-icon repairs"><i
+                                            class="fas fa-wrench"></i></div>
+                                    <small class="stat-label">งานซ่อม</small>
+                                    <h4 class="stat-value count-up"
+                                        data-target="<%= zone.repairs || 0 %>"><%=
+                                        zone.repairs || 0 %></h4>
                                 </div>
                             </div>
-                            <a href="/admin/slots?zone=<%= zone.slug %>" class="btn btn-dark w-100 mt-4 py-2">ดูรายละเอียดแผง</a>
+                            <a href="/admin/slots?zone=<%= zone.slug %>"
+                                class="zone-btn">
+                                ดูรายละเอียดแผง <i
+                                    class="fas fa-arrow-right ms-2"></i>
+                            </a>
                         </div>
                     </div>
                 </div>
                 <% }) %>
-            <% } %>
-        </div>
-    </div>
+                <% } else { %>
+                <div class="col-12">
+                    <div class="empty-state">
+                        <div class="empty-state-icon"><i
+                                class="fas fa-inbox"></i></div>
+                        <h4 class="fw-bold mb-2">ยังไม่มีข้อมูลโซน</h4>
+                        <p
+                            class="text-muted mb-0">กรุณาเพิ่มข้อมูลโซนเพื่อเริ่มติดตามสถานะพื้นที่</p>
+                    </div>
+                </div>
+                <% } %>
 
-    <script>
-        document.getElementById('live-date').innerText = `อัปเดตเมื่อ: ${new Date().toLocaleString('th-TH')}`;
-    </script>
-</body>
+                <div id="emptyFilteredZone" class="col-12 d-none">
+                    <div class="empty-state py-5">
+                        <div class="empty-state-icon"><i
+                                class="fas fa-filter"></i></div>
+                        <h4 class="fw-bold mb-2">ไม่พบโซนที่ตรงกับเงื่อนไข</h4>
+                        <p
+                            class="text-muted mb-0">ลองเปลี่ยนคำค้นหาหรือรูปแบบการเรียงใหม่</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+        <script src="/js/admin/dashboard.js"></script>
+    </body>
 </html>

@@ -1,196 +1,383 @@
-/* --- User Table Custom Design --- */
+/* ========================================
+   USERS PAGE STYLES
+   ======================================== */
+
 .user-row {
-    transition: all 0.2s ease;
+    transition: var(--transition);
 }
 
 .user-row:hover {
-    background-color: rgba(167, 59, 36, 0.02) !important;
-}
-
-.user-info-cell {
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 15px;
+    background-color: rgba(59, 184, 212, 0.05) !important;
 }
 
 .avatar-circle {
-    width: 40px;
-    height: 40px;
-    background: #f1f3f5;
-    color: #a73b24;
+    width: 45px;
+    height: 45px;
+    background: var(--primary-color);
+    color: white;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 1.1rem;
-    border: 2px solid #fff;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    font-size: 1rem;
 }
 
-.clickable-name:hover {
-    color: #e74c3c;
-    text-decoration: underline;
+.user-info-cell {
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(59, 184, 212, 0.16);
+    background: linear-gradient(135deg, rgba(59, 184, 212, 0.1) 0%, rgba(59, 184, 212, 0.03) 100%);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-/* --- Detail Modal Styling --- */
+.user-info-cell:hover {
+    transform: translateY(-2px);
+    border-color: rgba(59, 184, 212, 0.35);
+    box-shadow: 0 10px 20px rgba(59, 184, 212, 0.16);
+}
+
+.user-info-cell:active {
+    transform: translateY(0);
+}
+
+.clickable-name {
+    transition: color 0.2s ease;
+}
+
+.user-info-cell:hover .clickable-name {
+    color: var(--primary-dark) !important;
+}
+
+.detail-arrow {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--primary-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(59, 184, 212, 0.2);
+    transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.user-info-cell:hover .detail-arrow {
+    transform: translateX(2px);
+    background: var(--primary-color);
+    color: #fff;
+}
+
+.role-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.role-admin {
+    background: var(--warning-color);
+    color: white;
+}
+
+.role-staff {
+    background: var(--info-color);
+    color: white;
+}
+
+.role-seller {
+    background: var(--success-color);
+    color: white;
+}
+
+.role-customer {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-action {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 3px;
+    color: #fff;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.25s ease, filter 0.25s ease;
+    box-shadow: 0 8px 16px rgba(44, 62, 80, 0.16);
+}
+
+.btn-action i {
+    font-size: 0.92rem;
+    line-height: 1;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px) scale(1.04);
+    filter: brightness(1.05);
+}
+
+.btn-action:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.btn-action:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(59, 184, 212, 0.2), 0 8px 16px rgba(44, 62, 80, 0.2);
+}
+
+.btn-view {
+    background: linear-gradient(135deg, #2f80ed 0%, #56ccf2 100%);
+}
+
+.btn-edit {
+    background: linear-gradient(135deg, #00b894 0%, #55efc4 100%);
+}
+
+.btn-delete {
+    background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+}
+
+.btn-view:hover {
+    box-shadow: 0 10px 20px rgba(47, 128, 237, 0.35);
+}
+
+.btn-edit:hover {
+    box-shadow: 0 10px 20px rgba(0, 184, 148, 0.35);
+}
+
+.btn-delete:hover {
+    box-shadow: 0 10px 20px rgba(235, 51, 73, 0.35);
+}
+
+.modal-header {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+}
+
+.modal-header .btn-close {
+    filter: brightness(0) invert(1);
+}
+
+.user-detail-dialog {
+    max-width: 680px;
+}
+
+.user-detail-content {
+    background:
+        radial-gradient(circle at top right, rgba(59, 184, 212, 0.14), transparent 40%),
+        linear-gradient(180deg, #ffffff 0%, #f8fcfe 100%);
+}
+
+.user-detail-header {
+    background: transparent;
+    color: var(--dark-color);
+}
+
+.user-detail-hero {
+    background: linear-gradient(145deg, rgba(59, 184, 212, 0.08), rgba(95, 200, 224, 0.03));
+    border: 1px solid rgba(59, 184, 212, 0.14);
+    border-radius: 18px;
+    padding: 18px 16px;
+}
+
 .profile-avatar-wrapper {
+    width: 112px;
+    height: 112px;
+    margin: 0 auto;
     position: relative;
-    display: inline-block;
 }
 
 .profile-avatar {
-    width: 100px;
-    height: 100px;
-    background: #fff;
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #dee2e6;
+    background: linear-gradient(135deg, #ebf8fc 0%, #d7f1f8 100%);
+    color: var(--primary-dark);
+    border: 4px solid #fff;
 }
 
 .status-indicator {
-    position: absolute;
-    bottom: 5px;
-    right: 5px;
     width: 20px;
     height: 20px;
     border-radius: 50%;
+    position: absolute;
+    right: 8px;
+    bottom: 4px;
     border: 3px solid #fff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
 }
 
 .info-group {
     background: #fff;
-    border-radius: 20px;
+    border: 1px solid #e6f1f5;
+    border-radius: 18px;
+    padding: 12px 14px;
+}
+
+.mini-card {
+    height: 100%;
+    border: 1px solid #d8edf4;
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: #fff;
+}
+
+.mini-card small {
+    display: block;
+    color: #718794;
+    font-size: 0.76rem;
+    margin-bottom: 4px;
+}
+
+.mini-card div {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #244150;
 }
 
 .info-item {
-    padding: 12px 0;
-    border-bottom: 1px dashed #eee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    padding: 10px 6px;
+    border-bottom: 1px dashed #d6e9ef;
 }
 
 .info-item label {
-    font-size: 0.85rem;
-    color: #888;
-    margin: 0;
+    display: block;
+    font-size: 0.78rem;
+    color: #6e8490;
+    margin-bottom: 4px;
 }
 
 .info-item .value {
-    font-weight: 600;
-    color: #333;
+    font-size: 1rem;
+    color: #1f3442;
+    font-weight: 500;
+    word-break: break-word;
 }
 
 .shop-card-detail {
-    background-color: #fff9f8;
-    border: 1px solid #ffe5e0;
-    color: #a73b24;
+    background: linear-gradient(140deg, #ffffff 0%, #eef9fd 100%);
+    border: 1px solid #d8edf4;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
-/* --- Role Colors --- */
-.role-admin { background-color: #a73b24 !important; color: white !important; }
-.role-staff { background-color: #0d47a1 !important; color: white !important; }
-.role-seller { background-color: #2e7d32 !important; color: white !important; }
-.role-customer { background-color: #6c757d !important; color: white !important; }
+.shop-card-detail h6 {
+    color: #245d73;
+}
 
-/* public/stylesheets/admin/users.css */
+.shop-highlight {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
 
-/* --- สไตล์ของปุ่ม (Action Buttons) --- */
-.btn-action {
-    width: 38px;
-    height: 38px;
+.shop-highlight-item {
+    border: 1px solid #d4ebf3;
     border-radius: 12px;
-    border: none;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    /* เพิ่มมิตินิดๆ */
+    background: #fff;
+    padding: 8px 10px;
 }
 
-/* ปุ่มดูรายละเอียด (Eye) - สีน้ำเงิน Soft */
-.btn-view {
-    background-color: #eef2ff;
-    color: #4338ca;
-}
-
-.btn-view:hover {
-    background-color: #4338ca;
-    color: white;
-    transform: translateY(-2px);
-}
-
-/* ปุ่มแก้ไขสิทธิ์ (Shield) - สีส้ม Soft */
-.btn-edit {
-    background-color: #fff4e5;
-    color: #ff922b;
-    margin: 0 5px;
-}
-
-.btn-edit:hover {
-    background-color: #ff922b;
-    color: white;
-    transform: translateY(-2px);
-}
-
-/* ปุ่มลบ (Trash) - สีแดง Soft */
-.btn-delete {
-    background-color: #fff0f0;
-    color: #fa5252;
-}
-
-.btn-delete:hover {
-    background-color: #fa5252;
-    color: white;
-    transform: translateY(-2px);
-}
-
-/* --- สไตล์ของ Badge แยกตามบทบาท --- */
-.role-badge {
-    padding: 6px 15px;
-    border-radius: 50px;
+.shop-highlight-item small {
+    display: block;
+    color: #6f8692;
     font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    display: inline-flex;
-    align-items: center;
+    margin-bottom: 2px;
 }
 
-.role-admin {
-    background-color: #ffe8e8;
-    color: #a73b24;
+.shop-info-tile {
+    height: 100%;
+    border: 1px solid #d7ebf2;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.88);
+    padding: 10px 12px;
 }
 
-.role-staff {
-    background-color: #e3f2fd;
-    color: #0d47a1;
+.shop-detail-text {
+    color: #29404d;
+    line-height: 1.5;
+    white-space: pre-line;
 }
 
-.role-seller {
-    background-color: #e8f5e9;
-    color: #2e7d32;
+.shop-file-ref {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.85rem;
+    color: #2e5363;
+    background: #f1f9fc;
+    border-radius: 8px;
+    padding: 7px 9px;
+    border: 1px solid #d6eaf2;
+    word-break: break-all;
 }
 
-.role-customer {
-    background-color: #f1f3f5;
-    color: #495057;
-    border: 1px solid #dee2e6;
-}
+@media (max-width: 768px) {
+    .avatar-circle {
+        width: 40px;
+        height: 40px;
+        font-size: 0.9rem;
+    }
 
-/* จังหวะ Hover บนชื่อ */
-.clickable-name {
-    color: #a73b24;
-    font-weight: 600;
-    transition: 0.2s;
-}
+    .table {
+        font-size: 0.9rem;
+    }
 
-.clickable-name:hover {
-    color: #e74c3c;
-    text-decoration: underline;
+    .user-info-cell {
+        padding: 8px 10px;
+        border-radius: 12px;
+    }
+
+    .detail-arrow {
+        width: 24px;
+        height: 24px;
+        font-size: 0.75rem;
+    }
+
+    .btn-action {
+        width: 34px;
+        height: 34px;
+        margin: 2px;
+    }
+
+    .btn-action i {
+        font-size: 0.85rem;
+    }
+
+    .user-detail-dialog {
+        max-width: 95%;
+        margin: 0.75rem auto;
+    }
+
+    .profile-avatar-wrapper {
+        width: 94px;
+        height: 94px;
+    }
+
+    .profile-avatar i {
+        font-size: 2rem !important;
+    }
+
+    .user-detail-hero {
+        border-radius: 14px;
+        padding: 14px 12px;
+    }
+
+    .mini-card {
+        padding: 9px 10px;
+    }
+
+    .info-item .value {
+        font-size: 0.95rem;
+    }
+
+    .shop-highlight {
+        grid-template-columns: 1fr;
+    }
 }

@@ -1,0 +1,412 @@
+/* ========================================
+   GLOBAL ADMIN THEME
+   ======================================== */
+
+:root {
+    /* Color Palette */
+    --primary-color: #3BB8D4;
+    --primary-light: #5FC8E0;
+    --primary-dark: #2A95B0;
+    --success-color: #27AE60;
+    --success-light: #58CD89;
+    --success-dark: #1E8449;
+    --warning-color: #F39C12;
+    --warning-light: #F5B041;
+    --warning-dark: #D68910;
+    --info-color: #3498DB;
+    --info-light: #5DADE2;
+    --danger-color: #E74C3C;
+    --dark-color: #2C3E50;
+    --light-color: #ECF0F1;
+    --muted-color: #95A5A6;
+
+    /* Effects */
+    --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    --card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.15);
+    --border-radius: 16px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --border-radius-sm: 10px;
+}
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
+
+body {
+    font-family: 'Kanit', sans-serif;
+    background: #f8fafc;
+    min-height: 100vh;
+    color: var(--dark-color);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--dark-color);
+    font-weight: 600;
+}
+
+a {
+    color: var(--primary-color);
+    transition: var(--transition);
+}
+
+a:hover {
+    color: var(--primary-dark);
+    text-decoration: none;
+}
+
+/* ========================================
+   CARDS
+   ======================================== */
+
+.card,
+.card-custom {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    transition: var(--transition);
+    overflow: hidden;
+}
+
+.card:hover,
+.card-custom:hover {
+    box-shadow: var(--card-shadow-hover);
+    transform: translateY(-4px);
+}
+
+.card-header {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 1.5rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.card-header-success {
+    background: var(--success-color);
+}
+
+.card-header-warning {
+    background: var(--warning-color);
+}
+
+.card-header-info {
+    background: var(--info-color);
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+
+.btn,
+.btn-custom {
+    border: none;
+    border-radius: var(--border-radius-sm);
+    font-weight: 600;
+    padding: 10px 20px;
+    transition: var(--transition);
+    text-transform: none;
+}
+
+.btn-primary,
+.btn-primary-custom {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover,
+.btn-primary-custom:hover {
+    background: var(--primary-dark);
+    box-shadow: 0 6px 20px rgba(59, 184, 212, 0.3);
+}
+
+.btn-success {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover {
+    background: var(--success-dark);
+}
+
+.btn-warning {
+    background: var(--warning-color);
+    color: white;
+}
+
+.btn-warning:hover {
+    background: var(--warning-dark);
+}
+
+.btn-info {
+    background: var(--info-color);
+    color: white;
+}
+
+.btn-info:hover {
+    background: #2980B9;
+}
+
+.btn-outline-primary {
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+    background: transparent;
+}
+
+.btn-outline-primary:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* ========================================
+   FORMS
+   ======================================== */
+
+.form-control,
+.form-select,
+.custom-input,
+.form-control-custom {
+    border: 2px solid #E8EEF2;
+    border-radius: var(--border-radius-sm);
+    padding: 12px 16px;
+    font-family: 'Kanit', sans-serif;
+    background: #f8fafc;
+    transition: var(--transition);
+}
+
+.form-control:focus,
+.form-select:focus,
+.custom-input:focus,
+.form-control-custom:focus {
+    border-color: var(--primary-color);
+    background: white;
+    box-shadow: 0 0 0 4px rgba(59, 184, 212, 0.1);
+}
+
+.form-label {
+    color: var(--dark-color);
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+input::placeholder {
+    color: var(--muted-color);
+}
+
+/* ========================================
+   TABLES
+   ======================================== */
+
+.table {
+    color: var(--dark-color);
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    border: none;
+    padding: 1.2rem;
+}
+
+.table tbody tr {
+    transition: var(--transition);
+    border-bottom: 1px solid #E8EEF2;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(59, 184, 212, 0.05);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(59, 184, 212, 0.02);
+}
+
+.table td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+/* ========================================
+   BADGES
+   ======================================== */
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.badge-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.badge-success {
+    background: var(--success-color);
+    color: white;
+}
+
+.badge-warning {
+    background: var(--warning-color);
+    color: white;
+}
+
+.badge-danger {
+    background: var(--danger-color);
+    color: white;
+}
+
+.badge-info {
+    background: var(--info-color);
+    color: white;
+}
+
+/* ========================================
+   ALERTS
+   ======================================== */
+
+.alert {
+    border: none;
+    border-radius: var(--border-radius-sm);
+    border-left: 4px solid var(--primary-color);
+}
+
+.alert-success {
+    background: rgba(39, 174, 96, 0.1);
+    color: var(--success-dark);
+    border-left-color: var(--success-color);
+}
+
+.alert-warning {
+    background: rgba(243, 156, 18, 0.1);
+    color: #8B6914;
+    border-left-color: var(--warning-color);
+}
+
+.alert-danger {
+    background: rgba(231, 76, 60, 0.1);
+    color: #922B21;
+    border-left-color: var(--danger-color);
+}
+
+.alert-info {
+    background: rgba(52, 152, 219, 0.1);
+    color: #1B4F72;
+    border-left-color: var(--info-color);
+}
+
+/* ========================================
+   PAGE SECTIONS
+   ======================================== */
+
+.page-section {
+    padding: 2rem;
+    margin-bottom: 2rem;
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+}
+
+.section-title {
+    color: var(--dark-color);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 3px solid var(--primary-color);
+}
+
+/* ========================================
+   ICONS
+   ======================================== */
+
+.icon-box {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    background: var(--primary-color);
+}
+
+.icon-box-primary {
+    background: var(--primary-color);
+}
+
+.icon-box-success {
+    background: var(--success-color);
+}
+
+.icon-box-warning {
+    background: var(--warning-color);
+}
+
+.icon-box-info {
+    background: var(--info-color);
+}
+
+/* ========================================
+   UTILITIES
+   ======================================== */
+
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+.text-success {
+    color: var(--success-color) !important;
+}
+
+.text-warning {
+    color: var(--warning-color) !important;
+}
+
+.text-danger {
+    color: var(--danger-color) !important;
+}
+
+.text-info {
+    color: var(--info-color) !important;
+}
+
+.bg-primary-light {
+    background: rgba(59, 184, 212, 0.1);
+}
+
+.bg-success-light {
+    background: rgba(39, 174, 96, 0.1);
+}
+
+.bg-warning-light {
+    background: rgba(243, 156, 18, 0.1);
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 768px) {
+    .page-section {
+        padding: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.2rem;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+}

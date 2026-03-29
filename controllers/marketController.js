@@ -4,18 +4,24 @@ const prisma = new PrismaClient();
 // --- ส่วน getDashboardPage คงเดิมตามที่คุณส่งมา ---
 exports.getDashboardPage = async (req, res) => {
     try {
-        const [totalSlots, occupiedCount, pendingRepairs, unpaidCount] = await Promise.all([
+        const [totalSlots, occupiedCount, availableSlots, pendingRepairs, unpaidCount, pendingRequests, announcements] = await Promise.all([
             prisma.slot.count(), 
             prisma.slot.count({ where: { isAvailable: false } }), 
+            prisma.slot.count({ where: { isAvailable: true } }),
             prisma.maintenanceReport.count({ where: { status: 'PENDING' } }), 
-            prisma.booking.count({ where: { status: 'PENDING' } }) 
+            prisma.booking.count({ where: { status: 'PENDING' } }),
+            prisma.bookingRequest.count({ where: { status: 'PENDING' } }),
+            prisma.announcement.count()
         ]);
 
         const stats = { 
             totalSlots: totalSlots || 0, 
-            occupiedCount: occupiedCount || 0, 
+            occupiedCount: occupiedCount || 0,
+            availableSlots: availableSlots || 0,
             pendingRepairs: pendingRepairs || 0,
-            unpaidCount: unpaidCount || 0
+            unpaidCount: unpaidCount || 0,
+            pendingRequests: pendingRequests || 0,
+            announcements: announcements || 0
         };
 
         const rawZones = await prisma.slot.findMany({ 

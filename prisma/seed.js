@@ -8,6 +8,7 @@ async function main() {
     update: {},
     create: {
       username: 'admin',
+      email: 'admin@gmail.com',
       password: 'password123', // ในระบบจริงต้อง Hash รหัสผ่าน
       name: 'Phurin Admin',
       phoneNumber: '081-234-5678',

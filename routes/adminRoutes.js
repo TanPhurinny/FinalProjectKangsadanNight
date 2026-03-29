@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
+const fs = require('fs');
 const multer = require('multer');
 const { isStaffOrAdmin, isAdminOnly } = require('../middlewares/auth');
 
@@ -12,14 +13,35 @@ const marketCtrl = require('../controllers/marketController');
 const announceCtrl = require('../controllers/announcementController'); 
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
+const uploadDir = path.join(__dirname, '..', 'public', 'uploads', 'announcements');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
-    destination: './public/uploads/announcements/',
+    destination: function (req, file, cb) {
+        cb(null, uploadDir);
+    },
     filename: (req, file, cb) => {
         // ตั้งชื่อไฟล์ใหม่: ann-เวลปัจจุบัน.นามสกุลไฟล์เดิม
         cb(null, 'ann-' + Date.now() + path.extname(file.originalname));
     }
 });
-const upload = multer({ storage: storage });
+
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png|gif/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('ประเภทไฟล์ไม่ถูกต้อง'));
+        }
+    }
+});
 
 // --- 3. Middleware ตรวจสอบสิทธิ์ ---
 // ทุก Route ด้านล่างนี้ เฉพาะ Staff และ Admin เท่านั้นที่เข้าถึงได้
@@ -30,10 +52,17 @@ router.get('/dashboard', marketCtrl.getDashboardPage);
 router.get('/slots', marketCtrl.getSlotsPage);
 
 // --- 5. Announcements (จัดการประกาศ) ---
+// ดึงข้อมูลหน้าประกาศ
 router.get('/announcements', announceCtrl.getAdminAnnouncements);
-// รองรับการอัปโหลดรูปภาพผ่านฟิลด์ชื่อ 'announcementImage'
-router.post('/announcements/create', upload.single('announcementImage'), announceCtrl.createAnnouncement);
-router.get('/announcements/delete/:id', announceCtrl.deleteAnnouncement);
+
+// สร้างประกาศใหม่ (POST /admin/announcements)
+router.post('/announcements', upload.single('image'), announceCtrl.createAnnouncement);
+
+// แก้ไขประกาศ (เพิ่ม Route นี้เข้าไป!)
+router.post('/announcements/:id/update', upload.single('image'), announceCtrl.updateAnnouncement);
+
+// ลบประกาศ (แก้ไขจากเดิมที่อาจจะส่ง ID ผิด)
+router.post('/announcements/:id/delete', announceCtrl.deleteAnnouncement);
 
 // --- 6. User Management (เฉพาะ Admin เท่านั้น) ---
 router.get('/users', isAdminOnly, userCtrl.getUsersPage);
