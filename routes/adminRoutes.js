@@ -12,16 +12,12 @@ const requestCtrl = require('../controllers/requestController');
 const marketCtrl = require('../controllers/marketController');
 const announceCtrl = require('../controllers/announcementController'); 
 
-<<<<<<< HEAD
-// --- 2. การตั้งค่า Multer ---
-=======
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
 const uploadDir = path.join(__dirname, '..', 'public', 'uploads', 'announcements');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
->>>>>>> test
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, uploadDir);
