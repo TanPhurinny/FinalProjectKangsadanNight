@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>โปรไฟล์ของฉัน | Kangsadan Night Market</title>
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+            rel="stylesheet">
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet">
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/dashboard.css">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+        <style>
+        .profile-shell {
+            max-width: 1040px;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, #3BB8D4 0%, #2c97b1 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .profile-header h2 {
+            margin-bottom: 0;
+            font-weight: 700;
+        }
+
+        .profile-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .profile-section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2c97b1;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3BB8D4;
+            padding-bottom: 10px;
+        }
+
+        .form-group-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group-row.full {
+            grid-template-columns: 1fr;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .form-control, .form-select {
+            border: 1px solid #dcecf2;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #3BB8D4;
+            box-shadow: 0 0 0 0.2rem rgba(59, 184, 212, 0.15);
+        }
+
+        .btn-update {
+            background: linear-gradient(135deg, #3BB8D4 0%, #2c97b1 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-update:hover {
+            background: linear-gradient(135deg, #2c97b1 0%, #236f84 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 184, 212, 0.3);
+            color: white;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .role-badge.admin {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .role-badge.staff {
+            background: #cfe2ff;
+            color: #084298;
+        }
+
+        .role-badge.seller {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .role-badge.customer {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .info-value {
+            color: #666;
+        }
+
+        .alert {
+            border-radius: 8px;
+            border: none;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #842029;
+        }
+
+        @media (max-width: 768px) {
+            .form-group-row {
+                grid-template-columns: 1fr;
+            }
+
+            .profile-header {
+                padding: 20px;
+            }
+
+            .profile-card {
+                padding: 20px;
+            }
+
+            .profile-shell {
+                max-width: 100%;
+            }
+        }
+    </style>
+    </head>
+    <body class="bg-light">
+        <%- include('../partials/navbar') %>
+
+        <div class="container dashboard-shell profile-shell py-4">
+            <% if (success) { %>
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle me-2"></i> <%= success %>
+            </div>
+            <% } %>
+
+            <% if (error) { %>
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle me-2"></i> <%= error %>
+            </div>
+            <% } %>
+
+            <div class="profile-header">
+                <h2><i
+                        class="fas fa-user-circle me-2"></i>โปรไฟล์ของฉัน</h2>
+            </div>
+
+            <!-- ข้อมูลพื้นฐาน -->
+            <div class="profile-card">
+                <h3 class="profile-section-title">ข้อมูลพื้นฐาน</h3>
+
+                <div class="info-row">
+                    <span class="info-label">บทบาท</span>
+                    <span class="info-value">
+                        <span
+                            class="role-badge <%= profileUser.role.toLowerCase() %>">
+                            <% if (profileUser.role === 'ADMIN') { %>
+                            <i class="fas fa-crown me-1"></i>ผู้ดูแลระบบ
+                            <% } else if (profileUser.role === 'STAFF') { %>
+                            <i class="fas fa-user-tie me-1"></i>พนักงาน
+                            <% } else if (profileUser.role === 'SELLER') {
+                            %>
+                            <i class="fas fa-store me-1"></i>พ่อค้า/แม่ค้า
+                            <% } else { %>
+                            <i class="fas fa-user me-1"></i>ลูกค้า
+                            <% } %>
+                        </span>
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Username</span>
+                    <span class="info-value"><%= profileUser.username
+                        %></span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">วันที่สมัครสมาชิก</span>
+                    <span class="info-value">
+                        <%= new
+                        Date(profileUser.createdAt).toLocaleDateString('th-TH',
+                        {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                        }) %>
+                    </span>
+                </div>
+            </div>
+
+            <!-- แก้ไขข้อมูลส่วนตัว -->
+            <div class="profile-card">
+                <h3 class="profile-section-title">แก้ไขข้อมูลส่วนตัว</h3>
+
+                <form method="POST" action="/profile">
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label class="form-label">ชื่อ-นามสกุล</label>
+                            <input type="text" class="form-control"
+                                name="name" value="<%= profileUser.name %>"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">อีเมล (Gmail)</label>
+                            <input type="email" class="form-control"
+                                name="email"
+                                value="<%= profileUser.email || '' %>"
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label class="form-label">เบอร์โทรศัพท์</label>
+                            <input type="tel" class="form-control"
+                                name="phoneNumber"
+                                value="<%= profileUser.phoneNumber || '' %>">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">วันเกิด</label>
+                            <input type="date" class="form-control"
+                                name="birthDate"
+                                value="<%= profileUser.birthDate ? profileUser.birthDate.toISOString().split('T')[0] : '' %>">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-update">
+                        <i class="fas fa-save me-2"></i>อัปเดตข้อมูล
+                    </button>
+                </form>
+            </div>
+
+            <!-- เปลี่ยนรหัสผ่าน -->
+            <div class="profile-card">
+                <h3 class="profile-section-title">เปลี่ยนรหัสผ่าน</h3>
+
+                <form method="POST" action="/profile">
+                    <div class="form-group full">
+                        <label class="form-label">รหัสผ่านปัจจุบัน <span
+                                style="color: red;">*</span></label>
+                        <input type="password"
+                            class="form-control password-input-group"
+                            name="password"
+                            placeholder="กรุณาใส่รหัสผ่านปัจจุบัน">
+                    </div>
+
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label class="form-label">รหัสผ่านใหม่
+                                (อย่างน้อย 6 ตัวอักษร)</label>
+                            <input type="password" class="form-control"
+                                name="newPassword"
+                                placeholder="กรุณาใส่รหัสผ่านใหม่"
+                                minlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label
+                                class="form-label">ยืนยันรหัสผ่านใหม่</label>
+                            <input type="password" class="form-control"
+                                name="confirmPassword"
+                                placeholder="ยืนยันรหัสผ่านใหม่"
+                                minlength="6">
+                        </div>
+                    </div>
+
+                    <small class="text-muted d-block mb-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยนรหัสผ่าน
+                    </small>
+
+                    <button type="submit" class="btn btn-update">
+                        <i class="fas fa-lock me-2"></i>เปลี่ยนรหัสผ่าน
+                    </button>
+                </form>
+            </div>
+
+            <!-- ข้อมูลร้านค้า (สำหรับ Seller เท่านั้น) -->
+            <% if (profileUser.role === 'SELLER' && profileUser.shop) { %>
+            <div class="profile-card">
+                <h3 class="profile-section-title">ข้อมูลร้านค้า</h3>
+
+                <div class="info-row">
+                    <span class="info-label">ชื่อร้าน</span>
+                    <span class="info-value"><%= profileUser.shop.shopName
+                        || 'ยังไม่ได้บันทึก' %></span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">ประเภทสินค้า</span>
+                    <span class="info-value">
+                        <% if (profileUser.shop.productType === 'FOOD') { %>
+                        อาหาร/เครื่องดื่ม
+                        <% } else if (profileUser.shop.productType ===
+                        'FASHION') { %>
+                        เสื้อผ้า/แฟชั่น
+                        <% } else { %>
+                        <%= profileUser.shop.productType ||
+                        'ยังไม่ได้บันทึก' %>
+                        <% } %>
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">รายละเอียดสินค้า</span>
+                    <span class="info-value"><%=
+                        profileUser.shop.productDetail || 'ยังไม่ได้บันทึก'
+                        %></span>
+                </div>
+            </div>
+            <% } %>
+        </div>
+
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    </body>
+</html>

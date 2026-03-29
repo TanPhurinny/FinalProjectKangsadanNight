@@ -76,6 +76,7 @@
     "math-intrinsics": "^1.1.0",
     "media-typer": "^1.1.0",
     "merge-descriptors": "^2.0.0",
+    "method-override": "^3.0.0",
     "mime-db": "^1.54.0",
     "mime-types": "^3.0.2",
     "minimatch": "^5.1.9",

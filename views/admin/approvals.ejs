@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
+<<<<<<< HEAD
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -412,4 +413,207 @@
 </script>
 
 </body>
+=======
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Product Verification | Kangsadan Night Market</title>
+
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+            rel="stylesheet">
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap"
+            rel="stylesheet">
+
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/approvals.css">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body>
+        <%- include('../partials/navbar') %>
+
+        <div class="dashboard-container">
+            <header class="d-flex justify-content-between align-items-end mb-4">
+                <div>
+                    <h1 class="fw-bold mb-1">Product Verification</h1>
+                    <p
+                        class="text-muted mb-0">ตรวจสอบคุณภาพสินค้าและข้อมูลผู้ค้าก่อนอนุมัติสิทธิ์เข้าพื้นที่</p>
+                </div>
+                <div class="text-end">
+                    <div
+                        class="badge bg-white text-dark shadow-sm p-2 px-4 rounded-pill border">
+                        <i class="fas fa-hourglass-half text-warning me-2"></i>
+                        รออนุมัติ: <b class="text-primary"
+                            id="pending-count"><%= pendingRequests.length %></b>
+                        รายการ
+                    </div>
+                </div>
+            </header>
+
+            <div class="d-flex gap-2 mb-4 overflow-auto pb-2">
+                <button
+                    class="btn btn-sm btn-dark rounded-pill px-4">ทั้งหมด</button>
+                <button
+                    class="btn btn-sm btn-outline-dark rounded-pill px-4">โซนอาหาร</button>
+                <button
+                    class="btn btn-sm btn-outline-dark rounded-pill px-4">โซนแฟชั่น</button>
+                <button
+                    class="btn btn-sm btn-outline-dark rounded-pill px-4">โซนทั่วไป</button>
+            </div>
+
+            <div class="row g-4" id="approval-grid">
+                <% if (locals.pendingRequests && pendingRequests.length > 0) {
+                %>
+                <% pendingRequests.forEach(item => { %>
+                <div class="col-xl-4 col-md-6 approval-item">
+                    <div class="approval-card shadow-sm border-0">
+                        <div class="product-image-wrapper"
+                            data-bs-toggle="modal"
+                            data-bs-target="#imagePreviewModal"
+                            onclick="previewImage('<%= item.productImage %>', '<%= item.productName %>')">
+                            <img
+                                src="<%= item.productImage || '/img/default-product.jpg' %>"
+                                alt="Product" class="product-img">
+                            <div class="zone-tag-overlay">
+                                <i class="fas fa-map-marker-alt me-1"></i><%=
+                                item.zone %>
+                            </div>
+                            <div class="zoom-hint"><i
+                                    class="fas fa-search-plus"></i>
+                                คลิกเพื่อขยาย</div>
+                        </div>
+
+                        <div class="card-body-main p-4">
+                            <div
+                                class="d-flex justify-content-between align-items-start mb-2">
+                                <h4 class="fw-bold text-dark mb-0 text-truncate"
+                                    style="max-width: 70%;"><%= item.productName
+                                    %></h4>
+                                <span class="badge-status-mini">รอตรวจสอบ</span>
+                            </div>
+
+                            <p class="product-description-text text-muted mb-4">
+                                <%= item.description || 'ไม่มีรายละเอียดสินค้า'
+                                %>
+                            </p>
+
+                            <div class="seller-profile-box p-3 rounded-4 mb-4">
+                                <h6
+                                    class="fw-bold small text-uppercase text-primary mb-3 border-bottom pb-2">
+                                    <i class="fas fa-user-circle me-1"></i>
+                                    โปรไฟล์ผู้ค้า
+                                </h6>
+                                <div
+                                    class="info-row d-flex justify-content-between mb-1">
+                                    <span
+                                        class="label text-muted small">ชื่อผู้ขาย:</span>
+                                    <span class="value fw-medium small"><%=
+                                        item.sellerName %></span>
+                                </div>
+                                <div
+                                    class="info-row d-flex justify-content-between mb-1">
+                                    <span
+                                        class="label text-muted small">เบอร์โทร:</span>
+                                    <a href="tel:<%= item.phone %>"
+                                        class="value text-primary text-decoration-none fw-medium small">
+                                        <%= item.phone || 'ไม่ระบุ' %>
+                                    </a>
+                                </div>
+                                <div
+                                    class="info-row d-flex justify-content-between">
+                                    <span class="label text-muted small">ID
+                                        สมาชิก:</span>
+                                    <span
+                                        class="value fw-medium small text-secondary">#<%=
+                                        item.sellerId || 'USR-001' %></span>
+                                </div>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <form action="/admin/approvals/confirm"
+                                        method="POST"
+                                        onsubmit="return confirm('ยืนยันการอนุมัติสินค้าชิ้นนี้?')">
+                                        <input type="hidden" name="requestId"
+                                            value="<%= item.id %>">
+                                        <input type="hidden" name="status"
+                                            value="APPROVED">
+                                        <button type="submit"
+                                            class="btn btn-manage w-100 py-2">
+                                            <i
+                                                class="fas fa-check-circle me-1"></i>อนุมัติ
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="col-6">
+                                    <form action="/admin/approvals/confirm"
+                                        method="POST"
+                                        onsubmit="return confirm('ต้องการปฏิเสธคำขอนี้ใช่หรือไม่?')">
+                                        <input type="hidden" name="requestId"
+                                            value="<%= item.id %>">
+                                        <input type="hidden" name="status"
+                                            value="REJECTED">
+                                        <button type="submit"
+                                            class="btn btn-outline-secondary w-100 py-2 rounded-3 border-2 fw-bold"
+                                            style="font-size: 0.9rem;">
+                                            ปฏิเสธ
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <% }) %>
+                <% } else { %>
+                <div class="col-12 text-center py-5">
+                    <div
+                        class="empty-state-card shadow-sm p-5 bg-white rounded-5">
+                        <img src="/img/checked.png" alt="Empty"
+                            style="width: 120px; opacity: 0.8;" class="mb-4">
+                        <h3
+                            class="fw-bold text-dark">งานของคุณเสร็จหมดแล้ว!</h3>
+                        <p
+                            class="text-muted">ขณะนี้ไม่มีรายการคำขออนุมัติสินค้าค้างอยู่ในระบบ</p>
+                        <a href="/admin/dashboard"
+                            class="btn btn-primary-custom px-4 rounded-pill mt-2 text-decoration-none d-inline-block">กลับหน้าหลัก</a>
+                    </div>
+                </div>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="modal fade" id="imagePreviewModal" tabindex="-1"
+            aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title fw-bold small"
+                            id="previewTitle">รูปภาพสินค้า</h5>
+                        <button type="button" class="btn-close"
+                            data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-3 text-center">
+                        <img src id="fullImage"
+                            class="img-fluid rounded-3 shadow-sm" alt="Preview">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        function previewImage(src, title) {
+            document.getElementById('fullImage').src = src;
+            document.getElementById('previewTitle').innerText = title;
+        }
+    </script>
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    </body>
+>>>>>>> test
 </html>
