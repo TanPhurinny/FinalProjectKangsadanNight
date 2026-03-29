@@ -38,6 +38,7 @@ app.use((req, res, next) => {
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const marketRoutes = require('./routes/marketRoutes');
+const sellerRoute = require('./routes/sellerRoute');
 const announceCtrl = require('./controllers/announcementController');
 
 // --- 5. การกำหนดเส้นทาง (Routing) ---
@@ -52,7 +53,6 @@ app.use((req, res, next) => {
 app.get('/', async (req, res) => {
     try {
         const user = req.session.user || null;
-        let announcements = [];
 
         // ผู้ใช้ที่ยังไม่เป็นสมาชิก ให้มองเป็น GUEST
         // ผู้ใช้ที่เป็นระบบหลังบ้าน (ADMIN/STAFF) ให้เห็นประกาศกลุ่มลูกค้าเป็นค่าเริ่มต้น
