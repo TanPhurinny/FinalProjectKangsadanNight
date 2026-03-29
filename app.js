@@ -1,8 +1,4 @@
 const express = require('express');
-<<<<<<< HEAD
-const multer = require('multer'); 
-=======
->>>>>>> test
 const session = require('express-session');
 const path = require('path');
 const methodOverride = require('method-override');
@@ -10,10 +6,6 @@ const { PrismaClient } = require('@prisma/client');
 
 const app = express();
 const prisma = new PrismaClient();
-<<<<<<< HEAD
-const upload = multer(); 
-=======
->>>>>>> test
 
 // --- 1. การตั้งค่าพื้นฐาน ---
 app.set('view engine', 'ejs');
@@ -46,11 +38,7 @@ app.use((req, res, next) => {
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const marketRoutes = require('./routes/marketRoutes');
-<<<<<<< HEAD
-const sellerRoute = require('./routes/sellerRoute');
-=======
 const announceCtrl = require('./controllers/announcementController');
->>>>>>> test
 
 // --- 5. การกำหนดเส้นทาง (Routing) ---
 
@@ -64,10 +52,6 @@ app.use((req, res, next) => {
 app.get('/', async (req, res) => {
     try {
         const user = req.session.user || null;
-<<<<<<< HEAD
-        const targetRole = user ? user.role : 'CUSTOMER';
-        const roleToFetch = (targetRole === 'SELLER') ? 'SELLER' : 'CUSTOMER';
-=======
         let announcements = [];
 
         // ผู้ใช้ที่ยังไม่เป็นสมาชิก ให้มองเป็น GUEST
@@ -76,7 +60,6 @@ app.get('/', async (req, res) => {
         if (user?.role === 'SELLER') roleToFetch = 'SELLER';
         else if (user?.role === 'CUSTOMER') roleToFetch = 'CUSTOMER';
         else if (user?.role === 'ADMIN' || user?.role === 'STAFF') roleToFetch = 'CUSTOMER';
->>>>>>> test
 
         const announcements = await announceCtrl.getAnnouncementsForUser(roleToFetch);
 
@@ -109,10 +92,6 @@ app.use((req, res) => {
         error: 'ขออภัย ไม่พบหน้าที่คุณต้องการ' 
     });
 });
-<<<<<<< HEAD
-
-=======
->>>>>>> test
 // --- 7. เริ่มต้นเซิร์ฟเวอร์ ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
