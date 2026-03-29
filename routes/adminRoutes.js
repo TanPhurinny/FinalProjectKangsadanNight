@@ -12,16 +12,12 @@ const requestCtrl = require('../controllers/requestController');
 const marketCtrl = require('../controllers/marketController');
 const announceCtrl = require('../controllers/announcementController'); 
 
-<<<<<<< HEAD
-// --- 2. การตั้งค่า Multer ---
-=======
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
 const uploadDir = path.join(__dirname, '..', 'public', 'uploads', 'announcements');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
->>>>>>> test
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, uploadDir);
@@ -53,12 +49,6 @@ router.use(isStaffOrAdmin);
 router.get('/dashboard', marketCtrl.getDashboardPage);
 router.get('/slots', marketCtrl.getSlotsPage);
 
-<<<<<<< HEAD
-// --- 5. Announcements ---
-router.get('/announcements', announceCtrl.getAdminAnnouncements);
-router.post('/announcements/create', upload.single('announcementImage'), announceCtrl.createAnnouncement);
-router.get('/announcements/delete/:id', announceCtrl.deleteAnnouncement);
-=======
 // --- 5. Announcements (จัดการประกาศ) ---
 // ดึงข้อมูลหน้าประกาศ
 router.get('/announcements', announceCtrl.getAdminAnnouncements);
@@ -71,7 +61,6 @@ router.post('/announcements/:id/update', upload.single('image'), announceCtrl.up
 
 // ลบประกาศ (แก้ไขจากเดิมที่อาจจะส่ง ID ผิด)
 router.post('/announcements/:id/delete', announceCtrl.deleteAnnouncement);
->>>>>>> test
 
 // --- 6. User Management (เฉพาะ Admin) ---
 router.get('/users', isAdminOnly, userCtrl.getUsersPage);
