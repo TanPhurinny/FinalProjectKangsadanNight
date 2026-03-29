@@ -1,43 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
-enum Role {
-  ADMIN
-  STAFF
-  SELLER
-  CUSTOMER
-}
-
-enum Status {
-  PENDING
-  APPROVED
-  REJECTED
-  IN_PROGRESS
-  SUCCESS
-}
-
 model User {
-  id          Int       @id @default(autoincrement())
-  username    String    @unique
-  email       String?   @unique
-  password    String
-  name        String
-  phoneNumber String?
-  birthDate   DateTime?
-  role        Role      @default(CUSTOMER)
-  createdAt   DateTime  @default(now())
-
-  // Relations
-  shop          ShopDetail?
-  requests      MaintenanceReport[]
+  id            Int                 @id @default(autoincrement())
+  username      String              @unique
+  password      String
+  name          String
+  role          Role                @default(CUSTOMER)
+  createdAt     DateTime            @default(now())
+  birthDate     DateTime?
+  phoneNumber   String?
+  email         String?             @unique
+  announcements Announcement[]
   bookings      Booking[]
-  announcements Announcement[] // เพิ่มตรงนี้เพื่อให้สัมพันธ์กับ Model Announcement
+  requests      MaintenanceReport[]
+  shop          ShopDetail?
 }
 
 model ShopDetail {
@@ -77,9 +60,11 @@ model Booking {
   userId    Int
   status    Status   @default(PENDING)
   createdAt DateTime @default(now())
+  slot      Slot     @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  slot Slot @relation(fields: [slotId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([slotId], map: "Booking_slotId_fkey")
+  @@index([userId], map: "Booking_userId_fkey")
 }
 
 model MaintenanceReport {
@@ -89,8 +74,10 @@ model MaintenanceReport {
   description String   @db.Text
   status      Status   @default(PENDING)
   userId      Int
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "MaintenanceReport_userId_fkey")
 }
 
 model Announcement {
@@ -99,10 +86,27 @@ model Announcement {
   content     String   @db.Text
   category    String   @default("ทั่วไป")
   targetRole  Role     @default(CUSTOMER)
-  targetRoles Json?
-  image       String? // ต้องมีบรรทัดนี้ (เพิ่มเครื่องหมาย ? เพื่อให้เป็น Optional)
   authorId    Int
-  author      User     @relation(fields: [authorId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  image       String?
+  targetRoles Json?
+  author      User     @relation(fields: [authorId], references: [id])
+
+  @@index([authorId], map: "Announcement_authorId_fkey")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  SELLER
+  CUSTOMER
+}
+
+enum Status {
+  PENDING
+  APPROVED
+  REJECTED
+  IN_PROGRESS
+  SUCCESS
 }
