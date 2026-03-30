@@ -1,16 +1,23 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>จัดผังตลาด - Admin</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>จัดผังตลาด - Admin</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+    <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+    <link rel="stylesheet" href="/stylesheets/responsive.css">
+    <link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
-  <style>
+    <style>
     :root {
       --primary: #3BB8D4;
       --primary-dark: #2a9ab5;
@@ -27,35 +34,47 @@
       --stall-selected: #3BB8D4;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    .booking-stall-page,
+    .booking-stall-page * {
+      box-sizing: border-box;
+    }
 
     body {
-      font-family: 'Sarabun', sans-serif;
-      background: var(--bg);
-      color: var(--text-main);
+      margin: 0;
+    }
+
+    .booking-stall-page {
+      font-family: 'Kanit', sans-serif;
+      background: #f4f7fb;
+      color: var(--dark-color);
       min-height: 100vh;
     }
 
     /* ── HEADER ── */
     .site-header {
-      background: var(--card-bg);
-      border-bottom: 1px solid #eaeaea;
-      padding: 16px 24px;
+      background: #fff;
+      border-bottom: 1px solid #e8eef2;
+      padding: 14px 24px;
       display: flex;
       align-items: center;
       position: sticky;
       top: 0;
-      z-index: 100;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+      z-index: 10;
+      box-shadow: 0 2px 10px rgba(44,62,80,0.05);
     }
     .btn-back {
       width: 40px; height: 40px;
-      border-radius: 8px;
+      border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
-      color: var(--text-main); text-decoration: none; font-size: 18px;
-      background: var(--bg); transition: 0.2s;
+      color: var(--dark-color); text-decoration: none; font-size: 18px;
+      background: #f5f9fc;
+      border: 1px solid #e2edf3;
+      transition: 0.2s;
     }
-    .btn-back:hover { background: #e2e6ea; }
+    .btn-back:hover {
+      background: #ebf5fb;
+      border-color: #cfe6f3;
+    }
     .header-title {
       flex: 1; text-align: center; font-family: 'Prompt', sans-serif;
       font-size: 20px; font-weight: 600; margin: 0;
@@ -373,154 +392,335 @@
     .tt-label { display: block; font-size: 13px; color: #222; font-weight: 700; margin-bottom: 2px; }
     .tt-value { display: block; font-size: 14px; color: #555; }
 
+    /* ── CONFIRM SUMMARY ── */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+      padding: 16px;
+    }
+    .confirm-overlay.active { display: flex; }
+
+    .confirm-card {
+      width: 100%;
+      max-width: 560px;
+      background: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.22);
+      border: 1px solid #e5e7eb;
+    }
+    .confirm-head {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff;
+      padding: 14px 18px;
+      font-family: 'Prompt', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .confirm-close {
+      border: none;
+      background: transparent;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    .confirm-body {
+      padding: 18px;
+    }
+    .confirm-grid {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 10px 12px;
+      margin-bottom: 14px;
+    }
+    .confirm-label {
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .confirm-value {
+      color: #1f2937;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .confirm-value.highlight {
+      color: var(--primary-dark);
+      font-weight: 700;
+    }
+    .confirm-note {
+      background: #fff8e1;
+      border-left: 4px solid #f59e0b;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #5b4a1a;
+    }
+    .confirm-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .btn-cancel-confirm,
+    .btn-final-confirm {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-family: 'Prompt', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-cancel-confirm {
+      background: #9ca3af;
+      color: #fff;
+    }
+    .btn-final-confirm {
+      background: var(--primary);
+      color: #fff;
+    }
+
     @media (max-width: 768px) {
       .applicant-body { grid-template-columns: 1fr 1fr; }
     }
+
+    @media (max-width: 600px) {
+      .confirm-grid {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .confirm-actions {
+        flex-direction: column;
+      }
+    }
+
     @media (max-width: 500px) {
       .applicant-body { grid-template-columns: 1fr; }
     }
   </style>
-</head>
-<body>
+  </head>
+  <body>
 
-<%- include('../partials/navbar') %>
+    <%- include('../partials/navbar') %>
 
-<div id="adminTooltip" class="admin-tooltip">
-  <div class="tt-header">แผง <span id="tt-stall-id"></span></div>
-  <div class="tt-body">
-    <div class="tt-group">
-      <span class="tt-label">ชื่อร้านค้า</span>
-      <span class="tt-value" id="tt-shop"></span>
-    </div>
-    
-    <div class="tt-row" style="margin-bottom:0;">
-      <div class="tt-group">
-        <span class="tt-label">หมายเลขล็อก</span>
-        <span class="tt-value" id="tt-lock"></span>
-      </div>
-      <div class="tt-group">
-        <span class="tt-label">วันที่จอง</span>
-        <span class="tt-value" id="tt-date"></span>
-      </div>
-    </div>
+    <div class="booking-stall-page">
 
-    <div class="tt-group" style="margin-top: 14px;">
-      <span class="tt-label">ผู้จอง</span>
-      <span class="tt-value" id="tt-name"></span>
-    </div>
-    <div class="tt-group">
-      <span class="tt-label">เบอร์โทรศัพท์</span>
-      <span class="tt-value" id="tt-phone"></span>
-    </div>
-    <div class="tt-group" style="margin-top: 14px;">
-      <span class="tt-label">หมายเหตุ</span>
-      <span class="tt-value" id="tt-note" style="font-size: 13px;"></span>
-    </div>
-  </div>
-</div>
+      <div id="adminTooltip" class="admin-tooltip">
+        <div class="tt-header">แผง <span id="tt-stall-id"></span></div>
+        <div class="tt-body">
+          <div class="tt-group">
+            <span class="tt-label">ชื่อร้านค้า</span>
+            <span class="tt-value" id="tt-shop"></span>
+          </div>
 
-<header class="site-header">
-  <a href="javascript:history.back()" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
-  <h2 class="header-title">จัดตำแหน่งแผงค้า</h2>
-  <div class="header-spacer"></div>
-</header>
+          <div class="tt-row" style="margin-bottom:0;">
+            <div class="tt-group">
+              <span class="tt-label">หมายเลขล็อก</span>
+              <span class="tt-value" id="tt-lock"></span>
+            </div>
+            <div class="tt-group">
+              <span class="tt-label">วันที่จอง</span>
+              <span class="tt-value" id="tt-date"></span>
+            </div>
+          </div>
 
-<div class="container">
-
-  <div class="applicant-card" id="applicantCard">
-    <div class="applicant-header">
-      <i class="fa-solid fa-clipboard-user"></i> ข้อมูลผู้ที่ส่งคำขอเช่าแผงเข้ามา
-    </div>
-    <div class="applicant-body">
-      <div class="info-group">
-        <label>ชื่อผู้จอง</label>
-        <span id="app-name">-</span>
-      </div>
-      <div class="info-group">
-        <label>ชื่อร้านค้า</label>
-        <span id="app-shop">-</span>
-      </div>
-      <div class="info-group">
-        <label>เบอร์โทรศัพท์</label>
-        <span id="app-phone">-</span>
-      </div>
-      <div class="info-group">
-        <label>โซนที่ต้องการ / แถวเบื้องต้น</label>
-        <span id="app-zone" style="color: var(--primary-dark); font-weight: 700;">-</span>
-      </div>
-      <div class="info-group">
-        <label>ช่วงเวลาที่จอง</label>
-        <span id="app-date">-</span>
-      </div>
-      <div class="info-group"></div> <div class="info-group note-full-width">
-        <label style="color: #d97706; font-size: 12px;">หมายเหตุเพิ่มเติมจากผู้จอง</label>
-        <span id="app-note" style="color: #333; font-size: 13px; margin-top: 4px;">-</span>
-      </div>
-    </div>
-  </div>
-  
-  <div class="map-controls">
-    <div class="zone-select-wrapper">
-      <label>โซน</label>
-      <span>ระบุโซนที่ต้องการจอง</span>
-      
-      <div class="zone-btn-group" id="zoneButtons">
-        <button class="btn-zone active" data-zone="A">โซน A <small>(แฟชั่น/พิเศษอาหาร A901-A923)</small></button>
-        <button class="btn-zone" data-zone="B">โซน B <small>(อาหาร)</small></button>
-        <button class="btn-zone" data-zone="C">โซน C <small>(แฟชั่น)</small></button>
-        <button class="btn-zone" data-zone="D">โซน D <small>(ฟู้ดทรัค)</small></button>
-        <button class="btn-zone" data-zone="E">โซน E <small>(แฟชั่น)</small></button>
-        <button class="btn-zone" data-zone="F">โซน F <small>(อาหาร)</small></button>
+          <div class="tt-group" style="margin-top: 14px;">
+            <span class="tt-label">ผู้จอง</span>
+            <span class="tt-value" id="tt-name"></span>
+          </div>
+          <div class="tt-group">
+            <span class="tt-label">เบอร์โทรศัพท์</span>
+            <span class="tt-value" id="tt-phone"></span>
+          </div>
+          <div class="tt-group" style="margin-top: 14px;">
+            <span class="tt-label">หมายเหตุ</span>
+            <span class="tt-value" id="tt-note" style="font-size: 13px;"></span>
+          </div>
+        </div>
       </div>
 
-    </div>
+      <header class="site-header">
+        <a href="javascript:history.back()" class="btn-back"><i
+            class="fa-solid fa-arrow-left"></i></a>
+        <h2 class="header-title">จัดตำแหน่งแผงค้า</h2>
+        <div class="header-spacer"></div>
+      </header>
 
-    <div class="legend-box">
-      <div class="legend-item"><div class="color-box color-empty"></div> ว่าง</div>
-      <div class="legend-item"><div class="color-box color-booked"></div> จองแล้ว</div>
-      <div class="legend-item"><div class="color-box color-selected"></div> เลือกอยู่</div>
-      <div class="legend-item"><div class="color-box color-requested"></div> แถวที่คำขอระบุ</div>
-    </div>
-  </div>
+      <div class="container">
 
-  <div class="map-outer">
-    <div class="road-left">
-      <div class="road-left-stripe"></div>
-      <span class="road-left-text">ทางเข้าตลาด 62 บล็อค</span>
-      <i class="fa-solid fa-arrow-down" style="position:absolute; bottom:20px; color:#555;"></i>
-    </div>
+        <div class="applicant-card" id="applicantCard">
+          <div class="applicant-header">
+            <i class="fa-solid fa-clipboard-user"></i>
+            ข้อมูลผู้ที่ส่งคำขอเช่าแผงเข้ามา
+          </div>
+          <div class="applicant-body">
+            <div class="info-group">
+              <label>ชื่อผู้จอง</label>
+              <span id="app-name">-</span>
+            </div>
+            <div class="info-group">
+              <label>ชื่อร้านค้า</label>
+              <span id="app-shop">-</span>
+            </div>
+            <div class="info-group">
+              <label>เบอร์โทรศัพท์</label>
+              <span id="app-phone">-</span>
+            </div>
+            <div class="info-group">
+              <label>โซนที่ต้องการ / แถวเบื้องต้น</label>
+              <span id="app-zone"
+                style="color: var(--primary-dark); font-weight: 700;">-</span>
+            </div>
+            <div class="info-group">
+              <label>ช่วงเวลาที่จอง</label>
+              <span id="app-date">-</span>
+            </div>
+            <div class="info-group"></div> <div
+              class="info-group note-full-width">
+              <label
+                style="color: #d97706; font-size: 12px;">หมายเหตุเพิ่มเติมจากผู้จอง</label>
+              <span id="app-note"
+                style="color: #333; font-size: 13px; margin-top: 4px;">-</span>
+            </div>
+          </div>
+        </div>
 
-    <div class="map-inner">
-      <div class="road-top">
-        <div class="road-top-sign"><i class="fa-solid fa-location-dot" style="color:red;"></i> เจริญหมูกระทะ</div>
+        <div class="map-controls">
+          <div class="zone-select-wrapper">
+            <label>โซน</label>
+            <span>ระบุโซนที่ต้องการจอง</span>
+
+            <div class="zone-btn-group" id="zoneButtons">
+              <button class="btn-zone active" data-zone="A">โซน A
+                <small>(แฟชั่น/พิเศษอาหาร A901-A923)</small></button>
+              <button class="btn-zone" data-zone="B">โซน B
+                <small>(อาหาร)</small></button>
+              <button class="btn-zone" data-zone="C">โซน C
+                <small>(แฟชั่น)</small></button>
+              <button class="btn-zone" data-zone="D">โซน D
+                <small>(ฟู้ดทรัค)</small></button>
+              <button class="btn-zone" data-zone="E">โซน E
+                <small>(แฟชั่น)</small></button>
+              <button class="btn-zone" data-zone="F">โซน F
+                <small>(อาหาร)</small></button>
+            </div>
+
+          </div>
+
+          <div class="legend-box">
+            <div class="legend-item"><div class="color-box color-empty"></div>
+              ว่าง</div>
+            <div class="legend-item"><div class="color-box color-booked"></div>
+              จองแล้ว</div>
+            <div class="legend-item"><div
+                class="color-box color-selected"></div>
+              เลือกอยู่</div>
+            <div class="legend-item"><div
+                class="color-box color-requested"></div>
+              แถวที่คำขอระบุ</div>
+          </div>
+        </div>
+
+        <div class="map-outer">
+          <div class="road-left">
+            <div class="road-left-stripe"></div>
+            <span class="road-left-text">ทางเข้าตลาด 62 บล็อค</span>
+            <i class="fa-solid fa-arrow-down"
+              style="position:absolute; bottom:20px; color:#555;"></i>
+          </div>
+
+          <div class="map-inner">
+            <div class="road-top">
+              <div class="road-top-sign"><i class="fa-solid fa-location-dot"
+                  style="color:red;"></i> เจริญหมูกระทะ</div>
+            </div>
+
+            <div class="admin-zone-canvas" id="adminGrid"></div>
+
+            <div class="facility-box">
+              <button class="btn-facility"><i class="fa-solid fa-restroom"></i>
+                ห้องน้ำ</button>
+              <button class="btn-facility"><i class="fa-solid fa-user-tie"></i>
+                ออฟฟิศ</button>
+            </div>
+
+            <div class="road-bottom">
+              <div class="road-bottom-stripe"></div>
+              <span style="font-weight: 700; font-size: 14px;">เข้า-ออก</span>
+            </div>
+          </div>
+
+          <div class="road-right">
+            <span class="road-right-text">ลานจอดรถ กังสดาลไนท์</span>
+          </div>
+        </div>
+
+        <div class="action-footer">
+          <button class="btn-reject-main"
+            onclick="rejectStall()">ปฏิเสธการจอง</button>
+          <button class="btn-save"
+            onclick="confirmStall()">ยืนยันการจัดแผง</button>
+        </div>
+
       </div>
 
-      <div class="admin-zone-canvas" id="adminGrid"></div>
+      <div class="confirm-overlay" id="confirmOverlay"
+        onclick="closeConfirmOnOverlay(event)">
+        <div class="confirm-card">
+          <div class="confirm-head">
+            <span>ยืนยันการจัดแผง</span>
+            <button class="confirm-close" onclick="closeConfirmSummary()">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
 
-      <div class="facility-box">
-        <button class="btn-facility"><i class="fa-solid fa-restroom"></i> ห้องน้ำ</button>
-        <button class="btn-facility"><i class="fa-solid fa-user-tie"></i> ออฟฟิศ</button>
+          <div class="confirm-body">
+            <div class="confirm-grid">
+              <span class="confirm-label">ล็อกที่เลือก</span>
+              <span class="confirm-value highlight" id="c-stall">-</span>
+
+              <span class="confirm-label">ชื่อร้านค้า</span>
+              <span class="confirm-value" id="c-shop">-</span>
+
+              <span class="confirm-label">ชื่อผู้จอง</span>
+              <span class="confirm-value" id="c-name">-</span>
+
+              <span class="confirm-label">เบอร์โทรศัพท์</span>
+              <span class="confirm-value" id="c-phone">-</span>
+
+              <span class="confirm-label">โซน/แถวคำขอ</span>
+              <span class="confirm-value" id="c-zone">-</span>
+
+              <span class="confirm-label">ช่วงเวลาที่จอง</span>
+              <span class="confirm-value" id="c-date">-</span>
+            </div>
+
+            <div class="confirm-note">
+              <strong>หมายเหตุจากผู้จอง:</strong><br>
+              <span id="c-note">-</span>
+            </div>
+
+            <div class="confirm-actions">
+              <button class="btn-cancel-confirm"
+                onclick="closeConfirmSummary()">ย้อนกลับ</button>
+              <button class="btn-final-confirm"
+                onclick="submitConfirmStall()">ยืนยันและกลับหน้าอนุมัติ</button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="road-bottom">
-        <div class="road-bottom-stripe"></div>
-        <span style="font-weight: 700; font-size: 14px;">เข้า-ออก</span>
-      </div>
     </div>
 
-    <div class="road-right">
-      <span class="road-right-text">ลานจอดรถ กังสดาลไนท์</span>
-    </div>
-  </div>
-
-  <div class="action-footer">
-    <button class="btn-reject-main" onclick="rejectStall()">ปฏิเสธการจอง</button>
-    <button class="btn-save" onclick="confirmStall()">ยืนยันการจัดแผง</button>
-  </div>
-
-</div>
-
-<script>
+    <script>
   // 1. โครงสร้างของแต่ละโซน [ [Prefix, จำนวนแถว] , ... ]
   const ZONES_LAYOUT = {
     A: [ [['A1',19]], [['A2',19],['A3',19]], [['A4',21],['A5',21]], [['A6',22],['A7',22]], [['A8',23],['A9',23]] ],
@@ -566,6 +766,7 @@
   let currentRequestedRange = null; // แถวที่มาจากการรีเควส (เช่น "A101-A119")
   let currentSelectedStall = null;  // แผงเดียวที่แอดมินคลิกเลือกอยู่ตอนนี้
   const tooltip = document.getElementById('adminTooltip');
+  const confirmOverlay = document.getElementById('confirmOverlay');
   const zoneBtns = document.querySelectorAll('.btn-zone');
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -735,10 +936,45 @@
   // ยืนยัน
   function confirmStall() {
     if(!currentSelectedStall) {
-      alert("กรุณาคลิกเลือกแผงค้า 1 ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้าครับ");
+      if (window.Swal && typeof window.Swal.fire === 'function') {
+        Swal.fire({
+          icon: 'warning',
+          title: 'ยังไม่ได้เลือกแผงค้า',
+          text: 'กรุณาคลิกเลือกแผงค้า 1 ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้า',
+          confirmButtonText: 'ตกลง',
+          confirmButtonColor: '#3BB8D4'
+        });
+      } else {
+        alert("กรุณาคลิกเลือกแผงค้า 1 ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้า");
+      }
       return;
     }
-    alert(`ยืนยันการจัดแผง ${currentSelectedStall} ให้กับผู้จองเรียบร้อย!`);
+    openConfirmSummary();
+  }
+
+  function openConfirmSummary() {
+    document.getElementById('c-stall').textContent = currentSelectedStall;
+    document.getElementById('c-shop').textContent = document.getElementById('app-shop').textContent || '-';
+    document.getElementById('c-name').textContent = document.getElementById('app-name').textContent || '-';
+    document.getElementById('c-phone').textContent = document.getElementById('app-phone').textContent || '-';
+    document.getElementById('c-zone').textContent = document.getElementById('app-zone').textContent || '-';
+    document.getElementById('c-date').textContent = document.getElementById('app-date').textContent || '-';
+    document.getElementById('c-note').textContent = document.getElementById('app-note').textContent || '-';
+
+    confirmOverlay.classList.add('active');
+  }
+
+  function closeConfirmSummary() {
+    confirmOverlay.classList.remove('active');
+  }
+
+  function closeConfirmOnOverlay(event) {
+    if (event.target === confirmOverlay) {
+      closeConfirmSummary();
+    }
+  }
+
+  function submitConfirmStall() {
     window.location.href = "/admin/approvals";
   }
 
@@ -751,5 +987,6 @@
   }
 
 </script>
-</body>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  </body>
 </html>

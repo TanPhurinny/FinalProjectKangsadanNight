@@ -1,5 +1,8 @@
 const express = require('express');
+<<<<<<< HEAD
 const multer = require('multer');
+=======
+>>>>>>> 24eeedc87b818bf8e751b47a1a583ee34599dd14
 const session = require('express-session');
 const path = require('path');
 const methodOverride = require('method-override');
@@ -7,7 +10,10 @@ const { PrismaClient } = require('@prisma/client');
 
 const app = express();
 const prisma = new PrismaClient();
+<<<<<<< HEAD
 const upload = multer();
+=======
+>>>>>>> 24eeedc87b818bf8e751b47a1a583ee34599dd14
 
 // --- 1. การตั้งค่าพื้นฐาน ---
 app.set('view engine', 'ejs');
@@ -50,7 +56,10 @@ const announceCtrl = require('./controllers/announcementController');
 app.get('/', async (req, res) => {
     try {
         const user = req.session.user || null;
+<<<<<<< HEAD
         let announcements = [];
+=======
+>>>>>>> 24eeedc87b818bf8e751b47a1a583ee34599dd14
 
         // ผู้ใช้ที่ยังไม่เป็นสมาชิก ให้มองเป็น GUEST
         // ผู้ใช้ที่เป็นระบบหลังบ้าน (ADMIN/STAFF) ให้เห็นประกาศกลุ่มลูกค้าเป็นค่าเริ่มต้น
@@ -88,7 +97,10 @@ app.use((req, res) => {
         error: 'ขออภัย ไม่พบหน้าที่คุณต้องการ'
     });
 });
+<<<<<<< HEAD
 
+=======
+>>>>>>> 24eeedc87b818bf8e751b47a1a583ee34599dd14
 // --- 7. เริ่มต้นเซิร์ฟเวอร์ ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

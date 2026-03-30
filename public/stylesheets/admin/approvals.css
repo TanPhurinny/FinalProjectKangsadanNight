@@ -2,111 +2,496 @@
    APPROVALS PAGE STYLES
    ======================================== */
 
-.seller-profile-box {
-    background: white;
-    border: 2px solid #E8EEF2;
-    border-radius: var(--border-radius-sm);
-    padding: 1rem;
+.approvals-page,
+.approvals-page *,
+.approvals-page *::before,
+.approvals-page *::after {
+    box-sizing: border-box;
+}
+
+.approvals-page {
+    background: radial-gradient(circle at top right, #dff5fb 0%, #f4f7fb 38%, #eef3f8 100%);
+    color: var(--dark-color);
+    min-height: 100vh;
+    font-family: 'Kanit', sans-serif;
+}
+
+.approvals-page .site-header {
+    background: #fff;
+    border-bottom: 1px solid #e8eef2;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 10px rgba(44, 62, 80, 0.05);
+}
+
+.approvals-page .btn-back {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--dark-color);
+    text-decoration: none;
+    font-size: 18px;
+    background: #f5f9fc;
+    border: 1px solid #e2edf3;
     transition: var(--transition);
 }
 
-.seller-profile-box:hover {
-    border-color: var(--primary-color);
-    box-shadow: var(--card-shadow);
+.approvals-page .btn-back:hover {
+    background: #ebf5fb;
+    border-color: #cfe6f3;
 }
 
-.product-image-wrapper {
-    position: relative;
-    border-radius: var(--border-radius-sm);
-    overflow: hidden;
-    background: #f8fafc;
+.approvals-page .header-title {
+    flex: 1;
+    text-align: center;
+    font-family: 'Prompt', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    margin: 0;
 }
 
-.product-image-wrapper img {
-    width: 100%;
-    height: auto;
-    display: block;
+.approvals-page .header-spacer {
+    width: 40px;
 }
 
-.approval-card {
-    background: white;
+.approvals-page .container {
+    max-width: 920px;
+    margin: 28px auto 56px;
+    padding: 0 16px;
+}
+
+.approvals-page .filter-section {
+    background: #fff;
+    padding: 20px 20px 18px;
     border-radius: var(--border-radius);
-    box-shadow: var(--card-shadow);
+    box-shadow: 0 10px 24px rgba(34, 62, 88, 0.1);
+    border: 1px solid #dfeaf1;
+    border-top: 4px solid var(--primary-color);
+    margin-bottom: 20px;
+}
+
+.approvals-page .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.approvals-page .summary-card {
+    border: 1px solid #d8e9f2;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #f8fcff, #f1f8fc);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.approvals-page .summary-label {
+    font-size: 0.78rem;
+    color: #5d7786;
+    font-weight: 600;
+}
+
+.approvals-page .summary-value {
+    font-size: 1.08rem;
+    color: #2b556a;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.approvals-page .search-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    background: #f7fbfe;
+    border: 1px solid #d7e6ef;
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+
+.approvals-page .search-box i {
+    color: #6d8898;
+    font-size: 0.95rem;
+}
+
+.approvals-page .search-box input {
+    border: none;
+    outline: none;
+    background: transparent;
+    flex: 1;
+    font-size: 0.92rem;
+    color: #305567;
+    font-family: 'Kanit', sans-serif;
+}
+
+.approvals-page .search-box input::placeholder {
+    color: #8ba1ad;
+}
+
+.approvals-page .filter-title {
+    font-size: 0.98rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #35586a;
+}
+
+.approvals-page .filter-title-spaced {
+    margin-top: 20px;
+}
+
+.approvals-page .filter-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.approvals-page .filter-group:last-child {
+    margin-bottom: 0;
+}
+
+.approvals-page .type-summary {
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    color: #4e6c7b;
+    font-size: 0.86rem;
+}
+
+.approvals-page .type-summary strong {
+    color: #2f566b;
+}
+
+.approvals-page .list-meta {
+    color: #557385;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 2px 4px 10px;
+}
+
+.approvals-page .btn-filter {
+    padding: 8px 15px;
+    border-radius: 999px;
+    border: 1px solid #cfe2ed;
+    background: #f7fbfe;
+    color: #476577;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
     transition: var(--transition);
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
 }
 
-.approval-card:hover {
+.approvals-page .btn-filter:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-dark);
+    background: #ffffff;
+}
+
+.approvals-page .btn-filter.active {
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+    border-color: var(--primary-color);
+    color: #fff;
+    box-shadow: 0 6px 14px rgba(59, 184, 212, 0.26);
+}
+
+.approvals-page .card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.approvals-page .booking-card {
+    background: #fff;
+    border: 1px solid #dce8ef;
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 22px rgba(34, 62, 88, 0.1);
+    padding: 18px 18px 16px;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.approvals-page .booking-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: #bccfda;
+}
+
+.approvals-page .booking-card[data-status='pending']::before {
+    background: var(--warning-color);
+}
+
+.approvals-page .booking-card[data-status='approved']::before {
+    background: var(--success-color);
+}
+
+.approvals-page .booking-card[data-status='rejected']::before {
+    background: var(--danger-color);
+}
+
+.approvals-page .booking-card:hover {
+    transform: translateY(-3px);
     box-shadow: var(--card-shadow-hover);
-    transform: translateY(-2px);
 }
 
-.approval-header {
+.approvals-page .card-header {
     display: flex;
     justify-content: space-between;
-    align-items: start;
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid #E8EEF2;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #274f63 0%, #2f6881 55%, #3b88a7 100%);
 }
 
-.approval-status-badge {
-    padding: 8px 16px;
-    border-radius: 20px;
+.approvals-page .shop-name {
+    font-size: 1.05rem;
     font-weight: 600;
-    font-size: 0.85rem;
+    margin: 0;
+    color: #ffffff;
 }
 
-.status-pending {
-    background: rgba(243, 156, 18, 0.1);
-    color: var(--warning-color);
+.approvals-page .badge {
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    border: 1px solid transparent;
 }
 
-.status-approved {
-    background: rgba(39, 174, 96, 0.1);
-    color: var(--success-color);
+.approvals-page .badge.pending {
+    background: #b06e00;
+    color: #ffffff;
+    border-color: #b06e00;
 }
 
-.status-rejected {
-    background: rgba(231, 76, 60, 0.1);
-    color: var(--danger-color);
+.approvals-page .badge.approved {
+    background: #1f8b4d;
+    color: #ffffff;
+    border-color: #1f8b4d;
 }
 
-.action-button {
-    padding: 8px 16px;
-    border-radius: 8px;
+.approvals-page .badge.rejected {
+    background: #c73b2e;
+    color: #ffffff;
+    border-color: #c73b2e;
+}
+
+.approvals-page .card-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 12px;
+    font-size: 0.9rem;
+    color: #557081;
+}
+
+.approvals-page .card-body p {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 9px 11px;
+    background: #f7fbfe;
+    border: 1px solid #e1edf3;
+    border-radius: 10px;
+}
+
+.approvals-page .card-body i {
+    width: 16px;
+    text-align: center;
+    color: var(--primary-color);
+}
+
+.approvals-page .card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed #dce9f1;
+}
+
+.approvals-page .btn-action {
+    flex: 1;
     border: none;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.88rem;
     font-weight: 600;
+    padding: 10px 12px;
+    cursor: pointer;
     transition: var(--transition);
+}
+
+.approvals-page .btn-reject {
+    background: linear-gradient(135deg, #ef6b5f, #e74c3c);
+    color: #fff;
+}
+
+.approvals-page .btn-reject:hover {
+    background: #c53d30;
+}
+
+.approvals-page .btn-approve {
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+    color: #fff;
+}
+
+.approvals-page .btn-approve:hover {
+    background: var(--primary-dark);
+}
+
+.approvals-page .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 32, 0.45);
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--transition);
+    padding: 16px;
+}
+
+.approvals-page .modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.approvals-page .modal-content {
+    width: 100%;
+    max-width: 520px;
+    background: #fff;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 18px 44px rgba(30, 45, 58, 0.26);
+    transform: translateY(8px);
+    transition: var(--transition);
+}
+
+.approvals-page .modal-overlay.active .modal-content {
+    transform: translateY(0);
+}
+
+.approvals-page .modal-header {
+    background: linear-gradient(120deg, var(--primary-color), var(--primary-dark));
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.approvals-page .modal-header h3 {
+    font-size: 1.02rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.approvals-page .btn-close {
+    border: none;
+    background: transparent;
+    color: #fff;
+    font-size: 1.15rem;
     cursor: pointer;
 }
 
-.btn-approve {
-    background: var(--success-color);
-    color: white;
+.approvals-page .modal-body {
+    padding: 20px;
 }
 
-.btn-approve:hover {
-    background: var(--success-dark);
+.approvals-page .detail-grid {
+    display: grid;
+    grid-template-columns: 118px 1fr;
+    gap: 10px 12px;
+    margin-bottom: 16px;
+    align-items: baseline;
 }
 
-.btn-reject {
-    background: var(--danger-color);
-    color: white;
+.approvals-page .detail-label {
+    color: #6a8795;
+    font-weight: 600;
+    font-size: 0.9rem;
 }
 
-.btn-reject:hover {
-    background: #C0392B;
+.approvals-page .detail-value {
+    color: #243c4b;
+    font-size: 0.92rem;
+    font-weight: 500;
+}
+
+.approvals-page .detail-highlight {
+    color: var(--primary-dark);
+    font-weight: 700;
+}
+
+.approvals-page .note-box {
+    background: linear-gradient(180deg, #fff8e8 0%, #fff3d9 100%);
+    border-left: 4px solid var(--warning-color);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    color: #7a5a2d;
+    font-size: 0.88rem;
+}
+
+.approvals-page .modal-footer {
+    display: flex;
+    gap: 10px;
+}
+
+.approvals-page .d-none {
+    display: none !important;
 }
 
 @media (max-width: 768px) {
-    .approval-header {
-        flex-direction: column;
-        gap: 1rem;
+    .approvals-page .site-header {
+        padding: 12px 16px;
     }
 
-    .approval-card {
-        padding: 1rem;
+    .approvals-page .container {
+        margin-top: 18px;
+    }
+
+    .approvals-page .filter-section {
+        padding: 16px;
+    }
+
+    .approvals-page .summary-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .approvals-page .card-body {
+        grid-template-columns: 1fr;
+    }
+
+    .approvals-page .booking-card {
+        padding: 16px;
+    }
+
+    .approvals-page .detail-grid {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .approvals-page .modal-footer {
+        flex-direction: column;
     }
 }

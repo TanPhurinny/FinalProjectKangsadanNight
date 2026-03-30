@@ -2,6 +2,39 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// สร้างโฟลเดอร์ upload ถ้ายังไม่มี
+const uploadDir = path.join(__dirname, '../public/uploads/repairs');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// ตั้งค่า multer
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('ประเภทไฟล์ไม่ถูกต้อง'), false);
+        }
+    },
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+});
 
 // Middleware ตรวจสอบการ Login
 const isAuthenticated = (req, res, next) => {
@@ -17,27 +50,44 @@ router.get("/repair", isAuthenticated, async (req, res) => {
         where: { id: req.session.user.id }
     });
     res.render("seller/repair", {
-        user: user
+        user: user,
+        error: req.query.error || null,
+        success: req.query.success || null
     });
 });
 
 // บันทึกแจ้งซ่อม (POST)
-router.post("/repair", isAuthenticated, async (req, res) => {
-    try {
-        const { location, category, description } = req.body;
-        await prisma.maintenanceReport.create({
-            data: {
-                location,
-                category,
-                description,
-                userId: req.session.user.id
+router.post("/repair", isAuthenticated, (req, res) => {
+    upload.single('image')(req, res, async (err) => {
+        if (err) {
+            return res.redirect("/repair?error=upload_failed");
+        }
+
+        try {
+            const { location, category, description } = req.body;
+            
+            // ตรวจสอบความสมบูรณ์ของข้อมูล
+            if (!location || !category || !description) {
+                return res.redirect("/repair?error=missing_fields");
             }
-        });
-        res.redirect("/repair");
-    } catch (error) {
-        console.error("Repair Error:", error);
-        res.status(500).send("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
-    }
+
+            const imagePath = req.file ? `/uploads/repairs/${req.file.filename}` : null;
+
+            await prisma.maintenanceReport.create({
+                data: {
+                    location,
+                    category,
+                    description,
+                    image: imagePath,
+                    userId: req.session.user.id
+                }
+            });
+            res.redirect("/repair?success=true");
+        } catch (error) {
+            console.error("Repair Error:", error);
+            res.redirect("/repair?error=db_error");
+        }
+    });
 });
 
 // --- 2. หน้าเลือกโซน/แผงค้า (แก้ไขชื่อไฟล์ที่นี่) ---

@@ -72,6 +72,7 @@ model MaintenanceReport {
   location    String
   category    String
   description String   @db.Text
+  image       String? // เส้นทางรูปภาพ
   status      Status   @default(PENDING)
   userId      Int
   createdAt   DateTime @default(now())

@@ -29,14 +29,57 @@
             const availableRate = dStats.totalSlots > 0 ?
             ((dStats.availableSlots
             / dStats.totalSlots) * 100).toFixed(1) : 0;
-            const zoneList = locals.zones || [];
+            const rawZoneList = locals.zones || [];
+            const zoneOrder = ['A', 'B', 'C', 'D', 'E', 'F'];
+            const zoneMeta = {
+            A: { icon: 'fa-shirt', description: 'แฟชั่นและอาหาร' },
+            B: { icon: 'fa-utensils', description: 'อาหาร' },
+            C: { icon: 'fa-shirt', description: 'แฟชั่น' },
+            D: { icon: 'fa-truck', description: 'ฟู้ดทรัค' },
+            E: { icon: 'fa-gem', description: 'แฟชั่น' },
+            F: { icon: 'fa-utensils', description: 'อาหาร' }
+            };
+
+            const zoneLookup = rawZoneList.reduce((acc, zone) => {
+            const zoneName = String(zone.name || '').trim();
+            const zoneSlug = String(zone.slug || '').trim();
+            const zoneKey = (zoneName.charAt(0) || zoneSlug.charAt(0) ||
+            '').toUpperCase();
+
+            if (zoneOrder.includes(zoneKey)) {
+            acc[zoneKey] = {
+            ...zone,
+            name: `โซน ${zoneKey}`,
+            slug: zoneSlug || zoneKey.toLowerCase(),
+            icon: zone.icon || zoneMeta[zoneKey].icon,
+            description: zoneMeta[zoneKey].description,
+            available: zone.available || 0,
+            unpaid: zone.unpaid || 0,
+            repairs: zone.repairs || 0
+            };
+            }
+
+            return acc;
+            }, {});
+
+            const zoneList = zoneOrder.map((zoneKey) => {
+            return zoneLookup[zoneKey] || {
+            name: `โซน ${zoneKey}`,
+            slug: zoneKey.toLowerCase(),
+            icon: zoneMeta[zoneKey].icon,
+            description: zoneMeta[zoneKey].description,
+            available: 0,
+            unpaid: 0,
+            repairs: 0
+            };
+            });
             const totalZoneRepairs = zoneList.reduce((sum, z) => sum +
             (z.repairs || 0), 0);
             %>
 
             <section class="db-hero mb-4">
                 <div class="hero-main">
-                    
+
                     <div>
                         <h1 class="hero-title mb-2">
                             <i class="fas fa-chart-line me-2"></i>Market
@@ -190,7 +233,7 @@
                                 class="form-control" placeholder="ค้นหาโซน">
                         </div>
                         <select id="zoneSortSelect" class="form-select">
-                            <option value="name-asc">เรียงตามชื่อโซน</option>
+                            <option value="name-asc">เรียงตามโซน A-Z</option>
                             <option
                                 value="available-desc">แผงว่างมากสุด</option>
                             <option value="repairs-desc">งานซ่อมมากสุด</option>
@@ -200,7 +243,6 @@
             </section>
 
             <section class="row g-4 mb-5" id="zonesGrid">
-                <% if (zoneList.length > 0) { %>
                 <% zoneList.forEach((zone, index) => { %>
                 <div class="col-lg-6 zone-col"
                     data-zone-name="<%= zone.name.toLowerCase() %>"
@@ -254,17 +296,6 @@
                     </div>
                 </div>
                 <% }) %>
-                <% } else { %>
-                <div class="col-12">
-                    <div class="empty-state">
-                        <div class="empty-state-icon"><i
-                                class="fas fa-inbox"></i></div>
-                        <h4 class="fw-bold mb-2">ยังไม่มีข้อมูลโซน</h4>
-                        <p
-                            class="text-muted mb-0">กรุณาเพิ่มข้อมูลโซนเพื่อเริ่มติดตามสถานะพื้นที่</p>
-                    </div>
-                </div>
-                <% } %>
 
                 <div id="emptyFilteredZone" class="col-12 d-none">
                     <div class="empty-state py-5">
