@@ -2,6 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const methodOverride = require('method-override');
+const { exec } = require('child_process');
 const { PrismaClient } = require('@prisma/client');
 
 const app = express();
@@ -96,4 +97,19 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Kangsadan Night Market System running at http://localhost:${PORT}`);
+
+    if (process.env.OPEN_BROWSER !== 'false') {
+        const url = `http://localhost:${PORT}`;
+        const command = process.platform === 'darwin'
+            ? `open "${url}"`
+            : process.platform === 'win32'
+                ? `start "" "${url}"`
+                : `xdg-open "${url}"`;
+
+        exec(command, (error) => {
+            if (error) {
+                console.error('Could not open browser automatically:', error.message);
+            }
+        });
+    }
 });
