@@ -26,6 +26,8 @@
                 </div>
 
                 <div class="form-card shadow-lg">
+                    <div id="authMessage" class="mb-3"></div>
+
                     <div id="loginPage" class="auth-page">
                         <h3 class="text-center mb-4 fw-bold">เข้าสู่ระบบ</h3>
 
@@ -47,7 +49,8 @@
                                 <span class="input-group-text"><i
                                         class="fas fa-user"></i></span>
                                 <input type="text" name="username"
-                                    class="form-control" placeholder="Username"
+                                    class="form-control"
+                                    placeholder="Username หรืออีเมล"
                                     required>
                             </div>
                             <div class="input-group mb-4 password-input-group">
@@ -89,7 +92,7 @@
                     <div id="forgotPage" class="auth-page d-none">
                         <h3 class="text-center mb-3 fw-bold">ลืมรหัสผ่าน</h3>
                         <p class="text-center small text-muted mb-3">ยืนยันด้วย
-                            Username และ Gmail เพื่อรีเซ็ตรหัสผ่าน</p>
+                            Username และอีเมลเพื่อรีเซ็ตรหัสผ่าน</p>
 
                         <% if (typeof forgotError !== 'undefined' &&
                         forgotError) { %>
@@ -117,7 +120,7 @@
                                         class="fas fa-envelope"></i></span>
                                 <input type="email" name="email"
                                     class="form-control"
-                                    placeholder="Gmail (example@gmail.com)"
+                                    placeholder="อีเมล (example@mail.com)"
                                     required>
                             </div>
                             <div class="input-group mb-3 password-input-group">
@@ -195,7 +198,7 @@
                                         class="fas fa-envelope"></i></span>
                                 <input type="email" name="email"
                                     class="form-control"
-                                    placeholder="Gmail (example@gmail.com)"
+                                    placeholder="อีเมล (example@mail.com)"
                                     required>
                             </div>
 
@@ -296,5 +299,5 @@
 
         <script src="/js/login/auth.js"></script>
     </body>
-    
+
 </html>

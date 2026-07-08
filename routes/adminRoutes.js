@@ -77,25 +77,25 @@ router.post('/requests/update-status', requestCtrl.updateStatus);
 
 // หน้าสำหรับแอดมินดูรายการจองรวม (ใช้ไฟล์ booking.ejs)
 router.get("/admin-booking", async (req, res) => {
-    if (!req.session.user) return res.redirect("/login");
+    if (!req.user) return res.redirect("/login");
     
-    if (req.session.user.role !== "ADMIN") {
+    if (req.user.role !== "ADMIN") {
         return res.status(403).send("คุณไม่มีสิทธิ์เข้าใช้งานหน้านี้");
     }
 
     // ชี้ไปที่ views/admin/booking.ejs
     res.render("admin/booking", {
-        user: req.session.user
+        user: req.user
     });
 });
 
 // หน้าสำหรับดูรายละเอียด/โปรเกรสการจอง (ใช้ไฟล์ booking_stall.ejs)
 router.get("/booking-stall", (req, res) => {
-    if (!req.session.user) return res.redirect("/login");
+    if (!req.user) return res.redirect("/login");
 
     // ชี้ไปที่ views/admin/booking_stall.ejs
     res.render("admin/booking_stall", {
-        user: req.session.user
+        user: req.user
     });
 });
 

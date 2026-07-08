@@ -1,9 +1,11 @@
 const express = require('express');
-const session = require('express-session');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const methodOverride = require('method-override');
 const { exec } = require('child_process');
 const { PrismaClient } = require('@prisma/client');
+const { getCurrentUser } = require('./middlewares/jwtAuth');
+const { isProduction } = require('./config/authSecrets');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -16,22 +18,22 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public'))); 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(methodOverride('_method'));
 
-// --- 3. การจัดการ Session ---
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'kangsadan_night_market_key',
-    resave: false,
-    saveUninitialized: false, 
-    cookie: { 
-        maxAge: 3600000,
-        httpOnly: true 
-    } 
-}));
+if (isProduction) {
+    app.set('trust proxy', 1);
+}
 
 // ส่ง Path ปัจจุบันไปให้ทุก View ก่อนเข้า routes
 app.use((req, res, next) => {
     res.locals.path = req.path;
+    next();
+});
+
+app.use((req, res, next) => {
+    req.user = getCurrentUser(req);
+    res.locals.user = req.user;
     next();
 });
 
@@ -53,7 +55,7 @@ app.use((req, res, next) => {
 // หน้าแรก (Index)
 app.get('/', async (req, res) => {
     try {
-        const user = req.session.user || null;
+        const user = req.user || null;
 
         // ผู้ใช้ที่ยังไม่เป็นสมาชิก ให้มองเป็น GUEST
         // ผู้ใช้ที่เป็นระบบหลังบ้าน (ADMIN/STAFF) ให้เห็นประกาศกลุ่มลูกค้าเป็นค่าเริ่มต้น
@@ -72,7 +74,7 @@ app.get('/', async (req, res) => {
     } catch (err) {
         console.error("Index Error:", err);
         res.render('index', { 
-            user: req.session.user || null, 
+            user: req.user || null, 
             announcements: [], 
             error: "เกิดข้อผิดพลาดในการโหลดข้อมูลประกาศ" 
         });
@@ -88,7 +90,7 @@ app.use('/', sellerRoute);       // เลือกโซน, แจ้งซ่
 // --- 6. Error Handling 404 (ต้องอยู่ท้ายสุดเสมอ) ---
 app.use((req, res) => {
     res.status(404).render('index', { 
-        user: req.session.user || null, 
+        user: req.user || null, 
         announcements: [],
         error: 'ขออภัย ไม่พบหน้าที่คุณต้องการ' 
     });

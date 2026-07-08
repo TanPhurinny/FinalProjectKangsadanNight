@@ -52,7 +52,7 @@ exports.getDashboardPage = async (req, res) => {
             };
         }));
 
-        res.render('admin/dashboard', { stats, zones, user: req.session.user });
+        res.render('admin/dashboard', { stats, zones, user: req.user });
     } catch (error) {
         console.error("Dashboard Error:", error);
         res.status(500).send("Error loading dashboard");
@@ -77,7 +77,7 @@ exports.getSlotsPage = async (req, res) => {
         // ส่งชื่อตัวแปร slotsData ไปให้ตรงกับที่ EJS รอรับ
         res.render('admin/slots', { 
             slotsData, 
-            user: req.session.user 
+            user: req.user 
         });
     } catch (error) {
         console.error("Slots Page Error:", error);
