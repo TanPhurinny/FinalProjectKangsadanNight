@@ -8,14 +8,14 @@ exports.getApprovalsPage = async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
         res.render('admin/approvals', { 
-            user: req.session.user, 
+            user: req.user, 
             pendingRequests: pendingRequests,
             error: req.query.error || null,
             success: req.query.success || null
         });
     } catch (err) {
         res.render('admin/dashboard', { 
-            user: req.session.user, 
+            user: req.user, 
             error: "ไม่สามารถดึงข้อมูลรายการอนุมัติได้" 
         });
     }

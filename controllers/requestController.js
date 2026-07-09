@@ -8,7 +8,7 @@ exports.getRequestsPage = async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
         res.render('admin/requests', { 
-            user: req.session.user,
+            user: req.user,
             requests: maintenanceRequests,
             error: req.query.error || null,
             success: req.query.success || null

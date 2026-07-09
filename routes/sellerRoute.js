@@ -38,7 +38,7 @@ const upload = multer({
 
 // Middleware ตรวจสอบการ Login
 const isAuthenticated = (req, res, next) => {
-    if (!req.session.user) {
+    if (!req.user) {
         return res.redirect("/login");
     }
     next();
@@ -47,7 +47,7 @@ const isAuthenticated = (req, res, next) => {
 // --- 1. หน้าแจ้งซ่อม ---
 router.get("/repair", isAuthenticated, async (req, res) => {
     const user = await prisma.user.findUnique({
-        where: { id: req.session.user.id }
+        where: { id: req.user.id }
     });
     res.render("seller/repair", {
         user: user,
@@ -79,7 +79,7 @@ router.post("/repair", isAuthenticated, (req, res) => {
                     category,
                     description,
                     image: imagePath,
-                    userId: req.session.user.id
+                    userId: req.user.id
                 }
             });
             res.redirect("/repair?success=true");
@@ -91,6 +91,7 @@ router.post("/repair", isAuthenticated, (req, res) => {
 });
 
 // --- 2. หน้าเลือกโซน/แผงค้า (แก้ไขชื่อไฟล์ที่นี่) ---
+<<<<<<< HEAD
 const zoneAccess = require('../utils/zoneAccess');
 
 router.get("/select-zone", isAuthenticated, async (req, res) => {
@@ -122,11 +123,19 @@ router.get("/select-zone", isAuthenticated, async (req, res) => {
             allowedZones: ['a']
         });
     }
+=======
+router.get("/select-zone", isAuthenticated, (req, res) => {
+    // แก้ไขจาก "seller/select_stall" เป็น "seller/select_zone" ให้ตรงกับชื่อไฟล์ใหม่
+    res.render("seller/select_zone", {
+        user: req.user
+    });
+>>>>>>> test
 });
 
 // --- 3. หน้าจองแผงค้า ---
 router.get("/booking-stall", isAuthenticated, async (req, res) => {
     const { zone, type, size, oldPrice, newPrice } = req.query;
+<<<<<<< HEAD
     // ดึงข้อมูลผู้ขายเพื่อตรวจสอบว่าโซนที่ขออนุญาตหรือไม่
     const userRecord = await prisma.user.findUnique({ where: { id: req.session.user.id }, include: { shop: true } });
     const productType = userRecord?.shop?.productType || null;
@@ -145,6 +154,11 @@ router.get("/booking-stall", isAuthenticated, async (req, res) => {
         });
     }
 
+=======
+    const user = await prisma.user.findUnique({
+        where: { id: req.user.id }
+    });
+>>>>>>> test
     res.render("seller/booking_stall", { 
         user: userRecord,
         zone: zone || null,
@@ -158,7 +172,7 @@ router.get("/booking-stall", isAuthenticated, async (req, res) => {
 // --- 4. หน้าสถานะการจอง ---
 router.get("/booking-status", isAuthenticated, (req, res) => {
     res.render("seller/booking_status", {
-        user: req.session.user
+        user: req.user
     });
 });
 
