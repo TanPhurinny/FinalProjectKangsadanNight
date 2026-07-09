@@ -24,7 +24,7 @@ exports.getUsersPage = async (req, res) => {
         });
 
         res.render('admin/users', { 
-            user: req.session.user, 
+            user: req.user, 
             allUsers,
             // รองรับการแสดงผล Success/Error Alert ในหน้า EJS
             error: req.query.error || null,
@@ -61,7 +61,7 @@ exports.deleteUser = async (req, res) => {
     const userId = parseInt(req.params.id);
     try {
         // ตรวจสอบว่าแอดมินไม่ได้ลบตัวเอง
-        if (userId === req.session.user.id) {
+        if (userId === req.user.id) {
             return res.redirect('/admin/users?error=' + encodeURIComponent("คุณไม่สามารถลบตัวเองได้"));
         }
 
@@ -79,7 +79,7 @@ exports.deleteUser = async (req, res) => {
 // 4. ดูโปรไฟล์ของตัวเอง
 exports.getProfile = async (req, res) => {
     try {
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const profileUser = await prisma.user.findUnique({
             where: { id: userId },
             include: { shop: true }
@@ -90,7 +90,7 @@ exports.getProfile = async (req, res) => {
         }
 
         res.render('admin/profile', {
-            user: req.session.user,
+            user: req.user,
             profileUser: profileUser,
             success: req.query.success || null,
             error: req.query.error || null
@@ -104,7 +104,7 @@ exports.getProfile = async (req, res) => {
 // 5. อัปเดตโปรไฟล์ของตัวเอง
 exports.updateProfile = async (req, res) => {
     try {
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const { name, email, phoneNumber, birthDate, password, newPassword, confirmPassword } = req.body;
 
         // ตรวจสอบอีเมล Gmail
@@ -159,7 +159,7 @@ exports.updateProfile = async (req, res) => {
 
         // อัปเดต session
         if (name) {
-            req.session.user.name = name;
+            req.user.name = name;
         }
 
         res.redirect('/profile?success=' + encodeURIComponent("อัปเดตโปรไฟล์สำเร็จ"));

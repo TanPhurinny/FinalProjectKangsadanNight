@@ -48,7 +48,7 @@ exports.getAdminAnnouncements = async (req, res) => {
 
         res.render('admin/announcements', { 
             announcements: normalizedAnnouncements,
-            user: req.session.user 
+            user: req.user 
         });
     } catch (error) {
         console.error("Fetch Error:", error);
@@ -72,7 +72,7 @@ exports.createAnnouncement = async (req, res) => {
                 targetRole: fallbackRole,
                 targetRoles: normalizedRoles,
                 image: imageName,
-                authorId: req.session.user.id
+                authorId: req.user.id
             }
         });
         res.redirect('/admin/announcements?success=created');
