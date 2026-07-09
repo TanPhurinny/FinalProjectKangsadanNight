@@ -91,21 +91,62 @@ router.post("/repair", isAuthenticated, (req, res) => {
 });
 
 // --- 2. หน้าเลือกโซน/แผงค้า (แก้ไขชื่อไฟล์ที่นี่) ---
-router.get("/select-zone", isAuthenticated, (req, res) => {
-    // แก้ไขจาก "seller/select_stall" เป็น "seller/select_zone" ให้ตรงกับชื่อไฟล์ใหม่
-    res.render("seller/select_zone", {
-        user: req.session.user
-    });
+const zoneAccess = require('../utils/zoneAccess');
+
+router.get("/select-zone", isAuthenticated, async (req, res) => {
+    // เฉพาะผู้ขายเท่านั้นที่เข้าถึงหน้าจอนี้ได้
+    if (!req.session.user || req.session.user.role !== 'SELLER') {
+        return res.status(403).render('index', { user: req.session.user, error: 'เฉพาะผู้ขายเท่านั้นที่เข้าถึงหน้านี้ได้' });
+    }
+
+    try {
+        // ดึงข้อมูลผู้ขายจากฐานข้อมูล (รวมถึง shop.productType)
+        const userRecord = await prisma.user.findUnique({
+            where: { id: req.session.user.id },
+            include: { shop: true }
+        });
+
+        const productType = userRecord?.shop?.productType || null;
+        const allowedZones = zoneAccess.allowedZonesFor(productType);
+
+        res.render("seller/select_zone", {
+            user: req.session.user,
+            productType,
+            allowedZones
+        });
+    } catch (err) {
+        console.error('select-zone error', err);
+        res.render("seller/select_zone", {
+            user: req.session.user,
+            productType: null,
+            allowedZones: ['a']
+        });
+    }
 });
 
 // --- 3. หน้าจองแผงค้า ---
 router.get("/booking-stall", isAuthenticated, async (req, res) => {
     const { zone, type, size, oldPrice, newPrice } = req.query;
-    const user = await prisma.user.findUnique({
-        where: { id: req.session.user.id }
-    });
+    // ดึงข้อมูลผู้ขายเพื่อตรวจสอบว่าโซนที่ขออนุญาตหรือไม่
+    const userRecord = await prisma.user.findUnique({ where: { id: req.session.user.id }, include: { shop: true } });
+    const productType = userRecord?.shop?.productType || null;
+    const allowedZones = zoneAccess.allowedZonesFor(productType).map(z => String(z).toLowerCase());
+
+    if (zone && allowedZones.length && !allowedZones.includes(String(zone).toLowerCase())) {
+        // ป้องกันการเข้าถึงหน้าเลือกแถวสำหรับโซนที่ผู้ขายไม่มีสิทธิ
+        return res.status(403).render('seller/booking_stall', {
+            user: userRecord,
+            zone: null,
+            type: type || null,
+            size: size || null,
+            oldPrice: oldPrice || null,
+            newPrice: newPrice || null,
+            error: 'คุณไม่มีสิทธิ์จองโซนนี้ตามประเภทสินค้าของคุณ'
+        });
+    }
+
     res.render("seller/booking_stall", { 
-        user: user,
+        user: userRecord,
         zone: zone || null,
         type: type || null,
         size: size || null,
