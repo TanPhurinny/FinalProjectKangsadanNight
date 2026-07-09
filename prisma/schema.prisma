@@ -97,6 +97,46 @@ model Announcement {
   @@index([authorId], map: "Announcement_authorId_fkey")
 }
 
+model Zone {
+  id               Int                  @id @default(autoincrement())
+  code             String               @unique
+  name             String
+  description      String?              @db.Text
+  productCategory  Zone_productCategory
+  size             String
+  bookingStartDate DateTime?
+  bookingEndDate   DateTime?
+  electricityFee   Float                @default(15)
+  rows             ZoneRow[]
+}
+
+model ZoneRow {
+  id      Int     @id @default(autoincrement())
+  rowCode String
+  label   String?
+  price   Float
+  size    String
+  zoneId  Int
+  zone    Zone    @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  stalls  Stall[]
+
+  @@unique([zoneId, rowCode])
+  @@index([zoneId], map: "ZoneRow_zoneId_fkey")
+}
+
+model Stall {
+  id                   Int       @id @default(autoincrement())
+  stallCode            String    @unique
+  rowId                Int
+  isAvailable          Boolean   @default(true)
+  bookingStartDate     DateTime?
+  bookingEndDate       DateTime?
+  extraElectricityCost Float     @default(0)
+  row                  ZoneRow   @relation(fields: [rowId], references: [id], onDelete: Cascade)
+
+  @@index([rowId], map: "Stall_rowId_fkey")
+}
+
 enum Role {
   ADMIN
   STAFF
@@ -110,4 +150,10 @@ enum Status {
   REJECTED
   IN_PROGRESS
   SUCCESS
+}
+
+enum Zone_productCategory {
+  FASHION
+  FOOD
+  EVENT_BOOTH
 }
