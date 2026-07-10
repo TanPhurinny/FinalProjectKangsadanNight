@@ -492,8 +492,11 @@ exports.rejectBookingStall = async (req, res) => {
 
         const requestRecord = await prisma.bookingRequest.findUnique({
             where: { id: requestId },
-            select: { sellerId: true, sellerName: true }
+            select: { sellerId: true, sellerName: true, assignedStallCode: true, description: true }
         });
+        if (!requestRecord) {
+            return res.redirect('/admin/approvals?error=request_not_found');
+        }
 
         let sellerUserId = null;
         if (requestRecord?.sellerId) {
@@ -515,6 +518,11 @@ exports.rejectBookingStall = async (req, res) => {
             sellerUserId = fallbackUser?.id || null;
         }
 
+        const assignedStallCode = String(requestRecord.assignedStallCode || extractAssignedStallFromDescription(requestRecord.description) || '').trim().toUpperCase();
+        const assignedStall = assignedStallCode
+            ? await prisma.stall.findUnique({ where: { stallCode: assignedStallCode }, select: { id: true } })
+            : null;
+
         await prisma.$transaction(async (tx) => {
             await tx.bookingRequest.update({
                 where: { id: requestId },
@@ -523,6 +531,16 @@ exports.rejectBookingStall = async (req, res) => {
                     assignedStallCode: null
                 }
             });
+
+            if (assignedStall?.id) {
+                await tx.stall.update({
+                    where: { id: assignedStall.id },
+                    data: {
+                        isAvailable: true,
+                        status: 'AVAILABLE'
+                    }
+                });
+            }
 
             if (sellerUserId) {
                 const requestTag = buildBookingRequestTag(requestId);
