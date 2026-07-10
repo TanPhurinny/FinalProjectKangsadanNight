@@ -192,6 +192,21 @@
                                         </span>
                                     </td>
                                     <td class="text-end pe-4">
+                                        <button type="button"
+                                            class="btn btn-outline-secondary btn-sm me-1"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#requestDetailModal"
+                                            data-location="<%= req.location %>"
+                                            data-requester="<%= req.user ? req.user.name : 'ไม่ระบุ' %>"
+                                            data-category="<%= req.category %>"
+                                            data-description="<%= req.description %>"
+                                            data-date="<%= new Date(req.createdAt).toLocaleString('th-TH') %>"
+                                            data-status="<%= req.status %>"
+                                            data-status-label="<%= req.status === 'PENDING' ? 'รอรับเรื่อง' : req.status === 'IN_PROGRESS' ? 'กำลังดำเนินการ' : 'เสร็จสิ้น' %>"
+                                            data-image="<%= req.image || '' %>"
+                                            title="ดูรายละเอียด">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
                                         <% if (user.role === 'ADMIN' ||
                                         user.role === 'STAFF') { %>
                                         <% if (req.status === 'PENDING') { %>
@@ -280,6 +295,21 @@
                             class="far fa-clock me-1"></i><%= new
                         Date(req.createdAt).toLocaleString('th-TH') %></div>
 
+                    <button type="button"
+                        class="btn btn-outline-secondary btn-sm w-100 mb-2"
+                        data-bs-toggle="modal"
+                        data-bs-target="#requestDetailModal"
+                        data-location="<%= req.location %>"
+                        data-requester="<%= req.user ? req.user.name : 'ไม่ระบุ' %>"
+                        data-category="<%= req.category %>"
+                        data-description="<%= req.description %>"
+                        data-date="<%= new Date(req.createdAt).toLocaleString('th-TH') %>"
+                        data-status="<%= req.status %>"
+                        data-status-label="<%= req.status === 'PENDING' ? 'รอรับเรื่อง' : req.status === 'IN_PROGRESS' ? 'กำลังดำเนินการ' : 'เสร็จสิ้น' %>"
+                        data-image="<%= req.image || '' %>">
+                        <i class="fas fa-eye me-1"></i>ดูรายละเอียด
+                    </button>
+
                     <% if (user.role === 'ADMIN' || user.role === 'STAFF') { %>
                     <div class="d-flex gap-2">
                         <% if (req.status === 'PENDING') { %>
@@ -321,6 +351,49 @@
                     ไม่พบคำร้องที่ตรงกับการค้นหา/ตัวกรอง
                 </div>
             </section>
+        </div>
+
+        <div class="modal fade" id="requestDetailModal" tabindex="-1"
+            aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rounded-4 border-0">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title fw-bold"><i
+                                class="fas fa-screwdriver-wrench me-2"></i>รายละเอียดคำร้องแจ้งซ่อม</h5>
+                        <button type="button" class="btn-close"
+                            data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="detailImageWrap" class="text-center mb-3 d-none">
+                            <img id="detailImage" src="" alt="รูปแจ้งซ่อม"
+                                class="img-fluid rounded-3"
+                                style="max-height: 320px; cursor: zoom-in;"
+                                title="คลิกเพื่อดูรูปขนาดเต็ม">
+                        </div>
+                        <div id="detailImageEmpty"
+                            class="text-center text-muted mb-3 d-none">
+                            <i
+                                class="fas fa-image fa-3x opacity-25 d-block mb-2"></i>ไม่มีรูปภาพแนบ
+                        </div>
+                        <dl class="row mb-0">
+                            <dt class="col-4 text-muted">พื้นที่</dt>
+                            <dd class="col-8" id="detailLocation"></dd>
+                            <dt class="col-4 text-muted">ผู้แจ้ง</dt>
+                            <dd class="col-8" id="detailRequester"></dd>
+                            <dt class="col-4 text-muted">หมวดหมู่</dt>
+                            <dd class="col-8" id="detailCategory"></dd>
+                            <dt class="col-4 text-muted">รายละเอียด</dt>
+                            <dd class="col-8" id="detailDescription"
+                                style="white-space: pre-wrap;"></dd>
+                            <dt class="col-4 text-muted">วันที่แจ้ง</dt>
+                            <dd class="col-8" id="detailDate"></dd>
+                            <dt class="col-4 text-muted">สถานะ</dt>
+                            <dd class="col-8"><span class="badge"
+                                    id="detailStatusBadge"></span></dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <script>
@@ -383,6 +456,48 @@
             });
 
             applyFilters();
+
+            const requestDetailModal = document.getElementById('requestDetailModal');
+            if (requestDetailModal) {
+                const detailImage = document.getElementById('detailImage');
+                const detailImageWrap = document.getElementById('detailImageWrap');
+                const detailImageEmpty = document.getElementById('detailImageEmpty');
+                const statusBadgeClass = {
+                    PENDING: 'bg-warning text-dark',
+                    IN_PROGRESS: 'bg-info text-dark',
+                    SUCCESS: 'bg-success'
+                };
+
+                requestDetailModal.addEventListener('show.bs.modal', (event) => {
+                    const btn = event.relatedTarget;
+                    if (!btn) return;
+                    const d = btn.dataset;
+
+                    if (d.image) {
+                        detailImage.src = d.image;
+                        detailImageWrap.classList.remove('d-none');
+                        detailImageEmpty.classList.add('d-none');
+                    } else {
+                        detailImage.src = '';
+                        detailImageWrap.classList.add('d-none');
+                        detailImageEmpty.classList.remove('d-none');
+                    }
+
+                    document.getElementById('detailLocation').textContent = d.location;
+                    document.getElementById('detailRequester').textContent = d.requester;
+                    document.getElementById('detailCategory').textContent = d.category;
+                    document.getElementById('detailDescription').textContent = d.description;
+                    document.getElementById('detailDate').textContent = d.date;
+
+                    const badge = document.getElementById('detailStatusBadge');
+                    badge.textContent = d.statusLabel;
+                    badge.className = 'badge ' + (statusBadgeClass[d.status] || 'bg-secondary');
+                });
+
+                detailImage.addEventListener('click', () => {
+                    if (detailImage.src) window.open(detailImage.src, '_blank');
+                });
+            }
         </script>
         <script
             src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>

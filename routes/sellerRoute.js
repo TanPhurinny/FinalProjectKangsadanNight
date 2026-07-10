@@ -49,8 +49,13 @@ router.get("/repair", isAuthenticated, async (req, res) => {
     const user = await prisma.user.findUnique({
         where: { id: req.user.id }
     });
+    const reports = await prisma.maintenanceReport.findMany({
+        where: { userId: req.user.id },
+        orderBy: { createdAt: 'desc' }
+    });
     res.render("seller/repair", {
         user: user,
+        reports: reports,
         error: req.query.error || null,
         success: req.query.success || null
     });

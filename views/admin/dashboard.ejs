@@ -25,19 +25,21 @@
             <%
             const dStats = locals.stats || { unpaidCount: 0, occupiedCount: 0,
             totalSlots: 0, pendingRepairs: 0, availableSlots: 0,
-            pendingRequests: 0, announcements: 0 };
+            pendingRequests: 0, announcements: 0, sellerCount: 0 };
             const availableRate = dStats.totalSlots > 0 ?
             ((dStats.availableSlots
             / dStats.totalSlots) * 100).toFixed(1) : 0;
             const rawZoneList = locals.zones || [];
-            const zoneOrder = ['A', 'B', 'C', 'D', 'E', 'F'];
+            const zoneOrder = ['A', 'C', 'E', 'B', 'F', 'T', 'D', 'X'];
             const zoneMeta = {
-            A: { icon: 'fa-shirt', description: 'แฟชั่นและอาหาร' },
-            B: { icon: 'fa-utensils', description: 'อาหาร' },
+            A: { icon: 'fa-shirt', description: 'แฟชั่น' },
             C: { icon: 'fa-shirt', description: 'แฟชั่น' },
-            D: { icon: 'fa-truck', description: 'ฟู้ดทรัค' },
             E: { icon: 'fa-gem', description: 'แฟชั่น' },
-            F: { icon: 'fa-utensils', description: 'อาหาร' }
+            B: { icon: 'fa-utensils', description: 'อาหาร' },
+            F: { icon: 'fa-utensils', description: 'อาหาร' },
+            T: { icon: 'fa-mug-hot', description: 'อาหาร' },
+            D: { icon: 'fa-truck', description: 'อาหาร (ฟู้ดทรัค)' },
+            X: { icon: 'fa-utensils', description: 'อาหาร' }
             };
 
             const zoneLookup = rawZoneList.reduce((acc, zone) => {
@@ -194,6 +196,12 @@
                                 <strong class="count-up"
                                     data-target="<%= totalZoneRepairs %>"><%=
                                     totalZoneRepairs %></strong>
+                            </div>
+                            <div class="mini-stat">
+                                <span>ผู้ขายทั้งหมด</span>
+                                <strong class="count-up"
+                                    data-target="<%= dStats.sellerCount %>"><%=
+                                    dStats.sellerCount %></strong>
                             </div>
                         </div>
                     </div>
