@@ -1,11 +1,17 @@
 <% 
     // ตรวจสอบหน้าปัจจุบันจาก URL path เพื่อไฮไลต์เมนูที่ใช้งานอยู่
     const currentPath = locals.path || ''; 
+    const homePath = user && user.role === 'SELLER' ? '/seller' : '/admin/dashboard';
+    const isSeller = user && user.role === 'SELLER';
+    const notificationList = (typeof notifications !== 'undefined' && Array.isArray(notifications)) ? notifications : [];
+    const unreadNotifications = notificationList.filter(function(item) {
+        return !item.isRead;
+    }).length;
 %>
 
 <nav class="management-nav">
     <div class="nav-container">
-        <a href="/admin/dashboard" class="nav-brand">
+        <a href="<%= homePath %>" class="nav-brand <%= currentPath === '/seller' ? 'active' : '' %>">
             <i class="fas fa-store-alt"></i> Kangsadan
         </a>
 
@@ -14,18 +20,39 @@
         </button>
 
         <div class="nav-links" id="navMenu">
-            <a href="/booking-status" class="nav-item <%= currentPath.includes('booking-status') ? 'active' : '' %>">
-                <i class="fas fa-clipboard-list"></i> สถานะการจอง
-            </a>
-            <a href="/manage-shop" class="nav-item <%= currentPath.includes('manage-shop') ? 'active' : '' %>">
-                <i class="fas fa-store"></i> จัดการร้าน
-            </a>
-            <a href="/repair" class="nav-item <%= currentPath.includes('repair') ? 'active' : '' %>">
-                <i class="fas fa-tools"></i> แจ้งซ่อม
-            </a>
-            <a href="/notifications" class="nav-item <%= currentPath.includes('notifications') ? 'active' : '' %>">
-                <i class="fas fa-bell"></i> แจ้งเตือน
-            </a>
+            <% if (isSeller) { %>
+                <a href="/seller" class="nav-item <%= currentPath === '/seller' ? 'active' : '' %>">
+                    <i class="fas fa-home"></i> หน้าหลัก
+                </a>
+                <a href="/select-zone" class="nav-item <%= currentPath.includes('select-zone') ? 'active' : '' %>">
+                    <i class="fas fa-store"></i> เลือกโซนจองแผง
+                </a>
+                <a href="/booking-status" class="nav-item <%= currentPath.includes('booking-status') ? 'active' : '' %>">
+                    <i class="fas fa-clipboard-list"></i> สถานะการจอง
+                </a>
+                <a href="/repair" class="nav-item <%= currentPath.includes('repair') ? 'active' : '' %>">
+                    <i class="fas fa-tools"></i> แจ้งซ่อม
+                </a>
+                <a href="/notifications" class="nav-item nav-notification <%= currentPath.includes('notifications') ? 'active' : '' %>">
+                    <i class="fas fa-bell"></i> แจ้งเตือน
+                    <% if (unreadNotifications > 0) { %>
+                        <span class="nav-notification-badge"><%= unreadNotifications %></span>
+                    <% } %>
+                </a>
+            <% } else { %>
+                <a href="/booking-status" class="nav-item <%= currentPath.includes('booking-status') ? 'active' : '' %>">
+                    <i class="fas fa-clipboard-list"></i> สถานะการจอง
+                </a>
+                <a href="/select-zone" class="nav-item <%= currentPath.includes('select-zone') ? 'active' : '' %>">
+                    <i class="fas fa-store"></i> จองแผง
+                </a>
+                <a href="/repair" class="nav-item <%= currentPath.includes('repair') ? 'active' : '' %>">
+                    <i class="fas fa-tools"></i> แจ้งซ่อม
+                </a>
+                <a href="/notifications" class="nav-item <%= currentPath.includes('notifications') ? 'active' : '' %>">
+                    <i class="fas fa-bell"></i> แจ้งเตือน
+                </a>
+            <% } %>
 
             <div class="nav-actions d-flex align-items-center">
                 <div class="user-badge shadow-sm">

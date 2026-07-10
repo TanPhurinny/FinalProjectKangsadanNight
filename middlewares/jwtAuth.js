@@ -36,7 +36,13 @@ function getCurrentUser(req) {
     }
 
     if (req.authUser) {
-        return req.authUser;
+        req.user = req.authUser;
+        return req.user;
+    }
+
+    if (req.session?.user) {
+        req.user = req.session.user;
+        return req.user;
     }
 
     const token = getTokenFromRequest(req);
@@ -45,6 +51,7 @@ function getCurrentUser(req) {
         try {
             const decoded = jwt.verify(token, JWT_SECRET);
             req.authUser = decoded;
+            req.user = decoded;
             return decoded;
         } catch (error) {
             return null;
@@ -55,19 +62,37 @@ function getCurrentUser(req) {
 }
 
 exports.requireAuth = (req, res, next) => {
+    console.log('requireAuth called', {
+        sessionExists: !!req.session,
+        sessionUser: req.session?.user,
+        userBefore: req.user,
+        authHeader: req.headers.authorization,
+        tokenCookie: req.cookies?.token
+    });
+
+    if (req.session?.user) {
+        req.user = req.session.user;
+        console.log('requireAuth using session user', req.user);
+        return next();
+    }
+
     const token = getTokenFromRequest(req);
 
     if (!token) {
+        console.log('requireAuth no token and no session');
         return sendUnauthorized(req, res, 'กรุณาเข้าสู่ระบบก่อนใช้งาน');
     }
 
     try {
         req.authUser = jwt.verify(token, JWT_SECRET);
         req.user = req.authUser;
+        console.log('requireAuth using token user', req.user);
         return next();
     } catch (error) {
+        console.log('requireAuth token invalid', error.message);
         return sendUnauthorized(req, res, 'token ไม่ถูกต้องหรือหมดอายุ');
     }
 };
+
 
 exports.getCurrentUser = getCurrentUser;

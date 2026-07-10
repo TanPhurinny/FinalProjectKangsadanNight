@@ -703,11 +703,6 @@
               <span class="confirm-value" id="c-date">-</span>
             </div>
 
-            <div class="confirm-note">
-              <strong>หมายเหตุจากผู้จอง:</strong><br>
-              <span id="c-note">-</span>
-            </div>
-
             <div class="confirm-actions">
               <button class="btn-cancel-confirm"
                 onclick="closeConfirmSummary()">ย้อนกลับ</button>
@@ -721,193 +716,107 @@
     </div>
 
     <script>
-  // 1. โครงสร้างของแต่ละโซน [ [Prefix, จำนวนแถว] , ... ]
-  const ZONES_LAYOUT = {
-    A: [ [['A1',19]], [['A2',19],['A3',19]], [['A4',21],['A5',21]], [['A6',22],['A7',22]], [['A8',23],['A9',23]] ],
-    B: [ [['B1',15]], [['B2',15],['B3',15]], [['B4',15],['B5',15]], [['B6',15],['B7',15]], [['B8',10],['B9',10]] ],
-    C: [ [['C1',12]] ],
-    D: [ [['D2',12]] ],
-    E: [ [['E1',4]] ],
-    F: [ [['F1',15]], [['F2',15],['F3',15]], [['F4',15],['F5',15]], [['F6',15],['F7',15]] ]
-  };
+  const PAGE_DATA = <%- JSON.stringify(pageData || {}) %>;
+  const REQUEST_DATA = PAGE_DATA.bookingRequest || {};
+  const ZONES_LAYOUT = PAGE_DATA.layoutByZone || {};
+  const BOOKED_STALLS = new Set(PAGE_DATA.bookedStalls || []);
 
-  // 2. ข้อมูลจำลองการจอง (ใช้แสดงใน Tooltip และดึงมาแสดงในการ์ดด้านบน)
-  const MOCK_BOOKING_DATA = {
-    'A101-A119': { shop: 'เสื้อผ้าแฟชั่นวินเทจ', date: '15 ต.ค. 68', name: 'นายสมชาย รักดี', phone: '082-333-9999', note: 'ไม่มี', zoneText: 'โซน A (แฟชั่น)' },
-    'F101-F117': { shop: 'ร้านหมูปิ้งเจ๊จู', date: '14 ต.ค. 68 - 16 ต.ค. 68', name: 'นางสาวสมหญิง ใจดี', phone: '081-234-5678', note: 'ขอพื้นที่ใกล้ทางเดินหลักค่ะ', zoneText: 'โซน F (อาหาร)' },
-    'D201-D212': { shop: 'Burger Truck BKK', date: '10 ต.ค. 68 - 20 ต.ค. 68', name: 'นายเอกพล คนขยัน', phone: '089-987-6543', note: 'ใช้ไฟเยอะครับ (มีตู้แช่)', zoneText: 'โซน D (ฟู้ดทรัค)' }
-  };
+  let currentSelectedStall = String(REQUEST_DATA.assignedStallCode || '').trim().toUpperCase() || null;
+  let currentZone = (REQUEST_DATA.zone || Object.keys(ZONES_LAYOUT)[0] || 'A').toUpperCase();
 
-  // จำลองว่าบางล็อกในโซนถูกจองไปแล้ว (เอาไว้ให้เมาส์ชี้ได้)
-  const fakeBookedStalls = ['A205', 'A306', 'A307', 'F201', 'B205', 'C101'];
-
-  // ฟังก์ชันหาว่าล็อกชื่อ stallName อยู่ในช่วงช่วงที่ส่งมาไหม? 
-  // (เช่น "A105" อยู่ใน "A101-A119" หรือเปล่า)
-  function isStallInRange(stallName, rangeString) {
-    if(!rangeString || !rangeString.includes('-')) return stallName === rangeString;
-    
-    // แปลง "A101-A119" เป็น prefix="A", start=101, end=119
-    const parts = rangeString.split('-');
-    if(parts.length !== 2) return false;
-    
-    const prefix1 = parts[0].substring(0, 1);
-    const prefix2 = parts[1].substring(0, 1);
-    if(prefix1 !== prefix2) return false; // คนละโซน
-    
-    const startNum = parseInt(parts[0].substring(1), 10);
-    const endNum = parseInt(parts[1].substring(1), 10);
-    
-    const stallPrefix = stallName.substring(0, 1);
-    const stallNum = parseInt(stallName.substring(1), 10);
-    
-    return (stallPrefix === prefix1 && stallNum >= startNum && stallNum <= endNum);
-  }
-
-  let currentRequestedRange = null; // แถวที่มาจากการรีเควส (เช่น "A101-A119")
-  let currentSelectedStall = null;  // แผงเดียวที่แอดมินคลิกเลือกอยู่ตอนนี้
   const tooltip = document.getElementById('adminTooltip');
   const confirmOverlay = document.getElementById('confirmOverlay');
   const zoneBtns = document.querySelectorAll('.btn-zone');
 
-  document.addEventListener('DOMContentLoaded', () => {
-    // เช็ค URL Parameter ว่าส่งมาจากหน้าไหน (เช่น ?zone=A&stall=A101-A119)
-    const urlParams = new URLSearchParams(window.location.search);
-    const paramZone = urlParams.get('zone') || 'A';
-    const paramStallRange = urlParams.get('stall');
+  function setApplicantData() {
+    document.getElementById('app-name').textContent = REQUEST_DATA.sellerName || '-';
+    document.getElementById('app-shop').textContent = REQUEST_DATA.shop || '-';
+    document.getElementById('app-phone').textContent = REQUEST_DATA.phone || '-';
+    document.getElementById('app-zone').textContent = REQUEST_DATA.zoneText || '-';
+    document.getElementById('app-date').textContent = REQUEST_DATA.dateText || '-';
+    document.getElementById('app-note').textContent = REQUEST_DATA.note || '-';
+  }
 
-    if(paramStallRange) {
-      currentRequestedRange = paramStallRange;
-      loadApplicantData(paramStallRange); // ดึงข้อมูลมาใส่ในการ์ดด้านบน
-    }
-
-    // เซ็ตปุ่มที่ Active ตาม URL
-    setActiveZoneBtn(paramZone);
-    // Render โซนเริ่มต้น
-    renderGrid(paramZone);
-
-    // Event เมื่อกดปุ่มเลือกโซน
-    zoneBtns.forEach(btn => {
-      btn.addEventListener('click', function() {
-        const selectedZone = this.dataset.zone;
-        setActiveZoneBtn(selectedZone);
-        renderGrid(selectedZone);
-      });
+  function renderZoneButtons() {
+    const availableZones = Object.keys(ZONES_LAYOUT);
+    zoneBtns.forEach((btn) => {
+      const zone = (btn.dataset.zone || '').toUpperCase();
+      btn.style.display = availableZones.includes(zone) ? 'inline-flex' : 'none';
     });
-  });
+  }
 
-  // เปลี่ยนสีปุ่มที่ถูกเลือก
   function setActiveZoneBtn(zoneCode) {
-    zoneBtns.forEach(b => {
-      if(b.dataset.zone === zoneCode) {
-        b.classList.add('active');
-      } else {
-        b.classList.remove('active');
-      }
+    zoneBtns.forEach((b) => {
+      b.classList.toggle('active', (b.dataset.zone || '').toUpperCase() === zoneCode);
     });
   }
 
-  // นำข้อมูลผู้ขอเช่ามาแสดงที่การ์ดด้านบน
-  function loadApplicantData(stallRange) {
-    const data = MOCK_BOOKING_DATA[stallRange];
-    if(data) {
-      document.getElementById('app-name').textContent = data.name;
-      document.getElementById('app-shop').textContent = data.shop;
-      document.getElementById('app-phone').textContent = data.phone;
-      document.getElementById('app-zone').textContent = `${data.zoneText} / แถว ${stallRange}`;
-      document.getElementById('app-date').textContent = data.date;
-      document.getElementById('app-note').textContent = data.note;
-    } else {
-      document.getElementById('app-zone').textContent = `รอการจัดสรร / แถว ${stallRange}`;
-    }
+  function formatStallCode(prefix, number) {
+    return `${prefix}${String(number).padStart(3, '0')}`;
   }
 
-  // สร้างตารางแผงค้า
   function renderGrid(zoneKey) {
     const gridContainer = document.getElementById('adminGrid');
     gridContainer.innerHTML = '';
 
-    const layout = ZONES_LAYOUT[zoneKey];
-    if(!layout) return;
+    const layout = ZONES_LAYOUT[zoneKey] || [];
+    if (!layout.length) {
+      gridContainer.innerHTML = '<div style="padding:24px; color:#666;">ไม่มีข้อมูลแผงสำหรับโซนนี้</div>';
+      return;
+    }
 
-    layout.forEach(block => {
+    layout.forEach((colData) => {
+      const prefix = colData[0];
+      const rowCount = Number(colData[1] || 0);
+      const startNumber = Number(colData[2] || 1);
+
       const blockDiv = document.createElement('div');
       blockDiv.className = 'col-block';
+      const colDiv = document.createElement('div');
+      colDiv.className = 'stall-column';
 
-      block.forEach(colData => {
-        const prefix = colData[0];
-        const rowCount = colData[1];
+      for (let offset = 0; offset < rowCount; offset += 1) {
+        const stallNumber = startNumber + offset;
+        const stallName = formatStallCode(zoneKey, stallNumber);
 
-        const colDiv = document.createElement('div');
-        colDiv.className = 'stall-column';
+        const cell = document.createElement('div');
+        cell.className = 'stall-cell';
+        cell.textContent = stallName;
 
-        for (let i = 1; i <= rowCount; i++) {
-          const numStr = i.toString().padStart(2, '0');
-          const stallName = `${prefix}${numStr}`;
-
-          const cell = document.createElement('div');
-          cell.className = 'stall-cell';
-          cell.textContent = stallName;
-
-          // 1. เช็คว่าเป็นล็อคที่ลูกค้ารีเควสมาหรือไม่? (ถ้าใช่ให้ตีกรอบฟ้า)
-          if (currentRequestedRange && isStallInRange(stallName, currentRequestedRange)) {
-            cell.classList.add('requested-range');
-          }
-
-          // 2. เช็คว่าล็อกนี้โดนจองไปก่อนแล้วหรือยัง? (สีเทา)
-          if (fakeBookedStalls.includes(stallName)) {
-            cell.classList.add('booked');
-            
-            // เพิ่ม Event Hover สำหรับ Tooltip
-            cell.addEventListener('mouseenter', (e) => showTooltip(e, stallName));
-            cell.addEventListener('mouseleave', hideTooltip);
-            cell.addEventListener('mousemove', moveTooltip);
-
-          } else {
-            // ถ้าร้านว่าง ให้แอดมินคลิกเลือกได้
-            cell.addEventListener('click', () => {
-              document.querySelectorAll('.stall-cell').forEach(c => c.classList.remove('selected'));
-              cell.classList.add('selected');
-              currentSelectedStall = stallName;
-            });
-          }
-
-          // ไฮไลต์ร้านที่แอดมินกำลัง "คลิกเลือก" (สีฟ้าทึบ)
-          if (stallName === currentSelectedStall) {
+        const isBooked = BOOKED_STALLS.has(stallName);
+        if (isBooked) {
+          cell.classList.add('booked');
+          cell.addEventListener('mouseenter', (e) => showTooltip(e, stallName));
+          cell.addEventListener('mouseleave', hideTooltip);
+          cell.addEventListener('mousemove', moveTooltip);
+        } else {
+          cell.addEventListener('click', () => {
+            document.querySelectorAll('.stall-cell').forEach((c) => c.classList.remove('selected'));
             cell.classList.add('selected');
-          }
-
-          colDiv.appendChild(cell);
+            currentSelectedStall = stallName;
+          });
         }
-        blockDiv.appendChild(colDiv);
-      });
 
+        if (stallName === currentSelectedStall) {
+          cell.classList.add('selected');
+        }
+
+        colDiv.appendChild(cell);
+      }
+
+      blockDiv.appendChild(colDiv);
       gridContainer.appendChild(blockDiv);
     });
   }
 
-  // =====================================
-  // TOOLTIP LOGIC (HOVER)
-  // =====================================
-  function getFakeData(stallName) {
-    return {
-      shop: 'ร้านค้า ' + stallName,
-      date: '17 ตุลาคม 2568',
-      name: 'ผู้จอง ' + stallName,
-      phone: '08X-XXX-XXXX',
-      note: '-'
-    };
-  }
-
   function showTooltip(e, stallName) {
-    const data = getFakeData(stallName);
-    
     document.getElementById('tt-stall-id').textContent = stallName;
-    document.getElementById('tt-shop').textContent = data.shop;
+    document.getElementById('tt-shop').textContent = 'มีผู้จองแล้ว';
     document.getElementById('tt-lock').textContent = stallName;
-    document.getElementById('tt-date').textContent = data.date;
-    document.getElementById('tt-name').textContent = data.name;
-    document.getElementById('tt-phone').textContent = data.phone;
-    document.getElementById('tt-note').textContent = data.note;
+    document.getElementById('tt-date').textContent = '-';
+    document.getElementById('tt-name').textContent = '-';
+    document.getElementById('tt-phone').textContent = '-';
+    document.getElementById('tt-note').textContent = 'ล็อกนี้ไม่ว่าง';
 
     tooltip.style.display = 'block';
     moveTooltip(e);
@@ -921,7 +830,6 @@
     let x = e.clientX + 15;
     let y = e.clientY + 15;
 
-    // ป้องกัน Tooltip ตกขอบจอ
     if (x + tooltip.offsetWidth > window.innerWidth) {
       x = e.clientX - tooltip.offsetWidth - 10;
     }
@@ -929,13 +837,12 @@
       y = e.clientY - tooltip.offsetHeight - 10;
     }
 
-    tooltip.style.left = x + 'px';
-    tooltip.style.top = y + 'px';
+    tooltip.style.left = `${x}px`;
+    tooltip.style.top = `${y}px`;
   }
 
-  // ยืนยัน
   function confirmStall() {
-    if(!currentSelectedStall) {
+    if (!currentSelectedStall) {
       if (window.Swal && typeof window.Swal.fire === 'function') {
         Swal.fire({
           icon: 'warning',
@@ -945,7 +852,7 @@
           confirmButtonColor: '#3BB8D4'
         });
       } else {
-        alert("กรุณาคลิกเลือกแผงค้า 1 ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้า");
+        alert('กรุณาคลิกเลือกแผงค้า 1 ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้า');
       }
       return;
     }
@@ -959,8 +866,6 @@
     document.getElementById('c-phone').textContent = document.getElementById('app-phone').textContent || '-';
     document.getElementById('c-zone').textContent = document.getElementById('app-zone').textContent || '-';
     document.getElementById('c-date').textContent = document.getElementById('app-date').textContent || '-';
-    document.getElementById('c-note').textContent = document.getElementById('app-note').textContent || '-';
-
     confirmOverlay.classList.add('active');
   }
 
@@ -974,17 +879,63 @@
     }
   }
 
-  function submitConfirmStall() {
-    window.location.href = "/admin/approvals";
+  function postForm(action, fields) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = action;
+
+    Object.keys(fields).forEach((key) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = String(fields[key] || '');
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
   }
 
-  // ยกเลิก
-  function rejectStall() {
-    if(confirm("คุณแน่ใจหรือไม่ที่จะ 'ยกเลิก' ในรายการนี้?")) {
-      alert("ได้ทำการยกเลิกเรียบร้อยแล้ว");
-      window.location.href = "/admin/approvals";
-    }
+  function submitConfirmStall() {
+    postForm('/admin/booking-stall/confirm', {
+      requestId: REQUEST_DATA.id || '',
+      selectedStall: currentSelectedStall || ''
+    });
   }
+
+  function rejectStall() {
+    const ok = window.confirm('คุณแน่ใจหรือไม่ที่จะปฏิเสธคำขอนี้?');
+    if (!ok) return;
+
+    postForm('/admin/booking-stall/reject', {
+      requestId: REQUEST_DATA.id || ''
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    setApplicantData();
+    renderZoneButtons();
+    setActiveZoneBtn(currentZone);
+    renderGrid(currentZone);
+
+    zoneBtns.forEach((btn) => {
+      btn.addEventListener('click', function () {
+        const selectedZone = String(this.dataset.zone || '').toUpperCase();
+        if (!ZONES_LAYOUT[selectedZone]) {
+          return;
+        }
+        currentZone = selectedZone;
+        setActiveZoneBtn(selectedZone);
+        renderGrid(selectedZone);
+      });
+    });
+  });
+
+  window.confirmStall = confirmStall;
+  window.closeConfirmSummary = closeConfirmSummary;
+  window.closeConfirmOnOverlay = closeConfirmOnOverlay;
+  window.submitConfirmStall = submitConfirmStall;
+  window.rejectStall = rejectStall;
 
 </script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

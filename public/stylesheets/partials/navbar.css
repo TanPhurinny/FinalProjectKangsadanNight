@@ -77,6 +77,30 @@
     white-space: nowrap;
 }
 
+.nav-notification {
+    position: relative;
+    padding-right: 22px;
+}
+
+.nav-notification-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #E51837;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    border: 2px solid #fff;
+}
+
 .nav-item:hover,
 .nav-item.active {
     color: #3BB8D4;

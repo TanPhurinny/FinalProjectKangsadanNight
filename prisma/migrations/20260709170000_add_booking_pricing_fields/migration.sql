@@ -1,0 +1,20 @@
+-- Add booking metadata to support server-side pricing and multi-stall booking.
+ALTER TABLE `Booking`
+  ADD COLUMN `zoneCode` VARCHAR(191) NULL,
+  ADD COLUMN `selectedZoneLabel` VARCHAR(191) NULL,
+  ADD COLUMN `stallCount` INTEGER NOT NULL DEFAULT 1,
+  ADD COLUMN `rentalStartDate` DATETIME(3) NULL,
+  ADD COLUMN `rentalEndDate` DATETIME(3) NULL,
+  ADD COLUMN `rentalDays` INTEGER NOT NULL DEFAULT 1,
+  ADD COLUMN `dailyStallPrice` DOUBLE NOT NULL DEFAULT 0,
+  ADD COLUMN `lightEnabled` BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN `lightUnitPrice` DOUBLE NOT NULL DEFAULT 15,
+  ADD COLUMN `smallApplianceCount` INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN `largeApplianceCount` INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN `smallAppliancePrice` DOUBLE NOT NULL DEFAULT 20,
+  ADD COLUMN `largeAppliancePrice` DOUBLE NOT NULL DEFAULT 40,
+  ADD COLUMN `applianceTotal` DOUBLE NOT NULL DEFAULT 0,
+  ADD COLUMN `lightTotal` DOUBLE NOT NULL DEFAULT 0,
+  ADD COLUMN `rentTotal` DOUBLE NOT NULL DEFAULT 0,
+  ADD COLUMN `grandTotal` DOUBLE NOT NULL DEFAULT 0,
+  ADD COLUMN `storeDetailSnapshot` TEXT NULL;

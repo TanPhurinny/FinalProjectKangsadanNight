@@ -23,6 +23,11 @@
         <%- include('../partials/navbar') %>
 
         <div class="approvals-page">
+            <%
+                const bookingRequestsList = (typeof bookingRequests !== 'undefined' && Array.isArray(bookingRequests)) ? bookingRequests : [];
+                const summaryCounts = (typeof counts !== 'undefined' && counts) ? counts : { all: 0, pending: 0, approved: 0, rejected: 0, zones: {} };
+                const zoneCounts = summaryCounts.zones || {};
+            %>
 
             <header class="site-header">
                 <a href="javascript:history.back()" class="btn-back"><i
@@ -37,22 +42,22 @@
                     <div class="summary-strip">
                         <div class="summary-card">
                             <span class="summary-label">ทั้งหมด</span>
-                            <span class="summary-value" id="count-all">0</span>
+                            <span class="summary-value" id="count-all"><%= summaryCounts.all %></span>
                         </div>
                         <div class="summary-card">
                             <span class="summary-label">รออนุมัติ</span>
                             <span class="summary-value"
-                                id="count-pending">0</span>
+                                id="count-pending"><%= summaryCounts.pending %></span>
                         </div>
                         <div class="summary-card">
                             <span class="summary-label">อนุมัติแล้ว</span>
                             <span class="summary-value"
-                                id="count-approved">0</span>
+                                id="count-approved"><%= summaryCounts.approved %></span>
                         </div>
                         <div class="summary-card">
                             <span class="summary-label">ปฏิเสธ</span>
                             <span class="summary-value"
-                                id="count-rejected">0</span>
+                                id="count-rejected"><%= summaryCounts.rejected %></span>
                         </div>
                     </div>
 
@@ -88,12 +93,12 @@
                     </div>
 
                     <div class="type-summary" id="typeSummary">
-                        <span>A: <strong id="count-A">0</strong></span>
-                        <span>B: <strong id="count-B">0</strong></span>
-                        <span>C: <strong id="count-C">0</strong></span>
-                        <span>D: <strong id="count-D">0</strong></span>
-                        <span>E: <strong id="count-E">0</strong></span>
-                        <span>F: <strong id="count-F">0</strong></span>
+                        <span>A: <strong id="count-A"><%= zoneCounts.A || 0 %></strong></span>
+                        <span>B: <strong id="count-B"><%= zoneCounts.B || 0 %></strong></span>
+                        <span>C: <strong id="count-C"><%= zoneCounts.C || 0 %></strong></span>
+                        <span>D: <strong id="count-D"><%= zoneCounts.D || 0 %></strong></span>
+                        <span>E: <strong id="count-E"><%= zoneCounts.E || 0 %></strong></span>
+                        <span>F: <strong id="count-F"><%= zoneCounts.F || 0 %></strong></span>
                     </div>
                 </div>
 
@@ -101,79 +106,47 @@
                     ร้าน</div>
 
                 <div class="card-list" id="bookingList">
+                    <% if (bookingRequestsList.length === 0) { %>
+                        <div class="empty-state text-center py-5">
+                            <i class="fa-solid fa-inbox fa-2x mb-3 text-muted"></i>
+                            <div class="fw-semibold text-secondary">ยังไม่มีรายการจองจากผู้ขาย</div>
+                            <div class="text-muted small">เมื่อมีการจองใหม่จากหน้า seller ระบบจะแสดงรายการที่นี่</div>
+                        </div>
+                    <% } %>
 
-                    <div class="booking-card" data-status="pending"
-                        data-zone="F" data-stall="F101-F117"
-                        data-shop="ร้านหมูปิ้งเจ๊จู"
-                        onclick="openDetail('ร้านหมูปิ้งเจ๊จู', 'F101-F117', 'อาหาร', '14 ต.ค. 68', '16 ต.ค. 68', 'นางสาวสมหญิง ใจดี', '081-234-5678', 'pending', 'ขอพื้นที่ใกล้ทางเดินหลักค่ะ')">
-                        <div class="card-header">
-                            <h3 class="shop-name">ร้านหมูปิ้งเจ๊จู</h3>
-                            <span class="badge pending">รออนุมัติ</span>
+                    <% bookingRequestsList.forEach(function(request) { %>
+                        <% const detailPayload = encodeURIComponent(JSON.stringify({
+                            productName: request.productName || '-',
+                            zoneLabel: request.zoneLabel || '-',
+                            sellerName: request.sellerName || '-',
+                            phone: request.phone || '-',
+                            statusLabel: request.statusLabel || '-',
+                            requestId: request.id,
+                            createdAtText: request.createdAtText || '-',
+                            rawStatus: request.status || 'pending',
+                            productImage: request.productImage || '',
+                            smallApplianceCount: request.smallApplianceCount || 0,
+                            largeApplianceCount: request.largeApplianceCount || 0,
+                            electricityFee: request.electricityFee || 0,
+                            rentalStartDateText: request.rentalStartDateText || '-',
+                            rentalEndDateText: request.rentalEndDateText || '-'
+                        })); %>
+                        <div class="booking-card" data-request-id="<%= request.id %>" data-status="<%= request.status %>" data-zone="<%= request.zone || '' %>" data-shop="<%= request.productName || '' %>" data-detail="<%= detailPayload %>" onclick="openDetailFromElement(this)">
+                            <div class="card-header">
+                                <h3 class="shop-name"><%= request.productName %></h3>
+                                <span class="badge <%= request.status %>"><%= request.statusLabel %></span>
+                            </div>
+                            <div class="card-body">
+                                <p><i class="fa-solid fa-map-location-dot"></i> โซน: <%= request.zoneLabel %></p>
+                                <p><i class="fa-solid fa-store"></i> ผู้จอง: <%= request.sellerName %></p>
+                                <p><i class="fa-solid fa-phone"></i> เบอร์: <%= request.phone %></p>
+                                <p><i class="fa-solid fa-calendar-check"></i> ยื่นคำขอ: <%= request.createdAtText %></p>
+                            </div>
+                            <div class="card-actions">
+                                <button type="button" class="btn-action btn-approve" onclick="event.stopPropagation(); openDetailFromElement(this.closest('.booking-card'))">ดูรายละเอียด</button>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <p><i class="fa-solid fa-map-location-dot"></i> โซน:
-                                F (อาหาร)</p>
-                            <p><i class="fa-solid fa-store"></i> แถวที่เลือก:
-                                F101-F117</p>
-                            <p><i class="fa-solid fa-calendar-check"></i> เริ่ม:
-                                14 ต.ค. 68</p>
-                            <p><i class="fa-solid fa-user"></i> ผู้จอง: สมหญิง
-                                ใจดี</p>
-                        </div>
-                        <div class="card-actions">
-                            <button class="btn-action btn-reject"
-                                onclick="event.stopPropagation(); rejectBooking('F101-F117', 'ร้านหมูปิ้งเจ๊จู');">ปฏิเสธ</button>
-                            <button class="btn-action btn-approve"
-                                onclick="event.stopPropagation(); confirmArrangeStall('F101-F117');">จัดแผง</button>
-                        </div>
-                    </div>
-
-                    <div class="booking-card" data-status="pending"
-                        data-zone="A" data-stall="A101-A119"
-                        data-shop="เสื้อผ้าแฟชั่นวินเทจ"
-                        onclick="openDetail('เสื้อผ้าแฟชั่นวินเทจ', 'A101-A119', 'แฟชั่น', '15 ต.ค. 68', '15 ต.ค. 68', 'นายสมชาย รักดี', '082-333-9999', 'pending', 'ไม่มี')">
-                        <div class="card-header">
-                            <h3 class="shop-name">เสื้อผ้าแฟชั่นวินเทจ</h3>
-                            <span class="badge pending">รออนุมัติ</span>
-                        </div>
-                        <div class="card-body">
-                            <p><i class="fa-solid fa-map-location-dot"></i> โซน:
-                                A (แฟชั่น)</p>
-                            <p><i class="fa-solid fa-store"></i> แถวที่เลือก:
-                                A101-A119</p>
-                            <p><i class="fa-solid fa-calendar-check"></i> เริ่ม:
-                                15 ต.ค. 68</p>
-                            <p><i class="fa-solid fa-user"></i> ผู้จอง: สมชาย
-                                รักดี</p>
-                        </div>
-                        <div class="card-actions">
-                            <button class="btn-action btn-reject"
-                                onclick="event.stopPropagation(); rejectBooking('A101-A119', 'เสื้อผ้าแฟชั่นวินเทจ');">ปฏิเสธ</button>
-                            <button class="btn-action btn-approve"
-                                onclick="event.stopPropagation(); confirmArrangeStall('A101-A119');">จัดแผง</button>
-                        </div>
-                    </div>
-
-                    <div class="booking-card" data-status="approved"
-                        data-zone="D" data-stall="D201-D212"
-                        data-shop="Burger Truck BKK"
-                        onclick="openDetail('Burger Truck BKK', 'D201-D212', 'ฟู้ดทรัค', '10 ต.ค. 68', '20 ต.ค. 68', 'นายเอกพล คนขยัน', '089-987-6543', 'approved', 'ใช้ไฟเยอะครับ (มีตู้แช่)')">
-                        <div class="card-header">
-                            <h3 class="shop-name">Burger Truck BKK</h3>
-                            <span class="badge approved">อนุมัติแล้ว</span>
-                        </div>
-                        <div class="card-body">
-                            <p><i class="fa-solid fa-map-location-dot"></i> โซน:
-                                D (ฟู้ดทรัค)</p>
-                            <p><i class="fa-solid fa-store"></i> แถวที่เลือก:
-                                D201-D212</p>
-                            <p><i class="fa-solid fa-calendar-check"></i> เริ่ม:
-                                10 ต.ค. 68</p>
-                            <p><i class="fa-solid fa-user"></i> ผู้จอง: เอกพล
-                                คนขยัน</p>
-                        </div>
-                        <div class="card-actions" style="display: none;"></div>
-                    </div>
+                    <% }) %>
 
                 </div>
 
@@ -189,41 +162,50 @@
                     </div>
 
                     <div class="modal-body">
+                        <div class="shop-image-box" id="m-shop-image-box">
+                            <img id="m-shop-image" class="shop-image" src="" alt="รูปภาพร้านค้า">
+                            <div id="m-shop-image-empty" class="shop-image-empty d-none">ไม่มีรูปภาพร้านค้า</div>
+                        </div>
+
                         <div class="detail-grid">
                             <span class="detail-label">ชื่อร้านค้า:</span>
                             <span class="detail-value detail-highlight"
                                 id="m-shop"></span>
 
-                            <span class="detail-label">ประเภท/โซน:</span>
+                            <span class="detail-label">โซนที่ขอ:</span>
                             <span class="detail-value" id="m-zone"></span>
 
-                            <span class="detail-label">แถวที่เลือก:</span>
-                            <span class="detail-value detail-highlight"
-                                id="m-stall"></span>
-
-                            <span class="detail-label">วันที่เริ่ม:</span>
-                            <span class="detail-value" id="m-start"></span>
-
-                            <span class="detail-label">วันที่สิ้นสุด:</span>
-                            <span class="detail-value" id="m-end"></span>
-
                             <span class="detail-label">ผู้จอง:</span>
-                            <span class="detail-value" id="m-name"></span>
+                            <span class="detail-value detail-highlight" id="m-name"></span>
 
                             <span class="detail-label">เบอร์โทรศัพท์:</span>
                             <span class="detail-value" id="m-phone"></span>
-                        </div>
 
-                        <div class="note-box">
-                            <strong>หมายเหตุจากผู้เช่า:</strong><br>
-                            <span id="m-note"></span>
+                            <span class="detail-label">วันที่ยื่นคำขอ:</span>
+                            <span class="detail-value" id="m-start"></span>
+
+                            <span class="detail-label">สถานะ:</span>
+                            <span class="detail-value" id="m-status"></span>
+
+                            <span class="detail-label">เครื่องใช้ไฟฟ้าขนาดเล็ก:</span>
+                            <span class="detail-value" id="m-small-appliance"></span>
+
+                            <span class="detail-label">เครื่องใช้ไฟฟ้าขนาดใหญ่:</span>
+                            <span class="detail-value" id="m-large-appliance"></span>
+
+                            <span class="detail-label">ค่าไฟฟ้ารวม:</span>
+                            <span class="detail-value" id="m-electricity-fee"></span>
+
+                            <span class="detail-label">วันเริ่มจอง:</span>
+                            <span class="detail-value" id="m-rental-start"></span>
+
+                            <span class="detail-label">วันสิ้นสุดจอง:</span>
+                            <span class="detail-value" id="m-rental-end"></span>
                         </div>
 
                         <div class="modal-footer" id="m-footer-actions">
-                            <button class="btn-action btn-reject"
-                                onclick="rejectCurrentBooking()">ปฏิเสธการจอง</button>
-                            <button class="btn-action btn-approve"
-                                id="m-approve-btn">ไปหน้าจัดแผง</button>
+                            <button type="button" class="btn-action btn-reject" id="m-reject-btn">ปฏิเสธการจอง</button>
+                            <button type="button" class="btn-action btn-approve" id="m-approve-btn">อนุมัติการจอง</button>
                         </div>
                     </div>
                 </div>

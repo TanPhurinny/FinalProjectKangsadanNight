@@ -65,6 +65,10 @@ function buildLoginRedirectTarget(user) {
         return '/admin/dashboard';
     }
 
+    if (user.role === 'SELLER') {
+        return '/seller';
+    }
+
     return '/profile';
 }
 
@@ -84,6 +88,27 @@ function createToken(user) {
 
 function setAuthCookieWithDuration(res, token, rememberMe) {
     res.cookie('token', token, getCookieOptions(rememberMe ? 1000 * 60 * 60 * 24 * 30 : 1000 * 60 * 60 * 24));
+}
+
+async function verifyPassword(user, password) {
+    const storedPassword = String(user?.password || '');
+
+    if (!storedPassword) {
+        return false;
+    }
+
+    if (storedPassword.startsWith('$2')) {
+        return bcrypt.compare(password, storedPassword);
+    }
+
+    if (storedPassword !== password) {
+        return false;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+    await userModel.updateUser(user.id, { password: hashedPassword });
+    user.password = hashedPassword;
+    return true;
 }
 
 function getCurrentUserId(req) {
@@ -128,7 +153,7 @@ exports.login = async (req, res) => {
             return respondAuthFailure(req, res, 401, 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
         }
 
-        const isPasswordValid = await bcrypt.compare(password, user.password);
+        const isPasswordValid = await verifyPassword(user, password);
 
         if (!isPasswordValid) {
             return respondAuthFailure(req, res, 401, 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
@@ -136,6 +161,9 @@ exports.login = async (req, res) => {
 
         const token = createToken(user);
         setAuthCookieWithDuration(res, token, rememberMe);
+        if (req.session) {
+            req.session.user = userModel.sanitizeUser(user);
+        }
 
         const redirectPath = buildLoginRedirectTarget(user);
 
@@ -152,6 +180,13 @@ exports.login = async (req, res) => {
 
 exports.register = async (req, res) => {
     try {
+        console.log('register called', {
+            accept: req.headers.accept,
+            contentType: req.headers['content-type'],
+            wantsJson: wantsJson(req),
+            bodyKeys: Object.keys(req.body || {}).length,
+            hasFile: !!req.file
+        });
         const username = String(req.body.username || '').trim();
         const password = String(req.body.password || '');
         const name = String(req.body.name || '').trim();
@@ -412,6 +447,12 @@ exports.logout = async (req, res) => {
     try {
         res.clearCookie('token', getCookieOptions(0));
 
+        if (req.session) {
+            await new Promise((resolve) => {
+                req.session.destroy(() => resolve());
+            });
+        }
+
         if (wantsJson(req)) {
             return res.status(200).json({
                 success: true,
@@ -419,7 +460,7 @@ exports.logout = async (req, res) => {
             });
         }
 
-        return res.redirect('/');
+        return res.redirect('/login?success=' + encodeURIComponent('ออกจากระบบสำเร็จ'));
     } catch (error) {
         console.error('Logout Error:', error);
 
@@ -427,6 +468,6 @@ exports.logout = async (req, res) => {
             return sendError(res, 500, 'ไม่สามารถออกจากระบบได้');
         }
 
-        return res.redirect('/');
+        return res.redirect('/login?error=' + encodeURIComponent('ไม่สามารถออกจากระบบได้'));
     }
 };

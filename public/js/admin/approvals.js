@@ -27,6 +27,31 @@ function navigateToBookingStall(stall) {
     window.location.href = `/admin/booking-stall?zone=${zoneChar}&stall=${stall}`;
 }
 
+function navigateToBookingRequest(requestId) {
+    window.location.href = `/admin/booking-stall?requestId=${encodeURIComponent(String(requestId || ''))}`;
+}
+
+function submitApproval(requestId, status) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/admin/approvals/confirm';
+
+    const requestField = document.createElement('input');
+    requestField.type = 'hidden';
+    requestField.name = 'requestId';
+    requestField.value = String(requestId);
+
+    const statusField = document.createElement('input');
+    statusField.type = 'hidden';
+    statusField.name = 'status';
+    statusField.value = status;
+
+    form.appendChild(requestField);
+    form.appendChild(statusField);
+    document.body.appendChild(form);
+    form.submit();
+}
+
 function confirmArrangeStall(stall) {
     navigateToBookingStall(stall);
 }
@@ -213,29 +238,106 @@ if (searchInput) {
     });
 }
 
-function openDetail(shop, stall, zoneType, start, end, name, phone, status, note) {
+function openDetail(
+    shop,
+    zoneType,
+    name,
+    phone,
+    statusLabel,
+    requestId,
+    createdAtText,
+    rawStatus,
+    shopImage,
+    smallApplianceCount,
+    largeApplianceCount,
+    electricityFee,
+    rentalStartDateText,
+    rentalEndDateText
+) {
     currentBooking = {
         shop,
-        stall,
-        status
+        zoneType,
+        statusLabel,
+        requestId,
+        rawStatus,
+        shopImage
     };
 
     document.getElementById('m-shop').innerText = shop;
-    document.getElementById('m-stall').innerText = stall;
     document.getElementById('m-zone').innerText = zoneType;
-    document.getElementById('m-start').innerText = start;
-    document.getElementById('m-end').innerText = end;
+    document.getElementById('m-start').innerText = createdAtText;
     document.getElementById('m-name').innerText = name;
     document.getElementById('m-phone').innerText = phone;
-    document.getElementById('m-note').innerText = note;
+    document.getElementById('m-status').innerText = statusLabel;
+    document.getElementById('m-small-appliance').innerText = `${Number(smallApplianceCount || 0)} ชิ้น`;
+    document.getElementById('m-large-appliance').innerText = `${Number(largeApplianceCount || 0)} ชิ้น`;
+    document.getElementById('m-electricity-fee').innerText = `${Number(electricityFee || 0).toLocaleString('th-TH')} บาท`;
+    document.getElementById('m-rental-start').innerText = rentalStartDateText || '-';
+    document.getElementById('m-rental-end').innerText = rentalEndDateText || '-';
+
+    const shopImageEl = document.getElementById('m-shop-image');
+    const shopImageEmptyEl = document.getElementById('m-shop-image-empty');
+    const imageUrl = String(shopImage || '').trim();
+    if (shopImageEl && shopImageEmptyEl) {
+        if (imageUrl) {
+            shopImageEl.src = imageUrl;
+            shopImageEl.classList.remove('d-none');
+            shopImageEmptyEl.classList.add('d-none');
+        } else {
+            shopImageEl.src = '';
+            shopImageEl.classList.add('d-none');
+            shopImageEmptyEl.classList.remove('d-none');
+        }
+    }
 
     const approveBtn = document.getElementById('m-approve-btn');
-    approveBtn.onclick = () => confirmArrangeStall(stall);
+    const rejectBtn = document.getElementById('m-reject-btn');
+    if (approveBtn) {
+        approveBtn.onclick = () => navigateToBookingRequest(currentBooking.requestId);
+    }
+    if (rejectBtn) {
+        rejectBtn.onclick = () => submitApproval(currentBooking.requestId, 'REJECTED');
+    }
 
     const footer = document.getElementById('m-footer-actions');
-    footer.style.display = status === 'pending' ? 'flex' : 'none';
+    if (footer) {
+        footer.style.display = rawStatus === 'pending' ? 'flex' : 'none';
+    }
 
     modal.classList.add('active');
+}
+
+function openDetailFromElement(element) {
+    if (!element || !element.dataset) {
+        return;
+    }
+
+    const raw = element.dataset.detail;
+    if (!raw) {
+        return;
+    }
+
+    try {
+        const payload = JSON.parse(decodeURIComponent(raw));
+        openDetail(
+            payload.productName || '-',
+            payload.zoneLabel || '-',
+            payload.sellerName || '-',
+            payload.phone || '-',
+            payload.statusLabel || '-',
+            payload.requestId,
+            payload.createdAtText || '-',
+            payload.rawStatus || 'pending',
+            payload.productImage || '',
+            payload.smallApplianceCount || 0,
+            payload.largeApplianceCount || 0,
+            payload.electricityFee || 0,
+            payload.rentalStartDateText || '-',
+            payload.rentalEndDateText || '-'
+        );
+    } catch (error) {
+        // ignore malformed payload to avoid breaking the list interaction
+    }
 }
 
 function closePopup() {
@@ -253,11 +355,13 @@ function closeModalOnOverlay(event) {
 }
 
 window.openDetail = openDetail;
+window.openDetailFromElement = openDetailFromElement;
 window.closePopup = closePopup;
 window.closeModalOnOverlay = closeModalOnOverlay;
 window.confirmArrangeStall = confirmArrangeStall;
 window.rejectBooking = rejectBooking;
 window.rejectCurrentBooking = rejectCurrentBooking;
+window.submitApproval = submitApproval;
 
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {

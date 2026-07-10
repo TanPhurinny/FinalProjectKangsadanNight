@@ -100,7 +100,20 @@ async function submitFormData(form) {
         body: formData
     });
 
-    return response.json();
+    // tolerate HTML redirects or non-JSON responses
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        return response.json();
+    }
+
+    // fallback: try to parse text and infer success message
+    const text = await response.text();
+    // if server redirected to login page with success message, return success
+    if (text && /สมัครสำเร็จ|สมัครสมาชิกสำเร็จ|success/i.test(text)) {
+        return { success: true, message: 'สมัครสมาชิกสำเร็จ' };
+    }
+
+    return { success: false, message: text || 'server returned non-json response' };
 }
 
 async function handleLoginSubmit(event) {

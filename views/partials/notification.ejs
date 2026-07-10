@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>การแจ้งเตือน</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css" />
+  <link rel="stylesheet" href="/stylesheets/seller/statusbook.css" />
+</head>
+<%
+  const notificationBookingPayload = typeof booking !== 'undefined' ? booking : null;
+  const notificationListPayload = typeof notifications !== 'undefined' ? notifications : [];
+  const notificationPageDataJson = JSON.stringify({ booking: notificationBookingPayload, notifications: notificationListPayload });
+%>
+<body data-page="notifications" data-page-data="<%= encodeURIComponent(notificationPageDataJson) %>">
+  <%- include('../partials/navbar2') %>
+
+  <main class="container page-shell">
+    <div class="page-hero">
+      <div>
+        <h1 class="page-hero__title">การแจ้งเตือน</h1>
+        <p class="page-hero__subtitle">แจ้งสถานะการจองและความคืบหน้าจากฐานข้อมูล</p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="/booking-status" class="btn btn-outline-primary btn-custom rounded-pill">กลับไปสถานะการจอง</a>
+        <button class="btn btn-custom-primary btn-custom rounded-pill" onclick="markAllAsRead()">ทำเป็นอ่านแล้วทั้งหมด</button>
+      </div>
+    </div>
+
+    <div class="notification-toolbar">
+      <ul class="nav nav-pills custom-pills" id="notiFilterTab" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" onclick="filterNotifications('all')" type="button">ทั้งหมด <span class="badge ms-1 bg-secondary text-white rounded-pill" id="badgeAll">0</span></button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" onclick="filterNotifications('unread')" type="button">ยังไม่ได้อ่าน <span class="badge ms-1 bg-danger-custom text-white rounded-pill" id="badgeUnread">0</span></button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" onclick="filterNotifications('read')" type="button">อ่านแล้ว <span class="badge ms-1 bg-light text-secondary rounded-pill" id="badgeRead">0</span></button>
+        </li>
+      </ul>
+      <div class="text-muted small">
+        <i class="bi bi-link-45deg me-1"></i>เชื่อมกับสถานะการจองล่าสุดอัตโนมัติ
+      </div>
+    </div>
+
+    <div class="row" id="notificationList"></div>
+  </main>
+
+  <div class="modal fade" id="notiModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-custom border-0 shadow">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="fw-bold text-dark-custom" id="modalNotiTitle">รายละเอียดการแจ้งเตือน</h5>
+          <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body py-4" id="modalNotiBody"></div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="liveToast" class="toast toast-custom border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-header border-0 bg-transparent text-white justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-check-circle-fill me-2 fs-5 text-success-custom" id="toastIcon"></i>
+          <strong class="me-auto text-dark-custom" id="toastTitle">แจ้งเตือน</strong>
+        </div>
+        <button type="button" class="btn-close shadow-none" data-bs-dismiss="toast"></button>
+      </div>
+      <div class="toast-body pt-0 text-muted" id="toastMessage">ทำรายการสำเร็จเรียบร้อยแล้ว</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/seller/statusbook.js"></script>
+</body>
+</html>
