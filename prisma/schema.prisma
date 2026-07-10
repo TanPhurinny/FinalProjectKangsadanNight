@@ -21,6 +21,7 @@ model User {
   bookings      Booking[]
   requests      MaintenanceReport[]
   shop          ShopDetail?
+  sellerProfile Seller?
 }
 
 model ShopDetail {
@@ -29,6 +30,12 @@ model ShopDetail {
   productType   String?
   productDetail String? @db.Text
   productImage  String?
+  shopSummary   String? @db.Text
+  shopCoverImage String?
+  sellerTier    String?
+  shopZoneLabel String?
+  shopTags      String? @db.Text
+  isVerified    Boolean @default(false)
   userId        Int     @unique
   user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -40,9 +47,14 @@ model BookingRequest {
   sellerName   String
   phone        String
   zone         String
+  assignedStallCode String?
   productImage String?
+  sellerId     Int?
   status       Status   @default(PENDING)
   createdAt    DateTime @default(now())
+  seller       Seller?  @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+
+  @@index([sellerId], map: "BookingRequest_sellerId_fkey")
 }
 
 model Slot {
@@ -58,13 +70,39 @@ model Booking {
   id        Int      @id @default(autoincrement())
   slotId    Int
   userId    Int
+  sellerId  Int?
   status    Status   @default(PENDING)
   createdAt DateTime @default(now())
+  zoneCode  String?
+  selectedZoneLabel String?
+  stallCount Int      @default(1)
+  rentalStartDate DateTime?
+  rentalEndDate DateTime?
+  rentalDays Int      @default(1)
+  dailyStallPrice Float @default(0)
+  lightEnabled Boolean @default(false)
+  lightUnitPrice Float @default(15)
+  smallApplianceCount Int @default(0)
+  largeApplianceCount Int @default(0)
+  smallAppliancePrice Float @default(20)
+  largeAppliancePrice Float @default(40)
+  applianceTotal Float @default(0)
+  lightTotal Float @default(0)
+  rentTotal Float @default(0)
+  grandTotal Float @default(0)
+  storeDetailSnapshot String? @db.Text
+  totalBasePrice Float @default(0)
+  totalExtraPrice Float @default(0)
+  totalElectricPrice Float @default(0)
   slot      Slot     @relation(fields: [slotId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seller    Seller?  @relation("SellerBookings", fields: [sellerId], references: [id], onDelete: SetNull)
+  items     BookingItem[]
+  electricDevices BookingElectricDevice[]
 
   @@index([slotId], map: "Booking_slotId_fkey")
   @@index([userId], map: "Booking_userId_fkey")
+  @@index([sellerId], map: "Booking_sellerId_fkey")
 }
 
 model MaintenanceReport {
@@ -104,10 +142,14 @@ model Zone {
   description      String?              @db.Text
   productCategory  Zone_productCategory
   size             String
+  displayOrder     Int                  @default(0)
+  defaultStallWidth Int                 @default(2)
+  defaultStallHeight Int                @default(2)
   bookingStartDate DateTime?
   bookingEndDate   DateTime?
   electricityFee   Float                @default(15)
   rows             ZoneRow[]
+  zoneProductTypes ZoneProductType[]
 }
 
 model ZoneRow {
@@ -116,6 +158,9 @@ model ZoneRow {
   label   String?
   price   Float
   size    String
+  displayOrder Int @default(0)
+  stallStartNumber Int?
+  stallEndNumber Int?
   zoneId  Int
   zone    Zone    @relation(fields: [zoneId], references: [id], onDelete: Cascade)
   stalls  Stall[]
@@ -129,12 +174,122 @@ model Stall {
   stallCode            String    @unique
   rowId                Int
   isAvailable          Boolean   @default(true)
+  status               StallInventoryStatus @default(AVAILABLE)
+  width                Int       @default(2)
+  height               Int       @default(2)
+  basePrice            Float     @default(0)
+  extraPrice           Float     @default(0)
+  displayOrder         Int       @default(0)
   bookingStartDate     DateTime?
   bookingEndDate       DateTime?
   extraElectricityCost Float     @default(0)
+  electricFeePerDay    Float     @default(15)
   row                  ZoneRow   @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  bookingItems         BookingItem[]
+  priceRules           StallPriceRule[]
 
   @@index([rowId], map: "Stall_rowId_fkey")
+}
+
+model ProductType {
+  id           Int             @id @default(autoincrement())
+  code         ProductTypeCode @unique
+  name         String
+  displayOrder Int             @default(0)
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  sellers      Seller[]
+  zones        ZoneProductType[]
+}
+
+model Seller {
+  id            Int              @id @default(autoincrement())
+  userId        Int              @unique
+  productTypeId Int?
+  shopName      String?
+  productDetail String?          @db.Text
+  productImage  String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productType   ProductType?     @relation(fields: [productTypeId], references: [id], onDelete: SetNull)
+  bookings      Booking[]        @relation("SellerBookings")
+  bookingRequests BookingRequest[]
+
+  @@index([productTypeId], map: "Seller_productTypeId_fkey")
+}
+
+model ZoneProductType {
+  id            Int         @id @default(autoincrement())
+  zoneId        Int
+  productTypeId Int
+  zone          Zone        @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  productType   ProductType @relation(fields: [productTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([zoneId, productTypeId])
+  @@index([zoneId], map: "ZoneProductType_zoneId_fkey")
+  @@index([productTypeId], map: "ZoneProductType_productTypeId_fkey")
+}
+
+model ElectricDevice {
+  id             Int      @id @default(autoincrement())
+  deviceName     String
+  defaultDailyFee Float   @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  bookingItems   BookingElectricDevice[]
+
+  @@unique([deviceName])
+}
+
+model BookingItem {
+  id               Int      @id @default(autoincrement())
+  bookingId        Int
+  stallId          Int
+  priceBasePerDay  Float    @default(0)
+  priceExtraPerDay Float    @default(0)
+  days             Int      @default(1)
+  subtotal         Float    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  stall            Stall    @relation(fields: [stallId], references: [id], onDelete: Restrict)
+
+  @@index([bookingId], map: "BookingItem_bookingId_fkey")
+  @@index([stallId], map: "BookingItem_stallId_fkey")
+}
+
+model BookingElectricDevice {
+  id         Int      @id @default(autoincrement())
+  bookingId  Int
+  deviceId   Int
+  quantity   Int      @default(0)
+  dailyFee   Float    @default(0)
+  days       Int      @default(1)
+  subtotal   Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  device     ElectricDevice @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+
+  @@index([bookingId], map: "BookingElectricDevice_bookingId_fkey")
+  @@index([deviceId], map: "BookingElectricDevice_deviceId_fkey")
+}
+
+model StallPriceRule {
+  id          Int               @id @default(autoincrement())
+  stallId     Int
+  ruleType    StallPriceRuleType
+  extraAmount Float             @default(0)
+  note        String?
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  stall       Stall             @relation(fields: [stallId], references: [id], onDelete: Cascade)
+
+  @@index([stallId], map: "StallPriceRule_stallId_fkey")
 }
 
 enum Role {
@@ -156,4 +311,22 @@ enum Zone_productCategory {
   FASHION
   FOOD
   EVENT_BOOTH
+}
+
+enum ProductTypeCode {
+  FASHION
+  FOOD
+  EVENT_BOOTH
+}
+
+enum StallPriceRuleType {
+  PINK
+  YELLOW
+  BLUE
+}
+
+enum StallInventoryStatus {
+  AVAILABLE
+  BOOKED
+  MAINTENANCE
 }

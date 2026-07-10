@@ -417,6 +417,30 @@
     padding: 20px;
 }
 
+.approvals-page .shop-image-box {
+    margin-bottom: 14px;
+    border: 1px solid #d8e6ee;
+    border-radius: 12px;
+    background: #f7fbfe;
+    padding: 8px;
+}
+
+.approvals-page .shop-image {
+    width: 100%;
+    max-height: 220px;
+    object-fit: cover;
+    border-radius: 10px;
+    display: block;
+}
+
+.approvals-page .shop-image-empty {
+    text-align: center;
+    color: #6c8593;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 20px 8px;
+}
+
 .approvals-page .detail-grid {
     display: grid;
     grid-template-columns: 118px 1fr;

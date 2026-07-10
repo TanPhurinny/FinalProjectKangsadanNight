@@ -136,7 +136,8 @@
   },
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "seed:market": "node prisma/seed-market-structure.js"
   },
   "repository": {
     "type": "git",

@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalTitle = document.getElementById('modalTitle');
   const facilityButtons = document.querySelectorAll('.facility-btn');
 
-  const detailsByZone = {
+  const fallbackDetailsByZone = {
     a: {
       label: 'โซน A',
       size: 'แผงขายของขนาด 3x3 เมตร',
@@ -55,11 +55,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  const ZONE_DETAILS = window.ZONE_DETAILS || {};
+
+  let selectedZoneKey = null;
+
+  function buildZoneDetails(zoneKey) {
+    const key = String(zoneKey || '').toLowerCase();
+    const fallback = fallbackDetailsByZone[key] || {
+      label: `โซน ${key.toUpperCase()}`,
+      size: '-',
+      price: 'ราคา 0 บาท /วัน',
+      description: `ข้อมูลโซน ${key.toUpperCase()}`
+    };
+
+    const fromServer = ZONE_DETAILS[key];
+    if (!fromServer) return fallback;
+
+    const dailyPrice = Number(fromServer.dailyPrice || 0);
+    return {
+      label: fromServer.label || fallback.label,
+      size: fromServer.size || fallback.size,
+      price: `ราคา ${dailyPrice.toLocaleString('th-TH')} บาท /วัน`,
+      description: fromServer.description || fallback.description
+    };
+  }
+
   const ALLOWED_ZONES = (window.ALLOWED_ZONES || []).map(String);
 
   function openModal(zoneKey) {
-    const details = detailsByZone[zoneKey];
+    const details = buildZoneDetails(zoneKey);
     if (!details) return;
+
+    selectedZoneKey = zoneKey;
 
     modalTitle.textContent = details.label;
     modalZoneText.textContent = details.description;
@@ -144,6 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   bookBtn.addEventListener('click', () => {
-    window.location.href = '/booking-stall';
+    if (!selectedZoneKey) {
+      window.alert('กรุณาเลือกโซนที่ต้องการก่อนทำรายการจอง');
+      return;
+    }
+
+    window.location.href = `/booking-stall?zone=${encodeURIComponent(String(selectedZoneKey).toUpperCase())}`;
   });
 });

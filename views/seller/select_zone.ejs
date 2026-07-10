@@ -22,22 +22,37 @@
         <div class="zone-filter__select-wrap">
           <select id="zoneSelect" class="zone-filter__select" aria-label="เลือกโซน">
             <%
-              var zoneOptions = (typeof zones !== 'undefined' && zones.length) ? zones : [
-                { value: 'all', label: 'ทั้งหมด' },
-                { value: 'a', label: 'โซน A' },
-                { value: 'b', label: 'โซน B' },
-                { value: 'c', label: 'โซน C' },
-                { value: 'd', label: 'โซน D' },
-                { value: 'e', label: 'โซน E' },
-                { value: 'f', label: 'โซน F' },
-                { value: 'x', label: 'โซน X' }
-              ];
+              var normalizedAllowedZones = Array.isArray(allowedZones) ? allowedZones.map(function(zoneCode) {
+                return String(zoneCode).toLowerCase();
+              }) : [];
+              var sellerProductTypeLabel = productType || 'ยังไม่ระบุประเภทสินค้า';
+              var zoneOptions = [
+                { value: 'all', label: 'ทั้งหมด', disabled: false },
+                { value: 'a', label: 'โซน A', disabled: normalizedAllowedZones.length > 0 && !normalizedAllowedZones.includes('a') },
+                { value: 'b', label: 'โซน B', disabled: normalizedAllowedZones.length > 0 && !normalizedAllowedZones.includes('b') },
+                { value: 'c', label: 'โซน C', disabled: normalizedAllowedZones.length > 0 && !normalizedAllowedZones.includes('c') },
+                { value: 'd', label: 'โซน D', disabled: normalizedAllowedZones.length > 0 && !normalizedAllowedZones.includes('d') },
+                { value: 'e', label: 'โซน E', disabled: normalizedAllowedZones.length > 0 && !normalizedAllowedZones.includes('e') },
+                { value: 'f', label: 'โซน F', disabled: normalizedAllowedZones.length > 0 && !normalizedAllowedZones.includes('f') },
+                { value: 'x', label: 'โซน X', disabled: normalizedAllowedZones.length > 0 && !normalizedAllowedZones.includes('x') }
+              ].map(function(option) {
+                if (option.value === 'all' || !option.disabled) {
+                  return option;
+                }
+
+                return {
+                  value: option.value,
+                  label: option.label + ' - ไม่สอดคล้องกับประเภทร้านค้า',
+                  disabled: true
+                };
+              });
             %>
             <% zoneOptions.forEach(function(opt){ %>
-              <option value="<%= opt.value %>"><%= opt.label %></option>
+              <option value="<%= opt.value %>" <%= opt.disabled ? 'disabled' : '' %>><%= opt.label %></option>
             <% }) %>
           </select>
         </div>
+        <p class="zone-filter__helper">ประเภทร้านของคุณ: <strong><%= sellerProductTypeLabel %></strong> | โซนที่ไม่สอดคล้องกับประเภทร้านค้าจะไม่สามารถเลือกได้</p>
       </div>
     </header>
 
@@ -81,7 +96,7 @@
         </div>
 
         <div class="zone-f-column">
-          <div class="zone zone--f" data-zone="f" role="button" tabindex="0" aria-label="โซน F">
+          <div class="zone zone--f <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('f')) ? 'is-disabled' : '' %>" data-zone="f" role="button" tabindex="0" aria-label="โซน F">
             <span class="zone__name">โซน F</span>
           </div>
           <div class="seating-area">
@@ -117,9 +132,8 @@
       <p class="map-legend__title">ค่าไฟสว่าง</p>
       <p class="map-legend__line">
         <span class="map-legend__badge">พิเศษ</span>
-        ร้านเปิดใหม่ค่าไฟแสงสว่างจากล็อคละ
-        <span class="map-legend__highlight">5 บาท</span>/วัน
-        <span class="map-legend__note">(จากปกติ 30 บาท)</span>
+        ค่าไฟแสงสว่างคิดจากล็อคละ
+        <span class="map-legend__highlight">15 บาท</span>/วัน
       </p>
       <p class="map-legend__sub">
         *เงื่อนไข หลอดไฟต่อล็อค ไม่เกิน 4 ดวงใหญ่ หรือ 10 ดวงเล็ก หรือ รวมกันไม่เกิน 150 วัตต์ ต่อล็อคและต้องเป็นหลอดชนิด LED เท่านั้น
@@ -160,6 +174,7 @@
   <script>
     // allowed zones provided by server - used by client to disable interactions
     window.ALLOWED_ZONES = <%- (typeof allowedZones !== 'undefined' ? JSON.stringify(allowedZones) : '[]') %>;
+    window.ZONE_DETAILS = <%- (typeof zoneDetails !== 'undefined' ? JSON.stringify(zoneDetails) : '{}') %>;
     window.SELLER_PRODUCT_TYPE = "<%= typeof productType !== 'undefined' ? productType : '' %>";
   </script>
   <script src="/js/market-map.js"></script>

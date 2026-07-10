@@ -61,6 +61,17 @@ button { font-family: inherit; }
   margin: 0 0 8px;
 }
 
+.zone-filter__helper {
+  margin: 10px 0 0;
+  font-size: 0.88rem;
+  color: #4f4f4f;
+}
+
+.zone-filter__helper strong {
+  color: var(--zone-text);
+  font-weight: 700;
+}
+
 .zone-filter__select-wrap { position: relative; }
 
 .zone-filter__select {

@@ -90,13 +90,8 @@ router.get("/admin-booking", async (req, res) => {
 });
 
 // หน้าสำหรับดูรายละเอียด/โปรเกรสการจอง (ใช้ไฟล์ booking_stall.ejs)
-router.get("/booking-stall", (req, res) => {
-    if (!req.user) return res.redirect("/login");
-
-    // ชี้ไปที่ views/admin/booking_stall.ejs
-    res.render("admin/booking_stall", {
-        user: req.user
-    });
-});
+router.get('/booking-stall', approvalCtrl.getBookingStallPage);
+router.post('/booking-stall/confirm', approvalCtrl.confirmBookingStall);
+router.post('/booking-stall/reject', approvalCtrl.rejectBookingStall);
 
 module.exports = router;

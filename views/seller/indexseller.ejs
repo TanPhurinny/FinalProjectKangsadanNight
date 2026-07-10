@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Market Seller Center — แดชบอร์ดผู้ขาย</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
+  <link rel="stylesheet" href="/stylesheets/seller/sellerindex.css">
+</head>
+<body>
+  <%- include('../partials/navbar2') %>
+
+  <main class="seller-dashboard-page">
+    <div class="seller-dashboard-shell container-xxl">
+      <header class="seller-dashboard-header">
+        <div>
+          <p class="seller-dashboard-header__eyebrow">Seller Center</p>
+          <h1 class="seller-dashboard-header__title">แดชบอร์ดผู้ขาย</h1>
+          <p class="seller-dashboard-header__subtitle">ภาพรวมร้านค้าและข้อมูลสำคัญของผู้ขายที่กำลังเข้าสู่ระบบ</p>
+        </div>
+        <div class="seller-dashboard-header__actions">
+          <a href="/profile" class="btn btn-outline-secondary"><i class="bi bi-person-lines-fill me-2"></i>แก้ไขโปรไฟล์</a>
+        </div>
+      </header>
+
+      <section class="shop-hero mb-4">
+        <div class="shop-cover" style="background-image: linear-gradient(100deg, rgba(20,60,70,.65), rgba(20,60,70,.18)), url('<%= dashboard.coverImage %>');">
+          <div class="cover-badge"><i class="bi bi-geo-alt-fill"></i> <%= dashboard.zoneLabel %></div>
+        </div>
+        <div class="shop-hero-body">
+          <div class="shop-logo">
+            <% if (dashboard.productImage) { %>
+              <img src="<%= dashboard.productImage %>" alt="<%= dashboard.shopName %>">
+            <% } else { %>
+              <span><%= dashboard.displayLetter %></span>
+            <% } %>
+          </div>
+
+          <div class="shop-hero-row">
+            <div class="shop-title-block">
+              <h2>
+                <%= dashboard.shopName %>
+                <% if (dashboard.isVerified) { %>
+                  <i class="bi bi-patch-check-fill verify-tick" title="ร้านค้ายืนยันตัวตนแล้ว"></i>
+                <% } %>
+              </h2>
+              <p class="shop-desc"><%= dashboard.shopDescription %></p>
+              <div class="shop-tags">
+                <span class="tier-badge tier-badge--primary"><i class="bi bi-award-fill"></i> <%= dashboard.sellerTier %></span>
+                <span class="tier-badge tier-badge--info"><i class="bi bi-grid-1x2-fill"></i> <%= dashboard.productType %></span>
+                <% dashboard.tags.forEach(function(tag) { %>
+                  <span class="badge-soft"><i class="bi bi-tag"></i> <%= tag %></span>
+                <% }) %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="row g-4 mb-4">
+        <div class="col-md-6 col-xl-3">
+          <article class="stat-card">
+            <div class="stat-icon stat-icon--primary"><i class="bi bi-shop"></i></div>
+            <h3 class="stat-value"><%= dashboard.activeBookingCount %></h3>
+            <p class="stat-label">จำนวนการจองแผงที่กำลังดำเนินการ</p>
+          </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+          <article class="stat-card">
+            <div class="stat-icon stat-icon--success"><i class="bi bi-grid-1x2"></i></div>
+            <h3 class="stat-value stat-value--text"><%= dashboard.productType %></h3>
+            <p class="stat-label">ประเภทร้านค้าที่ผูกกับบัญชีผู้ขาย</p>
+          </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+          <article class="stat-card">
+            <div class="stat-icon stat-icon--warning"><i class="bi bi-person-vcard"></i></div>
+            <h3 class="stat-value stat-value--text"><%= dashboard.sellerTier %></h3>
+            <p class="stat-label">ระดับร้านค้าตามข้อมูลตัวอย่างในระบบ</p>
+          </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+          <article class="stat-card">
+            <div class="stat-icon stat-icon--danger"><i class="bi bi-telephone"></i></div>
+            <h3 class="stat-value stat-value--text"><%= dashboard.phoneNumber %></h3>
+            <p class="stat-label">เบอร์โทรศัพท์ติดต่อของผู้ขาย</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="row g-4">
+        <div class="col-lg-7">
+          <article class="info-card h-100">
+            <div class="info-card__head">
+              <h2>ข้อมูลร้านค้าที่เชื่อมกับบัญชีปัจจุบัน</h2>
+              <span class="status-pill <%= dashboard.isVerified ? 'status-pill--success' : 'status-pill--neutral' %>">
+                <i class="bi <%= dashboard.isVerified ? 'bi-patch-check-fill' : 'bi-hourglass-split' %>"></i>
+                <%= dashboard.isVerified ? 'ยืนยันแล้ว' : 'รอตรวจสอบ' %>
+              </span>
+            </div>
+
+            <dl class="info-list">
+              <div class="info-list__row">
+                <dt>ชื่อร้าน</dt>
+                <dd><%= dashboard.shopName %></dd>
+              </div>
+              <div class="info-list__row">
+                <dt>รายละเอียดร้าน</dt>
+                <dd><%= dashboard.shopDescription %></dd>
+              </div>
+              <div class="info-list__row">
+                <dt>ประเภทสินค้า</dt>
+                <dd><%= dashboard.productType %></dd>
+              </div>
+              <div class="info-list__row">
+                <dt>โซนร้าน</dt>
+                <dd><%= dashboard.zoneLabel %></dd>
+              </div>
+              <div class="info-list__row">
+                <dt>แท็กของร้าน</dt>
+                <dd>
+                  <div class="tag-group">
+                    <% if (dashboard.tags.length === 0) { %>
+                      <span class="badge-soft">ยังไม่มีแท็ก</span>
+                    <% } %>
+                    <% dashboard.tags.forEach(function(tag) { %>
+                      <span class="badge-soft"><i class="bi bi-tag"></i> <%= tag %></span>
+                    <% }) %>
+                  </div>
+                </dd>
+              </div>
+            </dl>
+          </article>
+        </div>
+
+        <div class="col-lg-5">
+          <article class="info-card mb-4">
+            <div class="info-card__head">
+              <h2>ข้อมูลบัญชีผู้ขาย</h2>
+            </div>
+
+            <dl class="info-list info-list--compact">
+              <div class="info-list__row">
+                <dt>ชื่อผู้ใช้งาน</dt>
+                <dd><%= user.username %></dd>
+              </div>
+              <div class="info-list__row">
+                <dt>ชื่อผู้ขาย</dt>
+                <dd><%= user.name %></dd>
+              </div>
+              <div class="info-list__row">
+                <dt>อีเมล</dt>
+                <dd><%= dashboard.email %></dd>
+              </div>
+              <div class="info-list__row">
+                <dt>สมัครเมื่อ</dt>
+                <dd><%= dashboard.memberSince ? new Date(dashboard.memberSince).toLocaleDateString('th-TH') : '-' %></dd>
+              </div>
+            </dl>
+          </article>
+
+          <article class="info-card">
+            <div class="info-card__head">
+              <h2>การดำเนินการด่วน</h2>
+            </div>
+
+            <div class="quick-action-grid">
+              <a href="/select-zone" class="quick-action-card">
+                <i class="bi bi-map"></i>
+                <span>เลือกโซน</span>
+              </a>
+              <a href="/booking-status" class="quick-action-card">
+                <i class="bi bi-journal-check"></i>
+                <span>สถานะการจอง</span>
+              </a>
+              <a href="/repair" class="quick-action-card">
+                <i class="bi bi-wrench-adjustable-circle"></i>
+                <span>แจ้งซ่อม</span>
+              </a>
+              <a href="/logout" class="quick-action-card quick-action-card--danger">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>ออกจากระบบ</span>
+              </a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="row g-4 mt-1">
+        <div class="col-12">
+          <article class="booking-card">
+            <div class="info-card__head">
+              <h2>การจองล่าสุด</h2>
+            </div>
+
+            <% if (dashboard.latestBooking && dashboard.latestBooking.slot) { %>
+              <div class="booking-card__content">
+                <div>
+                  <p class="booking-card__eyebrow">แผงล่าสุด</p>
+                  <h3 class="booking-card__title"><%= dashboard.latestBooking.slot.slotNumber %></h3>
+                </div>
+                <div class="booking-card__meta">
+                  <div>
+                    <span class="booking-card__label">โซน</span>
+                    <strong><%= dashboard.latestBooking.slot.zone %></strong>
+                  </div>
+                  <div>
+                    <span class="booking-card__label">สถานะ</span>
+                    <strong><%= dashboard.latestBooking.status %></strong>
+                  </div>
+                  <div>
+                    <span class="booking-card__label">ราคา</span>
+                    <strong><%= dashboard.latestBooking.slot.price %> บาท</strong>
+                  </div>
+                </div>
+              </div>
+            <% } else { %>
+              <p class="empty-state">ยังไม่มีประวัติการจองแผงในระบบ</p>
+            <% } %>
+          </article>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
