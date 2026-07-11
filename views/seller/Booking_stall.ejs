@@ -8,110 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
-  <style>
-    :root {
-      --primary: #3BB8D4;
-      --primary-lt: #A0E3F3;
-      --gray-bg: #f4f5f7;
-      --gray-border: #d8dde3;
-      --gray-btn: #9aa5b1;
-      --text-main: #1a1d23;
-      --text-sub: #6b7280;
-      --white: #ffffff;
-      --danger: #E51837;
-      --radius-sm: 6px;
-      --radius-md: 10px;
-      --radius-lg: 14px;
-      --shadow-card: 0 2px 12px rgba(0,0,0,0.07);
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Sarabun', sans-serif; background: var(--gray-bg); color: var(--text-main); min-height: 100vh; }
-
-    .site-header {
-      position: sticky; top: 0; z-index: 100; background: var(--white);
-      border-bottom: 1.5px solid var(--gray-border); display: flex; align-items: center;
-      padding: 0 24px; height: 58px;
-    }
-
-    .btn-back {
-      display: flex; align-items: center; justify-content: center;
-      width: 38px; height: 38px; border: none; background: transparent; cursor: pointer;
-      border-radius: var(--radius-sm);
-    }
-
-    .header-title { flex: 1; text-align: center; font-size: 1.2rem; font-weight: 700; }
-    .header-spacer { width: 38px; }
-
-    .main-content { max-width: 740px; margin: 30px auto 60px; padding: 0 16px; }
-    .form-card { background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 28px; }
-
-    .alert-box {
-      margin-bottom: 18px;
-      padding: 12px 14px;
-      border-radius: var(--radius-sm);
-      background: #ffe8ee;
-      border: 1px solid #ffbfd0;
-      color: #7a1c36;
-      font-weight: 600;
-    }
-
-    .field-group { margin-bottom: 18px; }
-    .field-label { display: block; margin-bottom: 8px; font-size: 0.96rem; font-weight: 700; }
-    .field-input {
-      width: 100%;
-      padding: 11px 12px;
-      border: 1.5px solid var(--gray-border);
-      border-radius: var(--radius-sm);
-      font-family: 'Sarabun', sans-serif;
-      font-size: 0.97rem;
-      outline: none;
-    }
-    .field-input:focus { border-color: var(--primary); }
-
-    .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-
-    .radio-row { display: flex; gap: 14px; }
-    .radio-option { display: flex; gap: 8px; align-items: center; }
-
-    .summary-box {
-      background: var(--primary-lt);
-      border-radius: var(--radius-md);
-      border: 1px solid rgba(59,184,212,0.35);
-      padding: 14px;
-      margin-bottom: 18px;
-    }
-
-    .summary-line { line-height: 1.7; font-weight: 600; }
-    .summary-small { color: var(--text-sub); font-size: 0.88rem; }
-
-    .total-row {
-      margin-top: 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 800;
-      font-size: 1.4rem;
-    }
-
-    .bottom-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 20px; }
-    .btn-cancel-main, .btn-confirm {
-      border: none;
-      border-radius: var(--radius-md);
-      padding: 13px 0;
-      font-family: 'Sarabun', sans-serif;
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .btn-cancel-main { background: var(--gray-btn); color: #fff; }
-    .btn-confirm { background: var(--primary); color: #fff; }
-
-    @media (max-width: 700px) {
-      .grid-two { grid-template-columns: 1fr; }
-      .bottom-buttons { grid-template-columns: 1fr; }
-    }
-  </style>
+  <link rel="stylesheet" href="/stylesheets/seller/bookingStall.css">
 </head>
 <body>
   <%- include('../partials/navbar2') %>
@@ -211,90 +108,13 @@
   </main>
 
   <script>
-    const PRICE_PER_STALL_PER_DAY = Number('<%= Number(zonePrice || 0) %>');
-    const LIGHT_UNIT_PRICE = Number('<%= Number(pricing.lightUnitPrice || 15) %>');
-    const SMALL_PRICE = Number('<%= Number(pricing.smallAppliancePrice || 20) %>');
-    const LARGE_PRICE = Number('<%= Number(pricing.largeAppliancePrice || 40) %>');
-
-    const dateStartInput = document.getElementById('dateStart');
-    const dateEndInput = document.getElementById('dateEnd');
-    const stallCountInput = document.getElementById('stallCount');
-    const smallApplianceInput = document.getElementById('smallApplianceCount');
-    const largeApplianceInput = document.getElementById('largeApplianceCount');
-    const bookingForm = document.getElementById('bookingForm');
-
-    function calculateDays() {
-      const startVal = dateStartInput.value;
-      const endVal = dateEndInput.value;
-      if (!startVal || !endVal) return 1;
-
-      const startDate = new Date(startVal);
-      const endDate = new Date(endVal);
-      const diffMs = endDate.getTime() - startDate.getTime();
-      if (Number.isNaN(diffMs) || diffMs < 0) return 1;
-
-      return Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
-    }
-
-    function readCount(input, fallback = 0) {
-      const parsed = parseInt(input.value, 10);
-      if (!Number.isFinite(parsed)) return fallback;
-      return Math.max(0, parsed);
-    }
-
-    function formatBaht(value) {
-      return Number(value || 0).toLocaleString('th-TH') + ' บาท';
-    }
-
-    function recalcSummary() {
-      const days = calculateDays();
-      const stallCount = Math.max(1, readCount(stallCountInput, 1));
-      const smallCount = readCount(smallApplianceInput);
-      const largeCount = readCount(largeApplianceInput);
-      const lightEnabled = document.querySelector('input[name="light"]:checked')?.value === 'yes';
-
-      const rentTotal = PRICE_PER_STALL_PER_DAY * stallCount * days;
-      const lightTotal = lightEnabled ? LIGHT_UNIT_PRICE * stallCount * days : 0;
-      const applianceTotal = ((smallCount * SMALL_PRICE) + (largeCount * LARGE_PRICE)) * days;
-      const grandTotal = rentTotal + lightTotal + applianceTotal;
-
-      document.getElementById('rentalDaysText').textContent = days + ' วัน';
-      document.getElementById('rentTotalText').textContent = formatBaht(rentTotal);
-      document.getElementById('lightTotalText').textContent = formatBaht(lightTotal);
-      document.getElementById('applianceTotalText').textContent = formatBaht(applianceTotal);
-      document.getElementById('grandTotalText').textContent = formatBaht(grandTotal);
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    dateStartInput.min = today;
-    dateEndInput.min = today;
-
-    [dateStartInput, dateEndInput, stallCountInput, smallApplianceInput, largeApplianceInput].forEach((el) => {
-      el.addEventListener('change', recalcSummary);
-      el.addEventListener('input', recalcSummary);
-    });
-
-    document.querySelectorAll('input[name="light"]').forEach((el) => {
-      el.addEventListener('change', recalcSummary);
-    });
-
-    bookingForm.addEventListener('submit', (event) => {
-      if (!dateStartInput.value || !dateEndInput.value) {
-        event.preventDefault();
-        window.alert('กรุณาเลือกวันที่เช่าให้ครบถ้วน');
-        return;
-      }
-
-      const startDate = new Date(dateStartInput.value);
-      const endDate = new Date(dateEndInput.value);
-      if (endDate < startDate) {
-        event.preventDefault();
-        window.alert('วันที่สิ้นสุดต้องมากกว่าหรือเท่ากับวันที่เริ่มเช่า');
-        return;
-      }
-    });
-
-    recalcSummary();
+    window.PRICING_DATA = {
+      zonePrice: <%= Number(zonePrice || 0) %>,
+      lightUnitPrice: <%= Number(pricing.lightUnitPrice || 15) %>,
+      smallAppliancePrice: <%= Number(pricing.smallAppliancePrice || 20) %>,
+      largeAppliancePrice: <%= Number(pricing.largeAppliancePrice || 40) %>
+    };
   </script>
+  <script src="/js/seller/bookingStall.js"></script>
 </body>
 </html>

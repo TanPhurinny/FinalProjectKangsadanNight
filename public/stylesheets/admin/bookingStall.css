@@ -1,0 +1,487 @@
+    :root {
+      --primary: #3BB8D4;
+      --primary-dark: #2a9ab5;
+      --bg: #f4f5f7;
+      --card-bg: #ffffff;
+      --text-main: #1a2b2b;
+      --text-sub: #6b8a8a;
+      --border: #d4d4d4;
+      --radius: 12px;
+      
+      /* Colors for Map Legend */
+      --stall-empty: #ffffff;
+      --stall-booked: #9ca3af;
+      --stall-selected: #3BB8D4;
+    }
+
+    .booking-stall-page,
+    .booking-stall-page * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+    }
+
+    .booking-stall-page {
+      font-family: 'Kanit', sans-serif;
+      background: #f4f7fb;
+      color: var(--dark-color);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .site-header {
+      background: #fff;
+      border-bottom: 1px solid #e8eef2;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 10px rgba(44,62,80,0.05);
+    }
+    .btn-back {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--dark-color); text-decoration: none; font-size: 18px;
+      background: #f5f9fc;
+      border: 1px solid #e2edf3;
+      transition: 0.2s;
+    }
+    .btn-back:hover {
+      background: #ebf5fb;
+      border-color: #cfe6f3;
+    }
+    .header-title {
+      flex: 1; text-align: center; font-family: 'Prompt', sans-serif;
+      font-size: 20px; font-weight: 600; margin: 0;
+    }
+    .header-spacer { width: 40px; }
+
+    .container {
+      max-width: 1200px;
+      margin: 20px auto 60px;
+      padding: 0 16px;
+    }
+
+    /* ── APPLICANT INFO CARD (ข้อมูลผู้ขอเช่า) ── */
+    .applicant-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+      border: 1px solid #eaeaea;
+      border-left: 5px solid var(--primary);
+    }
+    .applicant-header {
+      font-family: 'Prompt', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--primary-dark);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px dashed var(--border);
+      padding-bottom: 12px;
+    }
+    .applicant-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px 20px;
+    }
+    .info-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .info-group label {
+      font-size: 13px;
+      color: var(--text-sub);
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .info-group span {
+      font-size: 15px;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+    .note-full-width {
+      grid-column: 1 / -1;
+      background: #fdfae8;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border-left: 3px solid #FF9F1C;
+    }
+
+    /* ── MAP CONTROLS (Top Bar) ── */
+    .map-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 16px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #eaeaea;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .zone-select-wrapper {
+      flex: 1;
+    }
+    .zone-select-wrapper label {
+      display: block; font-weight: 600; font-size: 18px; font-family: 'Prompt', sans-serif;
+    }
+    .zone-select-wrapper span {
+      font-size: 13px; color: #666; display: block; margin-bottom: 12px;
+    }
+    
+    /* ปุ่มเลือกโซน */
+    .zone-btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .btn-zone {
+      padding: 8px 20px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      background: #fff;
+      color: #555;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-zone:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .btn-zone.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .btn-zone small {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+    
+    /* Legend */
+    .legend-box {
+      display: flex; gap: 16px; align-items: center;
+      background: #fff; padding: 10px 20px; border-radius: 30px;
+      border: 1px solid #eaeaea; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      margin-top: auto;
+      margin-bottom: auto;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+    .color-box { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #bbb; }
+    .color-empty { background: var(--stall-empty); }
+    .color-booked { background: var(--stall-booked); border-color: #777;}
+    .color-selected { background: var(--stall-selected); border-color: var(--primary-dark); }
+    .color-requested { border: 2px solid var(--primary); background: transparent; }
+
+    /* ── MAP OUTER & INNER ── */
+    .map-outer {
+      display: flex;
+      background: #e5e5e5;
+      border: 2px solid #bbb;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .map-inner {
+      flex: 1;
+      background: #fff;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-width: 800px; 
+    }
+
+    /* Roads */
+    .road-left {
+      width: 50px; min-width: 50px; background: #e5e5e5;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      border-right: 2px solid #bbb; position: relative; gap: 10px;
+    }
+    .road-left-stripe {
+      position: absolute; top: 0; left: 0; bottom: 0; width: 12px; left: 8px;
+      background: repeating-linear-gradient(180deg, #f5c200 0px, #f5c200 20px, #222 20px, #222 40px);
+    }
+    .road-left-text {
+      writing-mode: vertical-rl; transform: rotate(180deg);
+      font-size: 14px; font-weight: 700; position: relative; z-index: 2; margin-left: 10px;
+    }
+    .road-right {
+      width: 50px; min-width: 50px; background: #e5e5e5;
+      display: flex; align-items: center; justify-content: center;
+      border-left: 2px solid #bbb;
+    }
+    .road-right-text {
+      writing-mode: vertical-rl; font-size: 14px; font-weight: 700;
+    }
+
+    .road-top {
+      height: 50px; background: #e5e5e5; border-bottom: 2px solid #bbb;
+      display: flex; align-items: center; justify-content: flex-end; padding: 0 20px;
+    }
+    .road-top-sign {
+      background: #f5c200; font-weight: 700; font-size: 14px; padding: 6px 16px; border-radius: 4px;
+    }
+    .road-bottom {
+      height: 50px; background: #e5e5e5; border-top: 2px solid #bbb;
+      display: flex; align-items: center; justify-content: flex-end; padding: 0 20px;
+    }
+    .road-bottom-stripe {
+      flex: 1; height: 12px; margin-right: 20px;
+      background: repeating-linear-gradient(90deg, #f5c200 0px, #f5c200 24px, #222 24px, #222 48px);
+    }
+
+    /* ── STALL GRID ── */
+    .admin-zone-canvas {
+      padding: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 30px; 
+      min-height: 400px;
+    }
+
+    .col-block {
+      display: flex;
+      gap: 0px; 
+    }
+
+    .stall-column {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stall-cell {
+      width: 55px;
+      height: 28px;
+      border: 1px solid #555;
+      background: var(--stall-empty);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #111;
+      cursor: pointer;
+      margin-top: -1px; 
+      margin-left: -1px;
+      transition: background 0.15s;
+    }
+
+    .stall-cell:hover:not(.booked) { background: #e0f6fb; }
+    
+    .stall-cell.booked { 
+      background: var(--stall-booked); 
+      color: #333; 
+      cursor: help; 
+    }
+    .stall-cell.selected { 
+      background: var(--stall-selected); 
+      color: #fff; 
+      border-color: #2a9ab5; 
+      z-index: 2; 
+    }
+    
+    /* คลาสสำหรับไฮไลต์ "แถวที่รีเควสมา" */
+    .stall-cell.requested-range {
+      border: 2px solid var(--primary) !important;
+      z-index: 1; /* ให้อยู่เหนือขอบสีดำปกติ */
+    }
+
+    .facility-box {
+      position: absolute;
+      bottom: 65px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .btn-facility {
+      background: #f5c200; font-weight: 700; border: 1px solid #d4a000;
+      padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer;
+    }
+
+    /* ── ACTION FOOTER ── */
+    .action-footer {
+      margin-top: 24px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 16px;
+    }
+    .btn-save {
+      background: var(--primary); color: #fff; border: none; padding: 12px 30px;
+      font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 600;
+      border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(59,184,212,0.3);
+      min-width: 210px;
+      text-align: center;
+    }
+    .btn-reject-main {
+      background: var(--stall-booked); color: #ffffff; border: none; padding: 12px 30px;
+      font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 600;
+      border-radius: 8px; cursor: pointer;
+      min-width: 210px;
+      text-align: center;
+    }
+    .btn-reject-main:hover {
+      background: var(--stall-booked);
+    }
+
+
+    /* ==========================================
+       📍 TOOLTIP (สำหรับแผงสีเทาที่ถูกจองแล้ว)
+       ========================================== */
+    .admin-tooltip {
+      position: fixed;
+      z-index: 9999;
+      background: #fff;
+      width: 320px;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      border: 1px solid #ccc;
+      display: none;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .tt-header {
+      background: var(--primary);
+      color: #fff;
+      padding: 12px 16px;
+      font-family: 'Prompt', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .tt-body { padding: 16px; }
+    .tt-row { display: flex; gap: 16px; margin-bottom: 14px; }
+    .tt-group { flex: 1; margin-bottom: 14px; }
+    .tt-group:last-child { margin-bottom: 0; }
+    .tt-label { display: block; font-size: 13px; color: #222; font-weight: 700; margin-bottom: 2px; }
+    .tt-value { display: block; font-size: 14px; color: #555; }
+
+    /* ── CONFIRM SUMMARY ── */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+      padding: 16px;
+    }
+    .confirm-overlay.active { display: flex; }
+
+    .confirm-card {
+      width: 100%;
+      max-width: 560px;
+      background: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.22);
+      border: 1px solid #e5e7eb;
+    }
+    .confirm-head {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff;
+      padding: 14px 18px;
+      font-family: 'Prompt', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .confirm-close {
+      border: none;
+      background: transparent;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    .confirm-body {
+      padding: 18px;
+    }
+    .confirm-grid {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 10px 12px;
+      margin-bottom: 14px;
+    }
+    .confirm-label {
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .confirm-value {
+      color: #1f2937;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .confirm-value.highlight {
+      color: var(--primary-dark);
+      font-weight: 700;
+    }
+    .confirm-note {
+      background: #fff8e1;
+      border-left: 4px solid #f59e0b;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #5b4a1a;
+    }
+    .confirm-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .btn-cancel-confirm,
+    .btn-final-confirm {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-family: 'Prompt', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-cancel-confirm {
+      background: #9ca3af;
+      color: #fff;
+    }
+    .btn-final-confirm {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    @media (max-width: 768px) {
+      .applicant-body { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .confirm-grid {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .confirm-actions {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 500px) {
+      .applicant-body { grid-template-columns: 1fr; }
+    }
