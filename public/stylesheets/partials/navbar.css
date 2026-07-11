@@ -3,7 +3,7 @@
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(10px);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-    padding: 12px 0;
+    padding: 6px 0 22px;
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -28,7 +28,8 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    z-index: 1001;
+    position: relative;
+    z-index: 1002;
 }
 
 .nav-logo {
@@ -47,11 +48,26 @@
 /* Mobile Toggle Button */
 .nav-toggle {
     display: none;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    width: 38px;
+    height: 38px;
     background: none;
     border: none;
-    font-size: 1.5rem;
+    border-radius: 8px;
+    font-size: 1.4rem;
+    line-height: 1;
     color: #3BB8D4;
     cursor: pointer;
+    position: relative;
+    z-index: 1002;
+    transition: background 0.2s ease;
+}
+
+.nav-toggle:hover,
+.nav-toggle:active {
+    background: rgba(59, 184, 212, 0.1);
 }
 
 .nav-links {
@@ -143,7 +159,14 @@
 /* Responsive Design */
 @media (max-width: 992px) {
     .nav-toggle {
-        display: block;
+        display: flex;
+        width: 44px;
+        height: 44px;
+    }
+
+    html.nav-menu-open,
+    body.nav-menu-open {
+        overflow: hidden;
     }
 
     .nav-links {
@@ -155,8 +178,11 @@
         background: white;
         flex-direction: column;
         align-items: flex-start;
-        padding: 80px 20px;
+        justify-content: flex-start;
+        overflow-y: auto;
+        padding: 64px 20px 20px;
         box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
+        z-index: 1001;
     }
 
     .nav-links.active {
