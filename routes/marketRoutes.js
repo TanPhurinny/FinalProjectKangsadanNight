@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/prismaClient');
 const zoneAccess = require('../utils/zoneAccess');
 const { requireAuth } = require('../middlewares/jwtAuth');
 

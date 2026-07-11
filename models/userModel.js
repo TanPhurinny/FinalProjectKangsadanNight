@@ -1,6 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const prisma = require('../config/prismaClient');
 
 function normalizeEmail(email) {
     return String(email || '').trim().toLowerCase();

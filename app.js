@@ -3,13 +3,12 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const methodOverride = require('method-override');
 const { exec } = require('child_process');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('./config/prismaClient');
 const session = require('express-session');
 const { getCurrentUser } = require('./middlewares/jwtAuth');
 const { isProduction } = require('./config/authSecrets');
 
 const app = express();
-const prisma = new PrismaClient();
 
 // --- 1. การตั้งค่าพื้นฐาน ---
 app.set('view engine', 'ejs');
@@ -101,21 +100,33 @@ app.use((req, res) => {
 
 // --- 7. เริ่มต้นเซิร์ฟเวอร์ ---
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Kangsadan Night Market System running at http://localhost:${PORT}`);
 
-  if (process.env.OPEN_BROWSER !== 'false') {
-    const url = `http://localhost:${PORT}`;
-    const command = process.platform === 'darwin'
-      ? `open "${url}"`
-      : process.platform === 'win32'
-        ? `start "" "${url}"`
-        : `xdg-open "${url}"`;
+function startServer() {
+  app.listen(PORT, () => {
+    console.log(`🚀 Kangsadan Night Market System running at http://localhost:${PORT}`);
 
-    exec(command, (error) => {
-      if (error) {
-        console.error('Could not open browser automatically:', error.message);
-      }
-    });
-  }
-});
+    if (process.env.OPEN_BROWSER !== 'false') {
+      const url = `http://localhost:${PORT}`;
+      const command = process.platform === 'darwin'
+        ? `open "${url}"`
+        : process.platform === 'win32'
+          ? `start "" "${url}"`
+          : `xdg-open "${url}"`;
+
+      exec(command, (error) => {
+        if (error) {
+          console.error('Could not open browser automatically:', error.message);
+        }
+      });
+    }
+  });
+}
+
+// เชื่อมต่อฐานข้อมูลให้พร้อมก่อนเปิดรับ request จริง กัน request แรกของผู้ใช้
+// (เช่นตอน login) ต้องรอ TLS/connection handshake ไปกับฐานข้อมูล remote เอง
+prisma.$connect()
+  .then(startServer)
+  .catch((error) => {
+    console.error('Prisma connection failed, starting server anyway:', error.message);
+    startServer();
+  });

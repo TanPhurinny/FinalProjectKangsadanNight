@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Booking Requests | Kangsadan Night Market</title>
+        <title>การแจ้งคำร้อง (แจ้งซ่อม) | Kangsadan Night Market</title>
 
         <link
             href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
@@ -23,25 +23,27 @@
     <body>
         <%- include('../partials/navbar') %>
 
+        <header class="site-header">
+            <a href="javascript:history.back()" class="btn-back"><i
+                    class="fa-solid fa-arrow-left"></i></a>
+            <h2 class="header-title">การแจ้งคำร้อง (แจ้งซ่อม)</h2>
+            <div class="header-spacer"></div>
+        </header>
+
         <div class="container requests-layout py-4">
             <%
             const bookingList = Array.isArray(requests) ? requests : [];
             const rStats = {
             pending: (typeof counts !== 'undefined' && counts) ? counts.pending : bookingList.filter(r => r.status === 'PENDING').length,
-            approved: (typeof counts !== 'undefined' && counts) ? counts.approved : bookingList.filter(r => r.status === 'APPROVED').length,
+            inProgress: (typeof counts !== 'undefined' && counts) ? counts.inProgress : bookingList.filter(r => r.status === 'IN_PROGRESS').length,
+            success: (typeof counts !== 'undefined' && counts) ? counts.success : bookingList.filter(r => r.status === 'SUCCESS').length,
             rejected: (typeof counts !== 'undefined' && counts) ? counts.rejected : bookingList.filter(r => r.status === 'REJECTED').length,
             total: (typeof counts !== 'undefined' && counts) ? counts.all : bookingList.length
             };
             %>
 
             <section class="requests-hero mb-4">
-                <div>
-                    <h1 class="display-6 fw-bold mb-2">
-                        <i
-                            class="fas fa-clipboard-list me-2"></i>จัดการคำขอจองแผงค้า
-                    </h1>
-                    
-                </div>
+                <div></div>
                 <div class="hero-meta">
                     <div class="meta-chip">
                         <i class="far fa-calendar-alt me-2"></i><span
@@ -74,29 +76,29 @@
                         <div class="summary-content">
                             <small>รอรับเรื่อง</small>
                             <h3><%= rStats.pending %></h3>
-                            <p class="summary-note">รายการจองที่รอการพิจารณา</p>
+                            <p class="summary-note">คำร้องแจ้งซ่อมที่รอดำเนินการ</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-lg-3">
                     <div class="summary-card is-progressing">
                         <div class="summary-icon"><i
-                                class="fas fa-circle-check"></i></div>
+                                class="fas fa-screwdriver-wrench"></i></div>
                         <div class="summary-content">
-                            <small>อนุมัติแล้ว</small>
-                            <h3><%= rStats.approved %></h3>
-                            <p class="summary-note">รายการที่ผ่านการอนุมัติ</p>
+                            <small>กำลังดำเนินการ</small>
+                            <h3><%= rStats.inProgress %></h3>
+                            <p class="summary-note">งานซ่อมที่กำลังดำเนินการอยู่</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-lg-3">
                     <div class="summary-card is-done">
                         <div class="summary-icon"><i
-                                class="fas fa-ban"></i></div>
+                                class="fas fa-circle-check"></i></div>
                         <div class="summary-content">
-                            <small>ปฏิเสธแล้ว</small>
-                            <h3><%= rStats.rejected %></h3>
-                            <p class="summary-note">รายการที่ไม่ผ่านการอนุมัติ</p>
+                            <small>ซ่อมเสร็จแล้ว</small>
+                            <h3><%= rStats.success %></h3>
+                            <p class="summary-note">งานซ่อมที่เสร็จสิ้นแล้ว</p>
                         </div>
                     </div>
                 </div>
@@ -107,7 +109,7 @@
                         <div class="summary-content">
                             <small>คำร้องทั้งหมด</small>
                             <h3><%= rStats.total %></h3>
-                            <p class="summary-note">ภาพรวมคำขอจองทั้งหมด</p>
+                            <p class="summary-note">ภาพรวมคำร้องแจ้งซ่อมทั้งหมด</p>
                         </div>
                     </div>
                 </div>
@@ -119,7 +121,7 @@
                         <span class="input-group-text"><i
                                 class="fas fa-search"></i></span>
                         <input type="text" id="searchInput" class="form-control"
-                            placeholder="ค้นหาจากโซน แผง ผู้จอง หรือเบอร์โทร">
+                            placeholder="ค้นหาจากพื้นที่ ผู้แจ้ง หรือเบอร์โทร">
                     </div>
                 </div>
                 <div class="controls-right" role="group"
@@ -127,9 +129,11 @@
                     <button class="status-filter active"
                         data-filter="ALL">ทั้งหมด</button>
                     <button class="status-filter"
-                        data-filter="PENDING">รออนุมัติ</button>
+                        data-filter="PENDING">รอรับเรื่อง</button>
                     <button class="status-filter"
-                        data-filter="APPROVED">อนุมัติแล้ว</button>
+                        data-filter="IN_PROGRESS">กำลังดำเนินการ</button>
+                    <button class="status-filter"
+                        data-filter="SUCCESS">ซ่อมเสร็จแล้ว</button>
                     <button class="status-filter"
                         data-filter="REJECTED">ปฏิเสธ</button>
                 </div>
@@ -141,9 +145,9 @@
                         <table class="table align-middle mb-0">
                             <thead>
                                 <tr>
-                                    <th class="ps-4">โซน / แผง</th>
-                                    <th>ผู้จอง</th>
-                                    <th>รายละเอียดการจอง</th>
+                                    <th class="ps-4">พื้นที่ / ปัญหา</th>
+                                    <th>ผู้แจ้ง</th>
+                                    <th>รายละเอียด</th>
                                     <th class="text-center">สถานะ</th>
                                     <th class="text-end pe-4">การจัดการ</th>
                                 </tr>
@@ -154,18 +158,17 @@
                                 <% bookingList.forEach(function(req) { %>
                                 <tr class="request-row"
                                     data-status="<%= req.status %>"
-                                    data-search="<%= `${req.zoneLabel} ${req.slotNumber} ${req.sellerName} ${req.phone} ${req.storeDetailSnapshot}`.toLowerCase() %>">
+                                    data-search="<%= `${req.location} ${req.category} ${req.sellerName} ${req.phone}`.toLowerCase() %>">
                                     <td class="ps-4">
-                                        <div class="fw-bold text-dark"><%= req.zoneLabel %></div>
-                                        <div class="small text-muted">แผง: <%= req.slotNumber %></div>
+                                        <div class="fw-bold text-dark"><%= req.location %></div>
+                                        <div class="small text-muted"><%= req.category %></div>
                                     </td>
                                     <td>
                                         <div class="fw-semibold text-dark"><%= req.sellerName %></div>
                                         <div class="small text-muted"><%= req.phone %></div>
                                     </td>
                                     <td>
-                                        <div class="desc-wrap">รายละเอียดร้าน: <%= req.storeDetailSnapshot || '-' %></div>
-                                        <div class="small text-muted mt-1">วันเช่า: <%= req.rentalStartDate ? new Date(req.rentalStartDate).toLocaleDateString('th-TH') : '-' %> - <%= req.rentalEndDate ? new Date(req.rentalEndDate).toLocaleDateString('th-TH') : '-' %></div>
+                                        <div class="desc-wrap"><%= req.description %></div>
                                         <div class="small text-muted mt-1">
                                             <i class="far fa-clock me-1"></i><%=
                                             req.createdAtText
@@ -174,7 +177,7 @@
                                     </td>
                                     <td class="text-center">
                                         <span
-                                            class="badge <%= req.status === 'PENDING' ? 'bg-warning text-dark' : req.status === 'APPROVED' ? 'bg-success' : 'bg-danger' %>">
+                                            class="badge <%= req.status === 'PENDING' ? 'bg-warning text-dark' : req.status === 'IN_PROGRESS' ? 'bg-info text-dark' : req.status === 'SUCCESS' ? 'bg-success' : req.status === 'REJECTED' ? 'bg-danger' : 'bg-secondary' %>">
                                             <%= req.statusLabel %>
                                         </span>
                                     </td>
@@ -184,12 +187,12 @@
                                             data-bs-toggle="modal"
                                             data-bs-target="#requestDetailModal"
                                             data-location="<%= req.location %>"
-                                            data-requester="<%= req.user ? req.user.name : 'ไม่ระบุ' %>"
+                                            data-requester="<%= req.sellerName %>"
                                             data-category="<%= req.category %>"
                                             data-description="<%= req.description %>"
-                                            data-date="<%= new Date(req.createdAt).toLocaleString('th-TH') %>"
+                                            data-date="<%= req.createdAtText %>"
                                             data-status="<%= req.status %>"
-                                            data-status-label="<%= req.status === 'PENDING' ? 'รอรับเรื่อง' : req.status === 'IN_PROGRESS' ? 'กำลังดำเนินการ' : 'เสร็จสิ้น' %>"
+                                            data-status-label="<%= req.statusLabel %>"
                                             data-image="<%= req.image || '' %>"
                                             title="ดูรายละเอียด">
                                             <i class="fas fa-eye"></i>
@@ -203,9 +206,30 @@
                                             <input type="hidden" name="id"
                                                 value="<%= req.id %>">
                                             <input type="hidden" name="status"
-                                                value="APPROVED">
+                                                value="IN_PROGRESS">
                                             <button
-                                                class="btn btn-outline-primary btn-sm action-btn">อนุมัติ</button>
+                                                class="btn btn-outline-primary btn-sm action-btn">รับเรื่อง</button>
+                                        </form>
+                                        <form
+                                            action="/admin/requests/update-status"
+                                            method="POST" class="d-inline">
+                                            <input type="hidden" name="id"
+                                                value="<%= req.id %>">
+                                            <input type="hidden" name="status"
+                                                value="REJECTED">
+                                            <button
+                                                class="btn btn-danger btn-sm action-btn">ปฏิเสธ</button>
+                                        </form>
+                                        <% } else if (req.status === 'IN_PROGRESS') { %>
+                                        <form
+                                            action="/admin/requests/update-status"
+                                            method="POST" class="d-inline">
+                                            <input type="hidden" name="id"
+                                                value="<%= req.id %>">
+                                            <input type="hidden" name="status"
+                                                value="SUCCESS">
+                                            <button
+                                                class="btn btn-outline-success btn-sm action-btn">ซ่อมเสร็จแล้ว</button>
                                         </form>
                                         <form
                                             action="/admin/requests/update-status"
@@ -231,7 +255,7 @@
                                         class="text-center py-5 text-muted">
                                         <i
                                             class="fas fa-inbox fa-3x opacity-25 d-block mb-3"></i>
-                                        ไม่พบข้อมูลคำขอจองในขณะนี้
+                                        ไม่พบคำร้องแจ้งซ่อมในขณะนี้
                                     </td>
                                 </tr>
                                 <% } %>
@@ -240,7 +264,7 @@
                                         class="text-center py-5 text-muted">
                                         <i
                                             class="fas fa-filter fa-2x opacity-25 d-block mb-3"></i>
-                                        ไม่พบคำขอจองที่ตรงกับการค้นหา/ตัวกรอง
+                                        ไม่พบคำร้องที่ตรงกับการค้นหา/ตัวกรอง
                                     </td>
                                 </tr>
                             </tbody>
@@ -254,14 +278,14 @@
                 <% bookingList.forEach(function(req) { %>
                 <article class="request-card"
                     data-status="<%= req.status %>"
-                    data-search="<%= `${req.zoneLabel} ${req.slotNumber} ${req.sellerName} ${req.phone} ${req.storeDetailSnapshot}`.toLowerCase() %>">
+                    data-search="<%= `${req.location} ${req.category} ${req.sellerName} ${req.phone}`.toLowerCase() %>">
                     <div class="request-card-head">
                         <div>
-                            <h6 class="mb-1 fw-bold"><%= req.zoneLabel %></h6>
-                            <small class="text-muted">แผง: <%= req.slotNumber %></small>
+                            <h6 class="mb-1 fw-bold"><%= req.location %></h6>
+                            <small class="text-muted"><%= req.category %></small>
                         </div>
                         <span
-                            class="badge <%= req.status === 'PENDING' ? 'bg-warning text-dark' : req.status === 'APPROVED' ? 'bg-success' : 'bg-danger' %>">
+                            class="badge <%= req.status === 'PENDING' ? 'bg-warning text-dark' : req.status === 'IN_PROGRESS' ? 'bg-info text-dark' : req.status === 'SUCCESS' ? 'bg-success' : req.status === 'REJECTED' ? 'bg-danger' : 'bg-secondary' %>">
                             <%= req.statusLabel %>
                         </span>
                     </div>
@@ -272,7 +296,7 @@
                             %></span>
                     </div>
 
-                    <p class="small mb-2">รายละเอียดร้าน: <%= req.storeDetailSnapshot || '-' %></p>
+                    <p class="small mb-2"><%= req.description %></p>
                     <p class="small mb-2">เบอร์โทร: <%= req.phone %></p>
                     <div class="small text-muted mb-3"><i
                             class="far fa-clock me-1"></i><%= req.createdAtText %></div>
@@ -282,12 +306,12 @@
                         data-bs-toggle="modal"
                         data-bs-target="#requestDetailModal"
                         data-location="<%= req.location %>"
-                        data-requester="<%= req.user ? req.user.name : 'ไม่ระบุ' %>"
+                        data-requester="<%= req.sellerName %>"
                         data-category="<%= req.category %>"
                         data-description="<%= req.description %>"
-                        data-date="<%= new Date(req.createdAt).toLocaleString('th-TH') %>"
+                        data-date="<%= req.createdAtText %>"
                         data-status="<%= req.status %>"
-                        data-status-label="<%= req.status === 'PENDING' ? 'รอรับเรื่อง' : req.status === 'IN_PROGRESS' ? 'กำลังดำเนินการ' : 'เสร็จสิ้น' %>"
+                        data-status-label="<%= req.statusLabel %>"
                         data-image="<%= req.image || '' %>">
                         <i class="fas fa-eye me-1"></i>ดูรายละเอียด
                     </button>
@@ -300,9 +324,26 @@
                             <input type="hidden" name="id"
                                 value="<%= req.id %>">
                             <input type="hidden" name="status"
-                                value="APPROVED">
+                                value="IN_PROGRESS">
                             <button
-                                class="btn btn-outline-primary w-100 action-btn">อนุมัติ</button>
+                                class="btn btn-outline-primary w-100 action-btn">รับเรื่อง</button>
+                        </form>
+                        <form action="/admin/requests/update-status"
+                            method="POST" class="flex-grow-1">
+                            <input type="hidden" name="id"
+                                value="<%= req.id %>">
+                            <input type="hidden" name="status" value="REJECTED">
+                            <button
+                                class="btn btn-outline-danger w-100 action-btn">ปฏิเสธ</button>
+                        </form>
+                        <% } else if (req.status === 'IN_PROGRESS') { %>
+                        <form action="/admin/requests/update-status"
+                            method="POST" class="flex-grow-1">
+                            <input type="hidden" name="id"
+                                value="<%= req.id %>">
+                            <input type="hidden" name="status" value="SUCCESS">
+                            <button
+                                class="btn btn-outline-success w-100 action-btn">ซ่อมเสร็จแล้ว</button>
                         </form>
                         <form action="/admin/requests/update-status"
                             method="POST" class="flex-grow-1">
@@ -323,13 +364,13 @@
                 <% } else { %>
                 <div id="emptyCardRow" class="text-center py-5 text-muted">
                     <i class="fas fa-inbox fa-3x opacity-25 d-block mb-3"></i>
-                    ไม่พบข้อมูลคำขอจองในขณะนี้
+                    ไม่พบคำร้องแจ้งซ่อมในขณะนี้
                 </div>
                 <% } %>
                 <div id="emptyFilteredCardRow"
                     class="text-center py-5 text-muted d-none">
                     <i class="fas fa-filter fa-2x opacity-25 d-block mb-3"></i>
-                    ไม่พบคำขอจองที่ตรงกับการค้นหา/ตัวกรอง
+                    ไม่พบคำร้องที่ตรงกับการค้นหา/ตัวกรอง
                 </div>
             </section>
         </div>

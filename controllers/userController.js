@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/prismaClient');
 
 // 1. แสดงรายชื่อผู้ใช้งานทั้งหมด
 exports.getUsersPage = async (req, res) => {

@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/prismaClient');
 
 // --- ส่วน getDashboardPage คงเดิมตามที่คุณส่งมา ---
 exports.getDashboardPage = async (req, res) => {

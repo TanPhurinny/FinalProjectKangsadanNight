@@ -17,18 +17,25 @@
             href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260711-5">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/admin/announcements.css">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
     <body class="bg-light">
         <%- include('../partials/navbar') %>
 
+        <header class="site-header">
+            <a href="javascript:history.back()" class="btn-back"><i
+                    class="fa-solid fa-arrow-left"></i></a>
+            <h2 class="header-title">จัดการประกาศ</h2>
+            <div class="header-spacer"></div>
+        </header>
+
         <div class="container py-4">
             <div
                 class="page-header d-flex justify-content-between align-items-center bg-white p-4 rounded-4 shadow-custom mb-4"
                 style="border-left: 6px solid #3BB8D4;">
                 <div>
-                    <h2 class="fw-bold mb-1 text-dark">จัดการประกาศ</h2>
                     <p class="text-muted mb-0 small" id="live-date"></p>
                 </div>
                 <button class="btn-primary-custom" data-bs-toggle="modal"

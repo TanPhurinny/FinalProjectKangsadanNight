@@ -2,19 +2,6 @@
     max-width: 1040px;
 }
 
-.profile-header {
-    background: linear-gradient(135deg, #3BB8D4 0%, #2c97b1 100%);
-    color: white;
-    padding: 30px;
-    border-radius: 15px;
-    margin-bottom: 30px;
-}
-
-.profile-header h2 {
-    margin-bottom: 0;
-    font-weight: 700;
-}
-
 .profile-card {
     background: white;
     border-radius: 15px;
@@ -153,10 +140,6 @@
 @media (max-width: 768px) {
     .form-group-row {
         grid-template-columns: 1fr;
-    }
-
-    .profile-header {
-        padding: 20px;
     }
 
     .profile-card {

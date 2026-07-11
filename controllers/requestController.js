@@ -1,19 +1,25 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/prismaClient');
+
+const STATUS_LABELS = {
+    PENDING: 'รอรับเรื่อง',
+    IN_PROGRESS: 'กำลังดำเนินการ',
+    SUCCESS: 'ซ่อมเสร็จแล้ว',
+    REJECTED: 'ปฏิเสธ',
+    APPROVED: 'อนุมัติแล้ว'
+};
 
 exports.getRequestsPage = async (req, res) => {
     try {
-        const bookings = await prisma.booking.findMany({
+        const reports = await prisma.maintenanceReport.findMany({
             include: {
-                user: { select: { name: true, phoneNumber: true } },
-                slot: { select: { slotNumber: true, zone: true, price: true } }
+                user: { select: { name: true, phoneNumber: true } }
             },
             orderBy: { createdAt: 'desc' }
         });
 
-        const requestRows = bookings.map((booking) => {
-            const statusCode = String(booking.status || 'PENDING').toUpperCase();
-            const createdAtText = new Date(booking.createdAt).toLocaleString('th-TH', {
+        const requestRows = reports.map((report) => {
+            const statusCode = String(report.status || 'PENDING').toUpperCase();
+            const createdAtText = new Date(report.createdAt).toLocaleString('th-TH', {
                 day: '2-digit',
                 month: 'short',
                 year: '2-digit',
@@ -22,41 +28,29 @@ exports.getRequestsPage = async (req, res) => {
             });
 
             return {
-                id: booking.id,
-                zone: booking.zoneCode || booking.slot?.zone || '-',
-                zoneLabel: booking.selectedZoneLabel || (booking.zoneCode ? `โซน ${booking.zoneCode}` : `โซน ${booking.slot?.zone || '-'}`),
-                slotNumber: booking.slot?.slotNumber || '-',
-                sellerName: booking.user?.name || 'ไม่ระบุ',
-                phone: booking.user?.phoneNumber || '-',
+                id: report.id,
+                location: report.location,
+                category: report.category,
+                description: report.description,
+                image: report.image,
+                sellerName: report.user?.name || 'ไม่ระบุ',
+                phone: report.user?.phoneNumber || '-',
                 status: statusCode,
-                statusLabel:
-                    statusCode === 'APPROVED'
-                        ? 'อนุมัติแล้ว'
-                        : statusCode === 'REJECTED'
-                            ? 'ปฏิเสธ'
-                            : 'รออนุมัติ',
-                createdAtText,
-                rentalStartDate: booking.rentalStartDate,
-                rentalEndDate: booking.rentalEndDate,
-                rentalDays: booking.rentalDays,
-                stallCount: booking.stallCount,
-                dailyStallPrice: booking.dailyStallPrice,
-                grandTotal: booking.grandTotal,
-                storeDetailSnapshot: booking.storeDetailSnapshot || '',
-                lightEnabled: booking.lightEnabled,
-                smallApplianceCount: booking.smallApplianceCount,
-                largeApplianceCount: booking.largeApplianceCount
+                statusLabel: STATUS_LABELS[statusCode] || statusCode,
+                createdAt: report.createdAt,
+                createdAtText
             };
         });
 
         const counts = {
             all: requestRows.length,
-            pending: requestRows.filter((booking) => booking.status === 'PENDING').length,
-            approved: requestRows.filter((booking) => booking.status === 'APPROVED').length,
-            rejected: requestRows.filter((booking) => booking.status === 'REJECTED').length
+            pending: requestRows.filter((report) => report.status === 'PENDING').length,
+            inProgress: requestRows.filter((report) => report.status === 'IN_PROGRESS').length,
+            success: requestRows.filter((report) => report.status === 'SUCCESS').length,
+            rejected: requestRows.filter((report) => report.status === 'REJECTED').length
         };
 
-        res.render('admin/requests', { 
+        res.render('admin/requests', {
             user: req.user,
             requests: requestRows,
             counts,
@@ -72,13 +66,13 @@ exports.updateStatus = async (req, res) => {
     const { id, status } = req.body;
     try {
         const normalizedStatus = String(status || '').toUpperCase();
-        if (!['PENDING', 'APPROVED', 'REJECTED'].includes(normalizedStatus)) {
+        if (!['PENDING', 'IN_PROGRESS', 'SUCCESS', 'REJECTED'].includes(normalizedStatus)) {
             return res.redirect('/admin/requests?error=invalid_status');
         }
 
-        await prisma.booking.update({ 
-            where: { id: parseInt(id) }, 
-            data: { status: normalizedStatus } 
+        await prisma.maintenanceReport.update({
+            where: { id: parseInt(id) },
+            data: { status: normalizedStatus }
         });
         res.redirect('/admin/requests?success=updated');
     } catch (err) {
