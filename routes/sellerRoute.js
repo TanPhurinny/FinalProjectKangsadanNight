@@ -5,6 +5,7 @@ const prisma = new PrismaClient();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { getAnnouncementsForUser } = require('../controllers/announcementController');
 
 // สร้างโฟลเดอร์ upload ถ้ายังไม่มี
 const uploadDir = path.join(__dirname, '../public/uploads/repairs');
@@ -197,6 +198,39 @@ function getBookingStatusText(status) {
     }
 }
 
+// ใช้ label เดียวกับหน้า views/seller/repair.ejs เพื่อให้สถานะแจ้งซ่อมสื่อความหมายตรงกันทั้งระบบ
+function getRepairStatusText(status) {
+    switch (status) {
+        case 'PENDING':
+            return 'รอดำเนินการ';
+        case 'IN_PROGRESS':
+            return 'กำลังดำเนินการ';
+        case 'APPROVED':
+            return 'อนุมัติแล้ว';
+        case 'SUCCESS':
+            return 'ซ่อมเสร็จแล้ว';
+        case 'REJECTED':
+            return 'ถูกปฏิเสธ';
+        default:
+            return 'ไม่ทราบสถานะ';
+    }
+}
+
+function getRepairStatusClass(status) {
+    switch (status) {
+        case 'SUCCESS':
+        case 'APPROVED':
+            return 'status-pill--success';
+        case 'REJECTED':
+            return 'status-pill--danger';
+        case 'IN_PROGRESS':
+            return 'status-pill--warning';
+        case 'PENDING':
+        default:
+            return 'status-pill--neutral';
+    }
+}
+
 function buildBookingView(latestBooking) {
     if (!latestBooking) return null;
 
@@ -282,8 +316,6 @@ function buildBookingNotifications(latestBooking) {
     }));
 }
 
-const DEFAULT_SHOP_COVER_IMAGE = 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?q=80&w=1400&auto=format&fit=crop';
-
 function parseShopTags(rawTags) {
     return String(rawTags || '')
         .split(',')
@@ -291,24 +323,68 @@ function parseShopTags(rawTags) {
         .filter(Boolean);
 }
 
-function buildSellerDashboard(userRecord, activeBookingCount, latestBooking) {
+function getBookingStatusClass(status) {
+    switch (status) {
+        case 'SUCCESS':
+            return 'status-pill--success';
+        case 'REJECTED':
+            return 'status-pill--danger';
+        case 'APPROVED':
+        case 'IN_PROGRESS':
+            return 'status-pill--warning';
+        case 'PENDING':
+        default:
+            return 'status-pill--neutral';
+    }
+}
+
+function buildSellerDashboard(userRecord, activeBookingCount, latestBooking, latestRepairReport, latestAnnouncement) {
     const shop = userRecord?.shop || {};
     const shopName = shop.shopName || 'ยังไม่ได้ตั้งชื่อร้าน';
     const displayLetter = String(shopName || userRecord?.name || 'ร').trim().charAt(0).toUpperCase();
+
+    const latestBookingView = latestBooking
+        ? {
+            ...latestBooking,
+            statusText: getBookingStatusText(latestBooking.status),
+            statusClass: getBookingStatusClass(latestBooking.status),
+            rentalStartDate: formatDateThai(latestBooking.rentalStartDate),
+            rentalEndDate: formatDateThai(latestBooking.rentalEndDate),
+            createdAt: formatDateThai(latestBooking.createdAt)
+        }
+        : null;
+
+    const latestRepairReportView = latestRepairReport
+        ? {
+            ...latestRepairReport,
+            statusText: getRepairStatusText(latestRepairReport.status),
+            statusClass: getRepairStatusClass(latestRepairReport.status),
+            createdAt: formatDateThai(latestRepairReport.createdAt)
+        }
+        : null;
+
+    const latestAnnouncementView = latestAnnouncement
+        ? {
+            ...latestAnnouncement,
+            createdAt: formatDateThai(latestAnnouncement.createdAt)
+        }
+        : null;
 
     return {
         shopName,
         displayLetter,
         shopDescription: shop.shopSummary || shop.productDetail || 'ยังไม่มีรายละเอียดร้านค้าในระบบ',
         productType: shop.productType || 'ยังไม่ระบุประเภทสินค้า',
-        coverImage: shop.shopCoverImage || DEFAULT_SHOP_COVER_IMAGE,
+        coverImage: shop.shopCoverImage || null,
         productImage: shop.productImage || null,
         sellerTier: shop.sellerTier || 'General Seller',
         zoneLabel: shop.shopZoneLabel || 'ยังไม่ได้ระบุโซนร้าน',
         isVerified: Boolean(shop.isVerified),
         tags: parseShopTags(shop.shopTags),
         activeBookingCount,
-        latestBooking,
+        latestBooking: latestBookingView,
+        latestRepairReport: latestRepairReportView,
+        latestAnnouncement: latestAnnouncementView,
         memberSince: userRecord?.createdAt || null,
         email: userRecord?.email || '-',
         phoneNumber: userRecord?.phoneNumber || '-'
@@ -358,9 +434,18 @@ router.get('/seller', isSellerOnly, async (req, res) => {
         orderBy: { createdAt: 'desc' }
     });
 
+    const latestRepairReport = await prisma.maintenanceReport.findFirst({
+        where: { userId: req.user.id },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    // ประกาศล่าสุดที่แอดมิน/สตาฟส่งถึงกลุ่มผู้ขาย (role: SELLER)
+    const sellerAnnouncements = await getAnnouncementsForUser('SELLER');
+    const latestAnnouncement = sellerAnnouncements[0] || null;
+
     return res.render('seller/indexseller', {
         user,
-        dashboard: buildSellerDashboard(user, activeBookingCount, latestBooking)
+        dashboard: buildSellerDashboard(user, activeBookingCount, latestBooking, latestRepairReport, latestAnnouncement)
     });
 });
 

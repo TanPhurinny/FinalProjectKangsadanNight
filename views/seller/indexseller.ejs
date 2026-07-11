@@ -28,15 +28,31 @@
       </header>
 
       <section class="shop-hero mb-4">
-        <div class="shop-cover" style="background-image: linear-gradient(100deg, rgba(20,60,70,.65), rgba(20,60,70,.18)), url('<%= dashboard.coverImage %>');">
+        <div class="shop-cover">
+          <div class="shop-cover__placeholder">
+            <i class="bi bi-shop"></i>
+          </div>
+          <% if (dashboard.coverImage) { %>
+            <img
+              src="<%= dashboard.coverImage %>"
+              alt=""
+              class="shop-cover__img"
+              onerror="this.remove()"
+            >
+          <% } %>
+          <div class="shop-cover__overlay"></div>
           <div class="cover-badge"><i class="bi bi-geo-alt-fill"></i> <%= dashboard.zoneLabel %></div>
         </div>
         <div class="shop-hero-body">
           <div class="shop-logo">
+            <span class="shop-logo__fallback"><%= dashboard.displayLetter %></span>
             <% if (dashboard.productImage) { %>
-              <img src="<%= dashboard.productImage %>" alt="<%= dashboard.shopName %>">
-            <% } else { %>
-              <span><%= dashboard.displayLetter %></span>
+              <img
+                src="<%= dashboard.productImage %>"
+                alt="<%= dashboard.shopName %>"
+                class="shop-logo__img"
+                onerror="this.remove()"
+              >
             <% } %>
           </div>
 
@@ -61,33 +77,73 @@
         </div>
       </section>
 
-      <section class="row g-4 mb-4">
-        <div class="col-md-6 col-xl-3">
+      <% if (dashboard.latestAnnouncement) { %>
+        <section class="announcement-banner mb-4">
+          <div class="announcement-banner__icon"><i class="bi bi-megaphone-fill"></i></div>
+          <div class="announcement-banner__body">
+            <p class="announcement-banner__eyebrow">
+              ประกาศล่าสุดสำหรับผู้ขาย · <%= dashboard.latestAnnouncement.category %> · <%= dashboard.latestAnnouncement.createdAt %>
+            </p>
+            <h3 class="announcement-banner__title"><%= dashboard.latestAnnouncement.title %></h3>
+            <p class="announcement-banner__content"><%= dashboard.latestAnnouncement.content %></p>
+          </div>
+        </section>
+      <% } %>
+
+      <section class="mb-4">
+        <article class="info-card">
+          <div class="info-card__head">
+            <h2>การดำเนินการด่วน</h2>
+          </div>
+
+          <div class="quick-action-grid">
+            <a href="/select-zone" class="quick-action-card">
+              <i class="bi bi-map"></i>
+              <span>เลือกโซน</span>
+            </a>
+            <a href="/booking-status" class="quick-action-card">
+              <i class="bi bi-journal-check"></i>
+              <span>สถานะการจอง</span>
+            </a>
+            <a href="/repair" class="quick-action-card">
+              <i class="bi bi-wrench-adjustable-circle"></i>
+              <span>แจ้งซ่อม</span>
+            </a>
+          </div>
+
+          <div class="quick-action-footer">
+            <a href="/logout" class="logout-link-subtle" onclick="return confirm('ยืนยันออกจากระบบใช่หรือไม่?');">
+              <i class="bi bi-box-arrow-right"></i>
+              <span>ออกจากระบบ</span>
+            </a>
+          </div>
+        </article>
+      </section>
+
+      <section class="row g-3 g-md-4 mb-4">
+        <div class="col-6 col-xl-4">
           <article class="stat-card">
             <div class="stat-icon stat-icon--primary"><i class="bi bi-shop"></i></div>
             <h3 class="stat-value"><%= dashboard.activeBookingCount %></h3>
-            <p class="stat-label">จำนวนการจองแผงที่กำลังดำเนินการ</p>
+            <p class="stat-label">การจองที่กำลังดำเนินการ</p>
           </article>
         </div>
-        <div class="col-md-6 col-xl-3">
+        <div class="col-6 col-xl-4">
           <article class="stat-card">
-            <div class="stat-icon stat-icon--success"><i class="bi bi-grid-1x2"></i></div>
-            <h3 class="stat-value stat-value--text"><%= dashboard.productType %></h3>
-            <p class="stat-label">ประเภทร้านค้าที่ผูกกับบัญชีผู้ขาย</p>
+            <div class="stat-icon stat-icon--success"><i class="bi bi-cash-coin"></i></div>
+            <h3 class="stat-value stat-value--text">
+              <%= dashboard.latestBooking ? Number(dashboard.latestBooking.grandTotal || 0).toLocaleString('th-TH') + ' บาท' : '-' %>
+            </h3>
+            <p class="stat-label">ยอดชำระการจองล่าสุด</p>
           </article>
         </div>
-        <div class="col-md-6 col-xl-3">
+        <div class="col-12 col-xl-4">
           <article class="stat-card">
-            <div class="stat-icon stat-icon--warning"><i class="bi bi-person-vcard"></i></div>
-            <h3 class="stat-value stat-value--text"><%= dashboard.sellerTier %></h3>
-            <p class="stat-label">ระดับร้านค้าตามข้อมูลตัวอย่างในระบบ</p>
-          </article>
-        </div>
-        <div class="col-md-6 col-xl-3">
-          <article class="stat-card">
-            <div class="stat-icon stat-icon--danger"><i class="bi bi-telephone"></i></div>
-            <h3 class="stat-value stat-value--text"><%= dashboard.phoneNumber %></h3>
-            <p class="stat-label">เบอร์โทรศัพท์ติดต่อของผู้ขาย</p>
+            <div class="stat-icon <%= dashboard.isVerified ? 'stat-icon--success' : 'stat-icon--warning' %>">
+              <i class="bi <%= dashboard.isVerified ? 'bi-patch-check-fill' : 'bi-hourglass-split' %>"></i>
+            </div>
+            <h3 class="stat-value stat-value--text"><%= dashboard.isVerified ? 'ยืนยันแล้ว' : 'รอตรวจสอบ' %></h3>
+            <p class="stat-label">สถานะยืนยันตัวตนร้านค้า</p>
           </article>
         </div>
       </section>
@@ -138,7 +194,7 @@
         </div>
 
         <div class="col-lg-5">
-          <article class="info-card mb-4">
+          <article class="info-card">
             <div class="info-card__head">
               <h2>ข้อมูลบัญชีผู้ขาย</h2>
             </div>
@@ -162,39 +218,19 @@
               </div>
             </dl>
           </article>
-
-          <article class="info-card">
-            <div class="info-card__head">
-              <h2>การดำเนินการด่วน</h2>
-            </div>
-
-            <div class="quick-action-grid">
-              <a href="/select-zone" class="quick-action-card">
-                <i class="bi bi-map"></i>
-                <span>เลือกโซน</span>
-              </a>
-              <a href="/booking-status" class="quick-action-card">
-                <i class="bi bi-journal-check"></i>
-                <span>สถานะการจอง</span>
-              </a>
-              <a href="/repair" class="quick-action-card">
-                <i class="bi bi-wrench-adjustable-circle"></i>
-                <span>แจ้งซ่อม</span>
-              </a>
-              <a href="/logout" class="quick-action-card quick-action-card--danger">
-                <i class="bi bi-box-arrow-right"></i>
-                <span>ออกจากระบบ</span>
-              </a>
-            </div>
-          </article>
         </div>
       </section>
 
       <section class="row g-4 mt-1">
-        <div class="col-12">
+        <div class="col-lg-8">
           <article class="booking-card">
             <div class="info-card__head">
               <h2>การจองล่าสุด</h2>
+              <% if (dashboard.latestBooking) { %>
+                <span class="status-pill <%= dashboard.latestBooking.statusClass %>">
+                  <i class="bi bi-record-circle-fill"></i> <%= dashboard.latestBooking.statusText %>
+                </span>
+              <% } %>
             </div>
 
             <% if (dashboard.latestBooking && dashboard.latestBooking.slot) { %>
@@ -202,24 +238,73 @@
                 <div>
                   <p class="booking-card__eyebrow">แผงล่าสุด</p>
                   <h3 class="booking-card__title"><%= dashboard.latestBooking.slot.slotNumber %></h3>
+                  <p class="booking-card__sub">จองเมื่อ <%= dashboard.latestBooking.createdAt %></p>
                 </div>
                 <div class="booking-card__meta">
                   <div>
                     <span class="booking-card__label">โซน</span>
-                    <strong><%= dashboard.latestBooking.slot.zone %></strong>
+                    <strong><%= dashboard.latestBooking.selectedZoneLabel || dashboard.latestBooking.slot.zone %></strong>
                   </div>
                   <div>
-                    <span class="booking-card__label">สถานะ</span>
-                    <strong><%= dashboard.latestBooking.status %></strong>
+                    <span class="booking-card__label">จำนวนแผง</span>
+                    <strong><%= dashboard.latestBooking.stallCount %> แผง</strong>
+                  </div>
+                  <% if (dashboard.latestBooking.rentalStartDate) { %>
+                    <div>
+                      <span class="booking-card__label">ระยะเวลาเช่า</span>
+                      <strong><%= dashboard.latestBooking.rentalStartDate %> - <%= dashboard.latestBooking.rentalEndDate %></strong>
+                    </div>
+                  <% } %>
+                  <div>
+                    <span class="booking-card__label">ไฟฟ้า/เครื่องใช้ไฟฟ้า</span>
+                    <strong>
+                      <%= dashboard.latestBooking.lightEnabled ? 'มีไฟส่องสว่าง' : 'ไม่มีไฟส่องสว่าง' %>
+                      <% if ((dashboard.latestBooking.smallApplianceCount || 0) + (dashboard.latestBooking.largeApplianceCount || 0) > 0) { %>
+                        · เครื่องใช้ไฟฟ้า <%= (dashboard.latestBooking.smallApplianceCount || 0) + (dashboard.latestBooking.largeApplianceCount || 0) %> ชิ้น
+                      <% } %>
+                    </strong>
                   </div>
                   <div>
-                    <span class="booking-card__label">ราคา</span>
-                    <strong><%= dashboard.latestBooking.slot.price %> บาท</strong>
+                    <span class="booking-card__label">ยอดชำระรวม</span>
+                    <strong><%= Number(dashboard.latestBooking.grandTotal || dashboard.latestBooking.slot.price || 0).toLocaleString('th-TH') %> บาท</strong>
                   </div>
                 </div>
               </div>
             <% } else { %>
-              <p class="empty-state">ยังไม่มีประวัติการจองแผงในระบบ</p>
+              <p class="empty-state">
+                <i class="bi bi-inbox"></i>
+                ยังไม่มีประวัติการจองแผงในระบบ
+                <a href="/select-zone" class="empty-state__cta">เริ่มจองแผงเลย</a>
+              </p>
+            <% } %>
+          </article>
+        </div>
+
+        <div class="col-lg-4">
+          <article class="repair-card h-100">
+            <div class="info-card__head">
+              <h2>แจ้งซ่อมล่าสุด</h2>
+              <% if (dashboard.latestRepairReport) { %>
+                <span class="status-pill <%= dashboard.latestRepairReport.statusClass %>">
+                  <i class="bi bi-record-circle-fill"></i> <%= dashboard.latestRepairReport.statusText %>
+                </span>
+              <% } %>
+            </div>
+
+            <% if (dashboard.latestRepairReport) { %>
+              <p class="repair-card__category"><i class="bi bi-tools"></i> <%= dashboard.latestRepairReport.category %></p>
+              <p class="repair-card__desc"><%= dashboard.latestRepairReport.description %></p>
+              <div class="repair-card__meta">
+                <span><i class="bi bi-geo-alt"></i> <%= dashboard.latestRepairReport.location %></span>
+                <span><i class="bi bi-calendar3"></i> <%= dashboard.latestRepairReport.createdAt %></span>
+              </div>
+              <a href="/repair" class="repair-card__link">ดูรายการแจ้งซ่อมทั้งหมด <i class="bi bi-arrow-right"></i></a>
+            <% } else { %>
+              <p class="empty-state">
+                <i class="bi bi-check2-circle"></i>
+                ยังไม่มีการแจ้งซ่อม
+                <a href="/repair" class="empty-state__cta">แจ้งซ่อมตอนนี้</a>
+              </p>
             <% } %>
           </article>
         </div>
