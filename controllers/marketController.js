@@ -81,25 +81,85 @@ exports.getDashboardPage = async (req, res) => {
     }
 };
 
-// --- แก้ไขจุดนี้: ฟังก์ชันสำหรับหน้าผังแผงค้า (Slots) ---
+function toThaiDateShort(value) {
+    if (!value) return '-';
+    try {
+        return new Date(value).toLocaleDateString('th-TH', {
+            day: '2-digit',
+            month: 'short',
+            year: '2-digit'
+        });
+    } catch (_) {
+        return '-';
+    }
+}
+
+// หน้าผังแผงค้า: ดึงผัง (Zone/ZoneRow/Stall) และข้อมูลผู้จองจริงจากคำขอที่อนุมัติแล้ว
+// (BookingRequest.assignedStallCode คือ field ที่ผูกแผงจริงตอนแอดมินอนุมัติที่ /admin/booking-stall)
 exports.getSlotsPage = async (req, res) => {
     try {
-        const slots = await prisma.slot.findMany({ orderBy: { slotNumber: 'asc' } });
+        const zoneRecords = await prisma.zone.findMany({
+            orderBy: { displayOrder: 'asc' },
+            include: {
+                rows: {
+                    orderBy: { displayOrder: 'asc' },
+                    include: {
+                        stalls: { orderBy: { displayOrder: 'asc' } }
+                    }
+                }
+            }
+        });
 
-        // แปลง Array เป็น Object เพื่อให้ EJS เรียกใช้ slotsData[id] ได้
-        const slotsData = {};
-        slots.forEach(slot => {
-            slotsData[slot.slotNumber] = {
-                id: slot.id,
-                isAvailable: slot.isAvailable,
-                zone: slot.zone
+        const approvedRequests = await prisma.bookingRequest.findMany({
+            where: { status: 'APPROVED', assignedStallCode: { not: null } },
+            select: {
+                productName: true,
+                description: true,
+                sellerName: true,
+                phone: true,
+                zone: true,
+                assignedStallCode: true,
+                createdAt: true
+            }
+        });
+
+        const bookingByStallCode = {};
+        approvedRequests.forEach((request) => {
+            const stallCode = String(request.assignedStallCode || '').trim().toUpperCase();
+            if (!stallCode) return;
+
+            bookingByStallCode[stallCode] = {
+                shop: request.productName || '-',
+                product: request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-',
+                name: request.sellerName || '-',
+                phone: request.phone || '-',
+                date: toThaiDateShort(request.createdAt),
+                note: request.description || '-'
             };
         });
 
-        // ส่งชื่อตัวแปร slotsData ไปให้ตรงกับที่ EJS รอรับ
-        res.render('admin/slots', { 
-            slotsData, 
-            user: req.user 
+        const zoneCategoryLabel = {
+            FASHION: 'แฟชั่น',
+            FOOD: 'อาหาร',
+            EVENT_BOOTH: 'กิจกรรม/บูธพิเศษ'
+        };
+
+        const zonesData = zoneRecords.map((zone) => ({
+            code: zone.code,
+            description: zoneCategoryLabel[zone.productCategory] || 'พื้นที่เอนกประสงค์',
+            columns: zone.rows.map((row) => ({
+                rowCode: row.rowCode,
+                stalls: row.stalls.map((stall) => ({
+                    code: stall.stallCode,
+                    status: stall.status
+                }))
+            }))
+        }));
+
+        res.render('admin/slots', {
+            zonesData,
+            bookingByStallCode,
+            user: req.user
         });
     } catch (error) {
         console.error("Slots Page Error:", error);

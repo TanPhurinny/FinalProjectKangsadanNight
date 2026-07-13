@@ -23,6 +23,15 @@
     <body class="bg-light">
         <%- include('../partials/navbar') %>
 
+        <%
+        const zonesList = locals.zonesData || [];
+        const zoneByCode = zonesList.reduce((acc, zone) => {
+            acc[zone.code] = zone;
+            return acc;
+        }, {});
+        const otherZones = zonesList.filter((zone) => !['A', 'B', 'C', 'D', 'E', 'F'].includes(zone.code));
+        %>
+
         <div class="slots-page">
 
             <!-- TOP BAR -->
@@ -82,37 +91,37 @@
                                 onclick="openZone('E')">
                                 <div class="zone-label"><div class="z-title">โซน
                                         E</div><div
-                                        class="z-sub">แฟชั่น</div></div>
+                                        class="z-sub"><%= zoneByCode.E ? zoneByCode.E.description : '-' %></div></div>
                             </div>
                             <div class="zone-block" id="zone-D"
                                 onclick="openZone('D')">
                                 <div class="zone-label"><div class="z-title">โซน
                                         D</div><div
-                                        class="z-sub">ฟู้ดทรัค</div></div>
+                                        class="z-sub"><%= zoneByCode.D ? zoneByCode.D.description : '-' %></div></div>
                             </div>
                             <div class="zone-block" id="zone-A"
                                 onclick="openZone('A')">
                                 <div class="zone-label"><div class="z-title">โซน
                                         A</div><div
-                                        class="z-sub">แฟชั่นและอาหาร</div></div>
+                                        class="z-sub"><%= zoneByCode.A ? zoneByCode.A.description : '-' %></div></div>
                             </div>
                             <div class="zone-block" id="zone-F"
                                 onclick="openZone('F')">
                                 <div class="zone-label"><div class="z-title">โซน
                                         F</div><div
-                                        class="z-sub">อาหาร</div></div>
+                                        class="z-sub"><%= zoneByCode.F ? zoneByCode.F.description : '-' %></div></div>
                             </div>
                             <div class="zone-block" id="zone-B"
                                 onclick="openZone('B')">
                                 <div class="zone-label"><div class="z-title">โซน
                                         B</div><div
-                                        class="z-sub">อาหาร</div></div>
+                                        class="z-sub"><%= zoneByCode.B ? zoneByCode.B.description : '-' %></div></div>
                             </div>
                             <div class="zone-block" id="zone-C"
                                 onclick="openZone('C')">
                                 <div class="zone-label"><div class="z-title">โซน
                                         C</div><div
-                                        class="z-sub">แฟชั่น</div></div>
+                                        class="z-sub"><%= zoneByCode.C ? zoneByCode.C.description : '-' %></div></div>
                             </div>
                             <div class="facility-btns">
                                 <button class="btn-facility"><i
@@ -134,6 +143,17 @@
                         <span class="sign-inout">เข้า-ออก</span>
                     </div>
                 </div>
+
+                <% if (otherZones.length) { %>
+                <div class="other-zones-bar">
+                    <span class="tag-lbl">โซนอื่นๆ:</span>
+                    <% otherZones.forEach((zone) => { %>
+                    <button type="button" class="zone-chip"
+                        onclick="openZone('<%= zone.code %>')">โซน <%= zone.code
+                        %> <small>(<%= zone.description %>)</small></button>
+                    <% }) %>
+                </div>
+                <% } %>
             </div>
 
             <!-- BACKDROP -->
@@ -166,6 +186,8 @@
                             style="background:#fff;"></div>ว่าง</div>
                     <div class="leg"><div class="leg-box"
                             style="background:#9ca3af;border-color:#555;"></div>จองแล้ว</div>
+                    <div class="leg"><div class="leg-box"
+                            style="background:#f2aa31;border-color:#c9860f;"></div>ซ่อมบำรุง</div>
                     <div class="leg"><div class="leg-box"
                             style="background:#3BB8D4;border-color:#2a9ab5;"></div>กำลังดู</div>
                     <div class="leg"><div class="leg-box"
@@ -200,6 +222,10 @@
 
         </div>
 
+        <script>
+  window.ZONES_DATA = <%- JSON.stringify(zoneByCode).replace(/</g, '\\u003c') %>;
+  window.BOOKING_BY_STALL = <%- JSON.stringify(locals.bookingByStallCode || {}).replace(/</g, '\\u003c') %>;
+</script>
         <script
             src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
         <script src="/js/admin/slots.js"></script>

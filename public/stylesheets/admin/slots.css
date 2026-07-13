@@ -670,6 +670,46 @@
     background: #6b7280;
 }
 
+.stall-cell.maintenance {
+    background: #f2aa31;
+    color: #fff;
+}
+
+.stall-cell.maintenance:hover {
+    background: #c9860f;
+}
+
+.other-zones-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 12px 4px 0;
+}
+
+.zone-chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+    transition: all .15s;
+    font-family: 'Sarabun', sans-serif;
+}
+
+.zone-chip:hover {
+    border-color: var(--primary);
+    color: var(--primary-dark);
+}
+
+.zone-chip small {
+    font-weight: 400;
+    opacity: .75;
+}
+
 .stall-cell.selected {
     background: var(--primary) !important;
     color: #fff;

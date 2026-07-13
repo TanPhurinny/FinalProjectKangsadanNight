@@ -1,51 +1,14 @@
 /* Slots page interactions */
-const ZONES = {
-    A: {
-        name: 'โซน A',
-        sub: 'แฟชั่น / อาหาร',
-        cols: [['A1', 19], ['A2', 19], ['A3', 19], ['A4', 21], ['A5', 21], ['A6', 22], ['A7', 22], ['A8', 23], ['A9', 23]],
-    },
-    B: {
-        name: 'โซน B',
-        sub: 'อาหาร',
-        cols: [['B1', 15], ['B2', 15], ['B3', 15], ['B4', 15], ['B5', 15], ['B6', 15], ['B7', 15], ['B8', 10], ['B9', 10]],
-    },
-    C: { name: 'โซน C', sub: 'แฟชั่น', cols: [['C1', 12]] },
-    D: { name: 'โซน D', sub: 'ฟู้ดทรัค', cols: [['D1', 6], ['D2', 6]] },
-    E: { name: 'โซน E', sub: 'แฟชั่น', cols: [['E1', 4]] },
-    F: {
-        name: 'โซน F',
-        sub: 'อาหาร',
-        cols: [['F1', 15], ['F2', 15], ['F3', 15], ['F4', 15], ['F5', 15], ['F6', 15], ['F7', 15]],
-    },
-};
-
-const BOOKED = {
-    A205: { shop: 'ร้านเสื้อผ้าวินเทจ', product: 'เสื้อผ้า', name: 'สมชาย รักดี', phone: '082-333-9999', date: '15 ต.ค. 68', note: 'ต้องการไฟเพิ่ม' },
-    A306: { shop: 'แฟชั่นเกาหลีสยาม', product: 'เสื้อผ้า', name: 'มาลี สวยงาม', phone: '089-111-2233', date: '14 ต.ค. 68', note: '-' },
-    A307: { shop: 'ร้านกระเป๋าหนัง', product: 'กระเป๋า', name: 'ปรีชา ค้าดี', phone: '085-000-1122', date: '12 ต.ค. 68', note: '-' },
-    A104: { shop: 'หมูปิ้งป้าแดง', product: 'หมูปิ้ง', name: 'แดง มีสุข', phone: '081-999-3344', date: '16 ต.ค. 68', note: '-' },
-    A502: { shop: 'เสื้อยืดสกรีน', product: 'เสื้อผ้า', name: 'ก้อง อินดี้', phone: '091-555-7788', date: '15 ต.ค. 68', note: '-' },
-    B205: { shop: 'ของทอดสดใหม่', product: 'ของทอด', name: 'กนิษฐา ขยัน', phone: '089-321-9876', date: '13 ต.ค. 68', note: '-' },
-    B306: { shop: 'ขนมไทยโบราณ', product: 'ขนม', name: 'สุนีย์ หวานใจ', phone: '082-100-2020', date: '11 ต.ค. 68', note: '-' },
-    B507: { shop: 'ก๋วยเตี๋ยวเรือป้าลี', product: 'ก๋วยเตี๋ยว', name: 'ลี ขายดี', phone: '083-456-7890', date: '15 ต.ค. 68', note: '-' },
-    B410: { shop: 'ผัดไทยลุงแสง', product: 'ผัดไทย', name: 'แสง มีฝีมือ', phone: '087-000-5566', date: '14 ต.ค. 68', note: '-' },
-    C101: { shop: 'เครื่องดื่มชาไทย', product: 'เครื่องดื่ม', name: 'วิชัย ธุรกิจ', phone: '083-500-6060', date: '16 ต.ค. 68', note: '-' },
-    C106: { shop: 'น้ำผลไม้ปั่น', product: 'เครื่องดื่ม', name: 'สิริ แก้วสวย', phone: '088-123-4567', date: '14 ต.ค. 68', note: '-' },
-    D101: { shop: 'Burger Truck BKK', product: 'ฟู้ดทรัค', name: 'เอกพล คนขยัน', phone: '089-987-6543', date: '10 ต.ค. 68', note: 'ใช้ไฟเยอะ มีตู้แช่' },
-    D204: { shop: 'ไก่ย่างธัญพืช', product: 'ไก่ย่าง', name: 'ประวิทย์ ดีมาก', phone: '084-777-5533', date: '15 ต.ค. 68', note: '-' },
-    F201: { shop: 'หมูปิ้งเจ๊จู', product: 'หมูปิ้ง', name: 'สมหญิง ใจดี', phone: '081-234-5678', date: '14 ต.ค. 68', note: 'ใกล้ทางเดินหลัก' },
-    F305: { shop: 'ผัดไทยคุณแม่', product: 'ผัดไทย', name: 'วาสนา มีสุข', phone: '086-777-8899', date: '15 ต.ค. 68', note: '-' },
-    F406: { shop: 'ก๋วยเตี๋ยวเรือโบราณ', product: 'ก๋วยเตี๋ยว', name: 'ทวีศักดิ์ ดีงาม', phone: '087-654-3210', date: '10 ต.ค. 68', note: '-' },
-    F512: { shop: 'ของทอดกรอบทอง', product: 'ของทอด', name: 'อัมพร คีรี', phone: '085-999-1234', date: '12 ต.ค. 68', note: '-' },
-    E102: { shop: 'กระโปรงย้อมสี', product: 'เสื้อผ้า', name: 'พิม สุดชิค', phone: '092-333-5555', date: '16 ต.ค. 68', note: '-' },
-};
+const ZONES_DATA = window.ZONES_DATA || {};
+const BOOKING_BY_STALL = window.BOOKING_BY_STALL || {};
 
 let activeZone = null;
 let selectedStall = null;
 let currentQuery = '';
 
 function openZone(z) {
+    if (!ZONES_DATA[z]) return;
+
     activeZone = z;
     selectedStall = null;
     hideInfo();
@@ -60,9 +23,9 @@ function openZone(z) {
         }
     });
 
-    const zd = ZONES[z];
-    document.getElementById('drawerTitle').textContent = zd.name;
-    document.getElementById('drawerSub').textContent = zd.sub;
+    const zd = ZONES_DATA[z];
+    document.getElementById('drawerTitle').textContent = `โซน ${z}`;
+    document.getElementById('drawerSub').textContent = zd.description || '';
     document.getElementById('zonePill').className = `zone-pill pill-${z}`;
     document.getElementById('zoneDot').className = `zone-dot dot-${z}`;
 
@@ -85,35 +48,45 @@ function renderGrid(z) {
     grid.innerHTML = '';
     let total = 0;
     let booked = 0;
+    let maintenance = 0;
 
-    ZONES[z].cols.forEach(([prefix, count]) => {
+    (ZONES_DATA[z].columns || []).forEach((column) => {
         const wrap = document.createElement('div');
         wrap.className = 'col-wrap';
 
         const lbl = document.createElement('div');
         lbl.className = 'col-lbl';
-        lbl.textContent = prefix;
+        lbl.textContent = column.rowCode;
         wrap.appendChild(lbl);
 
         const col = document.createElement('div');
         col.className = 'stall-col';
-        total += count;
 
-        for (let i = 1; i <= count; i++) {
-            const id = prefix + i.toString().padStart(2, '0');
+        column.stalls.forEach((stall) => {
+            const id = stall.code;
+            total += 1;
             const cell = document.createElement('div');
             cell.className = 'stall-cell';
             cell.textContent = id;
             cell.dataset.stall = id;
 
-            const bk = BOOKED[id];
-            if (bk) {
+            const bk = BOOKING_BY_STALL[id];
+
+            if (stall.status === 'BOOKED') {
                 booked += 1;
                 cell.classList.add('booked');
-                cell.title = bk.shop;
+                if (bk) cell.title = bk.shop;
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     showInfo(id);
+                });
+            } else if (stall.status === 'MAINTENANCE') {
+                maintenance += 1;
+                cell.classList.add('maintenance');
+                cell.title = 'อยู่ระหว่างซ่อมบำรุง';
+                cell.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectEmpty(id, cell);
                 });
             } else {
                 cell.addEventListener('click', (e) => {
@@ -125,13 +98,13 @@ function renderGrid(z) {
             if (id === selectedStall) cell.classList.add('selected');
             if (currentQuery) tryHighlight(cell, id);
             col.appendChild(cell);
-        }
+        });
 
         wrap.appendChild(col);
         grid.appendChild(wrap);
     });
 
-    document.getElementById('drawerStats').innerHTML = `ทั้งหมด <b>${total}</b> ล็อก &nbsp;·&nbsp; จอง <b>${booked}</b> &nbsp;·&nbsp; ว่าง <b>${total - booked}</b>`;
+    document.getElementById('drawerStats').innerHTML = `ทั้งหมด <b>${total}</b> ล็อก &nbsp;·&nbsp; จอง <b>${booked}</b> &nbsp;·&nbsp; ซ่อมบำรุง <b>${maintenance}</b> &nbsp;·&nbsp; ว่าง <b>${total - booked - maintenance}</b>`;
 }
 
 function selectEmpty(id, cell) {
@@ -142,7 +115,7 @@ function selectEmpty(id, cell) {
 }
 
 function showInfo(id) {
-    const d = BOOKED[id];
+    const d = BOOKING_BY_STALL[id];
     if (!d) return;
 
     document.querySelectorAll('.stall-cell.selected').forEach((c) => c.classList.remove('selected'));
@@ -168,7 +141,7 @@ function hideInfo() {
 }
 
 function tryHighlight(cell, id) {
-    const d = BOOKED[id];
+    const d = BOOKING_BY_STALL[id];
     if (!d) return;
     if ((d.shop + d.product + d.name + d.note).toLowerCase().includes(currentQuery.toLowerCase())) {
         cell.classList.add('s-match');
@@ -194,10 +167,11 @@ function doSearch(q) {
     let total = 0;
     const mz = new Set();
 
-    Object.entries(BOOKED).forEach(([id, d]) => {
+    Object.entries(BOOKING_BY_STALL).forEach(([id, d]) => {
         if ((d.shop + d.product + d.name + d.note).toLowerCase().includes(currentQuery.toLowerCase())) {
             total += 1;
-            mz.add(id.match(/^[A-Z]+/)[0]);
+            const zoneMatch = id.match(/^[A-Z]+/);
+            if (zoneMatch) mz.add(zoneMatch[0]);
         }
     });
 
