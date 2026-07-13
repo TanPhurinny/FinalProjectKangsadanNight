@@ -161,18 +161,24 @@ exports.getSlotsPage = async (req, res) => {
         // จึงรวมเป็นแผงแรกของคอลัมน์นั้นๆ แทนการแสดงเป็นคอลัมน์เดี่ยวๆ แยกต่างหาก
         const zoneBHeaderEntry = zonesData.find((zone) => zone.code === 'B');
         if (zoneBHeaderEntry) {
+            // B299 กับ B300 เรียงต่อกันเป็นแผงหัวแถวชุดเดียวกัน วางไว้เหนือคอลัมน์ B3 ทั้งคู่
+            // (ไม่ได้แยกกันไปคนละคอลัมน์กับ B4)
             const headerMerges = [
                 ['B100', 'B1'],
                 ['B200', 'B2'],
-                ['B299', 'B3'],
-                ['B300', 'B4']
+                [['B299', 'B300'], 'B3']
             ];
-            headerMerges.forEach(([headerRowCode, targetRowCode]) => {
-                const headerIndex = zoneBHeaderEntry.columns.findIndex((column) => column.rowCode === headerRowCode);
-                if (headerIndex === -1) return;
-                const [headerColumn] = zoneBHeaderEntry.columns.splice(headerIndex, 1);
+            headerMerges.forEach(([headerRowCodes, targetRowCode]) => {
+                const codes = Array.isArray(headerRowCodes) ? headerRowCodes : [headerRowCodes];
+                const headerStalls = [];
+                codes.forEach((headerRowCode) => {
+                    const headerIndex = zoneBHeaderEntry.columns.findIndex((column) => column.rowCode === headerRowCode);
+                    if (headerIndex === -1) return;
+                    const [headerColumn] = zoneBHeaderEntry.columns.splice(headerIndex, 1);
+                    headerStalls.push(...headerColumn.stalls);
+                });
                 const targetColumn = zoneBHeaderEntry.columns.find((column) => column.rowCode === targetRowCode);
-                if (targetColumn) targetColumn.stalls.unshift(...headerColumn.stalls);
+                if (targetColumn && headerStalls.length) targetColumn.stalls.unshift(...headerStalls);
             });
         }
 

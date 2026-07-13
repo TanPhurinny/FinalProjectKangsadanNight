@@ -374,11 +374,11 @@
 /* ตำแหน่งอิงจากผังจริง: A/F/B เป็นบล็อกใหญ่สูงเกือบเต็มผัง, E/D/X เป็นบล็อกเล็กวางอยู่แถวบนสุด
    เหนือ F และ B ตามลำดับ, C เป็นแถบยาวอยู่ใต้ A เท่านั้น (ไม่ได้กว้างเต็มผัง) */
 #zone-A { top: 8%; left: 2%; width: 23%; height: 78%; }
-#zone-E { top: 8%; left: 27%; width: 17%; height: 8%; }
-#zone-F { top: 18%; left: 27%; width: 18%; height: 68%; }
-#zone-D { top: 8%; left: 47%; width: 17%; height: 8%; }
-#zone-X { top: 8%; left: 66%; width: 8%; height: 8%; }
-#zone-B { top: 18%; left: 47%; width: 49%; height: 68%; }
+#zone-E { top: 8%; left: 27%; width: 17%; height: 10%; }
+#zone-F { top: 20%; left: 27%; width: 18%; height: 66%; }
+#zone-D { top: 8%; left: 47%; width: 17%; height: 10%; }
+#zone-X { top: 8%; left: 64%; width: 15%; height: 10%; }
+#zone-B { top: 20%; left: 47%; width: 49%; height: 66%; }
 #zone-C { top: 88%; left: 2%; width: 23%; height: 9%; }
 
 #zone-E .z-title, #zone-D .z-title, #zone-X .z-title, #zone-C .z-title { font-size: 15px; }
@@ -387,17 +387,17 @@
 
 .facility-btns {
     position: absolute;
-    bottom: 17%;
-    right: 1%;
+    bottom: 3%;
+    left: 58%;
+    transform: translateX(-50%);
     display: flex;
-    flex-direction: column;
-    gap: 5px;
+    flex-direction: row;
+    gap: 8px;
     z-index: 20;
 }
 
 .btn-facility {
-    background: var(--stripe1);
-    border: 1px solid #d4a000;
+    color: #1a2330;
     font-family: 'Sarabun', sans-serif;
     font-weight: 600;
     font-size: 11px;
@@ -410,7 +410,30 @@
     white-space: nowrap;
 }
 
-.btn-facility:hover {
+.btn-facility-trash {
+    background: #A7D8A0;
+    border: 1px solid #5a9e50;
+}
+
+.btn-facility-trash:hover {
+    background: #8fca86;
+}
+
+.btn-facility-restroom {
+    background: #9FD8E8;
+    border: 1px solid #2a9ab5;
+}
+
+.btn-facility-restroom:hover {
+    background: #7fcadf;
+}
+
+.btn-facility-office {
+    background: var(--stripe1);
+    border: 1px solid #d4a000;
+}
+
+.btn-facility-office:hover {
     background: #e0b000;
 }
 
