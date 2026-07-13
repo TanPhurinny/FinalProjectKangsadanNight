@@ -173,6 +173,35 @@ exports.getSlotsPage = async (req, res) => {
             zonesData = zonesData.filter((zone) => zone.code !== 'T');
         }
 
+        // เว้นช่องว่างระหว่างคอลัมน์ให้จับกลุ่มเป็นคู่/บล็อกเหมือนผังจริง (แค่ผลด้านการแสดงผล ไม่กระทบข้อมูล)
+        const groupEndByZone = {
+            A: ['A1', 'A3', 'A5', 'A7'],
+            F: ['F2', 'F4'],
+            B: ['B2b', 'B4', 'B6']
+        };
+        zonesData.forEach((zone) => {
+            const groupEnds = groupEndByZone[zone.code];
+            if (!groupEnds) return;
+            zone.columns.forEach((column) => {
+                if (groupEnds.includes(column.rowCode)) column.groupEnd = true;
+            });
+        });
+
+        // โซน F คอลัมน์ F1/F2 ในผังจริงมีแค่ 17 แผง แต่มีช่องว่าง (x) ต่อท้ายให้สูงเท่าคอลัมน์ F3/F4 (34)
+        // (F5/F6 สูงกว่านั้นอีก 36 แผง แต่เป็นความสูงจริง ไม่ใช่ช่องว่าง จึงไม่ใช้เป็นเกณฑ์)
+        const zoneFEntry = zonesData.find((zone) => zone.code === 'F');
+        if (zoneFEntry) {
+            const referenceColumn = zoneFEntry.columns.find((column) => column.rowCode === 'F3');
+            const referenceLength = referenceColumn ? referenceColumn.stalls.length : 0;
+            zoneFEntry.columns.forEach((column) => {
+                if (column.rowCode !== 'F1' && column.rowCode !== 'F2') return;
+                const missing = referenceLength - column.stalls.length;
+                for (let i = 0; i < missing; i += 1) {
+                    column.stalls.push({ code: `${column.rowCode}-placeholder-${i}`, status: 'PLACEHOLDER' });
+                }
+            });
+        }
+
         res.render('admin/slots', {
             zonesData,
             bookingByStallCode,

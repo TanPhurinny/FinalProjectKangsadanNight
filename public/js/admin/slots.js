@@ -43,16 +43,101 @@ function closeZone() {
     document.getElementById('backdrop').classList.remove('show');
 }
 
+// โซน D ในผังจริงเป็นรูปตัว L (แถวบน D201-D208 8 ช่อง, ต่อลงมาแนวตั้ง D209-D210 ใต้ D208,
+// และมีกลุ่ม D211-D212 แยกอยู่ระดับล่างซ้าย) เก็บตำแหน่งจริงไว้ตรงนี้เพราะฐานข้อมูลไม่มีพิกัด x/y
+const ZONE_D_LAYOUT = [
+    { code: 'D201', col: 3, row: 1 }, { code: 'D202', col: 4, row: 1 },
+    { code: 'D203', col: 5, row: 1 }, { code: 'D204', col: 6, row: 1 },
+    { code: 'D205', col: 7, row: 1 }, { code: 'D206', col: 8, row: 1 },
+    { code: 'D207', col: 9, row: 1 }, { code: 'D208', col: 10, row: 1 },
+    { code: 'D211', col: 2, row: 2 }, { code: 'D212', col: 3, row: 2 },
+    { code: 'D209', col: 10, row: 2 },
+    { code: 'D210', col: 10, row: 3 }
+];
+
+function renderDZoneGrid(z, stallByCode) {
+    const grid = document.getElementById('stallGrid');
+    const layout = document.createElement('div');
+    layout.className = 'zone-d-layout';
+
+    const label = document.createElement('div');
+    label.className = 'zone-d-tag';
+    label.style.gridColumn = '1 / 2';
+    label.style.gridRow = '2 / 3';
+    label.textContent = 'D2';
+    layout.appendChild(label);
+
+    let booked = 0;
+    let maintenance = 0;
+
+    ZONE_D_LAYOUT.forEach((pos) => {
+        const stall = stallByCode[pos.code];
+        if (!stall) return;
+
+        const cell = document.createElement('div');
+        cell.className = 'stall-cell zone-d-cell';
+        cell.style.gridColumn = `${pos.col} / ${pos.col + 1}`;
+        cell.style.gridRow = `${pos.row} / ${pos.row + 1}`;
+        cell.textContent = pos.code;
+        cell.dataset.stall = pos.code;
+
+        const bk = BOOKING_BY_STALL[pos.code];
+        if (stall.status === 'BOOKED') {
+            booked += 1;
+            cell.classList.add('booked');
+            if (bk) cell.title = bk.shop;
+            cell.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showInfo(pos.code);
+            });
+        } else if (stall.status === 'MAINTENANCE') {
+            maintenance += 1;
+            cell.classList.add('maintenance');
+            cell.title = 'อยู่ระหว่างซ่อมบำรุง';
+            cell.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectEmpty(pos.code, cell);
+            });
+        } else {
+            cell.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectEmpty(pos.code, cell);
+            });
+        }
+
+        if (pos.code === selectedStall) cell.classList.add('selected');
+        if (currentQuery) tryHighlight(cell, pos.code);
+        layout.appendChild(cell);
+    });
+
+    grid.appendChild(layout);
+    document.getElementById('drawerStats').innerHTML = `ทั้งหมด <b>${ZONE_D_LAYOUT.length}</b> ล็อก &nbsp;·&nbsp; จอง <b>${booked}</b> &nbsp;·&nbsp; ซ่อมบำรุง <b>${maintenance}</b> &nbsp;·&nbsp; ว่าง <b>${ZONE_D_LAYOUT.length - booked - maintenance}</b>`;
+}
+
 function renderGrid(z) {
     const grid = document.getElementById('stallGrid');
     grid.innerHTML = '';
+
+    if (z === 'D') {
+        const stallByCode = {};
+        (ZONES_DATA[z].columns || []).forEach((column) => {
+            column.stalls.forEach((stall) => { stallByCode[stall.code] = stall; });
+        });
+        renderDZoneGrid(z, stallByCode);
+        return;
+    }
+
     let total = 0;
     let booked = 0;
     let maintenance = 0;
 
     (ZONES_DATA[z].columns || []).forEach((column) => {
+        const wrapClasses = ['col-wrap'];
+        if (column.small) wrapClasses.push('col-wrap-small');
+        if (column.groupEnd) wrapClasses.push('col-group-end');
+
         const wrap = document.createElement('div');
-        wrap.className = column.small ? 'col-wrap col-wrap-small' : 'col-wrap';
+        wrap.className = wrapClasses.join(' ');
 
         const lbl = document.createElement('div');
         lbl.className = 'col-lbl';
@@ -64,6 +149,15 @@ function renderGrid(z) {
 
         column.stalls.forEach((stall) => {
             const id = stall.code;
+
+            if (stall.status === 'PLACEHOLDER') {
+                const placeholderCell = document.createElement('div');
+                placeholderCell.className = column.small ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
+                placeholderCell.textContent = 'x';
+                col.appendChild(placeholderCell);
+                return;
+            }
+
             total += 1;
             const cell = document.createElement('div');
             cell.className = column.small ? 'stall-cell stall-cell-small' : 'stall-cell';
