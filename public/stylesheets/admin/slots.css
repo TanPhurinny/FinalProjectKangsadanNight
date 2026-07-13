@@ -621,6 +621,7 @@
     display: flex;
     gap: 14px;
     width: max-content;
+    margin: 0 auto;
 }
 
 .col-wrap {
