@@ -1,4 +1,5 @@
 const prisma = require('../config/prismaClient');
+const { buildZonesData } = require('./marketController');
 
 function normalizeZone(zone) {
     return String(zone || '').trim().toUpperCase();
@@ -29,6 +30,8 @@ function buildBookingRequestTag(requestId) {
     return `[BOOKING_REQUEST_ID:${parsed}]`;
 }
 
+// ใช้ zonesData ชุดเดียวกับหน้า /admin/slots (ผัง Zone/ZoneRow/Stall จริง ปรับให้ตรงกับ
+// ตำแหน่งทางกายภาพแล้ว) เพื่อไม่ให้ผังของสองหน้านี้เพี้ยนไปคนละแบบ
 async function buildAdminBookingStallPageData(requestId) {
     const bookingRequest = await prisma.bookingRequest.findUnique({
         where: { id: requestId }
@@ -38,57 +41,69 @@ async function buildAdminBookingStallPageData(requestId) {
         return null;
     }
 
-    const zoneRows = await prisma.zoneRow.findMany({
-        include: {
-            zone: {
-                select: {
-                    code: true,
-                    name: true
+    const zonesData = await buildZonesData();
+    const zoneByCode = zonesData.reduce((acc, zone) => {
+        acc[zone.code] = zone;
+        return acc;
+    }, {});
+
+    const bookedStalls = [];
+    zonesData.forEach((zone) => {
+        zone.columns.forEach((column) => {
+            column.stalls.forEach((stall) => {
+                if (stall.status === 'BOOKED' || stall.status === 'MAINTENANCE') {
+                    bookedStalls.push(stall.code);
                 }
-            },
-            stalls: {
-                select: {
-                    stallCode: true,
-                    isAvailable: true,
-                    status: true
-                },
-                orderBy: { displayOrder: 'asc' }
-            }
-        },
-        orderBy: [{ zoneId: 'asc' }, { displayOrder: 'asc' }]
-    });
-
-    const layoutByZone = {};
-    const allStalls = [];
-    for (const row of zoneRows) {
-        const zoneCode = normalizeZone(row.zone?.code);
-        if (!zoneCode) continue;
-
-        if (!layoutByZone[zoneCode]) {
-            layoutByZone[zoneCode] = [];
-        }
-
-        const minDisplay = row.stallStartNumber || 1;
-        const maxDisplay = row.stallEndNumber || row.stalls.length || 1;
-        const slotCount = Math.max(0, maxDisplay - minDisplay + 1);
-
-        layoutByZone[zoneCode].push([row.rowCode, slotCount, minDisplay]);
-
-        row.stalls.forEach((stall) => {
-            allStalls.push({
-                stallCode: stall.stallCode,
-                isBooked: !stall.isAvailable || String(stall.status || '').toUpperCase() !== 'AVAILABLE'
             });
         });
-    }
+    });
 
     const requestedZone = normalizeZone(bookingRequest.zone);
     const assignedStallCode = String(bookingRequest.assignedStallCode || extractAssignedStallFromDescription(bookingRequest.description) || '').trim().toUpperCase();
 
+    // ดึงชื่อร้าน/ประเภทสินค้า/รูปร้านของผู้ขายเพิ่ม เพื่อให้แอดมินเห็นชัดว่าร้านนี้ขายอะไร
+    // และมีข้อมูลพอตัดสินใจว่าจะจัดลงโซนไหน (ตรงกับที่หน้า /admin/approvals ใช้อยู่แล้ว -
+    // ลองหาจาก Seller ก่อน แล้ว fallback ไป User/ShopDetail)
+    let shopName = null;
+    let productTypeLabel = '-';
+    let productDetail = null;
+    let productImage = bookingRequest.productImage || null;
+
+    if (bookingRequest.sellerId) {
+        const seller = await prisma.seller.findUnique({
+            where: { id: bookingRequest.sellerId },
+            select: {
+                shopName: true,
+                productDetail: true,
+                productImage: true,
+                productType: { select: { name: true } }
+            }
+        });
+        shopName = seller?.shopName || null;
+        productDetail = seller?.productDetail || null;
+        if (seller?.productType?.name) productTypeLabel = seller.productType.name;
+        if (!productImage) productImage = seller?.productImage || null;
+    }
+
+    if ((!productImage || !shopName) && bookingRequest.sellerName) {
+        const sellerUser = await prisma.user.findFirst({
+            where: { role: 'SELLER', name: String(bookingRequest.sellerName).trim() },
+            select: { shop: { select: { shopName: true, productDetail: true, productImage: true, shopCoverImage: true, productType: true } } }
+        });
+        if (sellerUser?.shop) {
+            shopName = shopName || sellerUser.shop.shopName || null;
+            productDetail = productDetail || sellerUser.shop.productDetail || null;
+            productImage = productImage || sellerUser.shop.productImage || sellerUser.shop.shopCoverImage || null;
+            if (productTypeLabel === '-' && sellerUser.shop.productType) productTypeLabel = sellerUser.shop.productType;
+        }
+    }
+
     return {
         bookingRequest: {
             id: bookingRequest.id,
-            shop: bookingRequest.productName,
+            shopName: shopName || bookingRequest.productName,
+            productName: bookingRequest.productName,
+            productDetail: productDetail || bookingRequest.description || '-',
             sellerName: bookingRequest.sellerName,
             phone: bookingRequest.phone,
             zone: requestedZone,
@@ -96,11 +111,12 @@ async function buildAdminBookingStallPageData(requestId) {
             note: bookingRequest.description || '-',
             dateText: toThaiDate(bookingRequest.createdAt),
             status: String(bookingRequest.status || 'PENDING').toUpperCase(),
-            assignedStallCode
+            assignedStallCode,
+            productTypeLabel,
+            productImage
         },
-        layoutByZone,
-        bookedStalls: allStalls.filter((stall) => stall.isBooked).map((stall) => stall.stallCode),
-        allStallCodes: allStalls.map((stall) => stall.stallCode)
+        zoneByCode,
+        bookedStalls
     };
 }
 
@@ -205,7 +221,9 @@ exports.getApprovalsPage = async (req, res) => {
                         smallApplianceCount: true,
                         largeApplianceCount: true,
                         lightTotal: true,
-                        applianceTotal: true
+                        applianceTotal: true,
+                        rentTotal: true,
+                        grandTotal: true
                     }
                 });
 
@@ -222,7 +240,9 @@ exports.getApprovalsPage = async (req, res) => {
                             smallApplianceCount: true,
                             largeApplianceCount: true,
                             lightTotal: true,
-                            applianceTotal: true
+                            applianceTotal: true,
+                            rentTotal: true,
+                            grandTotal: true
                         }
                     });
                 }
@@ -231,6 +251,9 @@ exports.getApprovalsPage = async (req, res) => {
             const smallApplianceCount = Number(linkedBooking?.smallApplianceCount || 0);
             const largeApplianceCount = Number(linkedBooking?.largeApplianceCount || 0);
             const electricityFee = Number(linkedBooking?.lightTotal || 0) + Number(linkedBooking?.applianceTotal || 0);
+            const rentTotal = Number(linkedBooking?.rentTotal || 0);
+            const grandTotal = Number(linkedBooking?.grandTotal || 0);
+            const grandTotalText = linkedBooking ? `${grandTotal.toLocaleString('th-TH')} บาท` : '-';
 
             if (zoneCode && zoneCounts[zoneCode] !== undefined) {
                 zoneCounts[zoneCode] += 1;
@@ -262,6 +285,9 @@ exports.getApprovalsPage = async (req, res) => {
                 smallApplianceCount,
                 largeApplianceCount,
                 electricityFee,
+                rentTotal,
+                grandTotal,
+                grandTotalText,
                 rentalStartDateText: toThaiDate(linkedBooking?.rentalStartDate),
                 rentalEndDateText: toThaiDate(linkedBooking?.rentalEndDate)
             };

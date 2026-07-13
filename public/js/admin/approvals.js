@@ -1,6 +1,10 @@
 const statusBtns = document.querySelectorAll('#statusFilters .btn-filter');
 const zoneBtns = document.querySelectorAll('#zoneFilters .btn-filter');
+const categoryBtns = document.querySelectorAll('#categoryFilters .btn-filter');
 const cards = document.querySelectorAll('.booking-card');
+
+// โซนไหนอยู่หมวดหมู่ไหน (ตรงกับ productCategory ของ Zone ในฐานข้อมูล)
+const ZONE_CATEGORY = { A: 'FASHION', B: 'FOOD', C: 'FASHION', D: 'FOOD', E: 'FASHION', F: 'FOOD' };
 const modal = document.getElementById('detailModal');
 const searchInput = document.getElementById('shopSearch');
 
@@ -20,6 +24,7 @@ let currentBooking = null;
 
 let currentStatus = 'all';
 let currentZone = 'all';
+let currentCategory = 'all';
 let currentSearch = '';
 
 function navigateToBookingStall(stall) {
@@ -128,8 +133,9 @@ function applyFilters() {
 
         const matchStatus = currentStatus === 'all' || cStatus === currentStatus;
         const matchZone = currentZone === 'all' || cZone === currentZone;
+        const matchCategory = currentCategory === 'all' || ZONE_CATEGORY[cZone] === currentCategory;
         const matchSearch = !currentSearch || cShop.includes(currentSearch);
-        const isVisible = matchStatus && matchZone && matchSearch;
+        const isVisible = matchStatus && matchZone && matchCategory && matchSearch;
 
         if (isVisible) {
             visibleCount += 1;
@@ -231,9 +237,35 @@ zoneBtns.forEach((btn) => {
     });
 });
 
+categoryBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+        categoryBtns.forEach((item) => item.classList.remove('active'));
+        btn.classList.add('active');
+        currentCategory = btn.dataset.category;
+        applyFilters();
+    });
+});
+
 if (searchInput) {
     searchInput.addEventListener('input', (event) => {
         currentSearch = event.target.value.trim().toLowerCase();
+        applyFilters();
+    });
+}
+
+const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+if (clearFiltersBtn) {
+    clearFiltersBtn.addEventListener('click', () => {
+        currentStatus = 'all';
+        currentZone = 'all';
+        currentCategory = 'all';
+        currentSearch = '';
+        if (searchInput) searchInput.value = '';
+
+        statusBtns.forEach((btn) => btn.classList.toggle('active', btn.dataset.status === 'all'));
+        zoneBtns.forEach((btn) => btn.classList.toggle('active', btn.dataset.zone === 'all'));
+        categoryBtns.forEach((btn) => btn.classList.toggle('active', btn.dataset.category === 'all'));
+
         applyFilters();
     });
 }
@@ -252,7 +284,8 @@ function openDetail(
     largeApplianceCount,
     electricityFee,
     rentalStartDateText,
-    rentalEndDateText
+    rentalEndDateText,
+    grandTotalText
 ) {
     currentBooking = {
         shop,
@@ -274,6 +307,7 @@ function openDetail(
     document.getElementById('m-electricity-fee').innerText = `${Number(electricityFee || 0).toLocaleString('th-TH')} บาท`;
     document.getElementById('m-rental-start').innerText = rentalStartDateText || '-';
     document.getElementById('m-rental-end').innerText = rentalEndDateText || '-';
+    document.getElementById('m-grand-total').innerText = grandTotalText || '-';
 
     const shopImageEl = document.getElementById('m-shop-image');
     const shopImageEmptyEl = document.getElementById('m-shop-image-empty');
@@ -333,7 +367,8 @@ function openDetailFromElement(element) {
             payload.largeApplianceCount || 0,
             payload.electricityFee || 0,
             payload.rentalStartDateText || '-',
-            payload.rentalEndDateText || '-'
+            payload.rentalEndDateText || '-',
+            payload.grandTotalText || '-'
         );
     } catch (error) {
         // ignore malformed payload to avoid breaking the list interaction

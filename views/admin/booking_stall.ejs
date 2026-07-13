@@ -74,12 +74,16 @@
             ข้อมูลผู้ที่ส่งคำขอเช่าแผงเข้ามา
           </div>
           <div class="applicant-body">
+            <div class="info-group applicant-image-group">
+              <img id="app-image" class="applicant-product-image" src=""
+                alt="รูปสินค้า/ร้านค้า" style="display:none;">
+            </div>
             <div class="info-group">
               <label>ชื่อผู้จอง</label>
               <span id="app-name">-</span>
             </div>
             <div class="info-group">
-              <label>ชื่อร้านค้า</label>
+              <label>ชื่อร้าน</label>
               <span id="app-shop">-</span>
             </div>
             <div class="info-group">
@@ -95,7 +99,22 @@
               <label>ช่วงเวลาที่จอง</label>
               <span id="app-date">-</span>
             </div>
-            <div class="info-group"></div> <div
+            <div class="info-group">
+              <label>ประเภทสินค้า</label>
+              <span id="app-product-type">-</span>
+            </div>
+            <div class="info-group">
+              <label>สินค้าที่จะขาย</label>
+              <span id="app-product-name" style="font-weight: 700;">-</span>
+            </div>
+            <div
+              class="info-group note-full-width">
+              <label
+                style="color: #0f766e; font-size: 12px;">รายละเอียดสินค้า</label>
+              <span id="app-product-detail"
+                style="color: #333; font-size: 13px; margin-top: 4px;">-</span>
+            </div>
+            <div
               class="info-group note-full-width">
               <label
                 style="color: #d97706; font-size: 12px;">หมายเหตุเพิ่มเติมจากผู้จอง</label>
@@ -110,6 +129,13 @@
             <label>โซน</label>
             <span>ระบุโซนที่ต้องการจอง</span>
 
+            <div class="view-toggle" id="viewToggle">
+              <button type="button" class="toggle-btn active"
+                data-mode="buttons">รายการปุ่ม</button>
+              <button type="button" class="toggle-btn"
+                data-mode="overview">ผังภาพรวม</button>
+            </div>
+
             <div class="zone-btn-group" id="zoneButtons">
               <button class="btn-zone active" data-zone="A">โซน A
                 <small>(แฟชั่น/พิเศษอาหาร A901-A923)</small></button>
@@ -123,6 +149,32 @@
                 <small>(แฟชั่น)</small></button>
               <button class="btn-zone" data-zone="F">โซน F
                 <small>(อาหาร)</small></button>
+              <button class="btn-zone" data-zone="X">โซน X
+                <small>(กิจกรรม/บูธพิเศษ)</small></button>
+            </div>
+
+            <div class="ov-zone-canvas" id="zoneOverviewCanvas" style="display:none;">
+              <div class="ov-zone-block ov-zone-A" data-zone="A">
+                <div class="ov-zone-title">โซน A</div>
+              </div>
+              <div class="ov-zone-block ov-zone-E" data-zone="E">
+                <div class="ov-zone-title">โซน E</div>
+              </div>
+              <div class="ov-zone-block ov-zone-F" data-zone="F">
+                <div class="ov-zone-title">โซน F</div>
+              </div>
+              <div class="ov-zone-block ov-zone-D" data-zone="D">
+                <div class="ov-zone-title">โซน D</div>
+              </div>
+              <div class="ov-zone-block ov-zone-X" data-zone="X">
+                <div class="ov-zone-title">โซน X</div>
+              </div>
+              <div class="ov-zone-block ov-zone-B" data-zone="B">
+                <div class="ov-zone-title">โซน B</div>
+              </div>
+              <div class="ov-zone-block ov-zone-C" data-zone="C">
+                <div class="ov-zone-title">โซน C</div>
+              </div>
             </div>
 
           </div>
@@ -156,13 +208,6 @@
             </div>
 
             <div class="admin-zone-canvas" id="adminGrid"></div>
-
-            <div class="facility-box">
-              <button class="btn-facility"><i class="fa-solid fa-restroom"></i>
-                ห้องน้ำ</button>
-              <button class="btn-facility"><i class="fa-solid fa-user-tie"></i>
-                ออฟฟิศ</button>
-            </div>
 
             <div class="road-bottom">
               <div class="road-bottom-stripe"></div>

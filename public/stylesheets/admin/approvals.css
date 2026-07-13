@@ -105,15 +105,43 @@
     line-height: 1.1;
 }
 
-.approvals-page .search-box {
+.approvals-page .search-row {
     display: flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 16px;
+}
+
+.approvals-page .search-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
     background: #f7fbfe;
     border: 1px solid #d7e6ef;
     border-radius: 12px;
     padding: 10px 12px;
+}
+
+.approvals-page .btn-clear-filters {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid #d7e6ef;
+    background: #fff;
+    color: #476577;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition);
+}
+
+.approvals-page .btn-clear-filters:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-dark);
 }
 
 .approvals-page .search-box i {

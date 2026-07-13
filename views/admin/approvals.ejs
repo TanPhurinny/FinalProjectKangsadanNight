@@ -61,10 +61,16 @@
                         </div>
                     </div>
 
-                    <div class="search-box">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="shopSearch"
-                            placeholder="ค้นหาร้านค้า...">
+                    <div class="search-row">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="shopSearch"
+                                placeholder="ค้นหาร้านค้า...">
+                        </div>
+                        <button type="button" class="btn-clear-filters"
+                            id="clearFiltersBtn"><i
+                                class="fa-solid fa-rotate-left"></i>
+                            ล้างตัวกรอง</button>
                     </div>
 
                     <div class="filter-title">สถานะการจอง</div>
@@ -77,6 +83,17 @@
                             data-status="approved">อนุมัติแล้ว</button>
                         <button class="btn-filter"
                             data-status="rejected">ปฏิเสธ</button>
+                    </div>
+
+                    <div
+                        class="filter-title filter-title-spaced">หมวดหมู่</div>
+                    <div class="filter-group" id="categoryFilters">
+                        <button class="btn-filter active"
+                            data-category="all">ทั้งหมด</button>
+                        <button class="btn-filter"
+                            data-category="FASHION"><i class="fa-solid fa-shirt"></i> แฟชั่น</button>
+                        <button class="btn-filter"
+                            data-category="FOOD"><i class="fa-solid fa-utensils"></i> อาหาร</button>
                     </div>
 
                     <div
@@ -128,6 +145,8 @@
                             smallApplianceCount: request.smallApplianceCount || 0,
                             largeApplianceCount: request.largeApplianceCount || 0,
                             electricityFee: request.electricityFee || 0,
+                            rentTotal: request.rentTotal || 0,
+                            grandTotalText: request.grandTotalText || '-',
                             rentalStartDateText: request.rentalStartDateText || '-',
                             rentalEndDateText: request.rentalEndDateText || '-'
                         })); %>
@@ -201,6 +220,9 @@
 
                             <span class="detail-label">วันสิ้นสุดจอง:</span>
                             <span class="detail-value" id="m-rental-end"></span>
+
+                            <span class="detail-label">ราคารวมทั้งหมด:</span>
+                            <span class="detail-value detail-highlight" id="m-grand-total"></span>
                         </div>
 
                         <div class="modal-footer" id="m-footer-actions">
