@@ -56,8 +56,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const visibleZones = zoneCols.filter((zoneCol) => zoneCol.style.display !== 'none');
 
             visibleZones.sort((a, b) => {
-                if (sortType === 'repairs-desc') {
-                    return Number(b.dataset.repairs || 0) - Number(a.dataset.repairs || 0);
+                if (sortType === 'maintenance-desc') {
+                    return Number(b.dataset.maintenance || 0) - Number(a.dataset.maintenance || 0);
                 }
                 if (sortType === 'available-desc') {
                     return Number(b.dataset.available || 0) - Number(a.dataset.available || 0);
