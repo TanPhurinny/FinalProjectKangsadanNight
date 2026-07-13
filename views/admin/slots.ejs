@@ -29,7 +29,7 @@
             acc[zone.code] = zone;
             return acc;
         }, {});
-        const otherZones = zonesList.filter((zone) => !['A', 'B', 'C', 'D', 'E', 'F'].includes(zone.code));
+        const otherZones = zonesList.filter((zone) => !['A', 'B', 'C', 'D', 'E', 'F', 'X'].includes(zone.code));
         %>
 
         <div class="slots-page">
@@ -99,6 +99,14 @@
                                         D</div><div
                                         class="z-sub"><%= zoneByCode.D ? zoneByCode.D.description : '-' %></div></div>
                             </div>
+                            <% if (zoneByCode.X) { %>
+                            <div class="zone-block" id="zone-X"
+                                onclick="openZone('X')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        X</div><div
+                                        class="z-sub"><%= zoneByCode.X.description %></div></div>
+                            </div>
+                            <% } %>
                             <div class="zone-block" id="zone-A"
                                 onclick="openZone('A')">
                                 <div class="zone-label"><div class="z-title">โซน
