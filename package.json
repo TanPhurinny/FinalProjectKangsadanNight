@@ -88,6 +88,7 @@
     "multer": "^2.1.1",
     "negotiator": "^1.0.0",
     "node-fetch-native": "^1.6.7",
+    "nodemailer": "^9.0.3",
     "normalize-path": "^3.0.0",
     "nypm": "^0.6.5",
     "object-inspect": "^1.13.4",

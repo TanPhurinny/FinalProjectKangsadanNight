@@ -19,7 +19,7 @@ There is no test suite, lint config, or build step in this project. To verify a 
 OPEN_BROWSER=false node -e "require('./app'); setTimeout(() => process.exit(0), 1500)"
 ```
 
-Required env vars (see `.env`): `DATABASE_URL` (MySQL), `JWT_SECRET`. Optional: `PORT`, `NODE_ENV`, `OPEN_BROWSER`.
+Required env vars (see `.env`): `DATABASE_URL` (MySQL), `JWT_SECRET`. Optional: `PORT`, `NODE_ENV`, `OPEN_BROWSER`, `GMAIL_USER`/`GMAIL_APP_PASSWORD` (Gmail App Password used to send password-reset emails via `config/mailer.js`; if unset, the reset link is logged to the console instead — fine for dev, must be set in production).
 
 ## Architecture
 

@@ -21,9 +21,14 @@ router.post('/login', authLimiter, authController.login);
 router.post('/api/auth/register', registerLimiter, upload.single('productImage'), authController.register);
 router.post('/register', registerLimiter, upload.single('productImage'), authController.register);
 
-// ระบบลืมรหัสผ่าน
+// ระบบลืมรหัสผ่าน (ขอลิงก์รีเซ็ตทางอีเมล)
 router.post('/api/auth/forgot-password', forgotPasswordLimiter, authController.forgotPassword);
 router.post('/forgot-password', forgotPasswordLimiter, authController.forgotPassword);
+
+// ตั้งรหัสผ่านใหม่จากลิงก์ในอีเมล
+router.get('/reset-password', authController.renderResetPasswordPage);
+router.post('/api/auth/reset-password', forgotPasswordLimiter, authController.resetPassword);
+router.post('/reset-password', forgotPasswordLimiter, authController.resetPassword);
 
 // ระบบ Logout
 router.get('/logout', authController.logout);

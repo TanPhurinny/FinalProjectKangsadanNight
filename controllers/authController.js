@@ -1,7 +1,9 @@
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const userModel = require('../models/userModel');
 const { getCookieOptions, getJwtSecret } = require('../config/authSecrets');
+const { sendPasswordResetEmail } = require('../config/mailer');
 
 const JWT_SECRET = getJwtSecret();
 const JWT_EXPIRES_IN = '1d';
@@ -272,14 +274,24 @@ exports.register = async (req, res) => {
     }
 };
 
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000; // 30 นาที
+
+function hashResetToken(rawToken) {
+    return crypto.createHash('sha256').update(rawToken).digest('hex');
+}
+
+function buildResetUrl(req, rawToken) {
+    return `${req.protocol}://${req.get('host')}/reset-password?token=${encodeURIComponent(rawToken)}`;
+}
+
+// ขอลิงก์รีเซ็ตรหัสผ่าน: ยืนยันตัวตนด้วย username+email แล้วส่งลิงก์ไปที่อีเมลที่ผูกกับบัญชีจริงเท่านั้น
+// (ไม่เปิดเผยว่าพบบัญชีหรือไม่ เพื่อป้องกันการเดา username/email)
 exports.forgotPassword = async (req, res) => {
     try {
         const username = String(req.body.username || '').trim();
         const email = userModel.normalizeEmail(req.body.email);
-        const newPassword = String(req.body.newPassword || '');
-        const confirmPassword = String(req.body.confirmPassword || '');
 
-        if (!username || !email || !newPassword || !confirmPassword) {
+        if (!username || !email) {
             return respondAuthFailure(req, res, 400, 'กรุณากรอกข้อมูลให้ครบถ้วน', '/login');
         }
 
@@ -287,29 +299,82 @@ exports.forgotPassword = async (req, res) => {
             return respondAuthFailure(req, res, 400, 'รูปแบบอีเมลไม่ถูกต้อง', '/login');
         }
 
+        const genericMessage = 'หากข้อมูลถูกต้อง เราได้ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลที่ผูกกับบัญชีนี้แล้ว';
+        const user = await userModel.findByUsernameOrEmail(username, email);
+
+        if (user && user.username === username && userModel.normalizeEmail(user.email) === email && user.email) {
+            const rawToken = crypto.randomBytes(32).toString('hex');
+            const tokenHash = hashResetToken(rawToken);
+
+            await userModel.createPasswordResetToken(user.id, tokenHash, new Date(Date.now() + RESET_TOKEN_TTL_MS));
+            await sendPasswordResetEmail(user.email, buildResetUrl(req, rawToken));
+        }
+
+        if (wantsJson(req)) {
+            return respondAuthSuccess(req, res, genericMessage, {}, '/login');
+        }
+
+        return res.redirect('/login?success=' + encodeURIComponent(genericMessage));
+    } catch (error) {
+        console.error('Forgot Password Error:', error);
+        return respondAuthFailure(req, res, 500, 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน', '/login');
+    }
+};
+
+exports.renderResetPasswordPage = (req, res) => {
+    const token = String(req.query.token || '').trim();
+
+    if (!token) {
+        return res.redirect('/login?error=' + encodeURIComponent('ลิงก์รีเซ็ตรหัสผ่านไม่ถูกต้อง'));
+    }
+
+    res.render('resetPassword', {
+        token,
+        error: req.query.error || null
+    });
+};
+
+// ตั้งรหัสผ่านใหม่จากลิงก์ในอีเมล: token ต้องยังไม่หมดอายุและยังไม่เคยถูกใช้
+exports.resetPassword = async (req, res) => {
+    try {
+        const rawToken = String(req.body.token || req.query.token || '').trim();
+        const newPassword = String(req.body.newPassword || '');
+        const confirmPassword = String(req.body.confirmPassword || '');
+        const retryPath = rawToken ? `/reset-password?token=${encodeURIComponent(rawToken)}` : '/login';
+
+        if (!rawToken || !newPassword || !confirmPassword) {
+            return respondAuthFailure(req, res, 400, 'กรุณากรอกข้อมูลให้ครบถ้วน', retryPath);
+        }
+
         if (newPassword.length < 6) {
-            return respondAuthFailure(req, res, 400, 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร', '/login');
+            return respondAuthFailure(req, res, 400, 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร', retryPath);
         }
 
         if (newPassword !== confirmPassword) {
-            return respondAuthFailure(req, res, 400, 'รหัสผ่านใหม่และยืนยันรหัสผ่านไม่ตรงกัน', '/login');
+            return respondAuthFailure(req, res, 400, 'รหัสผ่านใหม่และยืนยันรหัสผ่านไม่ตรงกัน', retryPath);
         }
 
-        const user = await userModel.findByUsernameOrEmail(username, email);
+        const tokenHash = hashResetToken(rawToken);
+        const resetToken = await userModel.findValidPasswordResetToken(tokenHash);
 
-        if (!user || user.username !== username || userModel.normalizeEmail(user.email) !== email) {
-            return respondAuthFailure(req, res, 404, 'ไม่พบบัญชีผู้ใช้ที่ตรงกับข้อมูลนี้', '/login');
+        if (!resetToken) {
+            return respondAuthFailure(req, res, 400, 'ลิงก์รีเซ็ตรหัสผ่านไม่ถูกต้องหรือหมดอายุแล้ว', '/login');
         }
 
         const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 
-        await userModel.updateUser(user.id, {
-            password: hashedPassword
-        });
+        await userModel.updateUser(resetToken.userId, { password: hashedPassword });
+        await userModel.markPasswordResetTokenUsed(resetToken.id);
 
-        return respondAuthSuccess(req, res, 'รีเซ็ตรหัสผ่านสำเร็จ', {}, '/login');
+        const successMessage = 'รีเซ็ตรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่';
+
+        if (wantsJson(req)) {
+            return respondAuthSuccess(req, res, successMessage, {}, '/login');
+        }
+
+        return res.redirect('/login?success=' + encodeURIComponent(successMessage));
     } catch (error) {
-        console.error('Forgot Password Error:', error);
+        console.error('Reset Password Error:', error);
         return respondAuthFailure(req, res, 500, 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน', '/login');
     }
 };

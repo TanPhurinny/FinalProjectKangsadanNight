@@ -60,6 +60,30 @@ async function updateUser(userId, data) {
     });
 }
 
+async function createPasswordResetToken(userId, tokenHash, expiresAt) {
+    return prisma.passwordResetToken.create({
+        data: { userId: Number(userId), tokenHash, expiresAt }
+    });
+}
+
+async function findValidPasswordResetToken(tokenHash) {
+    return prisma.passwordResetToken.findFirst({
+        where: {
+            tokenHash,
+            usedAt: null,
+            expiresAt: { gt: new Date() }
+        },
+        include: { user: true }
+    });
+}
+
+async function markPasswordResetTokenUsed(tokenId) {
+    return prisma.passwordResetToken.update({
+        where: { id: tokenId },
+        data: { usedAt: new Date() }
+    });
+}
+
 async function emailExistsForOtherUser(email, userId) {
     const normalizedEmail = normalizeEmail(email);
 
@@ -76,12 +100,15 @@ async function emailExistsForOtherUser(email, userId) {
 }
 
 module.exports = {
+    createPasswordResetToken,
     createUser,
     emailExistsForOtherUser,
     findByEmail,
     findById,
     findByUsername,
     findByUsernameOrEmail,
+    findValidPasswordResetToken,
+    markPasswordResetTokenUsed,
     normalizeEmail,
     sanitizeUser,
     updateUser

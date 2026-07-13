@@ -7,9 +7,6 @@ async function main() {
   // Seed only data that does not depend on demo users.
   // This avoids creating fake accounts while keeping a useful baseline dataset.
 
-<<<<<<< HEAD
-  // 1. สร้าง Slots (แผงค้าโซน A-F)
-=======
   // สร้าง Sellers
   const sellers = await Promise.all([
     prisma.user.upsert({
@@ -346,7 +343,6 @@ async function main() {
   // ═══════════════════════════════════════════════════════════
   // 3. สร้าง Slots (แผงค้าโซน A-F)
   // ═══════════════════════════════════════════════════════════
->>>>>>> test
   const slotsData = [
     // Zone A: แฟชั่นและอาหาร
     { slotNumber: 'A-01', zone: 'A', price: 150 },

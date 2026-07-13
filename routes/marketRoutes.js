@@ -12,14 +12,6 @@ router.get('/slots', requireAuth, async (req, res) => {
 
 // ระบบจองแผง (เฉพาะ SELLER)
 router.post('/booking/:id', requireAuth, async (req, res) => {
-    console.log('booking POST /market/booking/:id', {
-        user: req.user,
-        sessionUser: req.session?.user,
-        headers: {
-            authorization: req.headers.authorization,
-            cookie: req.headers.cookie
-        }
-    });
     const user = req.user || req.session?.user;
     if (!user) {
         return res.status(401).send('กรุณาเข้าสู่ระบบก่อนใช้งาน');

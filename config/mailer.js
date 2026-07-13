@@ -1,0 +1,57 @@
+const nodemailer = require('nodemailer');
+const { isProduction } = require('./authSecrets');
+
+let cachedTransporter = null;
+
+function getTransporter() {
+    if (cachedTransporter) {
+        return cachedTransporter;
+    }
+
+    const gmailUser = String(process.env.GMAIL_USER || '').trim();
+    const gmailAppPassword = String(process.env.GMAIL_APP_PASSWORD || '').trim();
+
+    if (!gmailUser || !gmailAppPassword) {
+        if (isProduction) {
+            throw new Error('Missing required environment variables: GMAIL_USER / GMAIL_APP_PASSWORD');
+        }
+
+        console.warn('Warning: GMAIL_USER / GMAIL_APP_PASSWORD not set. Password reset emails will not be sent.');
+        return null;
+    }
+
+    cachedTransporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: gmailUser,
+            pass: gmailAppPassword
+        }
+    });
+
+    return cachedTransporter;
+}
+
+async function sendPasswordResetEmail(toEmail, resetUrl) {
+    const transporter = getTransporter();
+
+    if (!transporter) {
+        console.warn(`Password reset email not sent (mailer not configured). Link for ${toEmail}: ${resetUrl}`);
+        return;
+    }
+
+    await transporter.sendMail({
+        from: `"Kangsadan Night Market" <${process.env.GMAIL_USER}>`,
+        to: toEmail,
+        subject: 'รีเซ็ตรหัสผ่านบัญชีของคุณ',
+        html: `
+            <p>คุณได้ขอรีเซ็ตรหัสผ่านสำหรับบัญชี Kangsadan Night Market</p>
+            <p>กดลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่ (ลิงก์นี้จะหมดอายุใน 30 นาที):</p>
+            <p><a href="${resetUrl}">${resetUrl}</a></p>
+            <p>หากคุณไม่ได้เป็นผู้ขอรีเซ็ตรหัสผ่าน กรุณาเพิกเฉยต่ออีเมลฉบับนี้</p>
+        `
+    });
+}
+
+module.exports = {
+    sendPasswordResetEmail
+};
