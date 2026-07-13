@@ -144,7 +144,7 @@ exports.getSlotsPage = async (req, res) => {
             EVENT_BOOTH: 'กิจกรรม/บูธพิเศษ'
         };
 
-        const zonesData = zoneRecords.map((zone) => ({
+        let zonesData = zoneRecords.map((zone) => ({
             code: zone.code,
             description: zoneCategoryLabel[zone.productCategory] || 'พื้นที่เอนกประสงค์',
             columns: zone.rows.map((row) => ({
@@ -155,6 +155,23 @@ exports.getSlotsPage = async (req, res) => {
                 }))
             }))
         }));
+
+        // โซน T เป็นแผงล็อกเล็กที่วางแทรกอยู่ในคอลัมน์ที่ 2 ของโซน B จริงในผังจริง
+        // (ระหว่าง B201 กับ B222/B223) จึงรวมแสดงในผังโซน B แทนการแยกเป็นแท็บของตัวเอง
+        // ข้อมูลจริงในฐานข้อมูลยังคงแยกเป็น Zone T ต่างหาก (จำเป็นสำหรับระบบจัดแผงที่หน้า /admin/booking-stall)
+        const zoneBEntry = zonesData.find((zone) => zone.code === 'B');
+        const zoneTEntry = zonesData.find((zone) => zone.code === 'T');
+        if (zoneBEntry && zoneTEntry) {
+            const b2Index = zoneBEntry.columns.findIndex((column) => column.rowCode === 'B2');
+            const tColumns = zoneTEntry.columns.map((column) => ({
+                rowCode: column.rowCode,
+                small: true,
+                stalls: column.stalls
+            }));
+            const insertAt = b2Index >= 0 ? b2Index + 1 : zoneBEntry.columns.length;
+            zoneBEntry.columns.splice(insertAt, 0, ...tColumns);
+            zonesData = zonesData.filter((zone) => zone.code !== 'T');
+        }
 
         res.render('admin/slots', {
             zonesData,

@@ -679,6 +679,16 @@
     background: #c9860f;
 }
 
+.col-wrap-small .col-lbl {
+    width: 44px;
+}
+
+.stall-cell-small {
+    width: 44px;
+    height: 22px;
+    font-size: 9px;
+}
+
 .other-zones-bar {
     display: flex;
     align-items: center;

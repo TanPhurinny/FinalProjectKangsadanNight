@@ -52,7 +52,7 @@ function renderGrid(z) {
 
     (ZONES_DATA[z].columns || []).forEach((column) => {
         const wrap = document.createElement('div');
-        wrap.className = 'col-wrap';
+        wrap.className = column.small ? 'col-wrap col-wrap-small' : 'col-wrap';
 
         const lbl = document.createElement('div');
         lbl.className = 'col-lbl';
@@ -66,7 +66,7 @@ function renderGrid(z) {
             const id = stall.code;
             total += 1;
             const cell = document.createElement('div');
-            cell.className = 'stall-cell';
+            cell.className = column.small ? 'stall-cell stall-cell-small' : 'stall-cell';
             cell.textContent = id;
             cell.dataset.stall = id;
 
