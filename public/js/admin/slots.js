@@ -137,7 +137,6 @@ function renderGrid(z) {
     (ZONES_DATA[z].columns || []).forEach((column) => {
         const wrapClasses = ['col-wrap'];
         if (isHorizontalZone) wrapClasses.push('col-wrap-horizontal');
-        if (column.small) wrapClasses.push('col-wrap-small');
         if (column.groupEnd) wrapClasses.push('col-group-end');
 
         const wrap = document.createElement('div');
@@ -156,7 +155,7 @@ function renderGrid(z) {
 
             if (stall.status === 'PLACEHOLDER') {
                 const placeholderCell = document.createElement('div');
-                placeholderCell.className = column.small ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
+                placeholderCell.className = stall.small ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
                 placeholderCell.textContent = 'x';
                 col.appendChild(placeholderCell);
                 return;
@@ -164,7 +163,7 @@ function renderGrid(z) {
 
             total += 1;
             const cell = document.createElement('div');
-            cell.className = column.small ? 'stall-cell stall-cell-small' : 'stall-cell';
+            cell.className = stall.small ? 'stall-cell stall-cell-small' : 'stall-cell';
             cell.textContent = id;
             cell.dataset.stall = id;
 

@@ -176,20 +176,24 @@ exports.getSlotsPage = async (req, res) => {
             });
         }
 
-        // โซน T เป็นแผงล็อกเล็กที่วางแทรกอยู่ในคอลัมน์ที่ 2 ของโซน B จริงในผังจริง
-        // (ระหว่าง B201 กับ B222/B223) จึงรวมแสดงในผังโซน B แทนการแยกเป็นแท็บของตัวเอง
+        // โซน T เป็นแผงล็อกเล็กที่วางแทรกอยู่ในคอลัมน์เดียวกับ B2/B2b จริงในผังจริง (คอลัมน์เดียว
+        // ต่อเนื่องกัน: B200, B201, T102...T131, B222, B223) จึงรวมเป็นคอลัมน์เดียวกันทั้งหมด
+        // (ทำเครื่องหมาย small ไว้ที่แต่ละแผงของโซน T เพราะเป็นล็อกเล็กกว่าแผง B ปกติ)
         // ข้อมูลจริงในฐานข้อมูลยังคงแยกเป็น Zone T ต่างหาก (จำเป็นสำหรับระบบจัดแผงที่หน้า /admin/booking-stall)
         const zoneBEntry = zonesData.find((zone) => zone.code === 'B');
         const zoneTEntry = zonesData.find((zone) => zone.code === 'T');
         if (zoneBEntry && zoneTEntry) {
-            const b2Index = zoneBEntry.columns.findIndex((column) => column.rowCode === 'B2');
-            const tColumns = zoneTEntry.columns.map((column) => ({
-                rowCode: column.rowCode,
-                small: true,
-                stalls: column.stalls
-            }));
-            const insertAt = b2Index >= 0 ? b2Index + 1 : zoneBEntry.columns.length;
-            zoneBEntry.columns.splice(insertAt, 0, ...tColumns);
+            const b2Column = zoneBEntry.columns.find((column) => column.rowCode === 'B2');
+            const b2bIndex = zoneBEntry.columns.findIndex((column) => column.rowCode === 'B2b');
+            const tStalls = zoneTEntry.columns.flatMap((column) => column.stalls.map((stall) => ({ ...stall, small: true })));
+
+            if (b2Column) {
+                b2Column.stalls.push(...tStalls);
+                if (b2bIndex !== -1) {
+                    const [b2bColumn] = zoneBEntry.columns.splice(b2bIndex, 1);
+                    b2Column.stalls.push(...b2bColumn.stalls);
+                }
+            }
             zonesData = zonesData.filter((zone) => zone.code !== 'T');
         }
 
@@ -197,7 +201,7 @@ exports.getSlotsPage = async (req, res) => {
         const groupEndByZone = {
             A: ['A1', 'A3', 'A5', 'A7'],
             F: ['F2', 'F4'],
-            B: ['B2b', 'B4', 'B6']
+            B: ['B2', 'B4', 'B6']
         };
         zonesData.forEach((zone) => {
             const groupEnds = groupEndByZone[zone.code];
