@@ -5,6 +5,22 @@ const BOOKING_BY_STALL = window.BOOKING_BY_STALL || {};
 let activeZone = null;
 let selectedStall = null;
 let currentQuery = '';
+let currentStatusFilter = null; // 'EMPTY' | 'BOOKED' | 'MAINTENANCE' | null
+
+function stallMatchesFilter(id, stall) {
+    if (currentStatusFilter) {
+        if (currentStatusFilter === 'EMPTY') {
+            return stall.status !== 'BOOKED' && stall.status !== 'MAINTENANCE';
+        }
+        return stall.status === currentStatusFilter;
+    }
+    if (currentQuery) {
+        const d = BOOKING_BY_STALL[id];
+        if (!d) return false;
+        return (d.shop + d.product + d.name + d.note).toLowerCase().includes(currentQuery.toLowerCase());
+    }
+    return false;
+}
 
 function openZone(z) {
     if (!ZONES_DATA[z]) return;
@@ -106,7 +122,7 @@ function renderDZoneGrid(z, stallByCode) {
         }
 
         if (pos.code === selectedStall) cell.classList.add('selected');
-        if (currentQuery) tryHighlight(cell, pos.code);
+        if ((currentQuery || currentStatusFilter) && stallMatchesFilter(pos.code, stall)) cell.classList.add('s-match');
         layout.appendChild(cell);
     });
 
@@ -193,7 +209,7 @@ function renderGrid(z) {
             }
 
             if (id === selectedStall) cell.classList.add('selected');
-            if (currentQuery) tryHighlight(cell, id);
+            if ((currentQuery || currentStatusFilter) && stallMatchesFilter(id, stall)) cell.classList.add('s-match');
             col.appendChild(cell);
         });
 
@@ -237,22 +253,13 @@ function hideInfo() {
     document.getElementById('infoCard').classList.remove('show');
 }
 
-function tryHighlight(cell, id) {
-    const d = BOOKING_BY_STALL[id];
-    if (!d) return;
-    if ((d.shop + d.product + d.name + d.note).toLowerCase().includes(currentQuery.toLowerCase())) {
-        cell.classList.add('s-match');
-    }
-}
+const STATUS_LABELS = { EMPTY: 'แผงว่าง', BOOKED: 'แผงที่จองแล้ว', MAINTENANCE: 'แผงซ่อมบำรุง' };
 
-function doSearch(q) {
-    currentQuery = q.trim();
+function refreshFilterResults() {
     const badge = document.getElementById('resultBadge');
     const clrBtn = document.getElementById('clearBtn');
 
-    document.querySelectorAll('.qtag').forEach((t) => t.classList.remove('active'));
-
-    if (!currentQuery) {
+    if (!currentQuery && !currentStatusFilter) {
         badge.classList.remove('show');
         clrBtn.classList.remove('show');
         document.querySelectorAll('.zone-block').forEach((el) => el.classList.remove('search-match'));
@@ -264,12 +271,16 @@ function doSearch(q) {
     let total = 0;
     const mz = new Set();
 
-    Object.entries(BOOKING_BY_STALL).forEach(([id, d]) => {
-        if ((d.shop + d.product + d.name + d.note).toLowerCase().includes(currentQuery.toLowerCase())) {
-            total += 1;
-            const zoneMatch = id.match(/^[A-Z]+/);
-            if (zoneMatch) mz.add(zoneMatch[0]);
-        }
+    Object.keys(ZONES_DATA).forEach((z) => {
+        (ZONES_DATA[z].columns || []).forEach((column) => {
+            column.stalls.forEach((stall) => {
+                if (stall.status === 'PLACEHOLDER') return;
+                if (stallMatchesFilter(stall.code, stall)) {
+                    total += 1;
+                    mz.add(z);
+                }
+            });
+        });
     });
 
     document.querySelectorAll('.zone-block').forEach((el) => {
@@ -278,28 +289,47 @@ function doSearch(q) {
         else el.classList.remove('search-match');
     });
 
-    badge.textContent = `พบ ${total} ร้าน`;
+    badge.textContent = currentStatusFilter
+        ? `พบ ${total} แผง (${STATUS_LABELS[currentStatusFilter]})`
+        : `พบ ${total} ร้าน`;
     badge.classList.add('show');
     if (activeZone) renderGrid(activeZone);
 }
 
+function doSearch(q) {
+    currentQuery = q.trim();
+    currentStatusFilter = null;
+    document.querySelectorAll('.qtag').forEach((t) => t.classList.remove('active'));
+    refreshFilterResults();
+}
+
 function clearSearch() {
     document.getElementById('searchInput').value = '';
+    currentStatusFilter = null;
     document.querySelectorAll('.qtag').forEach((t) => t.classList.remove('active'));
     doSearch('');
 }
 
-function quickSearch(btn, q) {
-    document.getElementById('searchInput').value = q;
+function quickStatusFilter(btn, status) {
+    document.getElementById('searchInput').value = '';
     document.querySelectorAll('.qtag').forEach((t) => t.classList.remove('active'));
+    currentQuery = '';
+
+    if (currentStatusFilter === status) {
+        currentStatusFilter = null;
+        refreshFilterResults();
+        return;
+    }
+
+    currentStatusFilter = status;
     btn.classList.add('active');
-    doSearch(q);
+    refreshFilterResults();
 }
 
 window.openZone = openZone;
 window.closeZone = closeZone;
 window.clearSearch = clearSearch;
-window.quickSearch = quickSearch;
+window.quickStatusFilter = quickStatusFilter;
 
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('searchInput');

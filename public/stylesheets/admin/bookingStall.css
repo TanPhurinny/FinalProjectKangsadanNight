@@ -308,8 +308,13 @@
     }
 
     .road-top {
+      position: relative;
       height: 50px; background: #e5e5e5; border-bottom: 2px solid #bbb;
       display: flex; align-items: center; justify-content: flex-end; padding: 0 20px;
+    }
+    .road-top-label {
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      font-weight: 700; font-size: 14px; letter-spacing: 2px; color: #6b6b6b;
     }
     .road-top-sign {
       background: #f5c200; font-weight: 700; font-size: 14px; padding: 6px 16px; border-radius: 4px;

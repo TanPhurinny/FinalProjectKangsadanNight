@@ -175,6 +175,21 @@
     border-color: var(--primary-dark);
 }
 
+.qtag-empty.active {
+    background: #16a34a;
+    border-color: #15803d;
+}
+
+.qtag-booked.active {
+    background: #6b7280;
+    border-color: #4b5563;
+}
+
+.qtag-maintenance.active {
+    background: #f2aa31;
+    border-color: #c9860f;
+}
+
 .page-body {
     padding: 16px 18px 40px;
 }
@@ -187,6 +202,7 @@
 }
 
 .road-top {
+    position: relative;
     height: 42px;
     background: var(--road);
     border-bottom: 2px solid #b8b8b8;
@@ -194,6 +210,18 @@
     align-items: center;
     justify-content: flex-end;
     padding: 0 16px;
+}
+
+.road-top-label {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Prompt', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: #6b6b6b;
 }
 
 .sign-charoen {

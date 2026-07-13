@@ -50,30 +50,22 @@
             <!-- QUICK TAGS -->
             <div class="tag-bar">
                 <span class="tag-lbl">ค้นหาด่วน:</span>
-                <button class="qtag"
-                    onclick="quickSearch(this,'หมูปิ้ง')">หมูปิ้ง</button>
-                <button class="qtag"
-                    onclick="quickSearch(this,'เสื้อผ้า')">เสื้อผ้า</button>
-                <button class="qtag"
-                    onclick="quickSearch(this,'ก๋วยเตี๋ยว')">ก๋วยเตี๋ยว</button>
-                <button class="qtag"
-                    onclick="quickSearch(this,'ผัดไทย')">ผัดไทย</button>
-                <button class="qtag"
-                    onclick="quickSearch(this,'ของทอด')">ของทอด</button>
-                <button class="qtag"
-                    onclick="quickSearch(this,'ขนม')">ขนม</button>
-                <button class="qtag"
-                    onclick="quickSearch(this,'เครื่องดื่ม')">เครื่องดื่ม</button>
-                <button class="qtag"
-                    onclick="quickSearch(this,'ฟู้ดทรัค')">ฟู้ดทรัค</button>
-                <button class="qtag"
-                    onclick="quickSearch(this,'ไก่ย่าง')">ไก่ย่าง</button>
+                <button class="qtag qtag-empty"
+                    onclick="quickStatusFilter(this,'EMPTY')"><i
+                        class="fa-solid fa-circle-check fa-xs"></i> แผงว่าง</button>
+                <button class="qtag qtag-booked"
+                    onclick="quickStatusFilter(this,'BOOKED')"><i
+                        class="fa-solid fa-store fa-xs"></i> จองแล้ว</button>
+                <button class="qtag qtag-maintenance"
+                    onclick="quickStatusFilter(this,'MAINTENANCE')"><i
+                        class="fa-solid fa-screwdriver-wrench fa-xs"></i> ซ่อมบำรุง</button>
             </div>
 
             <!-- PAGE BODY -->
             <div class="page-body">
                 <div class="map-shell">
                     <div class="road-top">
+                        <span class="road-top-label">ถนน</span>
                         <div class="sign-charoen"><div class="sign-dot"></div>
                             เจริญหมูกระทะ</div>
                     </div>
