@@ -1,4 +1,14 @@
-const PAGE_DATA = window.PAGE_DATA || {};
+function readPageDataJson() {
+    const el = document.getElementById('pageDataJson');
+    if (!el) return {};
+    try {
+        return JSON.parse(el.textContent);
+    } catch (e) {
+        return {};
+    }
+}
+
+const PAGE_DATA = readPageDataJson();
 const REQUEST_DATA = PAGE_DATA.bookingRequest || {};
 const ZONE_BY_CODE = PAGE_DATA.zoneByCode || {};
 const BOOKED_STALLS = new Set(PAGE_DATA.bookedStalls || []);

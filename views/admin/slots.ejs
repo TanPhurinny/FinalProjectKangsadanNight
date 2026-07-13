@@ -225,10 +225,8 @@
 
         </div>
 
-        <script>
-  window.ZONES_DATA = <%- JSON.stringify(zoneByCode).replace(/</g, '\\u003c') %>;
-  window.BOOKING_BY_STALL = <%- JSON.stringify(locals.bookingByStallCode || {}).replace(/</g, '\\u003c') %>;
-</script>
+        <script type="application/json" id="zonesDataJson"><%- JSON.stringify(zoneByCode).replace(/</g, '\\u003c') %></script>
+        <script type="application/json" id="bookingByStallJson"><%- JSON.stringify(locals.bookingByStallCode || {}).replace(/</g, '\\u003c') %></script>
         <script
             src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
         <script src="/js/admin/slots.js"></script>

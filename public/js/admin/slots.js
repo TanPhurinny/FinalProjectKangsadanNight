@@ -1,6 +1,16 @@
 /* Slots page interactions */
-const ZONES_DATA = window.ZONES_DATA || {};
-const BOOKING_BY_STALL = window.BOOKING_BY_STALL || {};
+function readJsonScript(id) {
+    const el = document.getElementById(id);
+    if (!el) return {};
+    try {
+        return JSON.parse(el.textContent);
+    } catch (e) {
+        return {};
+    }
+}
+
+const ZONES_DATA = readJsonScript('zonesDataJson');
+const BOOKING_BY_STALL = readJsonScript('bookingByStallJson');
 
 let activeZone = null;
 let selectedStall = null;
