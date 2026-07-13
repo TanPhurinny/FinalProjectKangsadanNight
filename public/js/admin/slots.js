@@ -131,8 +131,12 @@ function renderGrid(z) {
     let booked = 0;
     let maintenance = 0;
 
+    // โซน E, X, C ในผังจริงมีแถวเดียวเรียงตามแนวนอน (ซ้ายไปขวา) ไม่ใช่เรียงลงมาแนวตั้งแบบโซนอื่น
+    const isHorizontalZone = ['E', 'X', 'C'].includes(z);
+
     (ZONES_DATA[z].columns || []).forEach((column) => {
         const wrapClasses = ['col-wrap'];
+        if (isHorizontalZone) wrapClasses.push('col-wrap-horizontal');
         if (column.small) wrapClasses.push('col-wrap-small');
         if (column.groupEnd) wrapClasses.push('col-group-end');
 
@@ -145,7 +149,7 @@ function renderGrid(z) {
         wrap.appendChild(lbl);
 
         const col = document.createElement('div');
-        col.className = 'stall-col';
+        col.className = isHorizontalZone ? 'stall-col stall-col-horizontal' : 'stall-col';
 
         column.stalls.forEach((stall) => {
             const id = stall.code;

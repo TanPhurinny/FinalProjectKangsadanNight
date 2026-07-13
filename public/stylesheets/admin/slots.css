@@ -646,6 +646,14 @@
     flex-direction: column;
 }
 
+.stall-col-horizontal {
+    flex-direction: row;
+}
+
+.col-wrap-horizontal {
+    align-items: flex-start;
+}
+
 .stall-cell {
     width: 62px;
     height: 32px;
