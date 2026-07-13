@@ -156,6 +156,26 @@ exports.getSlotsPage = async (req, res) => {
             }))
         }));
 
+        // โซน B: B100/B200/B299/B300 ในผังจริงไม่ใช่คอลัมน์แยกของตัวเอง แต่เป็นแค่แผงบนสุดของ
+        // คอลัมน์ B1/B2/B3/B4 ตามลำดับ (อยู่ตำแหน่งเดียวกันทางกายภาพ แค่แยก ZoneRow ไว้ในข้อมูล)
+        // จึงรวมเป็นแผงแรกของคอลัมน์นั้นๆ แทนการแสดงเป็นคอลัมน์เดี่ยวๆ แยกต่างหาก
+        const zoneBHeaderEntry = zonesData.find((zone) => zone.code === 'B');
+        if (zoneBHeaderEntry) {
+            const headerMerges = [
+                ['B100', 'B1'],
+                ['B200', 'B2'],
+                ['B299', 'B3'],
+                ['B300', 'B4']
+            ];
+            headerMerges.forEach(([headerRowCode, targetRowCode]) => {
+                const headerIndex = zoneBHeaderEntry.columns.findIndex((column) => column.rowCode === headerRowCode);
+                if (headerIndex === -1) return;
+                const [headerColumn] = zoneBHeaderEntry.columns.splice(headerIndex, 1);
+                const targetColumn = zoneBHeaderEntry.columns.find((column) => column.rowCode === targetRowCode);
+                if (targetColumn) targetColumn.stalls.unshift(...headerColumn.stalls);
+            });
+        }
+
         // โซน T เป็นแผงล็อกเล็กที่วางแทรกอยู่ในคอลัมน์ที่ 2 ของโซน B จริงในผังจริง
         // (ระหว่าง B201 กับ B222/B223) จึงรวมแสดงในผังโซน B แทนการแยกเป็นแท็บของตัวเอง
         // ข้อมูลจริงในฐานข้อมูลยังคงแยกเป็น Zone T ต่างหาก (จำเป็นสำหรับระบบจัดแผงที่หน้า /admin/booking-stall)
