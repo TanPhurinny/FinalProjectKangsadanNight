@@ -182,13 +182,6 @@ exports.login = async (req, res) => {
 
 exports.register = async (req, res) => {
     try {
-        console.log('register called', {
-            accept: req.headers.accept,
-            contentType: req.headers['content-type'],
-            wantsJson: wantsJson(req),
-            bodyKeys: Object.keys(req.body || {}).length,
-            hasFile: !!req.file
-        });
         const username = String(req.body.username || '').trim();
         const password = String(req.body.password || '');
         const name = String(req.body.name || '').trim();

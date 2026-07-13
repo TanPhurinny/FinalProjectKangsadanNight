@@ -4,12 +4,6 @@ const prisma = require('../config/prismaClient');
 const zoneAccess = require('../utils/zoneAccess');
 const { requireAuth } = require('../middlewares/jwtAuth');
 
-// หน้าผังตลาด (เข้าได้ทุกคนที่ Login)
-router.get('/slots', requireAuth, async (req, res) => {
-    const slots = await prisma.slot.findMany();
-    res.render('slots', { user: req.user, data: slots });
-});
-
 // ระบบจองแผง (เฉพาะ SELLER)
 router.post('/booking/:id', requireAuth, async (req, res) => {
     const user = req.user || req.session?.user;
