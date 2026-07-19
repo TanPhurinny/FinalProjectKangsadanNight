@@ -1,29 +1,38 @@
 /* ==========================================================================
-   MARKET MAP — CSS
+   MARKET MAP — gridgeist
    Recreates the market layout board (zones, roads, facilities) responsively.
    ========================================================================== */
 
 :root {
-  --road: #d9d9d9;
-  --gray: #d6d6d6;
-  --zone: #c9ffd2;
-  --zone-text: #1e8449;
-  --yellow: #ffc629;
-  --yellow-dark: #e6ac00;
-  --warn-black: #1a1a1a;
+  --navy: #12303a;
+  --ink: #16333c;
+  --ink-soft: #5b7a84;
+  --line: #d7e3e6;
+  --soft-bg: #f6f8f8;
+  --primary: #2C93A8;
+  --primary-dark: #1f6f80;
+  --road: #e7eeef;
+  --gray: #e7eeef;
+  --zone: #fff;
+  --zone-text: var(--navy);
+  --zone-border: var(--line);
+  --yellow: #c98a2e;
+  --yellow-dark: #a06c1f;
+  --warn-black: #16333c;
   --bg: #ffffff;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --shadow: 0 4px 14px rgba(0, 0, 0, 0.10);
-  --shadow-strong: 0 8px 20px rgba(0, 0, 0, 0.16);
-  --font-body: "Noto Sans Thai", sans-serif;
+  --radius: 4px;
+  --radius-sm: 3px;
+  --shadow: none;
+  --shadow-strong: none;
+  --mono: 'IBM Plex Mono', 'Courier New', monospace;
+  --font-body: 'Kanit', 'Noto Sans Thai', sans-serif;
   --outer-road-y: 40px;
   --outer-road-x: 108px;
   --main-road-w: 80px;
   --zone-a-w: 34%;
   --zone-f-w: 22%;
   --zone-b-w: 15%;
-  --transition: 0.25s ease;
+  --transition: 0.15s ease;
 }
 
 * { box-sizing: border-box; }
@@ -31,8 +40,8 @@
 body {
   margin: 0;
   background: var(--bg);
-  font-family: 'Kanit', 'Sarabun', sans-serif;
-  color: #222;
+  font-family: var(--font-body);
+  color: var(--ink);
 }
 
 button { font-family: inherit; }
@@ -52,23 +61,23 @@ button { font-family: inherit; }
   font-size: 1.4rem;
   font-weight: 700;
   margin: 0;
-  color: #111;
+  color: var(--navy);
 }
 
 .zone-filter__subtitle {
   font-size: 0.85rem;
-  color: #6b6b6b;
+  color: var(--ink-soft);
   margin: 0 0 8px;
 }
 
 .zone-filter__helper {
   margin: 10px 0 0;
   font-size: 0.88rem;
-  color: #4f4f4f;
+  color: var(--ink-soft);
 }
 
 .zone-filter__helper strong {
-  color: var(--zone-text);
+  color: var(--primary-dark);
   font-weight: 700;
 }
 
@@ -78,26 +87,28 @@ button { font-family: inherit; }
   appearance: none;
   min-width: 170px;
   padding: 8px 34px 8px 14px;
-  border: 1px solid #d5d5d5;
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%23555' stroke-width='1.6' fill='none' fill-rule='evenodd'/></svg>") no-repeat right 12px center;
+  background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%235b7a84' stroke-width='1.6' fill='none' fill-rule='evenodd'/></svg>") no-repeat right 12px center;
   font-family: inherit;
   font-size: 0.95rem;
+  color: var(--ink);
   cursor: pointer;
   transition: border-color var(--transition);
 }
 
 .zone-filter__select:focus {
-  outline: 3px solid rgba(30, 132, 73, 0.35);
-  outline-offset: 1px;
-  border-color: var(--zone-text);
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(44, 147, 168, 0.12);
 }
 
 .map-board {
   position: relative;
   background: #ffffff;
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: none;
   padding: var(--outer-road-y) var(--outer-road-x);
   min-height: 640px;
 }
@@ -110,25 +121,27 @@ button { font-family: inherit; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--yellow);
-  color: #1a1a1a;
-  font-weight: 700;
-  font-size: 0.95rem;
-  padding: 8px 18px;
+  background: var(--navy);
+  color: #fff;
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 7px 14px;
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
+  box-shadow: none;
   z-index: 3;
 }
 
-.location-badge i { color: #c62828; font-size: 1rem; }
+.location-badge i { color: #e07a7a; font-size: 1rem; }
 
 .entrance-label {
   position: absolute;
   right: 14px;
   bottom: 6px;
+  font-family: var(--mono);
   font-weight: 700;
-  font-size: 0.95rem;
-  color: #111;
+  font-size: 0.85rem;
+  color: var(--ink);
   z-index: 3;
 }
 
@@ -141,7 +154,8 @@ button { font-family: inherit; }
   align-items: center;
   justify-content: center;
   gap: 14px;
-  background: #D9D9D9;
+  background: var(--soft-bg);
+  border: 1px solid var(--line);
 }
 
 .side-frame--left { left: 0; }
@@ -151,16 +165,16 @@ button { font-family: inherit; }
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   font-weight: 700;
-  font-size: 0.95rem;
-  color: #2b2b2b;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
   white-space: nowrap;
   letter-spacing: 0.5px;
 }
 
 .hazard-strip--vertical {
-  width: 16px;
+  width: 12px;
   height: 78%;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: repeating-linear-gradient(
     180deg,
     var(--warn-black) 0px 20px,
@@ -175,8 +189,8 @@ button { font-family: inherit; }
   left: calc(var(--outer-road-x) + 4%);
   bottom: 14px;
   width: 44%;
-  height: 14px;
-  border-radius: 8px;
+  height: 12px;
+  border-radius: var(--radius-sm);
   background: repeating-linear-gradient(
     90deg,
     var(--warn-black) 0px 20px,
@@ -208,39 +222,39 @@ button { font-family: inherit; }
 .label-x,
 .seating-area,
 .main-road {
-    
-     background-color: #C7C6C5;
+  background-color: var(--soft-bg);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition), filter var(--transition);
+  transition: border-color var(--transition), background var(--transition), opacity var(--transition), filter var(--transition);
 }
 
 .zone {
-  background: var(--zone);
+  background: #fff;
   color: var(--zone-text);
+  font-family: var(--mono);
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 .zone:hover {
-  filter: brightness(1.05);
-  box-shadow: var(--shadow-strong);
-  transform: scale(1.02);
+  border-color: var(--primary);
+  background: var(--primary-tint, rgba(44, 147, 168, 0.06));
 }
 
 .zone:focus-visible {
-  outline: 3px solid var(--zone-text);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
 .zone.is-active {
-  border: 2px solid var(--zone-text);
-  box-shadow: var(--shadow-strong);
+  border: 2px solid var(--primary);
+  background: rgba(44, 147, 168, 0.06);
 }
 
 .zone.is-faded {
@@ -259,20 +273,21 @@ button { font-family: inherit; }
 
 .zone--e { grid-area: e; }
 .zone--d { grid-area: d; }
-.label-x { grid-area: x; background: var(--gray); color: #444; font-weight: 600; font-size: 0.95rem; gap: 8px; margin-left: 110px}
-.zone--a { grid-area: a; font-size: 1.4rem; }
+.label-x { grid-area: x; background: var(--soft-bg); color: var(--ink-soft); font-family: var(--mono); font-weight: 600; font-size: 0.85rem; gap: 8px; margin-left: 110px}
+.zone--a { grid-area: a; font-size: 1.3rem; }
 .main-road { grid-area: road; background: var(--road); border-radius: var(--radius-sm); }
 .zone-f-column { grid-area: f; display: flex; flex-direction: column; gap: 12px; height: 100%; }
-.zone--f { flex: 1 1 68%; font-size: 1.3rem; }
-.zone--b { grid-area: b; font-size: 1.4rem; }
-.zone--c { grid-area: c; height: 45px; align-self: start; font-size: 1.15rem; }
+.zone--f { flex: 1 1 68%; font-size: 1.2rem; }
+.zone--b { grid-area: b; font-size: 1.3rem; }
+.zone--c { grid-area: c; height: 45px; align-self: start; font-size: 1.05rem; }
 
 .seating-area {
   flex: 1 1 28%;
-  background: var(--gray);
-  color: #444;
+  background: var(--soft-bg);
+  color: var(--ink-soft);
+  font-family: var(--mono);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   gap: 8px;
@@ -282,9 +297,10 @@ button { font-family: inherit; }
 .main-road__label {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
+  font-family: var(--mono);
   font-weight: 700;
-  color: #555;
-  font-size: 1rem;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
   letter-spacing: 1px;
 }
 
@@ -293,7 +309,7 @@ button { font-family: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 12px;
   flex-wrap: wrap;
   align-self: end;
 }
@@ -302,62 +318,69 @@ button { font-family: inherit; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--yellow);
-  border: none;
+  background: #fff;
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  padding: 10px 20px;
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #1a1a1a;
+  padding: 9px 18px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--navy);
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+  box-shadow: none;
+  transition: var(--transition);
 }
 
 .facility-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-strong);
-  background: var(--yellow-dark);
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--soft-bg);
 }
 
 .facility-btn:focus-visible {
-  outline: 3px solid #7a5900;
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
 .map-legend {
   margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
   font-size: 0.85rem;
-  color: #333;
+  color: var(--ink);
   line-height: 1.6;
 }
 
 .map-legend__title {
+  font-family: var(--mono);
   font-weight: 700;
-  font-size: 1rem;
-  margin-bottom: 6px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
 }
 
 .map-legend__line { margin: 4px 0; }
-.map-legend__sub  { margin: 0 0 10px; color: #777; font-size: 0.78rem; }
+.map-legend__sub  { margin: 0 0 10px; color: var(--ink-soft); font-size: 0.78rem; }
 
 .map-legend__badge {
-  background: #ffe0e0;
-  color: #d32f2f;
+  background: #fff;
+  color: var(--danger, #c0392b);
+  border: 1px solid var(--line);
   font-weight: 700;
   padding: 1px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   margin-right: 4px;
 }
 
-.map-legend__highlight { color: var(--zone-text); font-weight: 700; }
+.map-legend__highlight { color: var(--primary-dark); font-weight: 700; }
 .map-legend__underline { text-decoration: underline; }
-.map-legend__note { color: #999; }
+.map-legend__note { color: var(--ink-soft); }
 
 .stall-modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(18, 48, 58, 0.5);
   display: none;
   align-items: center;
   justify-content: center;
@@ -371,9 +394,10 @@ button { font-family: inherit; }
   position: relative;
   width: min(420px, 100%);
   background: #fff;
-  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   padding: 24px 22px 20px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: none;
 }
 
 .stall-modal__close {
@@ -384,31 +408,36 @@ button { font-family: inherit; }
   background: transparent;
   font-size: 1.6rem;
   cursor: pointer;
-  color: #555;
+  color: var(--ink-soft);
 }
 
 .stall-modal__zone {
   font-weight: 700;
-  color: var(--zone-text);
+  color: var(--primary-dark);
   margin: 4px 0 12px;
 }
 
 .stall-modal__list {
   padding-left: 18px;
   margin: 0 0 16px;
-  color: #444;
+  color: var(--ink);
   line-height: 1.7;
 }
 
 .stall-modal__btn {
   width: 100%;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 14px;
-  background: var(--zone-text);
+  background: var(--primary);
   color: #fff;
   font-weight: 700;
   cursor: pointer;
+  transition: var(--transition);
+}
+
+.stall-modal__btn:hover {
+  background: var(--primary-dark);
 }
 
 @media (max-width: 1199px) {
@@ -420,10 +449,10 @@ button { font-family: inherit; }
 
   .zone-filter__title { font-size: 1.25rem; }
   .zone { font-size: 1rem; }
-  .zone--a, .zone--b { font-size: 1.15rem; }
-  .zone--f { font-size: 1.05rem; }
-  .location-badge { font-size: 0.85rem; padding: 6px 14px; }
-  .side-frame__label { font-size: 0.85rem; }
+  .zone--a, .zone--b { font-size: 1.1rem; }
+  .zone--f { font-size: 1rem; }
+  .location-badge { font-size: 0.8rem; padding: 6px 12px; }
+  .side-frame__label { font-size: 0.82rem; }
   .map-inner { row-gap: 10px; column-gap: clamp(10px, 2vw, 24px); }
 }
 

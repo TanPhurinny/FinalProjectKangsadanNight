@@ -117,10 +117,10 @@
 
     if (badgeContainer) {
       if (!booking) {
-        badgeContainer.innerHTML = '<span class="badge bg-secondary text-white rounded-pill px-3 py-2">ยังไม่มีรายการจอง</span>';
+        badgeContainer.innerHTML = '<span class="badge bg-secondary text-white px-3 py-2">ยังไม่มีรายการจอง</span>';
       } else {
         const meta = statusMeta(booking.status);
-        badgeContainer.innerHTML = `<span class="badge ${meta.badge} rounded-pill px-3 py-2"><i class="bi ${meta.icon} me-1"></i>${meta.text}</span>`;
+        badgeContainer.innerHTML = `<span class="badge ${meta.badge} px-3 py-2"><i class="bi ${meta.icon} me-1"></i>${meta.text}</span>`;
       }
     }
 
@@ -132,7 +132,7 @@
           <div class="empty-state__icon"><i class="bi bi-inbox"></i></div>
           <h3>ยังไม่มีรายการจอง</h3>
           <p>เริ่มต้นที่หน้าเลือกโซนเพื่อสร้างรายการจองใหม่</p>
-          <a href="/select-zone" class="btn btn-custom-primary btn-custom rounded-pill px-4">ไปเลือกโซน</a>
+          <a href="/select-zone" class="btn btn-custom-primary btn-custom px-4">ไปเลือกโซน</a>
         </div>
       `;
       return;
@@ -140,8 +140,8 @@
 
     const step = bookingStep(booking.status);
     const bookingActionButton = step >= 2
-      ? `<a href="/select-zone" class="btn btn-custom-primary btn-custom w-100 rounded-pill py-3 shadow-sm text-center"><i class="bi bi-grid me-2"></i>จองแผงใหม่</a>`
-      : `<a href="/select-zone" class="btn btn-outline-primary btn-custom w-100 rounded-pill py-3 text-center"><i class="bi bi-plus-circle me-2"></i>จองเพิ่ม</a>`;
+      ? `<a href="/select-zone" class="btn btn-custom-primary btn-custom w-100 py-3 shadow-sm text-center"><i class="bi bi-grid me-2"></i>จองแผงใหม่</a>`
+      : `<a href="/select-zone" class="btn btn-outline-primary btn-custom w-100 py-3 text-center"><i class="bi bi-plus-circle me-2"></i>จองเพิ่ม</a>`;
 
     scenarioContent.innerHTML = `
       <div class="booking-summary-grid">
@@ -220,7 +220,7 @@
             <div class="empty-state__icon"><i class="bi bi-bell-slash"></i></div>
             <h3>ยังไม่มีการแจ้งเตือน</h3>
             <p>เมื่อมีการเปลี่ยนสถานะการจอง ระบบจะแสดงรายการที่นี่</p>
-            <a href="/booking-status" class="btn btn-custom-primary btn-custom rounded-pill px-4">ไปหน้าสถานะการจอง</a>
+            <a href="/booking-status" class="btn btn-custom-primary btn-custom px-4">ไปหน้าสถานะการจอง</a>
           </div>
         </div>
       `;
@@ -254,7 +254,7 @@
                   <span class="text-muted" style="font-size:0.75rem;"><i class="bi bi-clock me-1"></i>${item.date} | ${item.time}</span>
                 </div>
               </div>
-              <button class="btn btn-sm btn-light rounded-pill border hover-lift px-3 text-nowrap ms-auto align-self-center" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
+              <button class="btn btn-sm btn-light border hover-lift px-3 text-nowrap ms-auto align-self-center" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
             </div>
           </div>
         </div>
@@ -354,7 +354,7 @@
                   <span class="text-muted" style="font-size:0.75rem;"><i class="bi bi-clock me-1"></i>${item.date} | ${item.time}</span>
                 </div>
               </div>
-              <button class="btn btn-sm btn-light rounded-pill border hover-lift px-3 text-nowrap ms-auto align-self-center" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
+              <button class="btn btn-sm btn-light border hover-lift px-3 text-nowrap ms-auto align-self-center" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
             </div>
           </div>
         </div>

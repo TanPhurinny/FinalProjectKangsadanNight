@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="/img/Logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -29,21 +29,21 @@
         <p class="page-hero__subtitle">แจ้งสถานะการจองและความคืบหน้าจากฐานข้อมูล</p>
       </div>
       <div class="d-flex gap-2 flex-wrap">
-        <a href="/booking-status" class="btn btn-outline-primary btn-custom rounded-pill">กลับไปสถานะการจอง</a>
-        <button class="btn btn-custom-primary btn-custom rounded-pill" onclick="markAllAsRead()">ทำเป็นอ่านแล้วทั้งหมด</button>
+        <a href="/booking-status" class="btn btn-outline-primary btn-custom">กลับไปสถานะการจอง</a>
+        <button class="btn btn-custom-primary btn-custom" onclick="markAllAsRead()">ทำเป็นอ่านแล้วทั้งหมด</button>
       </div>
     </div>
 
     <div class="notification-toolbar">
       <ul class="nav nav-pills custom-pills" id="notiFilterTab" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active" onclick="filterNotifications('all')" type="button">ทั้งหมด <span class="badge ms-1 bg-secondary text-white rounded-pill" id="badgeAll">0</span></button>
+          <button class="nav-link active" onclick="filterNotifications('all')" type="button">ทั้งหมด <span class="badge ms-1 bg-secondary text-white" id="badgeAll">0</span></button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" onclick="filterNotifications('unread')" type="button">ยังไม่ได้อ่าน <span class="badge ms-1 bg-danger-custom text-white rounded-pill" id="badgeUnread">0</span></button>
+          <button class="nav-link" onclick="filterNotifications('unread')" type="button">ยังไม่ได้อ่าน <span class="badge ms-1 bg-danger-custom text-white" id="badgeUnread">0</span></button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" onclick="filterNotifications('read')" type="button">อ่านแล้ว <span class="badge ms-1 bg-light text-secondary rounded-pill" id="badgeRead">0</span></button>
+          <button class="nav-link" onclick="filterNotifications('read')" type="button">อ่านแล้ว <span class="badge ms-1 bg-light text-secondary" id="badgeRead">0</span></button>
         </li>
       </ul>
       <div class="text-muted small">
@@ -63,7 +63,7 @@
         </div>
         <div class="modal-body py-4" id="modalNotiBody"></div>
         <div class="modal-footer border-0 pt-0">
-          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
+          <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
         </div>
       </div>
     </div>
