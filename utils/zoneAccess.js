@@ -2,7 +2,7 @@
 // Keeps normalization and zone mapping in one place.
 const ZONE_MAP = {
   FASHION: ['e', 'c', 'a'],
-  FOOD: ['f', 'b', 'a'],
+  FOOD: ['f', 'b', 'a', 'x'],
   EVENT_BOOTH: [],
 };
 
@@ -33,8 +33,7 @@ function allowedZonesFor(productType) {
   const zones = ZONE_MAP[normalizedProductType];
   if (!zones) return ['a'];
 
-  // Ensure Zone X is never allowed.
-  return zones.filter((zoneCode) => zoneCode !== 'x');
+  return zones;
 }
 
 module.exports = {

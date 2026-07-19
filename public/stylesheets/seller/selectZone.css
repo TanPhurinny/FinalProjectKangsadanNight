@@ -25,7 +25,7 @@
   --zone-d-bg: #C8FFE0; --zone-d-text: #0a7a5a;
   --zone-e-bg: #FFB5DA; --zone-e-text: #c0006e;
   --zone-f-bg: #FDBF60; --zone-f-text: #a84800;
-  --zone-x-bg: #BEE3F8; --zone-x-text: #1a5276;
+  --zone-x-bg: #FDBF60; --zone-x-text: #a84800;
 
   --yellow: #c98a2e;
   --yellow-dark: #a06c1f;
@@ -288,7 +288,6 @@ button { font-family: inherit; }
 .zone-f-column { margin-left: clamp(8px, 3vw, 48px); }
 
 .zone,
-.label-x,
 .seating-area,
 .main-road {
   background-color: var(--soft-bg);
@@ -324,17 +323,19 @@ button { font-family: inherit; }
   opacity: 0.82;
 }
 
-/* โซนที่มีความสูงจำกัด (E, D, C) เรียงชื่อและประเภทสินค้าในแนวนอนแทน */
+/* โซนที่มีความสูงจำกัด (E, D, C, X) เรียงชื่อและประเภทสินค้าในแนวนอนแทน */
 .zone--c,
 .zone--d,
-.zone--e {
+.zone--e,
+.zone--x {
   flex-direction: row;
   gap: 8px;
 }
 
 .zone--c .zone__category,
 .zone--d .zone__category,
-.zone--e .zone__category {
+.zone--e .zone__category,
+.zone--x .zone__category {
   font-size: 0.68rem;
 }
 
@@ -374,11 +375,11 @@ button { font-family: inherit; }
 .zone--d { background: var(--zone-d-bg); color: var(--zone-d-text); border-color: rgba(10, 122, 90, 0.2); }
 .zone--e { background: var(--zone-e-bg); color: var(--zone-e-text); border-color: rgba(192, 0, 110, 0.2); }
 .zone--f { background: var(--zone-f-bg); color: var(--zone-f-text); border-color: rgba(168, 72, 0, 0.2); }
-.label-x { background: var(--zone-x-bg); color: var(--zone-x-text); border-color: rgba(26, 82, 118, 0.2); font-family: var(--mono); font-weight: 600; font-size: 0.85rem; gap: 8px; }
+.zone--x { background: var(--zone-x-bg); color: var(--zone-x-text); border-color: rgba(168, 72, 0, 0.2); font-size: 0.9rem; }
 
 .zone--e { grid-area: e; }
 .zone--d { grid-area: d; }
-.label-x { grid-area: x; margin-left: 110px }
+.zone--x { grid-area: x; margin-left: 110px; }
 .zone--a { grid-area: a; font-size: 1.3rem; }
 .main-road {
   grid-area: road;
@@ -735,7 +736,7 @@ button { font-family: inherit; }
   .zone-f-column { margin-left: 0; height: auto; }
   .zone { min-height: 90px; }
   .zone--a, .zone--b { min-height: 140px; }
-  .zone--c { height: auto; min-height: 60px; align-self: stretch; }
+  .zone--c, .zone--x { height: auto; min-height: 60px; align-self: stretch; margin-left: 0; }
 
   .main-road {
     order: 10;

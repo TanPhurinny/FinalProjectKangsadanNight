@@ -62,7 +62,7 @@
         <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--b"></span><span class="zone-legend__text">โซน B / F<small>อาหาร</small></span></span>
         <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--c"></span><span class="zone-legend__text">โซน C / E<small>แฟชั่น</small></span></span>
         <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--d"></span><span class="zone-legend__text">โซน D<small>ฟู้ดทรัค</small></span></span>
-        <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--x"></span><span class="zone-legend__text">โซน X<small>กิจกรรม/บูธพิเศษ</small></span></span>
+        <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--x"></span><span class="zone-legend__text">โซน X<small>อาหาร</small></span></span>
       </div>
     </header>
 
@@ -94,9 +94,9 @@
           <span class="zone__category">ฟู้ดทรัค</span>
         </div>
 
-        <div class="label-x">
-          <i class="bi bi-info-circle"></i>
-          <span>โซน X สำหรับบูทกิจกรรม</span>
+        <div class="zone zone--x <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('x')) ? 'is-disabled' : '' %>" data-zone="x" role="button" tabindex="0" aria-label="โซน X - อาหาร">
+          <span class="zone__name">โซน X</span>
+          <span class="zone__category">อาหาร</span>
         </div>
 
         <div class="zone zone--a <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('a')) ? 'is-disabled' : '' %>" data-zone="a" role="button" tabindex="0" aria-label="โซน A - แฟชั่นและอาหารพิเศษ">

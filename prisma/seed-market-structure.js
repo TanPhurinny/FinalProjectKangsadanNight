@@ -107,9 +107,9 @@ const ZONE_DEFINITIONS = [
   {
     code: 'X',
     name: 'Zone X',
-    description: 'Event Booth',
-    productCategory: 'EVENT_BOOTH',
-    productTypes: ['EVENT_BOOTH'],
+    description: 'Food',
+    productCategory: 'FOOD',
+    productTypes: ['FOOD'],
     size: '4x4',
     basePrice: 300,
     displayOrder: 7,

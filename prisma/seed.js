@@ -367,6 +367,13 @@ async function main() {
     { slotNumber: 'F-01', zone: 'F', price: 180 },
     { slotNumber: 'F-02', zone: 'F', price: 180 },
     { slotNumber: 'F-03', zone: 'F', price: 180 },
+    // Zone X: อาหาร (แผงพิเศษขนาดใหญ่ X101-X106)
+    { slotNumber: 'X-01', zone: 'X', price: 300 },
+    { slotNumber: 'X-02', zone: 'X', price: 300 },
+    { slotNumber: 'X-03', zone: 'X', price: 300 },
+    { slotNumber: 'X-04', zone: 'X', price: 300 },
+    { slotNumber: 'X-05', zone: 'X', price: 300 },
+    { slotNumber: 'X-06', zone: 'X', price: 300 },
   ];
 
   await prisma.slot.createMany({
