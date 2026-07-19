@@ -11,11 +11,22 @@
   --soft-bg: #f6f8f8;
   --primary: #2C93A8;
   --primary-dark: #1f6f80;
-  --road: #e7eeef;
+  --road: #b9c1c4;
+  --road-line: #f3f4f5;
   --gray: #e7eeef;
   --zone: #fff;
   --zone-text: var(--navy);
   --zone-border: var(--line);
+
+  /* Zone identity colors — matches the admin ผังจัดแผง overview */
+  --zone-a-bg: #E5D9F2; --zone-a-text: #441752;
+  --zone-b-bg: #FDBF60; --zone-b-text: #a84800;
+  --zone-c-bg: #FFB5DA; --zone-c-text: #c0006e;
+  --zone-d-bg: #C8FFE0; --zone-d-text: #0a7a5a;
+  --zone-e-bg: #FFB5DA; --zone-e-text: #c0006e;
+  --zone-f-bg: #FDBF60; --zone-f-text: #a84800;
+  --zone-x-bg: #BEE3F8; --zone-x-text: #1a5276;
+
   --yellow: #c98a2e;
   --yellow-dark: #a06c1f;
   --warn-black: #16333c;
@@ -53,7 +64,51 @@ button { font-family: inherit; }
   padding: 32px 24px 56px;
 }
 
-.map-page-header { margin-bottom: 20px; }
+.map-page-header {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.zone-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.zone-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-right: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.zone-legend__item:last-child { border-right: none; }
+
+.zone-legend__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.zone-legend__swatch--a { background: var(--zone-a-bg); }
+.zone-legend__swatch--b { background: var(--zone-b-bg); }
+.zone-legend__swatch--c { background: var(--zone-c-bg); }
+.zone-legend__swatch--d { background: var(--zone-d-bg); }
+.zone-legend__swatch--x { background: var(--zone-x-bg); }
 
 .zone-filter { display: inline-flex; flex-direction: column; gap: 2px; }
 
@@ -240,11 +295,12 @@ button { font-family: inherit; }
   font-size: 1.1rem;
   cursor: pointer;
   box-shadow: none;
+  filter: none;
 }
 
 .zone:hover {
-  border-color: var(--primary);
-  background: var(--primary-tint, rgba(44, 147, 168, 0.06));
+  border-color: var(--navy);
+  filter: brightness(0.97);
 }
 
 .zone:focus-visible {
@@ -253,8 +309,8 @@ button { font-family: inherit; }
 }
 
 .zone.is-active {
-  border: 2px solid var(--primary);
-  background: rgba(44, 147, 168, 0.06);
+  border: 2px solid var(--navy);
+  filter: brightness(0.95);
 }
 
 .zone.is-faded {
@@ -271,11 +327,45 @@ button { font-family: inherit; }
 
 .zone__name { pointer-events: none; }
 
+/* ── Zone identity colors — mirrors the admin ผังจัดแผง overview ── */
+.zone--a { background: var(--zone-a-bg); color: var(--zone-a-text); border-color: rgba(68, 23, 82, 0.18); }
+.zone--b { background: var(--zone-b-bg); color: var(--zone-b-text); border-color: rgba(168, 72, 0, 0.2); }
+.zone--c { background: var(--zone-c-bg); color: var(--zone-c-text); border-color: rgba(192, 0, 110, 0.2); }
+.zone--d { background: var(--zone-d-bg); color: var(--zone-d-text); border-color: rgba(10, 122, 90, 0.2); }
+.zone--e { background: var(--zone-e-bg); color: var(--zone-e-text); border-color: rgba(192, 0, 110, 0.2); }
+.zone--f { background: var(--zone-f-bg); color: var(--zone-f-text); border-color: rgba(168, 72, 0, 0.2); }
+.label-x { background: var(--zone-x-bg); color: var(--zone-x-text); border-color: rgba(26, 82, 118, 0.2); font-family: var(--mono); font-weight: 600; font-size: 0.85rem; gap: 8px; }
+
 .zone--e { grid-area: e; }
 .zone--d { grid-area: d; }
-.label-x { grid-area: x; background: var(--soft-bg); color: var(--ink-soft); font-family: var(--mono); font-weight: 600; font-size: 0.85rem; gap: 8px; margin-left: 110px}
+.label-x { grid-area: x; margin-left: 110px }
 .zone--a { grid-area: a; font-size: 1.3rem; }
-.main-road { grid-area: road; background: var(--road); border-radius: var(--radius-sm); }
+.main-road {
+  grid-area: road;
+  background: repeating-linear-gradient(
+    180deg,
+    var(--road) 0px 24px,
+    var(--road) 24px 36px
+  );
+  border: 1px solid #93a0a4;
+  border-radius: var(--radius-sm);
+  position: relative;
+  overflow: hidden;
+}
+.main-road::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(
+    180deg,
+    var(--road-line) 0px 18px,
+    transparent 18px 30px
+  );
+}
 .zone-f-column { grid-area: f; display: flex; flex-direction: column; gap: 12px; height: 100%; }
 .zone--f { flex: 1 1 68%; font-size: 1.2rem; }
 .zone--b { grid-area: b; font-size: 1.3rem; }
@@ -295,11 +385,14 @@ button { font-family: inherit; }
 }
 
 .main-road__label {
+  position: relative;
+  z-index: 1;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   font-family: var(--mono);
   font-weight: 700;
-  color: var(--ink-soft);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   font-size: 0.9rem;
   letter-spacing: 1px;
 }
@@ -464,8 +557,11 @@ button { font-family: inherit; }
   }
 
   .page-wrapper { padding: 20px 14px 40px; }
+  .map-page-header { flex-direction: column; align-items: stretch; }
   .zone-filter { width: 100%; }
   .zone-filter__select-wrap, .zone-filter__select { width: 100%; }
+  .zone-legend { width: 100%; flex-wrap: wrap; }
+  .zone-legend__item { flex: 1 1 50%; border-bottom: 1px solid var(--line); }
   .map-board { padding: 56px 14px 20px; }
 
   .location-badge {
@@ -525,6 +621,25 @@ button { font-family: inherit; }
   .main-road {
     order: 10;
     min-height: 56px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--road) 0px 24px,
+      var(--road) 24px 36px
+    );
+  }
+  .main-road::before {
+    left: 0;
+    right: 0;
+    top: 50%;
+    bottom: auto;
+    width: auto;
+    height: 3px;
+    transform: translateY(-50%);
+    background: repeating-linear-gradient(
+      90deg,
+      var(--road-line) 0px 18px,
+      transparent 18px 30px
+    );
   }
   .main-road__label {
     writing-mode: horizontal-tb;
