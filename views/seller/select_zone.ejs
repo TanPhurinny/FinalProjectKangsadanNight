@@ -59,10 +59,8 @@
 
       <div class="zone-legend" aria-label="สีและประเภทสินค้าประจำโซน">
         <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--a"></span><span class="zone-legend__text">โซน A<small>แฟชั่น/อาหารพิเศษ</small></span></span>
-        <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--b"></span><span class="zone-legend__text">โซน B / F<small>อาหาร</small></span></span>
+        <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--b"></span><span class="zone-legend__text">โซน B / D / F / X<small>อาหาร</small></span></span>
         <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--c"></span><span class="zone-legend__text">โซน C / E<small>แฟชั่น</small></span></span>
-        <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--d"></span><span class="zone-legend__text">โซน D<small>ฟู้ดทรัค</small></span></span>
-        <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--x"></span><span class="zone-legend__text">โซน X<small>อาหาร</small></span></span>
       </div>
     </header>
 
@@ -89,9 +87,9 @@
           <span class="zone__category">แฟชั่น</span>
         </div>
 
-        <div class="zone zone--d <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('d')) ? 'is-disabled' : '' %>" data-zone="d" role="button" tabindex="0" aria-label="โซน D - ฟู้ดทรัค">
+        <div class="zone zone--d <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('d')) ? 'is-disabled' : '' %>" data-zone="d" role="button" tabindex="0" aria-label="โซน D - อาหาร">
           <span class="zone__name">โซน D</span>
-          <span class="zone__category">ฟู้ดทรัค</span>
+          <span class="zone__category">อาหาร</span>
         </div>
 
         <div class="zone zone--x <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('x')) ? 'is-disabled' : '' %>" data-zone="x" role="button" tabindex="0" aria-label="โซน X - อาหาร">

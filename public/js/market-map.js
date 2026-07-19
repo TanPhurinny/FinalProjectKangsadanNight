@@ -33,9 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     d: {
       label: 'โซน D',
-      size: 'พื้นที่สำหรับฟู้ดทรัค',
+      size: 'แผงขายของขนาด 4x3 เมตร',
       price: 'ราคา 230 บาท /วัน',
-      description: 'โซน D เหมาะสำหรับรถเข็นอาหารและฟู้ดทรัค'
+      description: 'โซน D เหมาะสำหรับร้านอาหาร'
     },
     e: {
       label: 'โซน E',

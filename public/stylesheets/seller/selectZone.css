@@ -22,7 +22,7 @@
   --zone-a-bg: #E5D9F2; --zone-a-text: #441752;
   --zone-b-bg: #FDBF60; --zone-b-text: #a84800;
   --zone-c-bg: #FFB5DA; --zone-c-text: #c0006e;
-  --zone-d-bg: #C8FFE0; --zone-d-text: #0a7a5a;
+  --zone-d-bg: #FDBF60; --zone-d-text: #a84800;
   --zone-e-bg: #FFB5DA; --zone-e-text: #c0006e;
   --zone-f-bg: #FDBF60; --zone-f-text: #a84800;
   --zone-x-bg: #FDBF60; --zone-x-text: #a84800;
@@ -372,7 +372,7 @@ button { font-family: inherit; }
 .zone--a { background: var(--zone-a-bg); color: var(--zone-a-text); border-color: rgba(68, 23, 82, 0.18); }
 .zone--b { background: var(--zone-b-bg); color: var(--zone-b-text); border-color: rgba(168, 72, 0, 0.2); }
 .zone--c { background: var(--zone-c-bg); color: var(--zone-c-text); border-color: rgba(192, 0, 110, 0.2); }
-.zone--d { background: var(--zone-d-bg); color: var(--zone-d-text); border-color: rgba(10, 122, 90, 0.2); }
+.zone--d { background: var(--zone-d-bg); color: var(--zone-d-text); border-color: rgba(168, 72, 0, 0.2); }
 .zone--e { background: var(--zone-e-bg); color: var(--zone-e-text); border-color: rgba(192, 0, 110, 0.2); }
 .zone--f { background: var(--zone-f-bg); color: var(--zone-f-text); border-color: rgba(168, 72, 0, 0.2); }
 .zone--x { background: var(--zone-x-bg); color: var(--zone-x-text); border-color: rgba(168, 72, 0, 0.2); font-size: 0.9rem; }
