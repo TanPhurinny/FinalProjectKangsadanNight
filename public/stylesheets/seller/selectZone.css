@@ -557,6 +557,60 @@ button { font-family: inherit; }
   line-height: 1.7;
 }
 
+.stall-modal__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  background: var(--soft-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.stall-modal__option:hover {
+  border-color: var(--primary);
+}
+
+.stall-modal__option input[type="checkbox"] {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.stall-modal__option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.stall-modal__option-tag {
+  display: inline-flex;
+  width: fit-content;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--warning, #c98a2e);
+  background: rgba(201, 138, 46, 0.1);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+}
+
+.stall-modal__option-hint {
+  margin: 0 0 16px;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
 .stall-modal__btn {
   width: 100%;
   border: none;

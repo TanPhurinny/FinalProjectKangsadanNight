@@ -39,6 +39,7 @@ const upload = multer({
 const LIGHT_UNIT_PRICE = 15;
 const SMALL_APPLIANCE_PRICE = 20;
 const LARGE_APPLIANCE_PRICE = 40;
+const CORNER_ZONE_EXTRA_PRICE = 50;
 const BOOKING_REQUEST_TAG_PREFIX = '[BOOKING_REQUEST_ID:';
 
 function buildBookingRequestTag(requestId) {
@@ -524,7 +525,8 @@ router.get("/select-zone", isAuthenticated, async (req, res) => {
             user: req.user,
             productType,
             allowedZones,
-            zoneDetails
+            zoneDetails,
+            cornerZonePrice: CORNER_ZONE_EXTRA_PRICE
         });
     } catch (err) {
         console.error('select-zone error', err);
@@ -532,19 +534,21 @@ router.get("/select-zone", isAuthenticated, async (req, res) => {
             user: req.user,
             productType: null,
             allowedZones: ['a'],
-            zoneDetails: {}
+            zoneDetails: {},
+            cornerZonePrice: CORNER_ZONE_EXTRA_PRICE
         });
     }
 });
 
 // --- 3. หน้าจองแผงค้า ---
 router.get("/booking-stall", isAuthenticated, async (req, res) => {
-    const { zone } = req.query;
+    const { zone, corner } = req.query;
     const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true } });
     const productType = userRecord?.shop?.productType || null;
     const allowedZones = zoneAccess.allowedZonesFor(productType).map(z => String(z).toLowerCase());
     const zoneCode = String(zone || '').toUpperCase();
     const normalizedZone = zoneCode.toLowerCase();
+    const cornerRequested = String(corner || '') === '1';
 
     const defaultStoreDetail = userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '';
 
@@ -558,7 +562,8 @@ router.get("/booking-stall", isAuthenticated, async (req, res) => {
             pricing: {
                 lightUnitPrice: LIGHT_UNIT_PRICE,
                 smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                largeAppliancePrice: LARGE_APPLIANCE_PRICE
+                largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                cornerZonePrice: CORNER_ZONE_EXTRA_PRICE
             }
         });
     }
@@ -574,7 +579,8 @@ router.get("/booking-stall", isAuthenticated, async (req, res) => {
             pricing: {
                 lightUnitPrice: LIGHT_UNIT_PRICE,
                 smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                largeAppliancePrice: LARGE_APPLIANCE_PRICE
+                largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                cornerZonePrice: CORNER_ZONE_EXTRA_PRICE
             }
         });
     }
@@ -591,21 +597,24 @@ router.get("/booking-stall", isAuthenticated, async (req, res) => {
             pricing: {
                 lightUnitPrice: LIGHT_UNIT_PRICE,
                 smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                largeAppliancePrice: LARGE_APPLIANCE_PRICE
+                largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                cornerZonePrice: CORNER_ZONE_EXTRA_PRICE
             }
         });
     }
 
-    res.render("seller/booking_stall", { 
+    res.render("seller/booking_stall", {
         user: userRecord,
         zone: zoneCode,
         zonePrice,
         error: null,
         defaultStoreDetail,
+        cornerRequested,
         pricing: {
             lightUnitPrice: LIGHT_UNIT_PRICE,
             smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-            largeAppliancePrice: LARGE_APPLIANCE_PRICE
+            largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+            cornerZonePrice: CORNER_ZONE_EXTRA_PRICE
         }
     });
 });
@@ -626,10 +635,12 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
                 zonePrice: 0,
                 error: 'ไม่พบโซนที่ต้องการจอง',
                 defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
+                cornerRequested: String(req.body.cornerZone || 'no') === 'yes',
                 pricing: {
                     lightUnitPrice: LIGHT_UNIT_PRICE,
                     smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                    largeAppliancePrice: LARGE_APPLIANCE_PRICE
+                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                    cornerZonePrice: CORNER_ZONE_EXTRA_PRICE
                 }
             });
         }
@@ -641,10 +652,12 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
                 zonePrice: 0,
                 error: 'คุณไม่มีสิทธิ์จองโซนนี้ตามประเภทสินค้าของคุณ',
                 defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
+                cornerRequested: String(req.body.cornerZone || 'no') === 'yes',
                 pricing: {
                     lightUnitPrice: LIGHT_UNIT_PRICE,
                     smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                    largeAppliancePrice: LARGE_APPLIANCE_PRICE
+                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                    cornerZonePrice: CORNER_ZONE_EXTRA_PRICE
                 }
             });
         }
@@ -657,16 +670,19 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
                 zonePrice: 0,
                 error: 'ไม่พบราคาโซนจากฐานข้อมูล',
                 defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
+                cornerRequested: String(req.body.cornerZone || 'no') === 'yes',
                 pricing: {
                     lightUnitPrice: LIGHT_UNIT_PRICE,
                     smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                    largeAppliancePrice: LARGE_APPLIANCE_PRICE
+                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                    cornerZonePrice: CORNER_ZONE_EXTRA_PRICE
                 }
             });
         }
 
         const stallCount = Math.max(1, safeInt(req.body.stallCount, 1));
         const lightEnabled = String(req.body.light || 'no') === 'yes';
+        const cornerZoneRequested = String(req.body.cornerZone || 'no') === 'yes';
         const smallApplianceCount = Math.max(0, safeInt(req.body.smallApplianceCount, 0));
         const largeApplianceCount = Math.max(0, safeInt(req.body.largeApplianceCount, 0));
         const storeDetail = String(req.body.storeDetail || '').trim();
@@ -680,10 +696,12 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
                 zonePrice,
                 error: 'กรุณาเลือกวันที่เช่าให้ถูกต้อง',
                 defaultStoreDetail: storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
+                cornerRequested: cornerZoneRequested,
                 pricing: {
                     lightUnitPrice: LIGHT_UNIT_PRICE,
                     smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                    largeAppliancePrice: LARGE_APPLIANCE_PRICE
+                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                    cornerZonePrice: CORNER_ZONE_EXTRA_PRICE
                 }
             });
         }
@@ -692,7 +710,8 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
         const rentTotal = zonePrice * stallCount * rentalDays;
         const applianceTotal = (smallApplianceCount * SMALL_APPLIANCE_PRICE + largeApplianceCount * LARGE_APPLIANCE_PRICE) * rentalDays;
         const lightTotal = lightEnabled ? LIGHT_UNIT_PRICE * stallCount * rentalDays : 0;
-        const grandTotal = rentTotal + applianceTotal + lightTotal;
+        const cornerZoneTotal = cornerZoneRequested ? CORNER_ZONE_EXTRA_PRICE * stallCount * rentalDays : 0;
+        const grandTotal = rentTotal + applianceTotal + lightTotal + cornerZoneTotal;
 
         const availableSlots = await prisma.slot.findMany({
             where: {
@@ -710,16 +729,21 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
                 zonePrice,
                 error: `จำนวนแผงในโซน ${zoneCode} ไม่เพียงพอสำหรับการจอง ${stallCount} ล็อก`,
                 defaultStoreDetail: storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
+                cornerRequested: cornerZoneRequested,
                 pricing: {
                     lightUnitPrice: LIGHT_UNIT_PRICE,
                     smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                    largeAppliancePrice: LARGE_APPLIANCE_PRICE
+                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                    cornerZonePrice: CORNER_ZONE_EXTRA_PRICE
                 }
             });
         }
 
         await prisma.$transaction(async (tx) => {
-            const detailForRequest = storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || 'ไม่มีรายละเอียดเพิ่มเติม';
+            const detailForRequest = [
+                storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || 'ไม่มีรายละเอียดเพิ่มเติม',
+                cornerZoneRequested ? '[สนใจแผงหัวมุม/แผงพิเศษ]' : ''
+            ].filter(Boolean).join(' ').trim();
 
             const bookingRequestRecord = await tx.bookingRequest.create({
                 data: {
@@ -758,6 +782,7 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
                         applianceTotal,
                         lightTotal,
                         rentTotal,
+                        totalExtraPrice: cornerZoneTotal,
                         grandTotal,
                         storeDetailSnapshot: snapshotWithRequestRef || null
                     }
@@ -779,10 +804,12 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
             zonePrice: 0,
             error: 'เกิดข้อผิดพลาดขณะบันทึกการจอง กรุณาลองใหม่อีกครั้ง',
             defaultStoreDetail: req.body.storeDetail || '',
+            cornerRequested: String(req.body.cornerZone || 'no') === 'yes',
             pricing: {
                 lightUnitPrice: LIGHT_UNIT_PRICE,
                 smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                largeAppliancePrice: LARGE_APPLIANCE_PRICE
+                largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                cornerZonePrice: CORNER_ZONE_EXTRA_PRICE
             }
         });
     }

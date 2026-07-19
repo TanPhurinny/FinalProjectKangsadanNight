@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalPrice = document.getElementById('modalPrice');
   const modalTitle = document.getElementById('modalTitle');
   const facilityButtons = document.querySelectorAll('.facility-btn');
+  const cornerZoneCheck = document.getElementById('cornerZoneCheck');
+  const cornerZoneOption = document.querySelector('.stall-modal__option');
+  const cornerZoneHint = document.querySelector('.stall-modal__option-hint');
 
   const fallbackDetailsByZone = {
     a: {
@@ -92,6 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
     modalZoneText.textContent = details.description;
     modalSize.textContent = details.size;
     modalPrice.textContent = details.price;
+    if (cornerZoneCheck) cornerZoneCheck.checked = false;
+    if (cornerZoneOption) cornerZoneOption.style.display = '';
+    if (cornerZoneHint) cornerZoneHint.style.display = '';
     modal.classList.add('is-open');
     modal.setAttribute('aria-hidden', 'false');
   }
@@ -156,6 +162,9 @@ document.addEventListener('DOMContentLoaded', () => {
       modalZoneText.textContent = 'สิ่งอำนวยความสะดวกสำหรับผู้เข้าชมและผู้ประกอบการ';
       modalSize.textContent = 'ใกล้ทางเดินหลักและเข้าถึงง่าย';
       modalPrice.textContent = 'บริการใช้ได้ฟรี';
+      selectedZoneKey = null;
+      if (cornerZoneOption) cornerZoneOption.style.display = 'none';
+      if (cornerZoneHint) cornerZoneHint.style.display = 'none';
       modal.classList.add('is-open');
       modal.setAttribute('aria-hidden', 'false');
     });
@@ -176,6 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    window.location.href = `/booking-stall?zone=${encodeURIComponent(String(selectedZoneKey).toUpperCase())}`;
+    const cornerParam = (cornerZoneCheck && cornerZoneCheck.checked) ? '&corner=1' : '';
+    window.location.href = `/booking-stall?zone=${encodeURIComponent(String(selectedZoneKey).toUpperCase())}${cornerParam}`;
   });
 });
