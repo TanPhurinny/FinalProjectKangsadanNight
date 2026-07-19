@@ -4,20 +4,20 @@
 
 .profile-card {
     background: white;
-    border-radius: 15px;
-    padding: 30px;
-    border: 1px solid #e0e0e0;
-    margin-bottom: 25px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    padding: 1.6rem 1.8rem;
+    border: 1px solid var(--line);
+    margin-bottom: 1.4rem;
+    box-shadow: none;
 }
 
 .profile-section-title {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 600;
-    color: #2c97b1;
-    margin-bottom: 20px;
-    border-bottom: 2px solid #3BB8D4;
-    padding-bottom: 10px;
+    color: var(--navy);
+    margin-bottom: 1.2rem;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.7rem;
 }
 
 .form-group-row {
@@ -37,75 +37,85 @@
 
 .form-label {
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--navy);
     margin-bottom: 8px;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
-.form-control, .form-select {
-    border: 1px solid #dcecf2;
-    border-radius: 8px;
+.form-control,
+.form-select {
+    border: 1px solid var(--line);
+    border-radius: 3px;
     padding: 10px 12px;
     font-size: 0.95rem;
-    transition: all 0.3s;
+    transition: var(--transition);
 }
 
-.form-control:focus, .form-select:focus {
-    border-color: #3BB8D4;
-    box-shadow: 0 0 0 0.2rem rgba(59, 184, 212, 0.15);
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(44, 147, 168, 0.12);
 }
 
 .btn-update {
-    background: linear-gradient(135deg, #3BB8D4 0%, #2c97b1 100%);
+    background: var(--primary-color);
     color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 30px;
+    border: 1px solid var(--primary-color);
+    border-radius: 3px;
+    padding: 11px 28px;
     font-weight: 600;
-    transition: all 0.3s;
+    transition: var(--transition);
     margin-top: 10px;
 }
 
 .btn-update:hover {
-    background: linear-gradient(135deg, #2c97b1 0%, #236f84 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(59, 184, 212, 0.3);
+    background: var(--primary-dark, #1f6f80);
+    border-color: var(--primary-dark, #1f6f80);
+    transform: none;
+    box-shadow: none;
     color: white;
 }
 
 .role-badge {
-    display: inline-block;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 3px;
+    font-size: 0.8rem;
     font-weight: 600;
+    font-family: var(--mono);
+    border: 1px solid transparent;
 }
 
 .role-badge.admin {
-    background: #fff3cd;
-    color: #856404;
+    background: #fdf3e4;
+    color: var(--warning-color);
+    border-color: #f0dbb4;
 }
 
 .role-badge.staff {
-    background: #cfe2ff;
-    color: #084298;
+    background: #e8f2f8;
+    color: var(--info-color);
+    border-color: #c5dced;
 }
 
 .role-badge.seller {
-    background: #d1e7dd;
-    color: #0f5132;
+    background: #e6f3ee;
+    color: var(--success-color);
+    border-color: #bfe2d3;
 }
 
 .role-badge.customer {
-    background: #e2e3e5;
-    color: #383d41;
+    background: var(--soft-bg);
+    color: var(--ink-soft);
+    border-color: var(--line);
 }
 
 .info-row {
     display: flex;
     justify-content: space-between;
     padding: 12px 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--line-soft, var(--line));
 }
 
 .info-row:last-child {
@@ -114,27 +124,29 @@
 
 .info-label {
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--navy);
 }
 
 .info-value {
-    color: #666;
+    color: var(--ink-soft);
 }
 
 .alert {
-    border-radius: 8px;
-    border: none;
+    border-radius: 3px;
+    border: 1px solid var(--line);
     margin-bottom: 20px;
 }
 
 .alert-success {
-    background: #d1e7dd;
-    color: #0f5132;
+    background: #eaf6f0;
+    color: var(--success-dark, #1E8449);
+    border-left: 3px solid var(--success-color);
 }
 
 .alert-danger {
-    background: #f8d7da;
-    color: #842029;
+    background: #fbeeec;
+    color: #922B21;
+    border-left: 3px solid var(--danger-color);
 }
 
 @media (max-width: 768px) {
@@ -143,7 +155,7 @@
     }
 
     .profile-card {
-        padding: 20px;
+        padding: 1.2rem;
     }
 
     .profile-shell {

@@ -8,7 +8,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
       rel="stylesheet" />
     <link rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -27,11 +27,16 @@
     <div class="booking-stall-page">
 
       <div id="adminTooltip" class="admin-tooltip">
+        <img id="tt-image" class="tt-image d-none" alt="รูปร้านค้า" />
         <div class="tt-header">แผง <span id="tt-stall-id"></span></div>
         <div class="tt-body">
           <div class="tt-group">
             <span class="tt-label">ชื่อร้านค้า</span>
             <span class="tt-value" id="tt-shop"></span>
+          </div>
+          <div class="tt-group">
+            <span class="tt-label">ขายอะไร</span>
+            <span class="tt-value" id="tt-product"></span>
           </div>
 
           <div class="tt-row" style="margin-bottom:0;">
@@ -185,6 +190,10 @@
               ว่าง</div>
             <div class="legend-item"><div class="color-box color-booked"></div>
               จองแล้ว</div>
+            <div class="legend-item"><div class="color-box color-near-expiry"></div>
+              ใกล้หมดอายุ (≤7 วัน)</div>
+            <div class="legend-item"><div class="color-box color-expired"></div>
+              หมดอายุแล้ว</div>
             <div class="legend-item"><div
                 class="color-box color-selected"></div>
               เลือกอยู่</div>

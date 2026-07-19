@@ -12,7 +12,7 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
             rel="stylesheet">
         <link
-            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
             rel="stylesheet">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260711-5">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
@@ -61,52 +61,64 @@
                 </div>
             </section>
 
-            <section class="row g-3 mb-4" id="kpiSection">
-                <div class="col-6 col-lg-3">
-                    <article class="kpi-card c-primary">
-                        <div class="kpi-icon"><i
-                                class="fas fa-chart-pie"></i></div>
-                        <div class="kpi-label">แผงที่ถูกจอง</div>
-                        <h3 class="kpi-value count-up"
-                            data-target="<%= dStats.bookedStalls %>"><%=
-                            dStats.bookedStalls
-                            %></h3>
-                        <small class="kpi-meta">จากทั้งหมด <%= dStats.totalStalls
-                            %> แผง</small>
-                    </article>
+            <section class="kpi-group mb-3" id="kpiSection">
+                <div class="kpi-group-label needs-action"><i
+                        class="fas fa-triangle-exclamation"></i>ต้องดำเนินการ</div>
+                <div class="row g-3">
+                    <div class="col-6 col-lg-6">
+                        <article class="kpi-card needs-action c-warning">
+                            <div class="kpi-icon"><i
+                                    class="fas fa-file-circle-check"></i></div>
+                            <div class="kpi-label">คำขออนุมัติ</div>
+                            <h3 class="kpi-value count-up"
+                                data-target="<%= dStats.pendingRequests %>"><%=
+                                dStats.pendingRequests %></h3>
+                            <small class="kpi-meta">รายการรอตรวจสอบ</small>
+                        </article>
+                    </div>
+                    <div class="col-6 col-lg-6">
+                        <article class="kpi-card needs-action c-info">
+                            <div class="kpi-icon"><i
+                                    class="fas fa-screwdriver-wrench"></i></div>
+                            <div class="kpi-label">งานซ่อมค้าง</div>
+                            <h3 class="kpi-value count-up"
+                                data-target="<%= dStats.pendingRepairs %>"><%=
+                                dStats.pendingRepairs %></h3>
+                            <small class="kpi-meta">ต้องดำเนินการ</small>
+                        </article>
+                    </div>
                 </div>
-                <div class="col-6 col-lg-3">
-                    <article class="kpi-card c-success">
-                        <div class="kpi-icon"><i
-                                class="fas fa-door-open"></i></div>
-                        <div class="kpi-label">แผงว่าง</div>
-                        <h3 class="kpi-value count-up"
-                            data-target="<%= dStats.availableStalls %>"><%=
-                            dStats.availableStalls %></h3>
-                        <small class="kpi-meta">พร้อมให้จองทันที</small>
-                    </article>
-                </div>
-                <div class="col-6 col-lg-3">
-                    <article class="kpi-card c-warning">
-                        <div class="kpi-icon"><i
-                                class="fas fa-file-circle-check"></i></div>
-                        <div class="kpi-label">คำขออนุมัติ</div>
-                        <h3 class="kpi-value count-up"
-                            data-target="<%= dStats.pendingRequests %>"><%=
-                            dStats.pendingRequests %></h3>
-                        <small class="kpi-meta">รายการรอตรวจสอบ</small>
-                    </article>
-                </div>
-                <div class="col-6 col-lg-3">
-                    <article class="kpi-card c-info">
-                        <div class="kpi-icon"><i
-                                class="fas fa-screwdriver-wrench"></i></div>
-                        <div class="kpi-label">งานซ่อมค้าง</div>
-                        <h3 class="kpi-value count-up"
-                            data-target="<%= dStats.pendingRepairs %>"><%=
-                            dStats.pendingRepairs %></h3>
-                        <small class="kpi-meta">ต้องดำเนินการ</small>
-                    </article>
+            </section>
+
+            <section class="kpi-group mb-4">
+                <div class="kpi-group-label"><i
+                        class="fas fa-chart-pie"></i>ภาพรวมแผงขาย</div>
+                <div class="row g-3">
+                    <div class="col-6 col-lg-6">
+                        <article class="kpi-card c-primary">
+                            <div class="kpi-icon"><i
+                                    class="fas fa-chart-pie"></i></div>
+                            <div class="kpi-label">แผงที่ถูกจอง</div>
+                            <h3 class="kpi-value count-up"
+                                data-target="<%= dStats.bookedStalls %>"><%=
+                                dStats.bookedStalls
+                                %></h3>
+                            <small class="kpi-meta">จากทั้งหมด <%=
+                                dStats.totalStalls
+                                %> แผง</small>
+                        </article>
+                    </div>
+                    <div class="col-6 col-lg-6">
+                        <article class="kpi-card c-success">
+                            <div class="kpi-icon"><i
+                                    class="fas fa-door-open"></i></div>
+                            <div class="kpi-label">แผงว่าง</div>
+                            <h3 class="kpi-value count-up"
+                                data-target="<%= dStats.availableStalls %>"><%=
+                                dStats.availableStalls %></h3>
+                            <small class="kpi-meta">พร้อมให้จองทันที</small>
+                        </article>
+                    </div>
                 </div>
             </section>
 
@@ -195,11 +207,10 @@
                                 class="form-control" placeholder="ค้นหาโซน">
                         </div>
                         <select id="zoneSortSelect" class="form-select">
-                            <option value="name-asc">เรียงตามโซน A-Z</option>
+                            <option value="maintenance-desc" selected>ต้องซ่อมบำรุงมากสุดก่อน</option>
                             <option
                                 value="available-desc">แผงว่างมากสุด</option>
-                            <option
-                                value="maintenance-desc">ต้องซ่อมบำรุงมากสุด</option>
+                            <option value="name-asc">เรียงตามโซน A-Z</option>
                         </select>
                     </div>
                 </div>
@@ -226,6 +237,14 @@
                         </div>
                         <div class="zone-card-body">
                             <div class="zone-stats">
+                                <div class="stat-item<%= (zone.maintenance || 0) > 0 ? ' stat-item-alert' : '' %>">
+                                    <div class="stat-icon repairs"><i
+                                            class="fas fa-wrench"></i></div>
+                                    <small class="stat-label">ต้องซ่อมบำรุง</small>
+                                    <h4 class="stat-value count-up"
+                                        data-target="<%= zone.maintenance || 0 %>"><%=
+                                        zone.maintenance || 0 %></h4>
+                                </div>
                                 <div class="stat-item">
                                     <div class="stat-icon available"><i
                                             class="fas fa-check-circle"></i></div>
@@ -241,14 +260,6 @@
                                     <h4 class="stat-value count-up"
                                         data-target="<%= zone.booked || 0 %>"><%=
                                         zone.booked || 0 %></h4>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-icon repairs"><i
-                                            class="fas fa-wrench"></i></div>
-                                    <small class="stat-label">ต้องซ่อมบำรุง</small>
-                                    <h4 class="stat-value count-up"
-                                        data-target="<%= zone.maintenance || 0 %>"><%=
-                                        zone.maintenance || 0 %></h4>
                                 </div>
                             </div>
                             <a href="/admin/slots" class="zone-btn">

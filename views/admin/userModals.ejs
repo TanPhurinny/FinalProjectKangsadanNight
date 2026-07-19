@@ -1,7 +1,7 @@
 <div class="modal fade" id="userDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered user-detail-dialog">
         <div
-            class="modal-content border-0 shadow-lg rounded-4 user-detail-content">
+            class="modal-content border shadow-none user-detail-content">
             <div
                 class="modal-header border-0 pb-0 pt-4 px-4 user-detail-header">
                 <h5
@@ -12,7 +12,7 @@
             <div class="modal-body p-4 pt-3" id="detailBody"></div>
             <div class="modal-footer border-0 px-4 pb-4 pt-0">
                 <button type="button"
-                    class="btn btn-outline-primary rounded-pill px-4"
+                    class="btn btn-outline-primary px-4"
                     data-bs-dismiss="modal">
                     ปิดหน้าต่าง
                 </button>
@@ -23,7 +23,7 @@
 
 <div class="modal fade" id="editRoleModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-content border shadow-none">
             <div class="modal-header border-0 pb-0 pt-4 px-4">
                 <h5 class="fw-bold text-dark">เปลี่ยนสิทธิ์ผู้ใช้</h5>
                 <button type="button" class="btn-close"
@@ -37,7 +37,7 @@
                                 id="modalUserName"
                                 class="text-dark"></b></label>
                         <select name="newRole" id="modalRoleSelect"
-                            class="form-select bg-light border-0 rounded-3 py-2">
+                            class="form-select bg-light border py-2">
                             <option value="ADMIN">ADMIN (ผู้ดูแล)</option>
                             <option value="STAFF">STAFF (พนักงาน)</option>
                             <option value="SELLER">SELLER
@@ -48,7 +48,7 @@
                 </div>
                 <div class="modal-footer border-0 p-4 pt-0">
                     <button type="submit"
-                        class="btn btn-primary w-100 rounded-pill shadow-sm"
+                        class="btn btn-primary w-100"
                         style="background: #a73b24; border:none;">บันทึกการเปลี่ยนแปลง</button>
                 </div>
             </form>

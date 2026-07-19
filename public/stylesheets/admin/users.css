@@ -1,45 +1,51 @@
 /* ========================================
-   USERS PAGE STYLES
+   USERS PAGE STYLES — gridgeist
    ======================================== */
+
+.table-card {
+    border-color: var(--line) !important;
+    border-radius: 4px;
+}
 
 .user-row {
     transition: var(--transition);
 }
 
 .user-row:hover {
-    background-color: rgba(59, 184, 212, 0.05) !important;
+    background-color: rgba(44, 147, 168, 0.05) !important;
 }
 
 .avatar-circle {
-    width: 45px;
-    height: 45px;
+    width: 42px;
+    height: 42px;
     background: var(--primary-color);
     color: white;
-    border-radius: 50%;
+    border-radius: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 .user-info-cell {
     padding: 10px 12px;
-    border-radius: 14px;
-    border: 1px solid rgba(59, 184, 212, 0.16);
-    background: linear-gradient(135deg, rgba(59, 184, 212, 0.1) 0%, rgba(59, 184, 212, 0.03) 100%);
+    border-radius: 3px;
+    border: 1px solid var(--line);
+    background: #fff;
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    transition: var(--transition);
 }
 
 .user-info-cell:hover {
-    transform: translateY(-2px);
-    border-color: rgba(59, 184, 212, 0.35);
-    box-shadow: 0 10px 20px rgba(59, 184, 212, 0.16);
+    transform: none;
+    border-color: var(--primary-color);
+    box-shadow: none;
+    background: var(--soft-bg);
 }
 
 .user-info-cell:active {
-    transform: translateY(0);
+    transform: none;
 }
 
 .clickable-name {
@@ -51,29 +57,32 @@
 }
 
 .detail-arrow {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    border-radius: 3px;
     background: #fff;
+    border: 1px solid var(--line);
     color: var(--primary-color);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 10px rgba(59, 184, 212, 0.2);
-    transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+    box-shadow: none;
+    transition: var(--transition);
 }
 
 .user-info-cell:hover .detail-arrow {
     transform: translateX(2px);
     background: var(--primary-color);
+    border-color: var(--primary-color);
     color: #fff;
 }
 
 .role-badge {
-    padding: 6px 12px;
-    border-radius: 20px;
+    padding: 5px 10px;
+    border-radius: 3px;
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: 0.76rem;
+    font-family: var(--mono);
 }
 
 .role-admin {
@@ -97,65 +106,63 @@
 }
 
 .btn-action {
-    width: 38px;
-    height: 38px;
-    border: none;
-    border-radius: 12px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid transparent;
+    border-radius: 3px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     margin: 0 3px;
     color: #fff;
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.25s ease, filter 0.25s ease;
-    box-shadow: 0 8px 16px rgba(44, 62, 80, 0.16);
+    transition: var(--transition);
+    box-shadow: none;
 }
 
 .btn-action i {
-    font-size: 0.92rem;
+    font-size: 0.9rem;
     line-height: 1;
 }
 
 .btn-action:hover {
-    transform: translateY(-2px) scale(1.04);
-    filter: brightness(1.05);
+    transform: none;
+    filter: brightness(1.08);
 }
 
 .btn-action:active {
-    transform: translateY(0) scale(0.98);
+    transform: none;
 }
 
 .btn-action:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 4px rgba(59, 184, 212, 0.2), 0 8px 16px rgba(44, 62, 80, 0.2);
+    box-shadow: 0 0 0 3px rgba(44, 147, 168, 0.25);
 }
 
 .btn-view {
-    background: linear-gradient(135deg, #2f80ed 0%, #56ccf2 100%);
+    background: var(--info-color);
 }
 
 .btn-edit {
-    background: linear-gradient(135deg, #00b894 0%, #55efc4 100%);
+    background: var(--success-color);
 }
 
 .btn-delete {
-    background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+    background: var(--danger-color);
 }
 
-.btn-view:hover {
-    box-shadow: 0 10px 20px rgba(47, 128, 237, 0.35);
-}
-
-.btn-edit:hover {
-    box-shadow: 0 10px 20px rgba(0, 184, 148, 0.35);
-}
-
+.btn-view:hover,
+.btn-edit:hover,
 .btn-delete:hover {
-    box-shadow: 0 10px 20px rgba(235, 51, 73, 0.35);
+    box-shadow: none;
+}
+
+.modal-content {
+    border-radius: 4px;
 }
 
 .modal-header {
-    background: var(--primary-color);
+    background: var(--navy);
     color: white;
     border: none;
 }
@@ -169,26 +176,24 @@
 }
 
 .user-detail-content {
-    background:
-        radial-gradient(circle at top right, rgba(59, 184, 212, 0.14), transparent 40%),
-        linear-gradient(180deg, #ffffff 0%, #f8fcfe 100%);
+    background: #fff;
 }
 
 .user-detail-header {
     background: transparent;
-    color: var(--dark-color);
+    color: var(--navy);
 }
 
 .user-detail-hero {
-    background: linear-gradient(145deg, rgba(59, 184, 212, 0.08), rgba(95, 200, 224, 0.03));
-    border: 1px solid rgba(59, 184, 212, 0.14);
-    border-radius: 18px;
+    background: var(--soft-bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
     padding: 18px 16px;
 }
 
 .profile-avatar-wrapper {
-    width: 112px;
-    height: 112px;
+    width: 108px;
+    height: 108px;
     margin: 0 auto;
     position: relative;
 }
@@ -196,81 +201,83 @@
 .profile-avatar {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
+    border-radius: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #ebf8fc 0%, #d7f1f8 100%);
+    background: #fff;
     color: var(--primary-dark);
-    border: 4px solid #fff;
+    border: 1px solid var(--line);
 }
 
 .status-indicator {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     position: absolute;
-    right: 8px;
+    right: 6px;
     bottom: 4px;
     border: 3px solid #fff;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+    box-shadow: none;
 }
 
 .info-group {
     background: #fff;
-    border: 1px solid #e6f1f5;
-    border-radius: 18px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
     padding: 12px 14px;
 }
 
 .mini-card {
     height: 100%;
-    border: 1px solid #d8edf4;
-    border-radius: 14px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
     padding: 10px 12px;
     background: #fff;
 }
 
 .mini-card small {
     display: block;
-    color: #718794;
-    font-size: 0.76rem;
+    color: var(--ink-soft);
+    font-size: 0.74rem;
     margin-bottom: 4px;
+    font-family: var(--mono);
 }
 
 .mini-card div {
-    font-size: 0.92rem;
+    font-size: 0.9rem;
     font-weight: 600;
-    color: #244150;
+    color: var(--navy);
 }
 
 .info-item {
     padding: 10px 6px;
-    border-bottom: 1px dashed #d6e9ef;
+    border-bottom: 1px solid var(--line);
 }
 
 .info-item label {
     display: block;
-    font-size: 0.78rem;
-    color: #6e8490;
+    font-size: 0.76rem;
+    color: var(--ink-soft);
     margin-bottom: 4px;
 }
 
 .info-item .value {
-    font-size: 1rem;
-    color: #1f3442;
+    font-size: 0.98rem;
+    color: var(--navy);
     font-weight: 500;
     word-break: break-word;
 }
 
 .shop-card-detail {
-    background: linear-gradient(140deg, #ffffff 0%, #eef9fd 100%);
-    border: 1px solid #d8edf4;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    background: var(--soft-bg);
+    border: 1px solid var(--line);
+    box-shadow: none;
+    border-radius: 4px;
 }
 
 .shop-card-detail h6 {
-    color: #245d73;
+    color: var(--navy);
 }
 
 .shop-highlight {
@@ -280,49 +287,49 @@
 }
 
 .shop-highlight-item {
-    border: 1px solid #d4ebf3;
-    border-radius: 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
     background: #fff;
     padding: 8px 10px;
 }
 
 .shop-highlight-item small {
     display: block;
-    color: #6f8692;
-    font-size: 0.75rem;
+    color: var(--ink-soft);
+    font-size: 0.74rem;
     margin-bottom: 2px;
 }
 
 .shop-info-tile {
     height: 100%;
-    border: 1px solid #d7ebf2;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fff;
     padding: 10px 12px;
 }
 
 .shop-detail-text {
-    color: #29404d;
+    color: var(--ink);
     line-height: 1.5;
     white-space: pre-line;
 }
 
 .shop-file-ref {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-family: var(--mono);
     font-size: 0.85rem;
-    color: #2e5363;
-    background: #f1f9fc;
-    border-radius: 8px;
+    color: var(--navy);
+    background: var(--soft-bg);
+    border-radius: 3px;
     padding: 7px 9px;
-    border: 1px solid #d6eaf2;
+    border: 1px solid var(--line);
     word-break: break-all;
 }
 
 @media (max-width: 768px) {
     .avatar-circle {
-        width: 40px;
-        height: 40px;
-        font-size: 0.9rem;
+        width: 38px;
+        height: 38px;
+        font-size: 0.86rem;
     }
 
     .table {
@@ -331,7 +338,6 @@
 
     .user-info-cell {
         padding: 8px 10px;
-        border-radius: 12px;
     }
 
     .detail-arrow {
@@ -365,7 +371,6 @@
     }
 
     .user-detail-hero {
-        border-radius: 14px;
         padding: 14px 12px;
     }
 

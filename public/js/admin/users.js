@@ -72,7 +72,7 @@ function viewUserDetail(uString) {
                 <div class="status-indicator ${roleConfig.class}"></div>
             </div>
             <h3 class="fw-bold text-dark mb-1">${u.name}</h3>
-            <span class="badge ${roleConfig.class} px-3 py-2 rounded-pill shadow-sm">
+            <span class="badge ${roleConfig.class} px-3 py-2 shadow-sm">
                 <i class="fas ${roleConfig.icon} me-1"></i> ${u.role}
             </span>
         </div>
@@ -127,7 +127,7 @@ function viewUserDetail(uString) {
             : null;
 
         content += `
-            <div class="shop-card-detail mt-4 p-3 rounded-4">
+            <div class="shop-card-detail mt-4 p-3">
                 <h6 class="fw-bold d-flex align-items-center mb-3">
                     <i class="fas fa-store-alt me-2"></i> ข้อมูลร้านค้าที่ลงทะเบียน
                 </h6>

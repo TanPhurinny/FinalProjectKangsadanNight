@@ -8,7 +8,7 @@
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
-            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
             rel="stylesheet" />
         <link
             href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
@@ -60,6 +60,9 @@
                 <button class="qtag qtag-maintenance"
                     onclick="quickStatusFilter(this,'MAINTENANCE')"><i
                         class="fa-solid fa-screwdriver-wrench fa-xs"></i> ซ่อมบำรุง</button>
+                <button class="qtag qtag-near-expiry"
+                    onclick="quickStatusFilter(this,'NEAR_EXPIRY')"><i
+                        class="fa-solid fa-triangle-exclamation fa-xs"></i> ใกล้/หมดอายุ</button>
             </div>
 
             <!-- PAGE BODY -->
@@ -189,31 +192,40 @@
                     <div class="leg"><div class="leg-box"
                             style="background:#fff;"></div>ว่าง</div>
                     <div class="leg"><div class="leg-box"
-                            style="background:#9ca3af;border-color:#555;"></div>จองแล้ว</div>
+                            style="background:#8a9aa0;border-color:#6b7a80;"></div>จองแล้ว</div>
                     <div class="leg"><div class="leg-box"
-                            style="background:#f2aa31;border-color:#c9860f;"></div>ซ่อมบำรุง</div>
+                            style="background:#c98a2e;border-color:#a06c1f;"></div>ซ่อมบำรุง</div>
                     <div class="leg"><div class="leg-box"
-                            style="background:#3BB8D4;border-color:#2a9ab5;"></div>กำลังดู</div>
+                            style="background:#7c6fd4;border-color:#5a4fc0;"></div>ใกล้หมดอายุ (≤7 วัน)</div>
                     <div class="leg"><div class="leg-box"
-                            style="border:2px solid #f5c200;background:#fff;"></div>ผลค้นหา</div>
+                            style="background:#c0392b;border-color:#a32b1d;"></div>หมดอายุแล้ว</div>
+                    <div class="leg"><div class="leg-box"
+                            style="background:#2C93A8;border-color:#1f6f80;"></div>กำลังดู</div>
+                    <div class="leg"><div class="leg-box"
+                            style="border:2px solid #e2b83a;background:#fff;"></div>ผลค้นหา</div>
                 </div>
 
+                <div class="info-card-backdrop" id="infoCardBackdrop" onclick="hideInfo()"></div>
                 <div class="info-card" id="infoCard">
+                    <button type="button" class="ic-close" onclick="hideInfo()" aria-label="ปิด">✕</button>
                     <div class="ic-title"><i
                             class="fa-solid fa-store fa-xs"></i><span
                             id="ic-head"></span></div>
+                    <img id="ic-image" class="ic-image d-none" alt="รูปร้านค้า" />
                     <div class="ic-grid">
                         <div class="ig"><label>ชื่อร้านค้า</label><span
                                 id="ic-shop"></span></div>
                         <div class="ig"><label>ประเภทสินค้า</label><span
                                 id="ic-product"></span></div>
+                        <div class="ig ic-span2"><label>ขายอะไรบ้าง</label><span
+                                id="ic-detail"></span></div>
                         <div class="ig"><label>วันที่จอง</label><span
                                 id="ic-date"></span></div>
                         <div class="ig"><label>ผู้จอง</label><span
                                 id="ic-name"></span></div>
                         <div class="ig"><label>เบอร์โทรศัพท์</label><span
                                 id="ic-phone"></span></div>
-                        <div class="ig"><label>หมายเหตุ</label><span
+                        <div class="ig ic-span2"><label>หมายเหตุ</label><span
                                 id="ic-note"></span></div>
                     </div>
                 </div>

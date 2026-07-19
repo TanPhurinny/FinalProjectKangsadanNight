@@ -13,7 +13,7 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
             rel="stylesheet">
         <link
-            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
             rel="stylesheet">
 
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260711-5">
@@ -57,13 +57,13 @@
             </section>
 
             <% if (success) { %>
-            <div class="alert alert-success border-0 shadow-sm rounded-4">
+            <div class="alert alert-success">
                 <i
                     class="fas fa-circle-check me-2"></i>อัปเดตสถานะคำร้องเรียบร้อยแล้ว
             </div>
             <% } %>
             <% if (error) { %>
-            <div class="alert alert-danger border-0 shadow-sm rounded-4">
+            <div class="alert alert-danger">
                 <i
                     class="fas fa-triangle-exclamation me-2"></i>เกิดข้อผิดพลาดในการอัปเดตคำร้อง
             </div>
@@ -141,7 +141,7 @@
             </section>
 
             <section class="desktop-view d-none d-lg-block">
-                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card shadow-sm overflow-hidden">
                     <div class="table-responsive">
                         <table class="table align-middle mb-0">
                             <thead>
@@ -379,7 +379,7 @@
         <div class="modal fade" id="requestDetailModal" tabindex="-1"
             aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content rounded-4 border-0">
+                <div class="modal-content border">
                     <div class="modal-header border-0">
                         <h5 class="modal-title fw-bold"><i
                                 class="fas fa-screwdriver-wrench me-2"></i>รายละเอียดคำร้องแจ้งซ่อม</h5>
@@ -389,7 +389,7 @@
                     <div class="modal-body">
                         <div id="detailImageWrap" class="text-center mb-3 d-none">
                             <img id="detailImage" src="" alt="รูปแจ้งซ่อม"
-                                class="img-fluid rounded-3"
+                                class="img-fluid"
                                 style="max-height: 320px; cursor: zoom-in;"
                                 title="คลิกเพื่อดูรูปขนาดเต็ม">
                         </div>
