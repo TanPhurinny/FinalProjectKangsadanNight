@@ -86,16 +86,30 @@ button { font-family: inherit; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 7px 14px;
   border-right: 1px solid var(--line);
   font-family: var(--mono);
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--ink-soft);
+  color: var(--navy);
   white-space: nowrap;
 }
 
 .zone-legend__item:last-child { border-right: none; }
+
+.zone-legend__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.2;
+}
+
+.zone-legend__text small {
+  font-family: 'Kanit', sans-serif;
+  font-weight: 500;
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+}
 
 .zone-legend__swatch {
   width: 12px;
@@ -296,6 +310,32 @@ button { font-family: inherit; }
   cursor: pointer;
   box-shadow: none;
   filter: none;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  overflow: hidden;
+}
+
+.zone__category {
+  font-family: 'Kanit', sans-serif;
+  font-weight: 500;
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  opacity: 0.82;
+}
+
+/* โซนที่มีความสูงจำกัด (E, D, C) เรียงชื่อและประเภทสินค้าในแนวนอนแทน */
+.zone--c,
+.zone--d,
+.zone--e {
+  flex-direction: row;
+  gap: 8px;
+}
+
+.zone--c .zone__category,
+.zone--d .zone__category,
+.zone--e .zone__category {
+  font-size: 0.68rem;
 }
 
 .zone:hover {
