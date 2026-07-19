@@ -87,14 +87,31 @@
         </div>
       </div>
 
-      <label class="option-card">
-        <input type="checkbox" id="cornerZoneCheck" name="cornerZone" value="yes" <%= (typeof cornerRequested !== 'undefined' && cornerRequested) ? 'checked' : '' %> />
-        <span class="option-card__text">
-          สนใจแผงหัวมุม/แผงพิเศษไหม?
-          <span class="option-card__tag">มีค่าใช้จ่ายเพิ่ม +<%= pricing.cornerZonePrice || 50 %> บาท/ล็อก/วัน</span>
-        </span>
-      </label>
-      <p class="field-hint">แผงหัวมุมอยู่ตำแหน่งเด่น มองเห็นง่าย ลูกค้าเดินผ่านสะดวกกว่าแผงทั่วไป เหมาะกับร้านที่อยากได้ทำเลโดดเด่นเป็นพิเศษ</p>
+      <%
+        var currentCornerValue = typeof cornerZoneValue !== 'undefined' ? Number(cornerZoneValue) : 0;
+        var cornerOptionsList = typeof pricing.cornerZoneOptions !== 'undefined' ? pricing.cornerZoneOptions : [];
+      %>
+      <div class="field-group">
+        <label class="field-label">สนใจแผงหัวมุม/แผงพิเศษไหม? <span class="field-label__note">(มีค่าใช้จ่ายเพิ่ม เลือกได้ 1 ระดับ)</span></label>
+        <div class="option-list">
+          <label class="option-card">
+            <input type="radio" name="cornerZone" value="0" <%= currentCornerValue === 0 ? 'checked' : '' %> />
+            <span class="option-card__text">
+              <strong>ไม่สนใจ</strong>
+              <small>แผงมาตรฐาน ไม่มีค่าใช้จ่ายเพิ่ม</small>
+            </span>
+          </label>
+          <% cornerOptionsList.forEach(function(opt) { %>
+            <label class="option-card">
+              <input type="radio" name="cornerZone" value="<%= opt.value %>" <%= currentCornerValue === opt.value ? 'checked' : '' %> />
+              <span class="option-card__text">
+                <strong><%= opt.label %> <span class="option-card__tag">+<%= opt.value %> บาท/ล็อก/วัน</span></strong>
+                <small><%= opt.desc %></small>
+              </span>
+            </label>
+          <% }) %>
+        </div>
+      </div>
 
       <div class="summary-box">
         <div class="summary-line">ค่าเช่าแผงต่อวัน: <strong id="dailyPriceText"><%= Number(zonePrice || 0).toLocaleString('th-TH') %> บาท/ล็อก/วัน</strong></div>
@@ -123,8 +140,7 @@
       zonePrice: <%= Number(zonePrice || 0) %>,
       lightUnitPrice: <%= Number(pricing.lightUnitPrice || 15) %>,
       smallAppliancePrice: <%= Number(pricing.smallAppliancePrice || 20) %>,
-      largeAppliancePrice: <%= Number(pricing.largeAppliancePrice || 40) %>,
-      cornerZonePrice: <%= Number(pricing.cornerZonePrice || 50) %>
+      largeAppliancePrice: <%= Number(pricing.largeAppliancePrice || 40) %>
     };
   </script>
   <script src="/js/seller/bookingStall.js"></script>

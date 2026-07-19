@@ -3,14 +3,12 @@ const PRICE_PER_STALL_PER_DAY = Number(PRICING_DATA.zonePrice || 0);
 const LIGHT_UNIT_PRICE = Number(PRICING_DATA.lightUnitPrice || 15);
 const SMALL_PRICE = Number(PRICING_DATA.smallAppliancePrice || 20);
 const LARGE_PRICE = Number(PRICING_DATA.largeAppliancePrice || 40);
-const CORNER_ZONE_PRICE = Number(PRICING_DATA.cornerZonePrice || 50);
 
 const dateStartInput = document.getElementById('dateStart');
 const dateEndInput = document.getElementById('dateEnd');
 const stallCountInput = document.getElementById('stallCount');
 const smallApplianceInput = document.getElementById('smallApplianceCount');
 const largeApplianceInput = document.getElementById('largeApplianceCount');
-const cornerZoneCheck = document.getElementById('cornerZoneCheck');
 const bookingForm = document.getElementById('bookingForm');
 
 function calculateDays() {
@@ -43,12 +41,12 @@ function recalcSummary() {
     const largeCount = readCount(largeApplianceInput);
     const lightEnabled = document.querySelector('input[name="light"]:checked')?.value === 'yes';
 
-    const cornerZoneEnabled = Boolean(cornerZoneCheck && cornerZoneCheck.checked);
+    const cornerZonePrice = Number(document.querySelector('input[name="cornerZone"]:checked')?.value || 0);
 
     const rentTotal = PRICE_PER_STALL_PER_DAY * stallCount * days;
     const lightTotal = lightEnabled ? LIGHT_UNIT_PRICE * stallCount * days : 0;
     const applianceTotal = ((smallCount * SMALL_PRICE) + (largeCount * LARGE_PRICE)) * days;
-    const cornerZoneTotal = cornerZoneEnabled ? CORNER_ZONE_PRICE * stallCount * days : 0;
+    const cornerZoneTotal = cornerZonePrice * stallCount * days;
     const grandTotal = rentTotal + lightTotal + applianceTotal + cornerZoneTotal;
 
     document.getElementById('rentalDaysText').textContent = days + ' วัน';
@@ -58,7 +56,7 @@ function recalcSummary() {
 
     const cornerZoneLine = document.getElementById('cornerZoneLine');
     if (cornerZoneLine) {
-        cornerZoneLine.style.display = cornerZoneEnabled ? '' : 'none';
+        cornerZoneLine.style.display = cornerZonePrice > 0 ? '' : 'none';
         document.getElementById('cornerZoneTotalText').textContent = formatBaht(cornerZoneTotal);
     }
 
@@ -78,9 +76,9 @@ document.querySelectorAll('input[name="light"]').forEach((el) => {
     el.addEventListener('change', recalcSummary);
 });
 
-if (cornerZoneCheck) {
-    cornerZoneCheck.addEventListener('change', recalcSummary);
-}
+document.querySelectorAll('input[name="cornerZone"]').forEach((el) => {
+    el.addEventListener('change', recalcSummary);
+});
 
 bookingForm.addEventListener('submit', (event) => {
     if (!dateStartInput.value || !dateEndInput.value) {

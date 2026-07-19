@@ -9,9 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalPrice = document.getElementById('modalPrice');
   const modalTitle = document.getElementById('modalTitle');
   const facilityButtons = document.querySelectorAll('.facility-btn');
-  const cornerZoneCheck = document.getElementById('cornerZoneCheck');
-  const cornerZoneOption = document.querySelector('.stall-modal__option');
-  const cornerZoneHint = document.querySelector('.stall-modal__option-hint');
+  const cornerZoneBlock = document.querySelector('.stall-modal__corner');
+  const cornerZoneRadios = document.querySelectorAll('input[name="cornerZoneModal"]');
 
   const fallbackDetailsByZone = {
     a: {
@@ -95,9 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
     modalZoneText.textContent = details.description;
     modalSize.textContent = details.size;
     modalPrice.textContent = details.price;
-    if (cornerZoneCheck) cornerZoneCheck.checked = false;
-    if (cornerZoneOption) cornerZoneOption.style.display = '';
-    if (cornerZoneHint) cornerZoneHint.style.display = '';
+    cornerZoneRadios.forEach((radio) => { radio.checked = radio.value === '0'; });
+    if (cornerZoneBlock) cornerZoneBlock.style.display = '';
     modal.classList.add('is-open');
     modal.setAttribute('aria-hidden', 'false');
   }
@@ -163,8 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
       modalSize.textContent = 'ใกล้ทางเดินหลักและเข้าถึงง่าย';
       modalPrice.textContent = 'บริการใช้ได้ฟรี';
       selectedZoneKey = null;
-      if (cornerZoneOption) cornerZoneOption.style.display = 'none';
-      if (cornerZoneHint) cornerZoneHint.style.display = 'none';
+      if (cornerZoneBlock) cornerZoneBlock.style.display = 'none';
       modal.classList.add('is-open');
       modal.setAttribute('aria-hidden', 'false');
     });
@@ -185,7 +182,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const cornerParam = (cornerZoneCheck && cornerZoneCheck.checked) ? '&corner=1' : '';
+    const selectedCornerRadio = Array.from(cornerZoneRadios).find((radio) => radio.checked);
+    const cornerValue = selectedCornerRadio ? Number(selectedCornerRadio.value) : 0;
+    const cornerParam = cornerValue > 0 ? `&corner=${cornerValue}` : '';
     window.location.href = `/booking-stall?zone=${encodeURIComponent(String(selectedZoneKey).toUpperCase())}${cornerParam}`;
   });
 });

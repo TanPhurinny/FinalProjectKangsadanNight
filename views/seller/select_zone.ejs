@@ -183,14 +183,27 @@
         <li>อยู่ในตำแหน่งที่มองเห็นง่าย</li>
       </ul>
 
-      <label class="stall-modal__option">
-        <input type="checkbox" id="cornerZoneCheck">
-        <span class="stall-modal__option-text">
-          สนใจแผงหัวมุม/แผงพิเศษไหม?
-          <span class="stall-modal__option-tag">มีค่าใช้จ่ายเพิ่ม +<%= typeof cornerZonePrice !== 'undefined' ? cornerZonePrice : 50 %> บาท/ล็อก/วัน</span>
-        </span>
-      </label>
-      <p class="stall-modal__option-hint">แผงหัวมุมอยู่ตำแหน่งเด่น มองเห็นง่าย ลูกค้าเดินผ่านสะดวกกว่าแผงทั่วไป เหมาะกับร้านที่อยากได้ทำเลโดดเด่นเป็นพิเศษ ถ้าติ๊กไว้ ทีมงานจะจัดแผงหัวมุมให้เป็นลำดับแรกเมื่อมีคิวว่าง</p>
+      <div class="stall-modal__corner">
+        <p class="stall-modal__corner-title">สนใจแผงหัวมุม/แผงพิเศษไหม? <span class="stall-modal__corner-note">(มีค่าใช้จ่ายเพิ่ม เลือกได้ 1 ระดับ)</span></p>
+        <div class="stall-modal__corner-options" id="cornerZoneOptions">
+          <label class="stall-modal__corner-option">
+            <input type="radio" name="cornerZoneModal" value="0" checked>
+            <span class="stall-modal__corner-option-text">
+              <strong>ไม่สนใจ</strong>
+              <small>แผงมาตรฐาน ไม่มีค่าใช้จ่ายเพิ่ม</small>
+            </span>
+          </label>
+          <% (typeof cornerZoneOptions !== 'undefined' ? cornerZoneOptions : []).forEach(function(opt) { %>
+            <label class="stall-modal__corner-option">
+              <input type="radio" name="cornerZoneModal" value="<%= opt.value %>">
+              <span class="stall-modal__corner-option-text">
+                <strong><%= opt.label %> <span class="stall-modal__corner-option-tag">+<%= opt.value %> บาท/ล็อก/วัน</span></strong>
+                <small><%= opt.desc %></small>
+              </span>
+            </label>
+          <% }) %>
+        </div>
+      </div>
 
       <button type="button" class="stall-modal__btn" id="bookStallBtn">จองแถวนี้</button>
     </div>
