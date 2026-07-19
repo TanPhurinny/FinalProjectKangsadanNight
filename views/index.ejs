@@ -12,7 +12,7 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
             rel="stylesheet">
         <link
-            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
             rel="stylesheet">
         <link rel="stylesheet"
             href="/stylesheets/index/style.css?v=20260329-12">
@@ -39,10 +39,10 @@
                     <span class="user-chip d-none d-md-inline">สวัสดี, <b><%=
                             user.name %></b></span>
                     <a href="/logout"
-                        class="btn btn-outline-light btn-sm rounded-pill px-3">ออกจากระบบ</a>
+                        class="btn btn-outline-light btn-sm px-3">ออกจากระบบ</a>
                     <% } else { %>
                     <a href="/login"
-                        class="btn btn-kangsadan nav-login-btn btn-sm px-4 rounded-pill"><i
+                        class="btn btn-kangsadan nav-login-btn btn-sm px-4"><i
                             class="fas fa-right-to-bracket me-1"></i>เข้าสู่ระบบ
                         / สมัครสมาชิก</a>
                     <% } %>
@@ -91,21 +91,21 @@
                             </div>
                             <div class="hero-actions">
                                 <a href="#announcements"
-                                    class="btn btn-hero-main rounded-pill px-4 py-2"><i
+                                    class="btn btn-hero-main px-4 py-2"><i
                                         class="fas fa-bullhorn me-2"></i>ดูประกาศล่าสุด</a>
                                 <% if (!user) { %>
                                 <a href="/login"
-                                    class="btn btn-kangsadan hero-login-btn hero-cta px-4 py-2 rounded-pill"><i
+                                    class="btn btn-kangsadan hero-login-btn hero-cta px-4 py-2"><i
                                         class="fas fa-user-plus me-2"></i>สมัครใช้งาน</a>
                                 <% } else if (user.role === 'ADMIN' || user.role
                                 ===
                                 'STAFF') { %>
                                 <a href="/admin/dashboard"
-                                    class="btn btn-kangsadan hero-cta px-4 py-2 rounded-pill"><i
+                                    class="btn btn-kangsadan hero-cta px-4 py-2"><i
                                         class="fas fa-gauge-high me-2"></i>ไปที่แผงควบคุม</a>
                                 <% } else { %>
                                 <a href="/select-zone"
-                                    class="btn btn-kangsadan hero-cta px-4 py-2 rounded-pill"><i
+                                    class="btn btn-kangsadan hero-cta px-4 py-2"><i
                                         class="fas fa-shop me-2"></i>ดูผังแผงตลาด</a>
                                 <% } %>
                             </div>
@@ -120,7 +120,7 @@
                                 <li><span>21:00</span>โปรโมชันร้านค้าพิเศษประจำคืน</li>
                             </ul>
                             <a href="#zones"
-                                class="btn btn-hero-ghost rounded-pill w-100 py-2"><i
+                                class="btn btn-hero-ghost w-100 py-2"><i
                                     class="fas fa-compass me-2"></i>สำรวจโซนทั้งหมด</a>
                             <div class="hero-note"><i
                                     class="fas fa-circle-info me-2"></i>คำแนะนำ:
@@ -205,16 +205,16 @@
                             </ul>
                             <% if (!user) { %>
                             <a href="/login"
-                                class="btn btn-kangsadan w-100 rounded-pill mt-3 py-2"><i
+                                class="btn btn-kangsadan w-100 mt-3 py-2"><i
                                     class="fas fa-user-plus me-2"></i>สมัครใช้งานตอนนี้</a>
                             <% } else if (user.role === 'ADMIN' || user.role ===
                             'STAFF') { %>
                             <a href="/admin/dashboard"
-                                class="btn btn-kangsadan w-100 rounded-pill mt-3 py-2"><i
+                                class="btn btn-kangsadan w-100 mt-3 py-2"><i
                                     class="fas fa-gauge-high me-2"></i>จัดการระบบทันที</a>
                             <% } else { %>
                             <a href="/select-zone"
-                                class="btn btn-kangsadan w-100 rounded-pill mt-3 py-2"><i
+                                class="btn btn-kangsadan w-100 mt-3 py-2"><i
                                     class="fas fa-shop me-2"></i>เริ่มจองแผงขาย</a>
                             <% } %>
                         </aside>
@@ -233,7 +233,8 @@
                     <div class="row g-4">
                         <div class="col-md-4">
                             <article class="feature-card h-100">
-                                <div class="feature-icon food"><i
+                                <div class="feature-icon food"
+                                    data-index="01 / BOOKING"><i
                                         class="fas fa-calendar-check"></i></div>
                                 <h4 class="fw-bold">จองแผงได้เป็นระบบ</h4>
                                 <p
@@ -243,7 +244,8 @@
                         </div>
                         <div class="col-md-4">
                             <article class="feature-card h-100">
-                                <div class="feature-icon fashion"><i
+                                <div class="feature-icon fashion"
+                                    data-index="02 / ALERTS"><i
                                         class="fas fa-bell"></i></div>
                                 <h4 class="fw-bold">ไม่พลาดประกาศสำคัญ</h4>
                                 <p class="text-muted mb-0">ติดตามข่าวสาร
@@ -252,7 +254,8 @@
                         </div>
                         <div class="col-md-4">
                             <article class="feature-card h-100">
-                                <div class="feature-icon booking"><i
+                                <div class="feature-icon booking"
+                                    data-index="03 / MANAGE"><i
                                         class="fas fa-chart-line"></i></div>
                                 <h4 class="fw-bold">บริหารร้านได้ต่อเนื่อง</h4>
                                 <p
@@ -270,16 +273,16 @@
                         </div>
                         <% if (!user) { %>
                         <a href="/login"
-                            class="btn btn-light rounded-pill px-4 py-2"><i
+                            class="btn btn-light px-4 py-2"><i
                                 class="fas fa-rocket me-2"></i>สมัครใช้งาน</a>
                         <% } else if (user.role === 'ADMIN' || user.role ===
                         'STAFF') { %>
                         <a href="/admin/dashboard"
-                            class="btn btn-light rounded-pill px-4 py-2"><i
+                            class="btn btn-light px-4 py-2"><i
                                 class="fas fa-gauge-high me-2"></i>เข้าสู่แผงควบคุม</a>
                         <% } else { %>
                         <a href="/select-zone"
-                            class="btn btn-light rounded-pill px-4 py-2"><i
+                            class="btn btn-light px-4 py-2"><i
                                 class="fas fa-shop me-2"></i>ไปหน้าเลือกแผง</a>
                         <% } %>
                     </div>
@@ -515,6 +518,8 @@
 
         <footer class="site-footer py-5">
             <div class="container text-center">
+                <img src="/img/Logo.png" alt="Kangsadan Night Market"
+                    class="footer-logo mb-3">
                 <h5 class="fw-bold mb-3">KANGSADAN NIGHT MARKET</h5>
                 <p class="mb-4 small opacity-75">เปิดให้บริการทุกวัน ตั้งแต่เวลา
                     17.00 - 23.00 น.</p>
@@ -537,7 +542,7 @@
         <div class="modal fade" id="announcementModal" tabindex="-1"
             aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 rounded-4">
+                <div class="modal-content">
                     <div class="modal-header border-0 pb-1">
                         <div>
                             <small class="text-muted"
