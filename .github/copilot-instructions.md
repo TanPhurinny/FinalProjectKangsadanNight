@@ -1,6 +1,6 @@
-# CLAUDE.md
+# Copilot instructions
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to GitHub Copilot when working in this repository. It mirrors `/CLAUDE.md` (used by Claude Code) — keep the two in sync when either changes.
 
 ## Commands
 
@@ -57,7 +57,7 @@ This project is worked on by multiple people in parallel (branches per person: `
 - **Branches:** work on your own branch (named after you), merge into `main` via PR — don't commit directly to `main`.
 - **Commits:** one commit per logical change, message in Thai, written as a full sentence describing what changed (e.g. `เพิ่มระบบแอดมินตรวจสอบสลิปโอนเงินก่อนยืนยันล็อก`) — not `feat:`/`fix:` prefixes, not English.
 - **Before starting work:** `git pull` on `main` and rebase/merge it into your branch first — several people touch `views/`, `controllers/`, and `routes/` at once, so stale branches conflict often.
-- **UI/design:** follow the existing "gridgeist" visual style already applied across `index`, `admin`, and `seller` pages (see git history for `รีดีไซน์...เป็นสไตล์ gridgeist`) — sharp grid layout, visible borders, no `rounded-pill`/`rounded-4`. Use the `gridgeist` skill when redesigning or adding pages so new screens match.
+- **UI/design:** follow the existing "gridgeist" visual style already applied across `index`, `admin`, and `seller` pages (see git history for `รีดีไซน์...เป็นสไตล์ gridgeist`) — sharp grid layout, visible borders, no `rounded-pill`/`rounded-4`.
 - **After schema changes:** run `npx prisma generate` and commit the migration under `prisma/migrations/` — don't hand-edit the generated client.
 - **Before opening a PR:** boot-check the app (see verify command above) and click through the flow you changed in a browser; there's no automated test suite to catch regressions.
 - **Language:** keep new UI copy, flash/error messages, and comments in Thai to match the rest of the codebase; code identifiers (variables, functions, routes) stay in English.
