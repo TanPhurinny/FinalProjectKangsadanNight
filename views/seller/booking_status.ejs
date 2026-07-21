@@ -19,9 +19,30 @@
   const pageDataJson = JSON.stringify({ booking: bookingPayload });
 %>
 <body data-page="booking-status" data-page-data="<%= encodeURIComponent(pageDataJson) %>">
+<script src="/js/common/tabSession.js"></script>
   <%- include('../partials/navbar2') %>
 
   <main class="container page-shell">
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert-danger" role="alert">
+        <%
+          const errorMessages = {
+            upload_failed: 'อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',
+            missing_slip: 'กรุณาแนบสลิปโอนเงินก่อนยืนยัน',
+            not_awaiting_payment: 'ไม่พบรายการที่รอชำระเงินอยู่ในขณะนี้',
+            slip_already_uploaded: 'คุณส่งสลิปโอนเงินไปแล้ว กรุณารอแอดมินตรวจสอบ',
+            payment_confirm_failed: 'เกิดข้อผิดพลาดขณะบันทึกการยืนยันชำระเงิน กรุณาลองใหม่'
+          };
+        %>
+        <%= errorMessages[error] || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง' %>
+      </div>
+    <% } %>
+    <% if (typeof success !== 'undefined' && success === 'slip_uploaded') { %>
+      <div class="alert alert-success" role="alert">ส่งสลิปโอนเงินสำเร็จแล้ว กรุณารอแอดมินตรวจสอบและยืนยันการชำระเงิน</div>
+    <% } %>
+    <% if (typeof success !== 'undefined' && success === 'payment_confirmed') { %>
+      <div class="alert alert-success" role="alert">แอดมินยืนยันการชำระเงินแล้ว ระบบบันทึกล็อกนี้เป็นของคุณเรียบร้อย</div>
+    <% } %>
     <div class="page-hero card-custom">
       <div>
         <h1 class="page-hero__title">สถานะการจอง</h1>

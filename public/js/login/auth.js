@@ -1,39 +1,80 @@
+function setActiveTab(index) {
+    const buttons = document.querySelectorAll('.auth-tabswitch button');
+    buttons.forEach((button, i) => button.classList.toggle('active', i === index));
+}
+
 function showRegister() {
     document.getElementById('loginPage').classList.add('d-none');
     document.getElementById('forgotPage').classList.add('d-none');
     document.getElementById('registerPage').classList.remove('d-none');
+    resetRegisterSteps();
+    setActiveTab(1);
 }
 
 function showLogin() {
     document.getElementById('registerPage').classList.add('d-none');
     document.getElementById('forgotPage').classList.add('d-none');
     document.getElementById('loginPage').classList.remove('d-none');
+    setActiveTab(0);
 }
 
 function showForgotPassword() {
     document.getElementById('loginPage').classList.add('d-none');
     document.getElementById('registerPage').classList.add('d-none');
     document.getElementById('forgotPage').classList.remove('d-none');
+    setActiveTab(0);
 }
 
-function toggleSellerFields() {
+function resetRegisterSteps() {
+    const step1 = document.getElementById('regStep1');
+    const step2 = document.getElementById('regStep2');
+    if (!step1 || !step2) return;
+
+    step1.classList.remove('d-none');
+    step2.classList.add('d-none');
+    updateRegNextButton();
+}
+
+// สำหรับผู้ใช้ทั่วไป (CUSTOMER) ปุ่ม "ถัดไป" จะสมัครสมาชิกทันที (submit ตรง)
+// ส่วนพ่อค้า/แม่ค้า (SELLER) จะพาไปกรอกข้อมูลร้านค้าที่ขั้นตอนที่ 2 ก่อน
+function updateRegNextButton() {
     const roleSelect = document.getElementById('roleSelect');
-    const sellerFields = document.getElementById('sellerFields');
+    const nextBtn = document.getElementById('regNextBtn');
+    if (!roleSelect || !nextBtn) return;
 
-    if (!roleSelect || !sellerFields) return;
-
-    const role = roleSelect.value;
-    const inputs = sellerFields.querySelectorAll('input, select, textarea');
-
-    if (role === 'SELLER') {
-        sellerFields.classList.remove('d-none');
-        inputs.forEach((input) => {
-            if (input.type !== 'file') input.setAttribute('required', '');
-        });
+    if (roleSelect.value === 'SELLER') {
+        nextBtn.type = 'button';
+        nextBtn.textContent = 'ถัดไป';
     } else {
-        sellerFields.classList.add('d-none');
-        inputs.forEach((input) => input.removeAttribute('required'));
+        nextBtn.type = 'submit';
+        nextBtn.textContent = 'สร้างบัญชี';
     }
+}
+
+function goToRegStep2() {
+    const step1 = document.getElementById('regStep1');
+    const step2 = document.getElementById('regStep2');
+    if (!step1 || !step2) return;
+
+    const step1Fields = step1.querySelectorAll('input, select');
+    for (const field of step1Fields) {
+        if (!field.checkValidity()) {
+            field.reportValidity();
+            return;
+        }
+    }
+
+    step1.classList.add('d-none');
+    step2.classList.remove('d-none');
+}
+
+function goToRegStep1() {
+    const step1 = document.getElementById('regStep1');
+    const step2 = document.getElementById('regStep2');
+    if (!step1 || !step2) return;
+
+    step2.classList.add('d-none');
+    step1.classList.remove('d-none');
 }
 
 function togglePasswordVisibility(event) {
@@ -57,6 +98,15 @@ function togglePasswordVisibility(event) {
     }
 }
 
+function autoDismissAlert(alertBox, delay = 3000) {
+    if (!alertBox) return;
+
+    setTimeout(() => {
+        alertBox.classList.add('alert-auto-fade');
+        setTimeout(() => alertBox.remove(), 400);
+    }, delay);
+}
+
 function renderMessage(type, message) {
     const authMessage = document.getElementById('authMessage');
 
@@ -74,6 +124,7 @@ function renderMessage(type, message) {
 
     authMessage.innerHTML = '';
     authMessage.appendChild(alertBox);
+    autoDismissAlert(alertBox);
 }
 
 async function submitJsonForm(form, bodyObject) {
@@ -133,7 +184,16 @@ async function handleLoginSubmit(event) {
         }
 
         renderMessage('success', result.message || 'เข้าสู่ระบบสำเร็จ');
-        window.location.href = result.redirectPath || '/profile';
+
+        if (result.token && window.setTabToken) {
+            window.setTabToken(result.token);
+        }
+
+        const redirectPath = result.redirectPath || '/profile';
+        const separator = redirectPath.includes('?') ? '&' : '?';
+        window.location.href = result.token
+            ? `${redirectPath}${separator}tabToken=${encodeURIComponent(result.token)}`
+            : redirectPath;
     } catch (error) {
         renderMessage('error', 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
     }
@@ -179,7 +239,6 @@ async function handleRegisterSubmit(event) {
 
         renderMessage('success', result.message || 'สมัครสมาชิกสำเร็จ');
         form.reset();
-        toggleSellerFields();
         showLogin();
     } catch (error) {
         renderMessage('error', 'เกิดข้อผิดพลาดในการสมัครสมาชิก');
@@ -189,7 +248,9 @@ async function handleRegisterSubmit(event) {
 window.showRegister = showRegister;
 window.showLogin = showLogin;
 window.showForgotPassword = showForgotPassword;
-window.toggleSellerFields = toggleSellerFields;
+window.updateRegNextButton = updateRegNextButton;
+window.goToRegStep2 = goToRegStep2;
+window.goToRegStep1 = goToRegStep1;
 
 document.addEventListener('DOMContentLoaded', () => {
     const toggleButtons = document.querySelectorAll('.password-toggle');
@@ -213,7 +274,11 @@ document.addEventListener('DOMContentLoaded', () => {
         registerForm.addEventListener('submit', handleRegisterSubmit);
     }
 
-    toggleSellerFields();
+    updateRegNextButton();
+
+    document.querySelectorAll('.auth-page .alert-success, .auth-page .alert-danger').forEach((alertBox) => {
+        autoDismissAlert(alertBox);
+    });
 
     const activeTab = document.body.dataset.activeTab || 'login';
     if (activeTab === 'register') {

@@ -22,6 +22,9 @@ function stallMatchesFilter(id, stall) {
         if (currentStatusFilter === 'EMPTY') {
             return stall.status !== 'BOOKED' && stall.status !== 'MAINTENANCE';
         }
+        if (currentStatusFilter === 'NEAR_EXPIRY') {
+            return stall.expiryState === 'near' || stall.expiryState === 'expired';
+        }
         return stall.status === currentStatusFilter;
     }
     if (currentQuery) {
@@ -111,7 +114,12 @@ function renderDZoneGrid(z, stallByCode) {
         if (stall.status === 'BOOKED') {
             booked += 1;
             cell.classList.add('booked');
-            if (bk) cell.title = bk.shop;
+            if (stall.expiryState === 'expired') cell.classList.add('expired');
+            else if (stall.expiryState === 'near') cell.classList.add('near-expiry');
+            const expiryNote = stall.expiryState === 'expired'
+                ? '\n⚠ หมดอายุแล้ว'
+                : stall.expiryState === 'near' ? '\n⚠ ใกล้หมดอายุ' : '';
+            cell.dataset.tooltip = `แผง ${pos.code}\n${bk ? `${bk.shop}\nขาย: ${bk.product}\n(คลิกดูรายละเอียด)` : 'จองแล้ว'}${expiryNote}`;
             cell.addEventListener('click', (e) => {
                 e.stopPropagation();
                 showInfo(pos.code);
@@ -119,12 +127,13 @@ function renderDZoneGrid(z, stallByCode) {
         } else if (stall.status === 'MAINTENANCE') {
             maintenance += 1;
             cell.classList.add('maintenance');
-            cell.title = 'อยู่ระหว่างซ่อมบำรุง';
+            cell.dataset.tooltip = `แผง ${pos.code}\nอยู่ระหว่างซ่อมบำรุง`;
             cell.addEventListener('click', (e) => {
                 e.stopPropagation();
                 selectEmpty(pos.code, cell);
             });
         } else {
+            cell.dataset.tooltip = `แผง ${pos.code}\nว่าง`;
             cell.addEventListener('click', (e) => {
                 e.stopPropagation();
                 selectEmpty(pos.code, cell);
@@ -198,7 +207,12 @@ function renderGrid(z) {
             if (stall.status === 'BOOKED') {
                 booked += 1;
                 cell.classList.add('booked');
-                if (bk) cell.title = bk.shop;
+                if (stall.expiryState === 'expired') cell.classList.add('expired');
+                else if (stall.expiryState === 'near') cell.classList.add('near-expiry');
+                const expiryNote = stall.expiryState === 'expired'
+                    ? '\n⚠ หมดอายุแล้ว'
+                    : stall.expiryState === 'near' ? '\n⚠ ใกล้หมดอายุ' : '';
+                cell.dataset.tooltip = `แผง ${id}\n${bk ? `${bk.shop}\nขาย: ${bk.product}\n(คลิกดูรายละเอียด)` : 'จองแล้ว'}${expiryNote}`;
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     showInfo(id);
@@ -206,12 +220,13 @@ function renderGrid(z) {
             } else if (stall.status === 'MAINTENANCE') {
                 maintenance += 1;
                 cell.classList.add('maintenance');
-                cell.title = 'อยู่ระหว่างซ่อมบำรุง';
+                cell.dataset.tooltip = `แผง ${id}\nอยู่ระหว่างซ่อมบำรุง`;
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     selectEmpty(id, cell);
                 });
             } else {
+                cell.dataset.tooltip = `แผง ${id}\nว่าง`;
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     selectEmpty(id, cell);
@@ -249,19 +264,30 @@ function showInfo(id) {
     document.getElementById('ic-head').textContent = `แผง ${id} — ${d.shop}`;
     document.getElementById('ic-shop').textContent = d.shop;
     document.getElementById('ic-product').textContent = d.product;
+    document.getElementById('ic-detail').textContent = d.productDetail || '-';
     document.getElementById('ic-date').textContent = d.date;
     document.getElementById('ic-name').textContent = d.name;
     document.getElementById('ic-phone').textContent = d.phone;
     document.getElementById('ic-note').textContent = d.note;
 
-    const infoCard = document.getElementById('infoCard');
-    infoCard.classList.add('show');
-    infoCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const icImage = document.getElementById('ic-image');
+    if (d.image) {
+        icImage.src = d.image;
+        icImage.classList.remove('d-none');
+    } else {
+        icImage.classList.add('d-none');
+        icImage.removeAttribute('src');
+    }
+
+    document.getElementById('infoCard').classList.add('show');
+    document.getElementById('infoCardBackdrop').classList.add('show');
 }
 
 function hideInfo() {
     document.getElementById('infoCard').classList.remove('show');
+    document.getElementById('infoCardBackdrop').classList.remove('show');
 }
+window.hideInfo = hideInfo;
 
 const STATUS_LABELS = { EMPTY: 'แผงว่าง', BOOKED: 'แผงที่จองแล้ว', MAINTENANCE: 'แผงซ่อมบำรุง' };
 

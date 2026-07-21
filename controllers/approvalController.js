@@ -58,6 +58,59 @@ async function buildAdminBookingStallPageData(requestId) {
         });
     });
 
+    // ดึงชื่อร้าน/ผู้ขายของแผงที่จองแล้ว เพื่อแสดงใน tooltip ตอน hover บนผังเดียวกับ /admin/slots
+    const approvedRequests = await prisma.bookingRequest.findMany({
+        where: { status: { in: ['IN_PROGRESS', 'SUCCESS'] }, assignedStallCode: { not: null } },
+        select: {
+            productName: true,
+            description: true,
+            sellerName: true,
+            assignedStallCode: true,
+            zone: true,
+            productImage: true,
+            seller: {
+                select: {
+                    shopName: true,
+                    productDetail: true,
+                    productImage: true,
+                    productType: { select: { name: true } }
+                }
+            }
+        }
+    });
+    // Seller (sellerId) มักไม่ถูกผูกไว้กับคำขอเก่า จึง fallback ไปหาข้อมูลร้าน (ประเภทสินค้า/
+    // รายละเอียด/รูปร้าน) จาก User+ShopDetail ด้วยชื่อผู้ขาย เหมือนที่ /admin/slots ทำอยู่แล้ว
+    const missingShopInfoNames = [...new Set(
+        approvedRequests.filter((r) => !r.seller?.productType?.name).map((r) => r.sellerName).filter(Boolean)
+    )];
+    const shopInfoByName = {};
+    if (missingShopInfoNames.length) {
+        const sellerUsers = await prisma.user.findMany({
+            where: { role: 'SELLER', name: { in: missingShopInfoNames } },
+            select: { name: true, shop: { select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true } } }
+        });
+        sellerUsers.forEach((u) => {
+            if (u.shop) shopInfoByName[u.name] = u.shop;
+        });
+    }
+
+    const bookingByStallCode = {};
+    approvedRequests.forEach((request) => {
+        const stallCode = String(request.assignedStallCode || '').trim().toUpperCase();
+        if (!stallCode) return;
+
+        const fallbackShop = shopInfoByName[request.sellerName] || {};
+        bookingByStallCode[stallCode] = {
+            shop: request.seller?.shopName || request.productName || '-',
+            product: request.seller?.productType?.name
+                || fallbackShop.productType
+                || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-'),
+            productDetail: request.seller?.productDetail || fallbackShop.productDetail || request.description || '-',
+            image: request.productImage || request.seller?.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null,
+            name: request.sellerName || '-'
+        };
+    });
+
     const requestedZone = normalizeZone(bookingRequest.zone);
     const assignedStallCode = String(bookingRequest.assignedStallCode || extractAssignedStallFromDescription(bookingRequest.description) || '').trim().toUpperCase();
 
@@ -116,7 +169,8 @@ async function buildAdminBookingStallPageData(requestId) {
             productImage
         },
         zoneByCode,
-        bookedStalls
+        bookedStalls,
+        bookingByStallCode
     };
 }
 
@@ -185,7 +239,7 @@ exports.getApprovalsPage = async (req, res) => {
         });
 
         const zoneCounts = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
-        const statusCounts = { PENDING: 0, APPROVED: 0, REJECTED: 0 };
+        const statusCounts = { PENDING: 0, APPROVED: 0, REJECTED: 0, IN_PROGRESS: 0, SUCCESS: 0 };
 
         const bookingRows = await Promise.all(bookingRequests.map(async (request) => {
             const zoneCode = String(request.zone || '').trim().toUpperCase();
@@ -274,13 +328,18 @@ exports.getApprovalsPage = async (req, res) => {
                 status: statusCode.toLowerCase(),
                 statusLabel:
                     statusCode === 'APPROVED'
-                        ? 'อนุมัติแล้ว'
-                        : statusCode === 'REJECTED'
-                            ? 'ปฏิเสธ'
-                            : 'รออนุมัติ',
+                        ? 'ร้านผ่านการตรวจสอบ รอจัดล็อก'
+                        : statusCode === 'IN_PROGRESS'
+                            ? (request.paymentSlipImage ? 'ผู้ขายส่งสลิปแล้ว รอแอดมินยืนยัน' : 'จัดล็อกแล้ว รอชำระเงิน')
+                            : statusCode === 'SUCCESS'
+                                ? 'ชำระเงินแล้ว เสร็จสิ้น'
+                                : statusCode === 'REJECTED'
+                                    ? 'ปฏิเสธ'
+                                    : 'รอตรวจสอบร้านค้า',
                 createdAtText,
                 createdAtRaw: request.createdAt,
                 assignedStallCode,
+                paymentSlipImage: request.paymentSlipImage || null,
                 productImage: request.productImage || sellerImageMap.get(String(request.sellerName || '').trim()) || null,
                 smallApplianceCount,
                 largeApplianceCount,
@@ -301,6 +360,8 @@ exports.getApprovalsPage = async (req, res) => {
                 pending: statusCounts.PENDING,
                 approved: statusCounts.APPROVED,
                 rejected: statusCounts.REJECTED,
+                inProgress: statusCounts.IN_PROGRESS,
+                success: statusCounts.SUCCESS,
                 zones: zoneCounts
             },
             error: req.query.error || null,
@@ -332,6 +393,84 @@ exports.confirmApproval = async (req, res) => {
     }
 };
 
+// แอดมินตรวจสอบสลิปโอนเงินที่ผู้ขายแนบมาแล้วกดยืนยัน ระบบจะปิดสถานะเป็น SUCCESS และแจ้งผู้ขายว่าล็อกเป็นของตนแล้ว
+// (ก่อนหน้านี้ผู้ขายอัปโหลดสลิปแล้วปิดสถานะเป็น SUCCESS ทันที ไม่มีขั้นตอนให้แอดมินตรวจสอบก่อน)
+exports.confirmPayment = async (req, res) => {
+    try {
+        const requestId = Number.parseInt(req.body.requestId, 10);
+        if (!requestId) {
+            return res.redirect('/admin/approvals?error=missing_request_id');
+        }
+
+        const requestRecord = await prisma.bookingRequest.findUnique({
+            where: { id: requestId },
+            select: {
+                id: true,
+                status: true,
+                paymentSlipImage: true,
+                paymentConfirmedAt: true,
+                sellerId: true,
+                sellerName: true
+            }
+        });
+
+        if (!requestRecord) {
+            return res.redirect('/admin/approvals?error=request_not_found');
+        }
+
+        if (String(requestRecord.status || '').toUpperCase() !== 'IN_PROGRESS' || !requestRecord.paymentSlipImage) {
+            return res.redirect('/admin/approvals?error=payment_not_awaiting_verification');
+        }
+
+        if (requestRecord.paymentConfirmedAt) {
+            return res.redirect('/admin/approvals?error=payment_already_confirmed');
+        }
+
+        let sellerUserId = null;
+        if (requestRecord.sellerId) {
+            const seller = await prisma.seller.findUnique({
+                where: { id: requestRecord.sellerId },
+                select: { userId: true }
+            });
+            sellerUserId = seller?.userId || null;
+        }
+
+        if (!sellerUserId && requestRecord.sellerName) {
+            const fallbackUser = await prisma.user.findFirst({
+                where: { role: 'SELLER', name: String(requestRecord.sellerName).trim() },
+                select: { id: true }
+            });
+            sellerUserId = fallbackUser?.id || null;
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.bookingRequest.update({
+                where: { id: requestId },
+                data: {
+                    status: 'SUCCESS',
+                    paymentConfirmedAt: new Date()
+                }
+            });
+
+            if (sellerUserId) {
+                const requestTag = buildBookingRequestTag(requestId);
+                await tx.booking.updateMany({
+                    where: {
+                        userId: sellerUserId,
+                        status: 'APPROVED',
+                        ...(requestTag ? { storeDetailSnapshot: { contains: requestTag } } : {})
+                    },
+                    data: { status: 'SUCCESS' }
+                });
+            }
+        });
+
+        return res.redirect('/admin/approvals?success=payment_confirmed');
+    } catch (err) {
+        return res.redirect('/admin/approvals?error=confirm_payment_failed');
+    }
+};
+
 exports.getBookingStallPage = async (req, res) => {
     try {
         const requestId = Number.parseInt(req.query.requestId, 10);
@@ -342,6 +481,11 @@ exports.getBookingStallPage = async (req, res) => {
         const pageData = await buildAdminBookingStallPageData(requestId);
         if (!pageData) {
             return res.redirect('/admin/approvals?error=request_not_found');
+        }
+
+        const shopCheckedStatuses = ['APPROVED', 'IN_PROGRESS', 'SUCCESS'];
+        if (!shopCheckedStatuses.includes(pageData.bookingRequest.status)) {
+            return res.redirect('/admin/approvals?error=shop_not_verified_yet');
         }
 
         return res.render('admin/booking_stall', {
@@ -384,11 +528,17 @@ exports.confirmBookingStall = async (req, res) => {
                 sellerId: true,
                 sellerName: true,
                 zone: true,
-                createdAt: true
+                createdAt: true,
+                status: true
             }
         });
         if (!requestRecord) {
             return res.redirect('/admin/approvals?error=request_not_found');
+        }
+
+        const assignableStatuses = ['APPROVED', 'IN_PROGRESS'];
+        if (!assignableStatuses.includes(String(requestRecord.status || '').toUpperCase())) {
+            return res.redirect('/admin/approvals?error=shop_not_verified_yet');
         }
 
         const selectedSlot = await prisma.slot.findUnique({
@@ -433,11 +583,14 @@ exports.confirmBookingStall = async (req, res) => {
             await tx.bookingRequest.update({
                 where: { id: requestId },
                 data: {
-                    status: 'APPROVED',
+                    status: 'IN_PROGRESS',
                     assignedStallCode: selectedStall,
                     description: cleanedDescription
                 }
             });
+
+            let rentalStartDate = null;
+            let rentalEndDate = null;
 
             if (sellerUserId) {
                 const requestTag = buildBookingRequestTag(requestId);
@@ -448,7 +601,7 @@ exports.confirmBookingStall = async (req, res) => {
                         ...(requestTag ? { storeDetailSnapshot: { contains: requestTag } } : {})
                     },
                     orderBy: { createdAt: 'desc' },
-                    select: { id: true }
+                    select: { id: true, rentalStartDate: true, rentalEndDate: true }
                 });
 
                 if (!pendingBookings.length) {
@@ -459,12 +612,14 @@ exports.confirmBookingStall = async (req, res) => {
                         ...(requestedZone ? { zoneCode: requestedZone } : {})
                     },
                     orderBy: { createdAt: 'desc' },
-                    select: { id: true }
+                    select: { id: true, rentalStartDate: true, rentalEndDate: true }
                 });
                 }
 
                 if (pendingBookings.length) {
                     const bookingIds = pendingBookings.map((item) => item.id);
+                    rentalStartDate = pendingBookings[0].rentalStartDate || null;
+                    rentalEndDate = pendingBookings[0].rentalEndDate || null;
 
                     await tx.booking.updateMany({
                         where: { id: { in: bookingIds } },
@@ -487,7 +642,9 @@ exports.confirmBookingStall = async (req, res) => {
                 where: { id: stall.id },
                 data: {
                     isAvailable: false,
-                    status: 'BOOKED'
+                    status: 'BOOKED',
+                    bookingStartDate: rentalStartDate,
+                    bookingEndDate: rentalEndDate
                 }
             });
 
@@ -496,7 +653,9 @@ exports.confirmBookingStall = async (req, res) => {
                     where: { id: previousStall.id },
                     data: {
                         isAvailable: true,
-                        status: 'AVAILABLE'
+                        status: 'AVAILABLE',
+                        bookingStartDate: null,
+                        bookingEndDate: null
                     }
                 });
             }
@@ -562,7 +721,9 @@ exports.rejectBookingStall = async (req, res) => {
                     where: { id: assignedStall.id },
                     data: {
                         isAvailable: true,
-                        status: 'AVAILABLE'
+                        status: 'AVAILABLE',
+                        bookingStartDate: null,
+                        bookingEndDate: null
                     }
                 });
             }

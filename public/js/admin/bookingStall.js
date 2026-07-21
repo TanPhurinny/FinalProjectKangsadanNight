@@ -12,6 +12,15 @@ const PAGE_DATA = readPageDataJson();
 const REQUEST_DATA = PAGE_DATA.bookingRequest || {};
 const ZONE_BY_CODE = PAGE_DATA.zoneByCode || {};
 const BOOKED_STALLS = new Set(PAGE_DATA.bookedStalls || []);
+const BOOKING_BY_STALL = PAGE_DATA.bookingByStallCode || {};
+const EXPIRY_BY_STALL = {};
+Object.values(ZONE_BY_CODE).forEach((zone) => {
+    (zone.columns || []).forEach((column) => {
+        (column.stalls || []).forEach((stall) => {
+            if (stall.expiryState) EXPIRY_BY_STALL[stall.code] = stall.expiryState;
+        });
+    });
+});
 
 let currentSelectedStall = String(REQUEST_DATA.assignedStallCode || '').trim().toUpperCase() || null;
 let currentZone = (REQUEST_DATA.zone || Object.keys(ZONE_BY_CODE)[0] || 'A').toUpperCase();
@@ -89,11 +98,14 @@ function makeStallCell(code, stall) {
     cell.textContent = code;
 
     const isBooked = BOOKED_STALLS.has(code);
+    cell.addEventListener('mouseenter', (e) => showTooltip(e, code, isBooked));
+    cell.addEventListener('mouseleave', hideTooltip);
+    cell.addEventListener('mousemove', moveTooltip);
+
     if (isBooked) {
         cell.classList.add('booked');
-        cell.addEventListener('mouseenter', (e) => showTooltip(e, code));
-        cell.addEventListener('mouseleave', hideTooltip);
-        cell.addEventListener('mousemove', moveTooltip);
+        if (stall && stall.expiryState === 'expired') cell.classList.add('expired');
+        else if (stall && stall.expiryState === 'near') cell.classList.add('near-expiry');
     } else {
         cell.addEventListener('click', () => {
             document.querySelectorAll('.stall-cell').forEach((c) => c.classList.remove('selected'));
@@ -192,14 +204,31 @@ function renderGrid(zoneKey) {
     });
 }
 
-function showTooltip(e, stallName) {
+function showTooltip(e, stallName, isBooked) {
+    const bk = BOOKING_BY_STALL[stallName];
+
     document.getElementById('tt-stall-id').textContent = stallName;
-    document.getElementById('tt-shop').textContent = 'มีผู้จองแล้ว';
+    document.getElementById('tt-shop').textContent = isBooked ? (bk ? bk.shop : 'มีผู้จองแล้ว') : 'ว่าง';
+    document.getElementById('tt-product').textContent = isBooked && bk ? bk.product : '-';
     document.getElementById('tt-lock').textContent = stallName;
     document.getElementById('tt-date').textContent = '-';
-    document.getElementById('tt-name').textContent = '-';
+    document.getElementById('tt-name').textContent = isBooked && bk ? bk.name : '-';
     document.getElementById('tt-phone').textContent = '-';
-    document.getElementById('tt-note').textContent = 'ล็อกนี้ไม่ว่าง';
+    const expiryState = EXPIRY_BY_STALL[stallName];
+    const expiryNote = expiryState === 'expired' ? ' (⚠ หมดอายุแล้ว)'
+        : expiryState === 'near' ? ' (⚠ ใกล้หมดอายุ)' : '';
+    document.getElementById('tt-note').textContent = isBooked
+        ? (bk && bk.productDetail ? bk.productDetail : 'ล็อกนี้ไม่ว่าง') + expiryNote
+        : 'คลิกเพื่อเลือกแผงนี้';
+
+    const ttImage = document.getElementById('tt-image');
+    if (isBooked && bk && bk.image) {
+        ttImage.src = bk.image;
+        ttImage.classList.remove('d-none');
+    } else {
+        ttImage.classList.add('d-none');
+        ttImage.removeAttribute('src');
+    }
 
     tooltip.style.display = 'block';
     moveTooltip(e);

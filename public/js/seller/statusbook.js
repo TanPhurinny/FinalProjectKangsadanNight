@@ -27,42 +27,33 @@
   function bookingStep(status) {
     switch (status) {
       case 'APPROVED':
+        return 1;
       case 'IN_PROGRESS':
         return 2;
       case 'SUCCESS':
         return 3;
       case 'REJECTED':
-        return 1;
       case 'PENDING':
       default:
         return 1;
     }
   }
 
-  function statusMeta(status) {
+  function statusMeta(status, awaitingPaymentVerification) {
     switch (status) {
       case 'APPROVED':
-        return { text: 'รอชำระเงิน', badge: 'bg-primary text-white', icon: 'bi-wallet2' };
+        return { text: 'ร้านผ่านตรวจสอบ รอจัดล็อก', badge: 'bg-primary text-white', icon: 'bi-shop-window' };
       case 'IN_PROGRESS':
-        return { text: 'กำลังดำเนินการ', badge: 'bg-info text-dark', icon: 'bi-hourglass-split' };
+        return awaitingPaymentVerification
+          ? { text: 'ส่งสลิปแล้ว รอแอดมินยืนยัน', badge: 'bg-warning text-dark', icon: 'bi-hourglass-split' }
+          : { text: 'ได้รับล็อกแล้ว รอชำระเงิน', badge: 'bg-info text-dark', icon: 'bi-wallet2' };
       case 'SUCCESS':
         return { text: 'เสร็จสิ้นการจอง', badge: 'bg-success text-white', icon: 'bi-patch-check-fill' };
       case 'REJECTED':
         return { text: 'ไม่ผ่านการตรวจสอบ', badge: 'bg-danger text-white', icon: 'bi-x-circle-fill' };
       case 'PENDING':
       default:
-        return { text: 'รอการตรวจสอบ', badge: 'bg-warning text-dark', icon: 'bi-search' };
-    }
-  }
-
-  function bookingStatusTitle(status) {
-    switch (status) {
-      case 'APPROVED': return 'รายการจองผ่านการตรวจสอบแล้ว (รอชำระเงิน)';
-      case 'IN_PROGRESS': return 'กำลังดำเนินการชำระเงิน';
-      case 'SUCCESS': return 'เสร็จสิ้นการจอง';
-      case 'REJECTED': return 'รายการจองไม่ผ่านการตรวจสอบ';
-      case 'PENDING':
-      default: return 'กำลังรอการตรวจสอบจากระบบ';
+        return { text: 'รอการตรวจสอบร้านค้า', badge: 'bg-warning text-dark', icon: 'bi-search' };
     }
   }
 
@@ -119,7 +110,7 @@
       if (!booking) {
         badgeContainer.innerHTML = '<span class="badge bg-secondary text-white px-3 py-2">ยังไม่มีรายการจอง</span>';
       } else {
-        const meta = statusMeta(booking.status);
+        const meta = statusMeta(booking.status, booking.awaitingPaymentVerification);
         badgeContainer.innerHTML = `<span class="badge ${meta.badge} px-3 py-2"><i class="bi ${meta.icon} me-1"></i>${meta.text}</span>`;
       }
     }
@@ -142,6 +133,35 @@
     const bookingActionButton = step >= 2
       ? `<a href="/select-zone" class="btn btn-custom-primary btn-custom w-100 py-3 shadow-sm text-center"><i class="bi bi-grid me-2"></i>จองแผงใหม่</a>`
       : `<a href="/select-zone" class="btn btn-outline-primary btn-custom w-100 py-3 text-center"><i class="bi bi-plus-circle me-2"></i>จองเพิ่ม</a>`;
+
+    let paymentSection = '';
+    if (booking.status === 'IN_PROGRESS' && booking.awaitingPaymentVerification) {
+      paymentSection = `
+        <div class="payment-upload-box mt-4 p-3 border rounded-3 bg-light">
+          <button type="button" class="btn btn-warning btn-custom disabled mb-2" disabled><i class="bi bi-hourglass-split me-1"></i>ชำระเงินแล้ว รอตรวจ</button>
+          <p class="text-muted small mb-3">แอดมินกำลังตรวจสอบสลิปโอนเงินของคุณสำหรับล็อก <strong>${booking.slotLabel}</strong> เมื่อยืนยันแล้ว ระบบจะแจ้งเตือนว่าล็อกนี้เป็นของคุณอย่างเป็นทางการ</p>
+          <img src="${booking.paymentSlipImage}" alt="สลิปโอนเงินที่ส่งไปแล้ว" class="img-fluid rounded" style="max-width:260px;" />
+        </div>
+      `;
+    } else if (booking.status === 'IN_PROGRESS') {
+      paymentSection = `
+        <div class="payment-upload-box mt-4 p-3 border rounded-3 bg-light">
+          <h6 class="fw-bold mb-2 text-dark-custom"><i class="bi bi-wallet2 me-2"></i>อัปโหลดสลิปโอนเงินเพื่อยืนยันการชำระเงิน</h6>
+          <p class="text-muted small mb-3">คุณได้รับล็อก <strong>${booking.slotLabel}</strong> แล้ว กรุณาชำระเงินและแนบสลิปโอนเงินเพื่อยืนยัน แอดมินจะตรวจสอบสลิปก่อนยืนยันล็อกให้เป็นของคุณ</p>
+          <form action="/booking-payment/confirm" method="POST" enctype="multipart/form-data" class="d-flex flex-column flex-sm-row gap-2">
+            <input type="file" name="paymentSlip" accept="image/*" class="form-control" required />
+            <button type="submit" class="btn btn-custom-primary btn-custom text-nowrap px-4"><i class="bi bi-upload me-1"></i>ส่งสลิปโอนเงิน</button>
+          </form>
+        </div>
+      `;
+    } else if (booking.status === 'SUCCESS' && booking.paymentSlipImage) {
+      paymentSection = `
+        <div class="payment-upload-box mt-4 p-3 border rounded-3 bg-light">
+          <h6 class="fw-bold mb-2 text-success-custom"><i class="bi bi-check-circle-fill me-2"></i>ชำระเงินแล้ว ล็อก ${booking.slotLabel} เป็นของคุณเรียบร้อย</h6>
+          <img src="${booking.paymentSlipImage}" alt="สลิปโอนเงิน" class="img-fluid rounded" style="max-width:260px;" />
+        </div>
+      `;
+    }
 
     scenarioContent.innerHTML = `
       <div class="booking-summary-grid">
@@ -170,6 +190,8 @@
         <div class="details-row"><span>รวมทั้งสิ้น</span><strong>${formatMoney(booking.grandTotal)}</strong></div>
       </div>
 
+      ${paymentSection}
+
       <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
         ${bookingActionButton}
       </div>
@@ -182,9 +204,13 @@
 
     const step = booking ? bookingStep(booking.status) : 0;
     const items = [
-      { title: 'รอการตรวจสอบ', desc: 'ระบบได้รับคำขอจองและกำลังตรวจสอบข้อมูล', stage: 1 },
-      { title: 'ชำระเงิน', desc: 'ผู้จองชำระเงินและยืนยันสิทธิ์พื้นที่ขาย', stage: 2 },
-      { title: 'เสร็จสิ้นการจอง', desc: 'รายการถูกบันทึกและปิดงานเรียบร้อย', stage: 3 }
+      { title: 'รอการตรวจสอบร้านค้า', desc: 'ระบบได้รับคำขอจองและแอดมินกำลังตรวจสอบร้านค้า', stage: 1 },
+      { title: 'ได้รับล็อก / ชำระเงิน', desc: booking && booking.status === 'IN_PROGRESS'
+        ? (booking.awaitingPaymentVerification
+          ? `ส่งสลิปโอนเงินสำหรับล็อก ${booking.slotLabel} แล้ว รอแอดมินตรวจสอบและยืนยัน`
+          : `ได้รับล็อก ${booking.slotLabel} แล้ว กรุณาอัปโหลดสลิปโอนเงิน`)
+        : 'แอดมินจัดสรรล็อกให้ และผู้จองชำระเงินยืนยันสิทธิ์พื้นที่ขาย', stage: 2 },
+      { title: 'เสร็จสิ้นการจอง', desc: 'ล็อกถูกบันทึกเป็นของผู้จองเรียบร้อยในระบบ', stage: 3 }
     ];
 
     container.innerHTML = items.map((item) => `
@@ -387,7 +413,7 @@
     const booking = data.booking ? { ...data.booking } : null;
     if (!booking) return;
     if (step === 1) booking.status = 'PENDING';
-    if (step === 2) booking.status = 'APPROVED';
+    if (step === 2) booking.status = 'IN_PROGRESS';
     if (step === 3) booking.status = 'SUCCESS';
     renderStepper(booking);
     renderBookingCard(booking);

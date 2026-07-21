@@ -122,10 +122,8 @@ async function getProfileData(userId) {
 }
 
 exports.renderLoginPage = (req, res) => {
-    if (req.user) {
-        return res.redirect('/');
-    }
-
+    // ไม่ redirect ออกจากหน้า login แม้ cookie ที่แชร์กันทุกแท็บจะมี user อยู่แล้ว
+    // เพราะแท็บนี้อาจต้องการ login เป็นอีก role หนึ่งแยกต่างหาก (ดู public/js/common/tabSession.js)
     res.render('login', {
         error: req.query.error === 'unauthorized' ? 'กรุณาเข้าสู่ระบบก่อนใช้งานหน้านี้' : null,
         success: req.query.success || (req.query.error === 'session_expired' ? 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่' : null),

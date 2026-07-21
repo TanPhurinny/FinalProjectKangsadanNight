@@ -20,6 +20,7 @@
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
     <body class="bg-light">
+        <script src="/js/common/tabSession.js"></script>
 
         <%- include('../partials/navbar') %>
 
@@ -39,6 +40,34 @@
 
             <div class="container">
 
+                <% if (typeof error !== 'undefined' && error) { %>
+                    <%
+                        const errorMessages = {
+                            shop_not_verified_yet: 'ต้องอนุมัติร้านค้าให้ผ่านการตรวจสอบก่อน จึงจะจัดล็อกให้ได้',
+                            stall_not_found: 'ไม่พบแผงที่เลือก',
+                            stall_unavailable: 'แผงนี้ถูกจองไปแล้ว กรุณาเลือกแผงอื่น',
+                            request_not_found: 'ไม่พบรายการคำขอนี้',
+                            invalid_status: 'สถานะที่ส่งมาไม่ถูกต้อง',
+                            update_failed: 'บันทึกไม่สำเร็จ กรุณาลองใหม่',
+                            payment_not_awaiting_verification: 'รายการนี้ยังไม่มีสลิปโอนเงินที่รอตรวจสอบ',
+                            payment_already_confirmed: 'ยืนยันการชำระเงินของรายการนี้ไปแล้ว',
+                            confirm_payment_failed: 'ยืนยันการชำระเงินไม่สำเร็จ กรุณาลองใหม่'
+                        };
+                    %>
+                    <div class="alert alert-danger"><%= errorMessages[error] || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง' %></div>
+                <% } %>
+                <% if (typeof success !== 'undefined' && success) { %>
+                    <%
+                        const successMessages = {
+                            status_updated: 'อัปเดตสถานะเรียบร้อย',
+                            stall_assigned: 'จัดล็อกให้ร้านค้าเรียบร้อย ระบบแจ้งเตือนผู้ขายแล้ว',
+                            request_rejected: 'ปฏิเสธคำขอเรียบร้อย',
+                            payment_confirmed: 'ยืนยันการชำระเงินเรียบร้อย ระบบแจ้งเตือนผู้ขายว่าได้ล็อกแล้ว'
+                        };
+                    %>
+                    <div class="alert alert-success"><%= successMessages[success] || 'ทำรายการสำเร็จ' %></div>
+                <% } %>
+
                 <div class="filter-section">
                     <div class="summary-strip">
                         <div class="summary-card">
@@ -46,14 +75,24 @@
                             <span class="summary-value" id="count-all"><%= summaryCounts.all %></span>
                         </div>
                         <div class="summary-card">
-                            <span class="summary-label">รออนุมัติ</span>
+                            <span class="summary-label">รอตรวจสอบร้าน</span>
                             <span class="summary-value"
                                 id="count-pending"><%= summaryCounts.pending %></span>
                         </div>
                         <div class="summary-card">
-                            <span class="summary-label">อนุมัติแล้ว</span>
+                            <span class="summary-label">รอจัดล็อก</span>
                             <span class="summary-value"
                                 id="count-approved"><%= summaryCounts.approved %></span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-label">รอชำระเงิน</span>
+                            <span class="summary-value"
+                                id="count-in_progress"><%= summaryCounts.inProgress || 0 %></span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-label">สำเร็จ</span>
+                            <span class="summary-value"
+                                id="count-success"><%= summaryCounts.success || 0 %></span>
                         </div>
                         <div class="summary-card">
                             <span class="summary-label">ปฏิเสธ</span>
@@ -74,40 +113,47 @@
                             ล้างตัวกรอง</button>
                     </div>
 
-                    <div class="filter-title">สถานะการจอง</div>
-                    <div class="filter-group" id="statusFilters">
-                        <button class="btn-filter active"
-                            data-status="all">ทั้งหมด</button>
-                        <button class="btn-filter"
-                            data-status="pending">รออนุมัติ</button>
-                        <button class="btn-filter"
-                            data-status="approved">อนุมัติแล้ว</button>
-                        <button class="btn-filter"
-                            data-status="rejected">ปฏิเสธ</button>
+                    <div class="filter-row-selects">
+                        <div class="filter-select-group">
+                            <label class="filter-title" for="statusSelect">สถานะ / การชำระเงิน</label>
+                            <select id="statusSelect" class="filter-select">
+                                <option value="all">ทั้งหมด</option>
+                                <option value="pending">รอตรวจสอบร้าน</option>
+                                <option value="approved">รอจัดล็อก</option>
+                                <option value="in_progress">รอชำระเงิน</option>
+                                <option value="unpaid">ยังไม่จ่าย (รวมทุกขั้นก่อนชำระ)</option>
+                                <option value="success">จ่ายแล้ว / สำเร็จ</option>
+                                <option value="rejected">ปฏิเสธ</option>
+                            </select>
+                        </div>
+
+                        <button type="button" class="btn-toggle-advanced" id="toggleAdvancedFiltersBtn">
+                            <i class="fa-solid fa-sliders"></i> ตัวกรองเพิ่มเติม (โซน/หมวดหมู่) <i class="fa-solid fa-chevron-down"></i>
+                        </button>
                     </div>
 
-                    <div
-                        class="filter-title filter-title-spaced">หมวดหมู่</div>
-                    <div class="filter-group" id="categoryFilters">
-                        <button class="btn-filter active"
-                            data-category="all">ทั้งหมด</button>
-                        <button class="btn-filter"
-                            data-category="FASHION"><i class="fa-solid fa-shirt"></i> แฟชั่น</button>
-                        <button class="btn-filter"
-                            data-category="FOOD"><i class="fa-solid fa-utensils"></i> อาหาร</button>
-                    </div>
+                    <div class="filter-row-selects filter-row-advanced d-none" id="advancedFilters">
+                        <div class="filter-select-group">
+                            <label class="filter-title" for="categorySelect">หมวดหมู่</label>
+                            <select id="categorySelect" class="filter-select">
+                                <option value="all">ทั้งหมด</option>
+                                <option value="FASHION">แฟชั่น</option>
+                                <option value="FOOD">อาหาร</option>
+                            </select>
+                        </div>
 
-                    <div
-                        class="filter-title filter-title-spaced">โซน</div>
-                    <div class="filter-group" id="zoneFilters">
-                        <button class="btn-filter active"
-                            data-zone="all">ทุกโซน</button>
-                        <button class="btn-filter" data-zone="A">โซน A</button>
-                        <button class="btn-filter" data-zone="B">โซน B</button>
-                        <button class="btn-filter" data-zone="C">โซน C</button>
-                        <button class="btn-filter" data-zone="D">โซน D</button>
-                        <button class="btn-filter" data-zone="E">โซน E</button>
-                        <button class="btn-filter" data-zone="F">โซน F</button>
+                        <div class="filter-select-group">
+                            <label class="filter-title" for="zoneSelect">โซน</label>
+                            <select id="zoneSelect" class="filter-select">
+                                <option value="all">ทุกโซน</option>
+                                <option value="A">โซน A</option>
+                                <option value="B">โซน B</option>
+                                <option value="C">โซน C</option>
+                                <option value="D">โซน D</option>
+                                <option value="E">โซน E</option>
+                                <option value="F">โซน F</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="type-summary" id="typeSummary">
@@ -149,7 +195,8 @@
                             rentTotal: request.rentTotal || 0,
                             grandTotalText: request.grandTotalText || '-',
                             rentalStartDateText: request.rentalStartDateText || '-',
-                            rentalEndDateText: request.rentalEndDateText || '-'
+                            rentalEndDateText: request.rentalEndDateText || '-',
+                            paymentSlipImage: request.paymentSlipImage || ''
                         })); %>
                         <div class="booking-card" data-request-id="<%= request.id %>" data-status="<%= request.status %>" data-zone="<%= request.zone || '' %>" data-shop="<%= request.productName || '' %>" data-detail="<%= detailPayload %>" onclick="openDetailFromElement(this)">
                             <div class="card-header">
@@ -182,6 +229,13 @@
                     </div>
 
                     <div class="modal-body">
+                        <div id="m-payment-slip-box" class="d-none payment-slip-box payment-slip-box-top">
+                            <div class="payment-slip-instruction" id="m-slip-instruction"></div>
+                            <div class="payment-slip-amount">ยอดที่ต้องชำระ: <strong id="m-slip-amount"></strong></div>
+                            <span class="detail-label d-block mb-2 mt-2">สลิปโอนเงินที่ผู้ขายแนบ (คลิกที่รูปเพื่อขยาย):</span>
+                            <img id="m-payment-slip" class="payment-slip-thumb" src="" alt="สลิปโอนเงิน" onclick="openSlipLightbox(this.src)" />
+                        </div>
+
                         <div class="shop-image-box" id="m-shop-image-box">
                             <img id="m-shop-image" class="shop-image" src="" alt="รูปภาพร้านค้า">
                             <div id="m-shop-image-empty" class="shop-image-empty d-none">ไม่มีรูปภาพร้านค้า</div>
@@ -226,12 +280,14 @@
                             <span class="detail-value detail-highlight" id="m-grand-total"></span>
                         </div>
 
-                        <div class="modal-footer" id="m-footer-actions">
-                            <button type="button" class="btn-action btn-reject" id="m-reject-btn">ปฏิเสธการจอง</button>
-                            <button type="button" class="btn-action btn-approve" id="m-approve-btn">อนุมัติการจอง</button>
-                        </div>
+                        <div class="modal-footer" id="m-footer-actions"></div>
                     </div>
                 </div>
+            </div>
+
+            <div class="modal-overlay slip-lightbox-overlay" id="slipLightbox" onclick="closeSlipLightbox()">
+                <button type="button" class="btn-close slip-lightbox-close" onclick="closeSlipLightbox()"><i class="fa-solid fa-xmark"></i></button>
+                <img id="slipLightboxImg" class="slip-lightbox-img" src="" alt="สลิปโอนเงิน (ขยาย)" onclick="event.stopPropagation()" />
             </div>
 
         </div>

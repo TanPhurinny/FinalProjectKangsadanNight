@@ -203,6 +203,83 @@
     margin-bottom: 0;
 }
 
+.approvals-page .filter-row-selects {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.approvals-page .filter-select-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 190px;
+    flex: 1 1 190px;
+}
+
+.approvals-page .filter-select-group .filter-title {
+    margin-bottom: 6px;
+}
+
+.approvals-page .filter-select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--navy);
+    font-size: 0.88rem;
+    font-family: 'Kanit', sans-serif;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.approvals-page .filter-select:hover {
+    border-color: var(--primary-color);
+}
+
+.approvals-page .filter-select:focus {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 2px rgba(18, 48, 58, 0.12);
+}
+
+.approvals-page .btn-toggle-advanced {
+    align-self: flex-end;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition);
+}
+
+.approvals-page .btn-toggle-advanced:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-dark);
+}
+
+.approvals-page .btn-toggle-advanced.active {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
+}
+
+.approvals-page .btn-toggle-advanced.active .fa-chevron-down {
+    transform: rotate(180deg);
+}
+
+.approvals-page .filter-row-advanced {
+    padding-top: 4px;
+}
+
 .approvals-page .type-summary {
     margin-top: 4px;
     display: flex;
@@ -344,6 +421,18 @@
     border-color: var(--danger-color);
 }
 
+.approvals-page .badge.in_progress {
+    background: var(--info-color);
+    color: #ffffff;
+    border-color: var(--info-color);
+}
+
+.approvals-page .badge.success {
+    background: var(--success-color);
+    color: #ffffff;
+    border-color: var(--success-color);
+}
+
 .approvals-page .card-body {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -421,6 +510,16 @@
 .approvals-page .btn-approve:hover {
     background: var(--primary-dark);
     border-color: var(--primary-dark);
+}
+
+.approvals-page .btn-neutral {
+    background: #fff;
+    border-color: var(--line);
+    color: var(--text-secondary, #555);
+}
+
+.approvals-page .btn-neutral:hover {
+    background: #f2f2f2;
 }
 
 .approvals-page .modal-overlay {
@@ -508,6 +607,77 @@
     font-size: 0.9rem;
     font-weight: 500;
     padding: 20px 8px;
+}
+
+.approvals-page .payment-slip-box {
+    margin-top: 14px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--soft-bg);
+}
+
+.approvals-page .payment-slip-box-top {
+    margin-top: 0;
+    margin-bottom: 14px;
+}
+
+.approvals-page .payment-slip-box-pending {
+    border: 1px solid #f0b429;
+    background: #fff8e6;
+}
+
+.approvals-page .payment-slip-instruction {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 6px;
+}
+
+.approvals-page .payment-slip-amount {
+    font-size: 0.95rem;
+    color: var(--navy);
+}
+
+.approvals-page .payment-slip-amount strong {
+    font-size: 1.1rem;
+}
+
+.approvals-page .payment-slip-thumb {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+    border-radius: 4px;
+    background: #fff;
+    border: 1px solid var(--line);
+    cursor: zoom-in;
+    transition: var(--transition);
+}
+
+.approvals-page .payment-slip-thumb:hover {
+    border-color: var(--navy);
+    box-shadow: 0 0 0 2px rgba(18, 48, 58, 0.12);
+}
+
+.approvals-page .slip-lightbox-overlay {
+    z-index: 1200;
+}
+
+.approvals-page .slip-lightbox-img {
+    max-width: min(92vw, 720px);
+    max-height: 90vh;
+    border-radius: 6px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    cursor: default;
+}
+
+.approvals-page .slip-lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 24px;
+    font-size: 1.6rem;
+    color: #fff;
 }
 
 .approvals-page .detail-grid {

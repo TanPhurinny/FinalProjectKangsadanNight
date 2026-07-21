@@ -1,6 +1,8 @@
-const statusBtns = document.querySelectorAll('#statusFilters .btn-filter');
-const zoneBtns = document.querySelectorAll('#zoneFilters .btn-filter');
-const categoryBtns = document.querySelectorAll('#categoryFilters .btn-filter');
+const statusSelect = document.getElementById('statusSelect');
+const categorySelect = document.getElementById('categorySelect');
+const zoneSelect = document.getElementById('zoneSelect');
+const advancedFilters = document.getElementById('advancedFilters');
+const toggleAdvancedFiltersBtn = document.getElementById('toggleAdvancedFiltersBtn');
 const cards = document.querySelectorAll('.booking-card');
 
 // โซนไหนอยู่หมวดหมู่ไหน (ตรงกับ productCategory ของ Zone ในฐานข้อมูล)
@@ -11,6 +13,8 @@ const searchInput = document.getElementById('shopSearch');
 const countAllEl = document.getElementById('count-all');
 const countPendingEl = document.getElementById('count-pending');
 const countApprovedEl = document.getElementById('count-approved');
+const countInProgressEl = document.getElementById('count-in_progress');
+const countSuccessEl = document.getElementById('count-success');
 const countRejectedEl = document.getElementById('count-rejected');
 const countAEl = document.getElementById('count-A');
 const countBEl = document.getElementById('count-B');
@@ -26,6 +30,11 @@ let currentStatus = 'all';
 let currentZone = 'all';
 let currentCategory = 'all';
 let currentSearch = '';
+
+// จ่ายแล้ว = แอดมินยืนยันสลิปแล้ว (SUCCESS) / ยังไม่จ่าย = ยังไม่ถึงขั้นตอนจ่ายเงินหรือรอแอดมินตรวจสลิปอยู่
+// (ไม่รวม REJECTED เพราะร้านที่ถูกปฏิเสธไม่มีทางไปถึงขั้นตอนชำระเงินอยู่แล้ว) - รวมเป็นตัวเลือกเดียว
+// "unpaid" อยู่ใน dropdown สถานะเพื่อไม่ให้มีแถวตัวกรองแยกซ้ำซ้อน
+const UNPAID_STATUSES = ['pending', 'approved', 'in_progress'];
 
 function navigateToBookingStall(stall) {
     const zoneChar = stall.charAt(0);
@@ -59,6 +68,82 @@ function submitApproval(requestId, status) {
 
 function confirmArrangeStall(stall) {
     navigateToBookingStall(stall);
+}
+
+function submitConfirmPayment(requestId) {
+    const confirmed = window.confirm('ยืนยันว่าตรวจสอบสลิปโอนเงินแล้ว และต้องการปิดล็อกให้ร้านนี้เป็นทางการ?');
+    if (!confirmed) {
+        return;
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/admin/approvals/confirm-payment';
+
+    const requestField = document.createElement('input');
+    requestField.type = 'hidden';
+    requestField.name = 'requestId';
+    requestField.value = String(requestId);
+
+    form.appendChild(requestField);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// สถานะ pending = ยังไม่ได้ตรวจสอบร้าน -> ตรวจร้าน (อนุมัติ/ปฏิเสธ)
+// สถานะ approved = ร้านผ่านตรวจสอบแล้ว รอจัดล็อก -> จัดล็อก / ปฏิเสธ
+// สถานะ in_progress + ยังไม่มีสลิป = จัดล็อกแล้ว รอผู้ขายชำระเงิน -> แก้ไขล็อกได้
+// สถานะ in_progress + มีสลิปแล้ว = รอแอดมินตรวจสลิป -> ยืนยันการชำระเงิน (หรือแก้ไขล็อกถ้าจัดผิด)
+// สถานะ success/rejected = จบขั้นตอนแล้ว ไม่มีปุ่มดำเนินการ
+function renderModalFooterActions(rawStatus) {
+    const footer = document.getElementById('m-footer-actions');
+    if (!footer || !currentBooking) {
+        return;
+    }
+
+    const hasPaymentSlip = Boolean(currentBooking.paymentSlipImage);
+
+    let html = '';
+    if (rawStatus === 'pending') {
+        html = `
+            <button type="button" class="btn-action btn-reject" id="m-reject-btn">ปฏิเสธร้านค้า</button>
+            <button type="button" class="btn-action btn-approve" id="m-approve-btn">อนุมัติร้านค้า</button>
+        `;
+    } else if (rawStatus === 'approved') {
+        html = `
+            <button type="button" class="btn-action btn-reject" id="m-reject-btn">ปฏิเสธร้านค้า</button>
+            <button type="button" class="btn-action btn-approve" id="m-approve-btn">จัดล็อกให้ร้านนี้</button>
+        `;
+    } else if (rawStatus === 'in_progress' && hasPaymentSlip) {
+        html = `
+            <button type="button" class="btn-action btn-neutral" id="m-edit-stall-btn">แก้ไขล็อกที่จัดให้</button>
+            <button type="button" class="btn-action btn-approve" id="m-confirm-payment-btn">ยืนยันการชำระเงิน</button>
+        `;
+    } else if (rawStatus === 'in_progress') {
+        html = `<button type="button" class="btn-action btn-approve" id="m-approve-btn">แก้ไขล็อกที่จัดให้</button>`;
+    }
+
+    footer.innerHTML = html;
+    footer.style.display = html ? 'flex' : 'none';
+
+    const approveBtn = document.getElementById('m-approve-btn');
+    const rejectBtn = document.getElementById('m-reject-btn');
+    const editStallBtn = document.getElementById('m-edit-stall-btn');
+    const confirmPaymentBtn = document.getElementById('m-confirm-payment-btn');
+    if (approveBtn) {
+        approveBtn.onclick = rawStatus === 'pending'
+            ? () => submitApproval(currentBooking.requestId, 'APPROVED')
+            : () => navigateToBookingRequest(currentBooking.requestId);
+    }
+    if (rejectBtn) {
+        rejectBtn.onclick = () => submitApproval(currentBooking.requestId, 'REJECTED');
+    }
+    if (editStallBtn) {
+        editStallBtn.onclick = () => navigateToBookingRequest(currentBooking.requestId);
+    }
+    if (confirmPaymentBtn) {
+        confirmPaymentBtn.onclick = () => submitConfirmPayment(currentBooking.requestId);
+    }
 }
 
 function getStatusClass(status) {
@@ -131,7 +216,8 @@ function applyFilters() {
         const cZone = card.dataset.zone;
         const cShop = (card.dataset.shop || '').toLowerCase();
 
-        const matchStatus = currentStatus === 'all' || cStatus === currentStatus;
+        const matchStatus = currentStatus === 'all'
+            || (currentStatus === 'unpaid' ? UNPAID_STATUSES.includes(cStatus) : cStatus === currentStatus);
         const matchZone = currentZone === 'all' || cZone === currentZone;
         const matchCategory = currentCategory === 'all' || ZONE_CATEGORY[cZone] === currentCategory;
         const matchSearch = !currentSearch || cShop.includes(currentSearch);
@@ -154,6 +240,8 @@ function updateSummaryCounters() {
         all: 0,
         pending: 0,
         approved: 0,
+        in_progress: 0,
+        success: 0,
         rejected: 0,
         A: 0,
         B: 0,
@@ -190,6 +278,14 @@ function updateSummaryCounters() {
         countApprovedEl.textContent = counters.approved;
     }
 
+    if (countInProgressEl) {
+        countInProgressEl.textContent = counters.in_progress;
+    }
+
+    if (countSuccessEl) {
+        countSuccessEl.textContent = counters.success;
+    }
+
     if (countRejectedEl) {
         countRejectedEl.textContent = counters.rejected;
     }
@@ -219,32 +315,33 @@ function updateSummaryCounters() {
     }
 }
 
-statusBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-        statusBtns.forEach((item) => item.classList.remove('active'));
-        btn.classList.add('active');
-        currentStatus = btn.dataset.status;
+if (statusSelect) {
+    statusSelect.addEventListener('change', () => {
+        currentStatus = statusSelect.value;
         applyFilters();
     });
-});
+}
 
-zoneBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-        zoneBtns.forEach((item) => item.classList.remove('active'));
-        btn.classList.add('active');
-        currentZone = btn.dataset.zone;
+if (zoneSelect) {
+    zoneSelect.addEventListener('change', () => {
+        currentZone = zoneSelect.value;
         applyFilters();
     });
-});
+}
 
-categoryBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-        categoryBtns.forEach((item) => item.classList.remove('active'));
-        btn.classList.add('active');
-        currentCategory = btn.dataset.category;
+if (categorySelect) {
+    categorySelect.addEventListener('change', () => {
+        currentCategory = categorySelect.value;
         applyFilters();
     });
-});
+}
+
+if (toggleAdvancedFiltersBtn && advancedFilters) {
+    toggleAdvancedFiltersBtn.addEventListener('click', () => {
+        const isOpen = advancedFilters.classList.toggle('d-none') === false;
+        toggleAdvancedFiltersBtn.classList.toggle('active', isOpen);
+    });
+}
 
 if (searchInput) {
     searchInput.addEventListener('input', (event) => {
@@ -262,9 +359,11 @@ if (clearFiltersBtn) {
         currentSearch = '';
         if (searchInput) searchInput.value = '';
 
-        statusBtns.forEach((btn) => btn.classList.toggle('active', btn.dataset.status === 'all'));
-        zoneBtns.forEach((btn) => btn.classList.toggle('active', btn.dataset.zone === 'all'));
-        categoryBtns.forEach((btn) => btn.classList.toggle('active', btn.dataset.category === 'all'));
+        if (statusSelect) statusSelect.value = 'all';
+        if (zoneSelect) zoneSelect.value = 'all';
+        if (categorySelect) categorySelect.value = 'all';
+        if (advancedFilters) advancedFilters.classList.add('d-none');
+        if (toggleAdvancedFiltersBtn) toggleAdvancedFiltersBtn.classList.remove('active');
 
         applyFilters();
     });
@@ -285,7 +384,8 @@ function openDetail(
     electricityFee,
     rentalStartDateText,
     rentalEndDateText,
-    grandTotalText
+    grandTotalText,
+    paymentSlipImage
 ) {
     currentBooking = {
         shop,
@@ -293,7 +393,8 @@ function openDetail(
         statusLabel,
         requestId,
         rawStatus,
-        shopImage
+        shopImage,
+        paymentSlipImage
     };
 
     document.getElementById('m-shop').innerText = shop;
@@ -324,19 +425,35 @@ function openDetail(
         }
     }
 
-    const approveBtn = document.getElementById('m-approve-btn');
-    const rejectBtn = document.getElementById('m-reject-btn');
-    if (approveBtn) {
-        approveBtn.onclick = () => navigateToBookingRequest(currentBooking.requestId);
-    }
-    if (rejectBtn) {
-        rejectBtn.onclick = () => submitApproval(currentBooking.requestId, 'REJECTED');
+    const slipBox = document.getElementById('m-payment-slip-box');
+    const slipImg = document.getElementById('m-payment-slip');
+    const slipInstructionEl = document.getElementById('m-slip-instruction');
+    const slipAmountEl = document.getElementById('m-slip-amount');
+    if (slipBox && slipImg) {
+        const slipUrl = String(paymentSlipImage || '').trim();
+        if (slipUrl) {
+            slipImg.src = slipUrl;
+            slipBox.classList.remove('d-none');
+
+            // รอตรวจสอบ = เน้นสีเตือนให้เห็นชัดว่าต้องตรวจก่อนกดยืนยัน / ยืนยันแล้ว = แจ้งผลเฉยๆ ไม่ต้องทำอะไรต่อ
+            const awaitingReview = rawStatus === 'in_progress';
+            slipBox.classList.toggle('payment-slip-box-pending', awaitingReview);
+            if (slipInstructionEl) {
+                slipInstructionEl.innerText = awaitingReview
+                    ? 'ตรวจสอบยอดโอนในสลิปให้ตรงกับยอดที่ต้องชำระด้านล่าง แล้วกด "ยืนยันการชำระเงิน" ที่ท้ายรายการ'
+                    : 'ยืนยันการชำระเงินแล้ว';
+            }
+            if (slipAmountEl) {
+                slipAmountEl.innerText = grandTotalText || '-';
+            }
+        } else {
+            slipImg.src = '';
+            slipBox.classList.add('d-none');
+            slipBox.classList.remove('payment-slip-box-pending');
+        }
     }
 
-    const footer = document.getElementById('m-footer-actions');
-    if (footer) {
-        footer.style.display = rawStatus === 'pending' ? 'flex' : 'none';
-    }
+    renderModalFooterActions(rawStatus);
 
     modal.classList.add('active');
 }
@@ -368,7 +485,8 @@ function openDetailFromElement(element) {
             payload.electricityFee || 0,
             payload.rentalStartDateText || '-',
             payload.rentalEndDateText || '-',
-            payload.grandTotalText || '-'
+            payload.grandTotalText || '-',
+            payload.paymentSlipImage || ''
         );
     } catch (error) {
         // ignore malformed payload to avoid breaking the list interaction
@@ -389,6 +507,29 @@ function closeModalOnOverlay(event) {
     }
 }
 
+const slipLightbox = document.getElementById('slipLightbox');
+const slipLightboxImg = document.getElementById('slipLightboxImg');
+
+function openSlipLightbox(imageUrl) {
+    if (!slipLightbox || !slipLightboxImg || !imageUrl) {
+        return;
+    }
+
+    slipLightboxImg.src = imageUrl;
+    slipLightbox.classList.add('active');
+}
+
+function closeSlipLightbox() {
+    if (!slipLightbox) {
+        return;
+    }
+
+    slipLightbox.classList.remove('active');
+    if (slipLightboxImg) {
+        slipLightboxImg.src = '';
+    }
+}
+
 window.openDetail = openDetail;
 window.openDetailFromElement = openDetailFromElement;
 window.closePopup = closePopup;
@@ -397,9 +538,15 @@ window.confirmArrangeStall = confirmArrangeStall;
 window.rejectBooking = rejectBooking;
 window.rejectCurrentBooking = rejectCurrentBooking;
 window.submitApproval = submitApproval;
+window.openSlipLightbox = openSlipLightbox;
+window.closeSlipLightbox = closeSlipLightbox;
 
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
+        if (slipLightbox && slipLightbox.classList.contains('active')) {
+            closeSlipLightbox();
+            return;
+        }
         closePopup();
     }
 });

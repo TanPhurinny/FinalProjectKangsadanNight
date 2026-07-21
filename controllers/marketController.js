@@ -100,6 +100,26 @@ const ZONE_CATEGORY_LABEL = {
     EVENT_BOOTH: 'กิจกรรม/บูธพิเศษ'
 };
 
+// จำนวนวันก่อนหมดสัญญาที่ถือว่า "ใกล้หมดอายุ" (ใช้ไฮไลต์แผงที่จองแล้วบนผังให้แอดมินตามงานต่อสัญญา)
+const NEAR_EXPIRY_DAYS = 7;
+
+// ล็อกที่จองแล้ว (BOOKED) เทียบวันหมดสัญญา (bookingEndDate) กับวันนี้ เพื่อแยกสีบนผัง:
+// 'expired' = เลยกำหนดแล้วแต่ยังไม่ได้ปลดสถานะ, 'near' = จะหมดอายุใน 7 วัน, null = ปกติ
+function computeExpiryState(status, bookingEndDate) {
+    if (status !== 'BOOKED' || !bookingEndDate) return null;
+    const endDate = new Date(bookingEndDate);
+    if (Number.isNaN(endDate.getTime())) return null;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+
+    const daysLeft = Math.round((endDate - today) / (24 * 60 * 60 * 1000));
+    if (daysLeft < 0) return 'expired';
+    if (daysLeft <= NEAR_EXPIRY_DAYS) return 'near';
+    return null;
+}
+
 // สร้างโครงสร้างผังแผงจริง (Zone/ZoneRow/Stall) พร้อมการปรับแต่งให้ตรงกับผังจริงทางกายภาพ
 // (รวมหัวแถวเดี่ยว, รวมโซน T เข้าโซน B, เว้นช่องว่างจับกลุ่มคอลัมน์, เติมช่องว่าง F1/F2)
 // ใช้ร่วมกันทั้งหน้า /admin/slots (ดูผังอย่างเดียว) และ /admin/booking-stall (จัดแผงให้คำขอจอง)
@@ -124,7 +144,8 @@ async function buildZonesData() {
             rowCode: row.rowCode,
             stalls: row.stalls.map((stall) => ({
                 code: stall.stallCode,
-                status: stall.status
+                status: stall.status,
+                expiryState: computeExpiryState(stall.status, stall.bookingEndDate)
             }))
         }))
     }));
@@ -224,18 +245,52 @@ exports.getSlotsPage = async (req, res) => {
                 phone: true,
                 zone: true,
                 assignedStallCode: true,
-                createdAt: true
+                createdAt: true,
+                productImage: true,
+                seller: {
+                    select: {
+                        shopName: true,
+                        productDetail: true,
+                        productImage: true,
+                        productType: { select: { name: true } }
+                    }
+                }
             }
         });
+
+        // Seller (sellerId) มักไม่ถูกผูกไว้กับคำขอเก่า จึง fallback ไปหาข้อมูลร้าน (ประเภทสินค้า/
+        // รายละเอียด/รูปร้าน) จาก User+ShopDetail ด้วยชื่อผู้ขาย เหมือนที่ /admin/booking-stall ทำอยู่แล้ว
+        const missingShopInfoNames = [...new Set(
+            approvedRequests.filter((r) => !r.seller?.productType?.name).map((r) => r.sellerName).filter(Boolean)
+        )];
+        const shopInfoByName = {};
+        if (missingShopInfoNames.length) {
+            const sellerUsers = await prisma.user.findMany({
+                where: { role: 'SELLER', name: { in: missingShopInfoNames } },
+                select: { name: true, shop: { select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true } } }
+            });
+            sellerUsers.forEach((u) => {
+                if (u.shop) shopInfoByName[u.name] = u.shop;
+            });
+        }
 
         const bookingByStallCode = {};
         approvedRequests.forEach((request) => {
             const stallCode = String(request.assignedStallCode || '').trim().toUpperCase();
             if (!stallCode) return;
 
+            const fallbackShop = shopInfoByName[request.sellerName] || {};
+            const product = request.seller?.productType?.name
+                || fallbackShop.productType
+                || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
+            const productDetail = request.seller?.productDetail || fallbackShop.productDetail || request.description || '-';
+            const shopImage = request.productImage || request.seller?.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
+
             bookingByStallCode[stallCode] = {
-                shop: request.productName || '-',
-                product: request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-',
+                shop: request.seller?.shopName || request.productName || '-',
+                product,
+                productDetail,
+                image: shopImage,
                 name: request.sellerName || '-',
                 phone: request.phone || '-',
                 date: toThaiDateShort(request.createdAt),

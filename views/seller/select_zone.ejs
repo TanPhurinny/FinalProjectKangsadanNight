@@ -14,6 +14,7 @@
 </head>
 
 <body>
+<script src="/js/common/tabSession.js"></script>
   <%- include('../partials/navbar2') %>
 
   <div class="page-wrapper">
@@ -87,14 +88,16 @@
           <span class="zone__category">แฟชั่น</span>
         </div>
 
-        <div class="zone zone--d <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('d')) ? 'is-disabled' : '' %>" data-zone="d" role="button" tabindex="0" aria-label="โซน D - อาหาร">
-          <span class="zone__name">โซน D</span>
-          <span class="zone__category">อาหาร</span>
-        </div>
+        <div class="zone-dx-row">
+          <div class="zone zone--d <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('d')) ? 'is-disabled' : '' %>" data-zone="d" role="button" tabindex="0" aria-label="โซน D - อาหาร">
+            <span class="zone__name">โซน D</span>
+            <span class="zone__category">อาหาร</span>
+          </div>
 
-        <div class="zone zone--x <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('x')) ? 'is-disabled' : '' %>" data-zone="x" role="button" tabindex="0" aria-label="โซน X - อาหาร">
-          <span class="zone__name">โซน X</span>
-          <span class="zone__category">อาหาร</span>
+          <div class="zone zone--x <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('x')) ? 'is-disabled' : '' %>" data-zone="x" role="button" tabindex="0" aria-label="โซน X - อาหาร">
+            <span class="zone__name">โซน X</span>
+            <span class="zone__category">อาหาร</span>
+          </div>
         </div>
 
         <div class="zone zone--a <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('a')) ? 'is-disabled' : '' %>" data-zone="a" role="button" tabindex="0" aria-label="โซน A - แฟชั่นและอาหารพิเศษ">

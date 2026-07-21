@@ -36,6 +36,35 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 } // 5MB
 });
 
+// โฟลเดอร์เก็บสลิปโอนเงินยืนยันการจอง
+const paymentSlipDir = path.join(__dirname, '../public/uploads/payment-slips');
+if (!fs.existsSync(paymentSlipDir)) {
+    fs.mkdirSync(paymentSlipDir, { recursive: true });
+}
+
+const paymentSlipStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, paymentSlipDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const uploadPaymentSlip = multer({
+    storage: paymentSlipStorage,
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('ประเภทไฟล์ไม่ถูกต้อง'), false);
+        }
+    },
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+});
+
 const LIGHT_UNIT_PRICE = 15;
 const SMALL_APPLIANCE_PRICE = 20;
 const LARGE_APPLIANCE_PRICE = 40;
@@ -179,34 +208,40 @@ function formatMoney(value) {
     return `${Number(value || 0).toLocaleString('th-TH')} บาท`;
 }
 
+// PENDING = ยื่นคำขอแล้ว รอแอดมินตรวจสอบร้าน
+// APPROVED = ร้านผ่านการตรวจสอบแล้ว รอแอดมินจัดล็อกให้
+// IN_PROGRESS = แอดมินจัดล็อกให้แล้ว รอผู้ขายอัปโหลดสลิปยืนยันการชำระเงิน
+// SUCCESS = ชำระเงินแล้ว ล็อกเป็นของผู้ขายรายนี้อย่างเป็นทางการ
 function getBookingStep(status) {
     switch (status) {
         case 'APPROVED':
+            return 1;
         case 'IN_PROGRESS':
             return 2;
         case 'SUCCESS':
             return 3;
         case 'REJECTED':
-            return 1;
         case 'PENDING':
         default:
             return 1;
     }
 }
 
-function getBookingStatusText(status) {
+function getBookingStatusText(status, awaitingPaymentVerification) {
     switch (status) {
         case 'APPROVED':
-            return 'รอชำระเงิน';
+            return 'ร้านผ่านการตรวจสอบแล้ว รอแอดมินจัดสรรล็อก';
         case 'IN_PROGRESS':
-            return 'กำลังดำเนินการชำระเงิน';
+            return awaitingPaymentVerification
+                ? 'ส่งสลิปโอนเงินแล้ว รอแอดมินตรวจสอบและยืนยัน'
+                : 'ได้รับล็อกแล้ว กรุณาชำระเงิน';
         case 'SUCCESS':
-            return 'เสร็จสิ้นการจอง';
+            return 'ชำระเงินสำเร็จ เสร็จสิ้นการจอง';
         case 'REJECTED':
             return 'รายการไม่ผ่านการตรวจสอบ';
         case 'PENDING':
         default:
-            return 'รอการตรวจสอบ';
+            return 'รอการตรวจสอบร้านค้า';
     }
 }
 
@@ -273,7 +308,7 @@ function buildBookingView(latestBooking) {
     };
 }
 
-function buildBookingNotifications(latestBooking) {
+function buildBookingNotifications(latestBooking, awaitingPaymentVerification) {
     if (!latestBooking) {
         return [
             {
@@ -288,7 +323,7 @@ function buildBookingNotifications(latestBooking) {
         ];
     }
 
-    const statusText = getBookingStatusText(latestBooking.status);
+    const statusText = getBookingStatusText(latestBooking.status, awaitingPaymentVerification);
     const stallLabel = latestBooking.slot?.slotNumber || '-';
     const timeline = [
         {
@@ -303,11 +338,17 @@ function buildBookingNotifications(latestBooking) {
         {
             id: 2,
             type: 'pending-payment',
-            title: 'ชำระเงินค่าจอง',
-            desc: `สถานะล่าสุด: ${statusText} | ล็อกที่จัด: ${stallLabel}`,
+            title: awaitingPaymentVerification
+                ? `ส่งสลิปโอนเงินสำหรับล็อก ${stallLabel} แล้ว`
+                : (latestBooking.status === 'IN_PROGRESS' ? `ได้รับล็อก ${stallLabel} แล้ว` : 'ชำระเงินค่าจอง'),
+            desc: awaitingPaymentVerification
+                ? `แอดมินกำลังตรวจสอบสลิปโอนเงินของคุณ เมื่อยืนยันแล้วระบบจะแจ้งเตือนว่าล็อก ${stallLabel} เป็นของคุณอย่างเป็นทางการ`
+                : (latestBooking.status === 'IN_PROGRESS'
+                    ? `คุณได้รับล็อก ${stallLabel} กรุณาอัปโหลดสลิปโอนเงินที่หน้าสถานะการจองเพื่อยืนยัน`
+                    : `สถานะล่าสุด: ${statusText} | ล็อกที่จัด: ${stallLabel}`),
             date: formatDateThai(latestBooking.createdAt),
             time: formatTimeThai(latestBooking.createdAt),
-            status: 'APPROVED'
+            status: 'IN_PROGRESS'
         },
         {
             id: 3,
@@ -726,6 +767,10 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
         const cornerZoneTotal = cornerZoneValue * stallCount * rentalDays;
         const grandTotal = rentTotal + applianceTotal + lightTotal + cornerZoneTotal;
 
+        // Slot (ตาราง legacy) เป็นแค่ที่เก็บ placeholder ให้ Booking.slotId ชี้ไปหา ไม่ใช่
+        // ตัวเก็บจำนวนแผงจริง (จำนวนแผงจริงอยู่ที่ตาราง Stall ซึ่งแอดมินจะเป็นคนจัดให้ทีหลัง
+        // ตอนขั้นตอน "จัดล็อก") ขั้นตอนนี้จึงแค่ "สนใจโซน" เท่านั้น - ถ้า placeholder ในโซนนี้
+        // มีไม่พอ ให้สร้างเพิ่มแทนที่จะบล็อกไม่ให้ผู้ขายส่งคำขอ
         const availableSlots = await prisma.slot.findMany({
             where: {
                 zone: zoneCode,
@@ -734,23 +779,6 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
             orderBy: { id: 'asc' },
             take: stallCount
         });
-
-        if (availableSlots.length < stallCount) {
-            return res.status(400).render('seller/booking_stall', {
-                user: userRecord,
-                zone: zoneCode,
-                zonePrice,
-                error: `จำนวนแผงในโซน ${zoneCode} ไม่เพียงพอสำหรับการจอง ${stallCount} ล็อก`,
-                defaultStoreDetail: storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
-                cornerZoneValue,
-                pricing: {
-                    lightUnitPrice: LIGHT_UNIT_PRICE,
-                    smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
-                    cornerZoneOptions: CORNER_ZONE_OPTIONS
-                }
-            });
-        }
 
         await prisma.$transaction(async (tx) => {
             const detailForRequest = [
@@ -774,7 +802,21 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
             const requestTag = buildBookingRequestTag(bookingRequestRecord.id);
             const snapshotWithRequestRef = [requestTag, detailForRequest].filter(Boolean).join(' ').trim();
 
-            for (const slot of availableSlots) {
+            const slotsToUse = [...availableSlots];
+            const shortfall = stallCount - slotsToUse.length;
+            for (let i = 0; i < shortfall; i += 1) {
+                const newSlot = await tx.slot.create({
+                    data: {
+                        slotNumber: `${zoneCode}-REQ${bookingRequestRecord.id}-${i + 1}`,
+                        zone: zoneCode,
+                        price: zonePrice,
+                        isAvailable: true
+                    }
+                });
+                slotsToUse.push(newSlot);
+            }
+
+            for (const slot of slotsToUse) {
                 await tx.booking.create({
                     data: {
                         slotId: slot.id,
@@ -828,50 +870,34 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
     }
 });
 
-// --- 4. หน้าสถานะการจอง ---
-router.get('/booking-status', isAuthenticated, async (req, res) => {
+// รวม logic การหาคำขอ/รายการจองล่าสุดของผู้ขาย ให้ /booking-status และ /notifications
+// ใช้สถานะเดียวกัน (อิง BookingRequest.status เป็นหลัก ไม่ใช่ Booking.status แบบเดิม
+// ซึ่งไม่มีสถานะ IN_PROGRESS/SUCCESS ตามความหมายใหม่)
+async function loadSellerBookingStatus(userId) {
     const userRecord = await prisma.user.findUnique({
-        where: { id: req.user.id },
-        include: { sellerProfile: true }
+        where: { id: userId },
+        include: { sellerProfile: true, shop: true }
     });
 
     const sellerProfileId = userRecord?.sellerProfile?.id || null;
     const sellerName = String(userRecord?.name || '').trim();
 
+    // เอารายการคำขอล่าสุดของผู้ขายรายนี้เสมอ (ไม่ว่าจะอยู่สถานะไหน) เพื่อให้สะท้อน
+    // ความคืบหน้าจริงล่าสุด ไม่ใช่แค่รายการที่เคยผ่านสถานะใดสถานะหนึ่งมาก่อน
     let latestRequest = null;
 
     if (sellerProfileId) {
         latestRequest = await prisma.bookingRequest.findFirst({
-            where: {
-                sellerId: sellerProfileId,
-                status: 'APPROVED'
-            },
+            where: { sellerId: sellerProfileId },
             orderBy: { createdAt: 'desc' }
         });
-
-        if (!latestRequest) {
-            latestRequest = await prisma.bookingRequest.findFirst({
-                where: { sellerId: sellerProfileId },
-                orderBy: { createdAt: 'desc' }
-            });
-        }
     }
 
     if (!latestRequest && sellerName) {
         latestRequest = await prisma.bookingRequest.findFirst({
-            where: {
-                sellerName,
-                status: 'APPROVED'
-            },
+            where: { sellerName },
             orderBy: { createdAt: 'desc' }
         });
-
-        if (!latestRequest) {
-            latestRequest = await prisma.bookingRequest.findFirst({
-                where: { sellerName },
-                orderBy: { createdAt: 'desc' }
-            });
-        }
     }
 
     let latestBooking = null;
@@ -879,7 +905,7 @@ router.get('/booking-status', isAuthenticated, async (req, res) => {
         const requestTag = buildBookingRequestTag(latestRequest.id);
         latestBooking = await prisma.booking.findFirst({
             where: {
-                userId: req.user.id,
+                userId,
                 storeDetailSnapshot: { contains: requestTag }
             },
             include: { slot: true },
@@ -889,11 +915,18 @@ router.get('/booking-status', isAuthenticated, async (req, res) => {
 
     if (!latestBooking) {
         latestBooking = await prisma.booking.findFirst({
-            where: { userId: req.user.id },
+            where: { userId },
             include: { slot: true },
             orderBy: { createdAt: 'desc' }
         });
     }
+
+    const awaitingPaymentVerification = Boolean(
+        latestRequest
+        && String(latestRequest.status || '').toUpperCase() === 'IN_PROGRESS'
+        && latestRequest.paymentSlipImage
+        && !latestRequest.paymentConfirmedAt
+    );
 
     let bookingView = buildBookingView(latestBooking);
 
@@ -901,7 +934,7 @@ router.get('/booking-status', isAuthenticated, async (req, res) => {
         bookingView = {
             id: latestRequest.id,
             status: String(latestRequest.status || 'PENDING').toUpperCase(),
-            statusText: getBookingStatusText(String(latestRequest.status || 'PENDING').toUpperCase()),
+            statusText: getBookingStatusText(String(latestRequest.status || 'PENDING').toUpperCase(), awaitingPaymentVerification),
             stage: getBookingStep(String(latestRequest.status || 'PENDING').toUpperCase()),
             zoneLabel: latestRequest.zone ? `โซน ${latestRequest.zone}` : '-',
             slotLabel: latestRequest.assignedStallCode || '-',
@@ -926,10 +959,12 @@ router.get('/booking-status', isAuthenticated, async (req, res) => {
     if (bookingView && latestRequest) {
         const normalizedRequestStatus = String(latestRequest.status || 'PENDING').toUpperCase();
         bookingView.status = normalizedRequestStatus;
-        bookingView.statusText = getBookingStatusText(normalizedRequestStatus);
+        bookingView.statusText = getBookingStatusText(normalizedRequestStatus, awaitingPaymentVerification);
         bookingView.stage = getBookingStep(normalizedRequestStatus);
         bookingView.zoneLabel = latestRequest.zone ? `โซน ${latestRequest.zone}` : bookingView.zoneLabel;
         bookingView.slotLabel = latestRequest.assignedStallCode || bookingView.slotLabel || '-';
+        bookingView.paymentSlipImage = latestRequest.paymentSlipImage || null;
+        bookingView.awaitingPaymentVerification = awaitingPaymentVerification;
     }
 
     const notificationBooking = latestRequest
@@ -942,29 +977,94 @@ router.get('/booking-status', isAuthenticated, async (req, res) => {
         }
         : latestBooking;
 
+    return {
+        userRecord,
+        bookingView,
+        notifications: buildBookingNotifications(notificationBooking, awaitingPaymentVerification)
+    };
+}
+
+// --- 4. หน้าสถานะการจอง ---
+router.get('/booking-status', isAuthenticated, async (req, res) => {
+    const { userRecord, bookingView, notifications } = await loadSellerBookingStatus(req.user.id);
+
     return res.render('seller/booking_status', {
         user: userRecord || req.user,
         booking: bookingView,
-        notifications: buildBookingNotifications(notificationBooking)
+        notifications,
+        error: req.query.error || null,
+        success: req.query.success || null
+    });
+});
+
+// --- 5. ผู้ขายอัปโหลดสลิปยืนยันการชำระเงิน หลังแอดมินจัดล็อกให้แล้ว ---
+router.post('/booking-payment/confirm', isSellerOnly, (req, res) => {
+    uploadPaymentSlip.single('paymentSlip')(req, res, async (err) => {
+        if (err) {
+            return res.redirect('/booking-status?error=upload_failed');
+        }
+
+        try {
+            if (!req.file) {
+                return res.redirect('/booking-status?error=missing_slip');
+            }
+
+            const userRecord = await prisma.user.findUnique({
+                where: { id: req.user.id },
+                include: { sellerProfile: true }
+            });
+
+            const sellerProfileId = userRecord?.sellerProfile?.id || null;
+            const sellerName = String(userRecord?.name || '').trim();
+
+            let latestRequest = null;
+            if (sellerProfileId) {
+                latestRequest = await prisma.bookingRequest.findFirst({
+                    where: { sellerId: sellerProfileId },
+                    orderBy: { createdAt: 'desc' }
+                });
+            }
+            if (!latestRequest && sellerName) {
+                latestRequest = await prisma.bookingRequest.findFirst({
+                    where: { sellerName },
+                    orderBy: { createdAt: 'desc' }
+                });
+            }
+
+            if (!latestRequest || String(latestRequest.status || '').toUpperCase() !== 'IN_PROGRESS') {
+                return res.redirect('/booking-status?error=not_awaiting_payment');
+            }
+
+            if (latestRequest.paymentSlipImage) {
+                return res.redirect('/booking-status?error=slip_already_uploaded');
+            }
+
+            const slipPath = `/uploads/payment-slips/${req.file.filename}`;
+
+            // เก็บสลิปไว้รอแอดมินตรวจสอบก่อน ไม่เปลี่ยนสถานะเป็น SUCCESS ทันที
+            // (แอดมินต้องกดยืนยันที่หน้า /admin/approvals ก่อน ระบบถึงจะแจ้งผู้ขายว่าล็อกเป็นของตนแล้ว)
+            await prisma.bookingRequest.update({
+                where: { id: latestRequest.id },
+                data: {
+                    paymentSlipImage: slipPath
+                }
+            });
+
+            return res.redirect('/booking-status?success=slip_uploaded');
+        } catch (error) {
+            console.error('booking-payment confirm error', error);
+            return res.redirect('/booking-status?error=payment_confirm_failed');
+        }
     });
 });
 
 router.get('/notifications', isAuthenticated, async (req, res) => {
-    const userRecord = await prisma.user.findUnique({
-        where: { id: req.user.id },
-        include: { shop: true }
-    });
-
-    const latestBooking = await prisma.booking.findFirst({
-        where: { userId: req.user.id },
-        include: { slot: true },
-        orderBy: { createdAt: 'desc' }
-    });
+    const { userRecord, bookingView, notifications } = await loadSellerBookingStatus(req.user.id);
 
     return res.render('partials/notification', {
         user: userRecord || req.user,
-        booking: buildBookingView(latestBooking),
-        notifications: buildBookingNotifications(latestBooking)
+        booking: bookingView,
+        notifications
     });
 });
 

@@ -273,12 +273,11 @@ button { font-family: inherit; }
   position: relative;
   display: grid;
   grid-template-columns: var(--zone-a-w) var(--main-road-w) var(--zone-f-w) var(--zone-b-w);
-  grid-template-rows: 45px 40px minmax(360px, 1fr) auto;
+  grid-template-rows: 45px minmax(360px, 1fr) auto;
   column-gap: clamp(16px, 2.4vw, 40px);
   row-gap: 14px;
   grid-template-areas:
-    "e      d      d      ."
-    ".      x      x      ."
+    "e      dx     dx     ."
     "a      road   f      b"
     "c      .      btn    .";
   height: 100%;
@@ -378,8 +377,16 @@ button { font-family: inherit; }
 .zone--x { background: var(--zone-x-bg); color: var(--zone-x-text); border-color: rgba(168, 72, 0, 0.2); font-size: 0.9rem; }
 
 .zone--e { grid-area: e; }
-.zone--d { grid-area: d; }
-.zone--x { grid-area: x; margin-left: 110px; }
+
+.zone-dx-row {
+  grid-area: dx;
+  display: flex;
+  gap: clamp(8px, 1.5vw, 20px);
+}
+
+.zone--d,
+.zone--x { flex: 1 1 50%; }
+
 .zone--a { grid-area: a; font-size: 1.3rem; }
 .main-road {
   grid-area: road;

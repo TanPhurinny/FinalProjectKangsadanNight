@@ -64,6 +64,8 @@ model BookingRequest {
   productImage String?
   sellerId     Int?
   status       Status   @default(PENDING)
+  paymentSlipImage   String?
+  paymentConfirmedAt DateTime?
   createdAt    DateTime @default(now())
   seller       Seller?  @relation(fields: [sellerId], references: [id], onDelete: SetNull)
 
