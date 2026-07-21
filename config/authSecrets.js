@@ -1,5 +1,6 @@
 const isProduction = process.env.NODE_ENV === 'production';
 let cachedJwtSecret = null;
+let cachedJwtSecretKey = null;
 
 function getSecret(name, fallback) {
     const value = String(process.env[name] || '').trim();
@@ -24,6 +25,15 @@ function getJwtSecret() {
     return cachedJwtSecret;
 }
 
+// jose ต้องการ secret เป็น Uint8Array (ไม่ใช่ string ตรงๆ แบบ jsonwebtoken)
+function getJwtSecretKey() {
+    if (!cachedJwtSecretKey) {
+        cachedJwtSecretKey = new TextEncoder().encode(getJwtSecret());
+    }
+
+    return cachedJwtSecretKey;
+}
+
 function getCookieOptions(maxAge) {
     return {
         httpOnly: true,
@@ -36,5 +46,6 @@ function getCookieOptions(maxAge) {
 module.exports = {
     getCookieOptions,
     getJwtSecret,
+    getJwtSecretKey,
     isProduction
 };

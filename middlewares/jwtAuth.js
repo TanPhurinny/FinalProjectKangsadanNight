@@ -1,7 +1,12 @@
-const jwt = require('jsonwebtoken');
-const { getJwtSecret } = require('../config/authSecrets');
+const { jwtVerify } = require('jose');
+const { getJwtSecretKey } = require('../config/authSecrets');
 
-const JWT_SECRET = getJwtSecret();
+const JWT_SECRET_KEY = getJwtSecretKey();
+
+async function verifyToken(token) {
+    const { payload } = await jwtVerify(token, JWT_SECRET_KEY);
+    return payload;
+}
 
 function getTokenFromRequest(req) {
     const authHeader = String(req.headers.authorization || '');
@@ -40,7 +45,7 @@ function sendUnauthorized(req, res, message) {
     return res.redirect('/login?error=unauthorized');
 }
 
-function getCurrentUser(req) {
+async function getCurrentUser(req) {
     if (req.user) {
         return req.user;
     }
@@ -56,7 +61,7 @@ function getCurrentUser(req) {
 
     if (token) {
         try {
-            const decoded = jwt.verify(token, JWT_SECRET);
+            const decoded = await verifyToken(token);
             req.authUser = decoded;
             req.user = decoded;
             return decoded;
@@ -73,12 +78,12 @@ function getCurrentUser(req) {
     return null;
 }
 
-exports.requireAuth = (req, res, next) => {
+exports.requireAuth = async (req, res, next) => {
     const token = getTokenFromRequest(req);
 
     if (token) {
         try {
-            req.authUser = jwt.verify(token, JWT_SECRET);
+            req.authUser = await verifyToken(token);
             req.user = req.authUser;
             return next();
         } catch (error) {

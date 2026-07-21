@@ -1,4 +1,5 @@
 const express = require('express');
+const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const methodOverride = require('method-override');
@@ -15,6 +16,8 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // --- 2. Middleware สำคัญ ---
+// CSP ปิดไว้ก่อน เพราะ views ยังพึ่ง inline script/onclick และ CDN ภายนอก (bootstrap, fontawesome, sweetalert2)
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -43,8 +46,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use((req, res, next) => {
-  req.user = getCurrentUser(req);
+app.use(async (req, res, next) => {
+  req.user = await getCurrentUser(req);
   res.locals.user = req.user || null;
   next();
 });

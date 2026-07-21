@@ -1,24 +1,40 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
+const { SignJWT } = require('jose');
+const { z } = require('zod');
 const userModel = require('../models/userModel');
-const { getCookieOptions, getJwtSecret } = require('../config/authSecrets');
+const { getCookieOptions, getJwtSecretKey } = require('../config/authSecrets');
 const { sendPasswordResetEmail } = require('../config/mailer');
+const logger = require('../config/logger');
 
-const JWT_SECRET = getJwtSecret();
+const JWT_SECRET_KEY = getJwtSecretKey();
 const JWT_EXPIRES_IN = '1d';
 const BCRYPT_SALT_ROUNDS = 10;
 
+const loginSchema = z.object({
+    username: z.string().trim().min(1, 'กรุณากรอก username และ password ให้ครบ'),
+    password: z.string().min(1, 'กรุณากรอก username และ password ให้ครบ')
+});
+
+const emailSchema = z.string().trim().email();
+
 function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+    return emailSchema.safeParse(email).success;
 }
 
-function isValidDate(dateValue) {
-    if (!dateValue) return true;
-
-    const parsedDate = new Date(dateValue);
-    return !Number.isNaN(parsedDate.getTime());
-}
+const registerSchema = z.object({
+    username: z.string().trim().min(1, 'กรุณากรอกข้อมูลให้ครบถ้วน'),
+    password: z.string().min(6, 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'),
+    name: z.string().trim().min(1, 'กรุณากรอกข้อมูลให้ครบถ้วน'),
+    email: z.string().trim().min(1, 'กรุณากรอกข้อมูลให้ครบถ้วน').email('รูปแบบอีเมลไม่ถูกต้อง'),
+    phoneNumber: z.string().trim().optional(),
+    birthDate: z.union([z.string(), z.date()]).optional().nullable()
+        .refine((value) => !value || !Number.isNaN(new Date(value).getTime()), 'วันเกิดไม่ถูกต้อง'),
+    role: z.string().optional(),
+    shopName: z.string().trim().optional(),
+    productType: z.string().trim().optional(),
+    productDetail: z.string().trim().optional()
+});
 
 function wantsJson(req) {
     const acceptHeader = req.headers.accept || '';
@@ -75,17 +91,17 @@ function buildLoginRedirectTarget(user) {
 }
 
 function createToken(user) {
-    return jwt.sign(
-        {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            role: user.role,
-            name: user.name
-        },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
-    );
+    return new SignJWT({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        name: user.name
+    })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime(JWT_EXPIRES_IN)
+        .sign(JWT_SECRET_KEY);
 }
 
 function setAuthCookieWithDuration(res, token, rememberMe) {
@@ -137,13 +153,17 @@ exports.renderLoginPage = (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const username = String(req.body.username || '').trim();
-        const password = String(req.body.password || '');
-        const rememberMe = req.body.rememberMe === '1' || req.body.rememberMe === 'on' || req.body.rememberMe === true;
+        const parsedInput = loginSchema.safeParse({
+            username: req.body.username,
+            password: req.body.password
+        });
 
-        if (!username || !password) {
-            return respondAuthFailure(req, res, 400, 'กรุณากรอก username และ password ให้ครบ');
+        if (!parsedInput.success) {
+            return respondAuthFailure(req, res, 400, parsedInput.error.issues[0].message);
         }
+
+        const { username, password } = parsedInput.data;
+        const rememberMe = req.body.rememberMe === '1' || req.body.rememberMe === 'on' || req.body.rememberMe === true;
 
         const user = username.includes('@')
             ? await userModel.findByEmail(username)
@@ -159,7 +179,7 @@ exports.login = async (req, res) => {
             return respondAuthFailure(req, res, 401, 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
         }
 
-        const token = createToken(user);
+        const token = await createToken(user);
         setAuthCookieWithDuration(res, token, rememberMe);
         if (req.session) {
             req.session.user = userModel.sanitizeUser(user);
@@ -173,39 +193,36 @@ exports.login = async (req, res) => {
             user: userModel.sanitizeUser(user)
         }, redirectPath);
     } catch (error) {
-        console.error('Login Error:', error);
+        logger.error({ err: error }, 'Login Error');
         return respondAuthFailure(req, res, 500, 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
     }
 };
 
 exports.register = async (req, res) => {
     try {
-        const username = String(req.body.username || '').trim();
-        const password = String(req.body.password || '');
-        const name = String(req.body.name || '').trim();
-        const email = userModel.normalizeEmail(req.body.email);
-        const phoneNumber = String(req.body.phoneNumber || '').trim();
-        const birthDate = req.body.birthDate ? new Date(req.body.birthDate) : null;
-        const role = req.body.role === 'SELLER' ? 'SELLER' : 'CUSTOMER';
-        const shopName = String(req.body.shopName || '').trim();
-        const productType = String(req.body.productType || '').trim();
-        const productDetail = String(req.body.productDetail || '').trim();
+        const parsedInput = registerSchema.safeParse({
+            username: req.body.username,
+            password: req.body.password,
+            name: req.body.name,
+            email: userModel.normalizeEmail(req.body.email),
+            phoneNumber: req.body.phoneNumber,
+            birthDate: req.body.birthDate || null,
+            role: req.body.role,
+            shopName: req.body.shopName,
+            productType: req.body.productType,
+            productDetail: req.body.productDetail
+        });
 
-        if (!username || !password || !name || !email) {
-            return respondAuthFailure(req, res, 400, 'กรุณากรอกข้อมูลให้ครบถ้วน');
+        if (!parsedInput.success) {
+            return respondAuthFailure(req, res, 400, parsedInput.error.issues[0].message);
         }
 
-        if (!isValidEmail(email)) {
-            return respondAuthFailure(req, res, 400, 'รูปแบบอีเมลไม่ถูกต้อง');
-        }
-
-        if (password.length < 6) {
-            return respondAuthFailure(req, res, 400, 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
-        }
-
-        if (!isValidDate(req.body.birthDate)) {
-            return respondAuthFailure(req, res, 400, 'วันเกิดไม่ถูกต้อง');
-        }
+        const { username, password, name, email, birthDate } = parsedInput.data;
+        const phoneNumber = String(parsedInput.data.phoneNumber || '').trim();
+        const role = parsedInput.data.role === 'SELLER' ? 'SELLER' : 'CUSTOMER';
+        const shopName = String(parsedInput.data.shopName || '').trim();
+        const productType = String(parsedInput.data.productType || '').trim();
+        const productDetail = String(parsedInput.data.productDetail || '').trim();
 
         const existingUser = await userModel.findByUsernameOrEmail(username, email);
 
@@ -232,7 +249,7 @@ exports.register = async (req, res) => {
             name,
             email,
             phoneNumber: phoneNumber || null,
-            birthDate,
+            birthDate: birthDate ? new Date(birthDate) : null,
             role,
             shop: role === 'SELLER'
                 ? {
@@ -255,7 +272,7 @@ exports.register = async (req, res) => {
 
         return res.redirect('/login?success=' + encodeURIComponent('สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ'));
     } catch (error) {
-        console.error('Register Error:', error);
+        logger.error({ err: error }, 'Register Error');
 
         if (error.code === 'P2002') {
             return respondAuthFailure(req, res, 409, 'username หรือ email นี้ถูกใช้งานแล้ว', '/login');
@@ -307,7 +324,7 @@ exports.forgotPassword = async (req, res) => {
 
         return res.redirect('/login?success=' + encodeURIComponent(genericMessage));
     } catch (error) {
-        console.error('Forgot Password Error:', error);
+        logger.error({ err: error }, 'Forgot Password Error');
         return respondAuthFailure(req, res, 500, 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน', '/login');
     }
 };
@@ -365,7 +382,7 @@ exports.resetPassword = async (req, res) => {
 
         return res.redirect('/login?success=' + encodeURIComponent(successMessage));
     } catch (error) {
-        console.error('Reset Password Error:', error);
+        logger.error({ err: error }, 'Reset Password Error');
         return respondAuthFailure(req, res, 500, 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน', '/login');
     }
 };
@@ -406,7 +423,7 @@ exports.getProfile = async (req, res) => {
             error: req.query.error || null
         });
     } catch (error) {
-        console.error('Get Profile Error:', error);
+        logger.error({ err: error }, 'Get Profile Error');
 
         if (wantsJson(req)) {
             return sendError(res, 500, 'ไม่สามารถดึงข้อมูลโปรไฟล์ได้');
@@ -489,7 +506,7 @@ exports.updateProfile = async (req, res) => {
 
         return res.redirect('/profile?success=' + encodeURIComponent('อัปเดตโปรไฟล์สำเร็จ'));
     } catch (error) {
-        console.error('Update Profile Error:', error);
+        logger.error({ err: error }, 'Update Profile Error');
 
         if (wantsJson(req)) {
             return sendError(res, 500, 'ไม่สามารถอัปเดตโปรไฟล์ได้');
@@ -518,7 +535,7 @@ exports.logout = async (req, res) => {
 
         return res.redirect('/login?success=' + encodeURIComponent('ออกจากระบบสำเร็จ'));
     } catch (error) {
-        console.error('Logout Error:', error);
+        logger.error({ err: error }, 'Logout Error');
 
         if (wantsJson(req)) {
             return sendError(res, 500, 'ไม่สามารถออกจากระบบได้');
@@ -527,3 +544,6 @@ exports.logout = async (req, res) => {
         return res.redirect('/login?error=' + encodeURIComponent('ไม่สามารถออกจากระบบได้'));
     }
 };
+
+exports.loginSchema = loginSchema;
+exports.registerSchema = registerSchema;

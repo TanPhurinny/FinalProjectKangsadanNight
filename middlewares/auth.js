@@ -1,7 +1,7 @@
 const { getCurrentUser } = require('./jwtAuth');
 
-function isStaffOrAdmin(req, res, next) {
-    const user = getCurrentUser(req);
+async function isStaffOrAdmin(req, res, next) {
+    const user = await getCurrentUser(req);
 
     if (!user) {
         return res.redirect('/login?error=session_expired');
@@ -18,8 +18,8 @@ function isStaffOrAdmin(req, res, next) {
     });
 }
 
-function isAdminOnly(req, res, next) {
-    const user = getCurrentUser(req);
+async function isAdminOnly(req, res, next) {
+    const user = await getCurrentUser(req);
 
     if (user && user.role === 'ADMIN') {
         req.user = user;
