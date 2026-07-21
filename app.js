@@ -8,6 +8,8 @@ const prisma = require('./config/prismaClient');
 const session = require('express-session');
 const { getCurrentUser } = require('./middlewares/jwtAuth');
 const { isProduction } = require('./config/authSecrets');
+const { generalLimiter } = require('./middlewares/authRateLimit');
+const logger = require('./config/logger');
 
 const app = express();
 
@@ -15,9 +17,46 @@ const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+// รันหลัง reverse proxy (Heroku/Railway/Nginx ฯลฯ) เสมอใน production เพื่อให้ req.secure/req.ip
+// อ่านค่าจริงจาก X-Forwarded-* ได้ถูกต้อง (จำเป็นทั้งสำหรับ HTTPS redirect และ rate limiter ด้านล่าง)
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
+
 // --- 2. Middleware สำคัญ ---
 // CSP ปิดไว้ก่อน เพราะ views ยังพึ่ง inline script/onclick และ CDN ภายนอก (bootstrap, fontawesome, sweetalert2)
 app.use(helmet({ contentSecurityPolicy: false }));
+
+// บังคับ HTTPS ใน production (proxy ส่ง X-Forwarded-Proto มาบอกว่า request เดิมเป็น http หรือ https)
+if (isProduction) {
+  app.use((req, res, next) => {
+    if (req.secure || req.get('x-forwarded-proto') === 'https') {
+      return next();
+    }
+    return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
+  });
+}
+
+// จำกัดจำนวน request ต่อ IP เป็นด่านแรกกัน DoS/brute-force แบบกว้างๆ ทั้งระบบ
+// (endpoint auth ที่ละเอียดอ่อนกว่ามี limiter เข้มกว่านี้ซ้อนอยู่อีกชั้นใน authRoutes.js)
+app.use(generalLimiter);
+
+// log ทุก request (method, path, status, เวลาที่ใช้, ผู้ใช้ที่ยิง) ไว้ตรวจสอบย้อนหลัง/ตรวจจับความผิดปกติ
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+  res.on('finish', () => {
+    logger.info({
+      method: req.method,
+      path: req.originalUrl,
+      statusCode: res.statusCode,
+      durationMs: Date.now() - startedAt,
+      userId: req.user?.id || null,
+      ip: req.ip
+    }, 'request');
+  });
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -25,10 +64,6 @@ app.use(cookieParser());
 app.use(methodOverride('_method'));
 
 // --- 3. การจัดการ Session ---
-if (isProduction) {
-  app.set('trust proxy', 1);
-}
-
 app.use(session({
   secret: process.env.SESSION_SECRET || 'kangsadan_night_market_key',
   resave: false,

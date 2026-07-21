@@ -5,6 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { getAnnouncementsForUser } = require('../controllers/announcementController');
+const { repairReportSchema, bookingStallInputSchema } = require('../utils/validationSchemas');
 
 // สร้างโฟลเดอร์ upload ถ้ายังไม่มี
 const uploadDir = path.join(__dirname, '../public/uploads/repairs');
@@ -527,12 +528,11 @@ router.post("/repair", isAuthenticated, (req, res) => {
         }
 
         try {
-            const { location, category, description } = req.body;
-            
-            // ตรวจสอบความสมบูรณ์ของข้อมูล
-            if (!location || !category || !description) {
+            const parsed = repairReportSchema.safeParse(req.body);
+            if (!parsed.success) {
                 return res.redirect("/repair?error=missing_fields");
             }
+            const { location, category, description } = parsed.data;
 
             const imagePath = req.file ? `/uploads/repairs/${req.file.filename}` : null;
 
@@ -722,6 +722,24 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
                 zone: zoneCode,
                 zonePrice: 0,
                 error: 'ไม่พบราคาโซนจากฐานข้อมูล',
+                defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
+                cornerZoneValue: resolveCornerZonePrice(req.body.cornerZone),
+                pricing: {
+                    lightUnitPrice: LIGHT_UNIT_PRICE,
+                    smallAppliancePrice: SMALL_APPLIANCE_PRICE,
+                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                    cornerZoneOptions: CORNER_ZONE_OPTIONS
+                }
+            });
+        }
+
+        const inputValidation = bookingStallInputSchema.safeParse(req.body);
+        if (!inputValidation.success) {
+            return res.status(400).render('seller/booking_stall', {
+                user: userRecord,
+                zone: zoneCode,
+                zonePrice,
+                error: 'ข้อมูลจำนวนแผง/เครื่องใช้ไฟฟ้าหรือวันที่ที่กรอกไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง',
                 defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
                 cornerZoneValue: resolveCornerZonePrice(req.body.cornerZone),
                 pricing: {

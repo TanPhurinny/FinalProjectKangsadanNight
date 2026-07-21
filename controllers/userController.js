@@ -1,4 +1,5 @@
 const prisma = require('../config/prismaClient');
+const { updateRoleSchema } = require('../utils/validationSchemas');
 
 // 1. แสดงรายชื่อผู้ใช้งานทั้งหมด
 exports.getUsersPage = async (req, res) => {
@@ -37,14 +38,20 @@ exports.getUsersPage = async (req, res) => {
 
 // 2. อัปเดตบทบาทผู้ใช้งาน (Update Role)
 exports.updateRole = async (req, res) => {
-    const { userId, newRole } = req.body;
+    const parsed = updateRoleSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.redirect('/admin/users?error=' + encodeURIComponent("ข้อมูลไม่ถูกต้อง"));
+    }
+    const { userId, newRole } = parsed.data;
+
     try {
-        if (!userId || !newRole) {
-            throw new Error("ข้อมูลไม่ครบถ้วน");
+        // ป้องกันแอดมินลดสิทธิ์ตัวเองโดยไม่ตั้งใจจนล็อกตัวเองออกจากระบบจัดการ
+        if (userId === req.user.id && newRole !== 'ADMIN') {
+            return res.redirect('/admin/users?error=' + encodeURIComponent("คุณไม่สามารถเปลี่ยนสิทธิ์ของตัวเองได้"));
         }
 
         await prisma.user.update({
-            where: { id: parseInt(userId) }, 
+            where: { id: userId },
             data: { role: newRole }
         });
 

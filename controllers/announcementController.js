@@ -1,4 +1,5 @@
 const prisma = require('../config/prismaClient');
+const { announcementSchema } = require('../utils/validationSchemas');
 
 const ALLOWED_AUDIENCES = ['CUSTOMER', 'SELLER', 'GUEST'];
 
@@ -57,8 +58,14 @@ exports.getAdminAnnouncements = async (req, res) => {
 
 // [CREATE] สร้างประกาศใหม่
 exports.createAnnouncement = async (req, res) => {
+    const parsed = announcementSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).send("กรุณากรอกหัวข้อและเนื้อหาประกาศให้ครบถ้วน");
+    }
+
     try {
-        const { title, content, category, targetRoles } = req.body;
+        const { title, content, category } = parsed.data;
+        const { targetRoles } = req.body;
         const imageName = req.file ? req.file.filename : null;
         const normalizedRoles = normalizeTargetRoles(targetRoles);
         const fallbackRole = normalizedRoles.includes('SELLER') ? 'SELLER' : 'CUSTOMER';
@@ -83,7 +90,12 @@ exports.createAnnouncement = async (req, res) => {
 // [UPDATE] แก้ไขประกาศ (ฉบับสมบูรณ์)
 exports.updateAnnouncement = async (req, res) => {
     const { id } = req.params;
-    const { title, content, category, targetRoles } = req.body;
+    const parsed = announcementSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).send("กรุณากรอกหัวข้อและเนื้อหาประกาศให้ครบถ้วน");
+    }
+    const { title, content, category } = parsed.data;
+    const { targetRoles } = req.body;
     const imageName = req.file ? req.file.filename : null;
 
     try {

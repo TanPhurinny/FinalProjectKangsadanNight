@@ -1,4 +1,5 @@
 const prisma = require('../config/prismaClient');
+const { repairStatusUpdateSchema } = require('../utils/validationSchemas');
 
 const STATUS_LABELS = {
     PENDING: 'รอรับเรื่อง',
@@ -63,16 +64,16 @@ exports.getRequestsPage = async (req, res) => {
 };
 
 exports.updateStatus = async (req, res) => {
-    const { id, status } = req.body;
-    try {
-        const normalizedStatus = String(status || '').toUpperCase();
-        if (!['PENDING', 'IN_PROGRESS', 'SUCCESS', 'REJECTED'].includes(normalizedStatus)) {
-            return res.redirect('/admin/requests?error=invalid_status');
-        }
+    const parsed = repairStatusUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.redirect('/admin/requests?error=invalid_status');
+    }
+    const { id, status } = parsed.data;
 
+    try {
         await prisma.maintenanceReport.update({
-            where: { id: parseInt(id) },
-            data: { status: normalizedStatus }
+            where: { id },
+            data: { status }
         });
         res.redirect('/admin/requests?success=updated');
     } catch (err) {
