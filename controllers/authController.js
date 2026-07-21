@@ -396,7 +396,7 @@ exports.getProfile = async (req, res) => {
                 return sendError(res, 401, 'กรุณาเข้าสู่ระบบก่อน');
             }
 
-            return res.redirect('/login?error=unauthorized');
+            return res.redirect('/');
         }
 
         const profileUser = await getProfileData(userId);
@@ -406,7 +406,7 @@ exports.getProfile = async (req, res) => {
                 return sendError(res, 404, 'ไม่พบข้อมูลผู้ใช้');
             }
 
-            return res.redirect('/login?error=unauthorized');
+            return res.redirect('/');
         }
 
         if (wantsJson(req)) {
@@ -533,7 +533,7 @@ exports.logout = async (req, res) => {
             });
         }
 
-        return res.redirect('/login?success=' + encodeURIComponent('ออกจากระบบสำเร็จ'));
+        return res.redirect('/?success=' + encodeURIComponent('ออกจากระบบสำเร็จ'));
     } catch (error) {
         logger.error({ err: error }, 'Logout Error');
 

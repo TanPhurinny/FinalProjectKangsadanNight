@@ -4,7 +4,7 @@ async function isStaffOrAdmin(req, res, next) {
     const user = await getCurrentUser(req);
 
     if (!user) {
-        return res.redirect('/login?error=session_expired');
+        return res.redirect('/');
     }
 
     if (user.role === 'ADMIN' || user.role === 'STAFF') {

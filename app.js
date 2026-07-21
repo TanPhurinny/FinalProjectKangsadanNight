@@ -87,6 +87,14 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// กัน browser cache หน้าที่ render แบบไดนามิก (bfcache) ไว้ ไม่งั้นกด "ย้อนกลับ" หลัง logout
+// จะเห็น HTML เดิมที่เคย login ค้างอยู่ ทั้งที่ cookie/token ถูกล้างไปแล้วจริง
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  next();
+});
+
 // --- 4. นำเข้า Route แยกไฟล์ ---
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -110,6 +118,7 @@ app.get('/', async (req, res) => {
     res.render('index', {
       announcements,
       error: null,
+      success: req.query.success || null,
     });
   } catch (err) {
     console.error('Index Error:', err);
@@ -117,6 +126,7 @@ app.get('/', async (req, res) => {
       user: req.user || null,
       announcements: [],
       error: 'เกิดข้อผิดพลาดในการโหลดข้อมูลประกาศ',
+      success: null,
     });
   }
 });

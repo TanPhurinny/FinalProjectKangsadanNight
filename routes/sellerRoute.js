@@ -448,14 +448,14 @@ function buildSellerDashboard(userRecord, activeBookingCount, latestBooking, lat
 // Middleware ตรวจสอบการ Login
 const isAuthenticated = (req, res, next) => {
     if (!req.user) {
-        return res.redirect("/login");
+        return res.redirect("/");
     }
     next();
 };
 
 const isSellerOnly = (req, res, next) => {
     if (!req.user) {
-        return res.redirect('/login');
+        return res.redirect('/');
     }
 
     if (req.user.role !== 'SELLER') {

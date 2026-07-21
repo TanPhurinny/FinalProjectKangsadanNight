@@ -2,6 +2,15 @@
 // เพราะ cookie/session ปกติแชร์กันทุกแท็บ (แท็บล่าสุดที่ login จะไปทับแท็บอื่น)
 // เก็บ token แยกต่อแท็บด้วย sessionStorage แล้วแนบไปกับทุก request ของแท็บนั้นแทน
 (function () {
+    // เบราว์เซอร์รุ่นใหม่ (เช่น Chrome 108+) เก็บหน้าไว้ใน back-forward cache (bfcache) แม้เซิร์ฟเวอร์
+    // จะส่ง Cache-Control: no-store มาก็ตาม ทำให้กดปุ่ม "ย้อนกลับ" หลัง logout แล้วยังเห็นหน้าที่ login
+    // ค้างอยู่ (เป็นแค่ snapshot เก่า ไม่ได้คุยกับเซิร์ฟเวอร์จริง) ต้อง reload บังคับตอนถูกเรียกคืนจาก bfcache
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    });
+
     const STORAGE_KEY = 'tabToken';
     const PARAM_KEY = 'tabToken';
 

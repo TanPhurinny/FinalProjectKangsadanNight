@@ -2,6 +2,20 @@ if ('scrollRestoration' in history) {
     history.scrollRestoration = 'manual';
 }
 
+const flashSuccess = document.body.dataset.flashSuccess;
+const flashError = document.body.dataset.flashError;
+if ((flashSuccess || flashError) && window.Swal && typeof Swal.fire === 'function') {
+    Swal.fire({
+        icon: flashSuccess ? 'success' : 'error',
+        title: flashSuccess || flashError,
+        confirmButtonColor: '#3BB8D4'
+    });
+    const url = new URL(window.location.href);
+    url.searchParams.delete('success');
+    url.searchParams.delete('error');
+    window.history.replaceState({}, '', url);
+}
+
 window.addEventListener('pageshow', () => {
     window.scrollTo(0, 0);
 });

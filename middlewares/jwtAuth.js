@@ -42,7 +42,7 @@ function sendUnauthorized(req, res, message) {
         });
     }
 
-    return res.redirect('/login?error=unauthorized');
+    return res.redirect('/');
 }
 
 async function getCurrentUser(req) {
