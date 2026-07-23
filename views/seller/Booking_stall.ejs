@@ -69,14 +69,6 @@
         <textarea class="field-input" id="storeDetail" name="storeDetail" rows="4" placeholder="เพิ่มรายละเอียดร้านค้า"><%= defaultStoreDetail || '' %></textarea>
       </div>
 
-      <div class="field-group">
-        <label class="field-label">ค่าไฟสว่าง (ล็อกละ <%= pricing.lightUnitPrice %> บาท/วัน)</label>
-        <div class="radio-row">
-          <label class="radio-option"><input type="radio" name="light" value="yes" /> ใช้</label>
-          <label class="radio-option"><input type="radio" name="light" value="no" checked /> ไม่ใช้</label>
-        </div>
-      </div>
-
       <div class="grid-two">
         <div class="field-group">
           <label class="field-label">เครื่องใช้ไฟฟ้าเล็ก (เครื่องละ <%= pricing.smallAppliancePrice %> บาท/วัน)</label>
@@ -93,20 +85,20 @@
         var cornerOptionsList = typeof pricing.cornerZoneOptions !== 'undefined' ? pricing.cornerZoneOptions : [];
       %>
       <div class="field-group">
-        <label class="field-label">สนใจแผงหัวมุม/แผงพิเศษไหม? <span class="field-label__note">(มีค่าใช้จ่ายเพิ่ม เลือกได้ 1 ระดับ)</span></label>
+        <label class="field-label">สนใจแผงหัวมุม/แผงพิเศษไหม? <span class="field-label__note">(แจ้งความสนใจเฉยๆ ยังไม่คิดเงิน จะคิดเพิ่มก็ต่อเมื่อแอดมินจัดแผงพิเศษให้จริงเท่านั้น)</span></label>
         <div class="option-list">
           <label class="option-card">
             <input type="radio" name="cornerZone" value="0" <%= currentCornerValue === 0 ? 'checked' : '' %> />
             <span class="option-card__text">
               <strong>ไม่สนใจ</strong>
-              <small>แผงมาตรฐาน ไม่มีค่าใช้จ่ายเพิ่ม</small>
+              <small>แผงมาตรฐาน</small>
             </span>
           </label>
           <% cornerOptionsList.forEach(function(opt) { %>
             <label class="option-card">
               <input type="radio" name="cornerZone" value="<%= opt.value %>" <%= currentCornerValue === opt.value ? 'checked' : '' %> />
               <span class="option-card__text">
-                <strong><%= opt.label %> <span class="option-card__tag">+<%= opt.value %> บาท/ล็อก/วัน</span></strong>
+                <strong><%= opt.label %> <span class="option-card__tag">+<%= opt.value %> บาท/ล็อก/วัน หากได้รับจัดให้</span></strong>
                 <small><%= opt.desc %></small>
               </span>
             </label>
@@ -120,8 +112,7 @@
         <div class="summary-line">รวมค่าเช่าแผง: <strong id="rentTotalText">0 บาท</strong></div>
         <div class="summary-line">รวมค่าไฟสว่าง: <strong id="lightTotalText">0 บาท</strong></div>
         <div class="summary-line">รวมค่าเครื่องใช้ไฟฟ้า: <strong id="applianceTotalText">0 บาท</strong></div>
-        <div class="summary-line" id="cornerZoneLine" style="display:none;">รวมค่าแผงหัวมุม/แผงพิเศษ: <strong id="cornerZoneTotalText">0 บาท</strong></div>
-        <div class="summary-small">ระบบจะคำนวณอีกครั้งฝั่งเซิร์ฟเวอร์ก่อนบันทึกข้อมูล</div>
+        <div class="summary-small">ระบบจะคำนวณอีกครั้งฝั่งเซิร์ฟเวอร์ก่อนบันทึกข้อมูล (ค่าแผงหัวมุม/แผงพิเศษยังไม่รวมในยอดนี้ จะคิดเพิ่มภายหลังเฉพาะกรณีแอดมินจัดแผงพิเศษให้)</div>
       </div>
 
       <div class="total-row">

@@ -39,26 +39,16 @@ function recalcSummary() {
     const stallCount = Math.max(1, readCount(stallCountInput, 1));
     const smallCount = readCount(smallApplianceInput);
     const largeCount = readCount(largeApplianceInput);
-    const lightEnabled = document.querySelector('input[name="light"]:checked')?.value === 'yes';
-
-    const cornerZonePrice = Number(document.querySelector('input[name="cornerZone"]:checked')?.value || 0);
 
     const rentTotal = PRICE_PER_STALL_PER_DAY * stallCount * days;
-    const lightTotal = lightEnabled ? LIGHT_UNIT_PRICE * stallCount * days : 0;
+    const lightTotal = LIGHT_UNIT_PRICE * stallCount * days;
     const applianceTotal = ((smallCount * SMALL_PRICE) + (largeCount * LARGE_PRICE)) * days;
-    const cornerZoneTotal = cornerZonePrice * stallCount * days;
-    const grandTotal = rentTotal + lightTotal + applianceTotal + cornerZoneTotal;
+    const grandTotal = rentTotal + lightTotal + applianceTotal;
 
     document.getElementById('rentalDaysText').textContent = days + ' วัน';
     document.getElementById('rentTotalText').textContent = formatBaht(rentTotal);
     document.getElementById('lightTotalText').textContent = formatBaht(lightTotal);
     document.getElementById('applianceTotalText').textContent = formatBaht(applianceTotal);
-
-    const cornerZoneLine = document.getElementById('cornerZoneLine');
-    if (cornerZoneLine) {
-        cornerZoneLine.style.display = cornerZonePrice > 0 ? '' : 'none';
-        document.getElementById('cornerZoneTotalText').textContent = formatBaht(cornerZoneTotal);
-    }
 
     document.getElementById('grandTotalText').textContent = formatBaht(grandTotal);
 }
@@ -70,10 +60,6 @@ dateEndInput.min = today;
 [dateStartInput, dateEndInput, stallCountInput, smallApplianceInput, largeApplianceInput].forEach((el) => {
     el.addEventListener('change', recalcSummary);
     el.addEventListener('input', recalcSummary);
-});
-
-document.querySelectorAll('input[name="light"]').forEach((el) => {
-    el.addEventListener('change', recalcSummary);
 });
 
 document.querySelectorAll('input[name="cornerZone"]').forEach((el) => {

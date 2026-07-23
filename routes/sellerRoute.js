@@ -754,7 +754,7 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
         }
 
         const stallCount = Math.max(1, safeInt(req.body.stallCount, 1));
-        const lightEnabled = String(req.body.light || 'no') === 'yes';
+        const lightEnabled = true;
         const cornerZoneValue = resolveCornerZonePrice(req.body.cornerZone);
         const cornerZoneOption = CORNER_ZONE_OPTIONS.find((opt) => opt.value === cornerZoneValue) || null;
         const smallApplianceCount = Math.max(0, safeInt(req.body.smallApplianceCount, 0));
@@ -783,9 +783,11 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
         const rentalDays = getRentalDays(startDate, endDate);
         const rentTotal = zonePrice * stallCount * rentalDays;
         const applianceTotal = (smallApplianceCount * SMALL_APPLIANCE_PRICE + largeApplianceCount * LARGE_APPLIANCE_PRICE) * rentalDays;
-        const lightTotal = lightEnabled ? LIGHT_UNIT_PRICE * stallCount * rentalDays : 0;
+        const lightTotal = LIGHT_UNIT_PRICE * stallCount * rentalDays;
+        // ค่าแผงหัวมุม/แผงพิเศษยังไม่คิดตอนจอง เป็นแค่การแจ้งความสนใจ
+        // จะคิดเงินจริงต่อเมื่อแอดมินจัดแผงพิเศษให้ในขั้นตอน "จัดล็อก" เท่านั้น
         const cornerZoneTotal = cornerZoneValue * stallCount * rentalDays;
-        const grandTotal = rentTotal + applianceTotal + lightTotal + cornerZoneTotal;
+        const grandTotal = rentTotal + applianceTotal + lightTotal;
 
         // Slot (ตาราง legacy) เป็นแค่ที่เก็บ placeholder ให้ Booking.slotId ชี้ไปหา ไม่ใช่
         // ตัวเก็บจำนวนแผงจริง (จำนวนแผงจริงอยู่ที่ตาราง Stall ซึ่งแอดมินจะเป็นคนจัดให้ทีหลัง
