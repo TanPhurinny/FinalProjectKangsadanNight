@@ -515,6 +515,8 @@
   text-align: center;
   cursor: pointer;
   transition: var(--transition);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .category-card i {
   font-size: 1.5rem;
@@ -773,6 +775,15 @@
   border: 1px solid var(--line);
   box-shadow: none;
 }
+.modal-dialog-scrollable .modal-content > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.modal-dialog-scrollable .modal-content > form .modal-body {
+  min-height: 0;
+}
 .modal-header {
   background: var(--navy);
   color: #fff;
@@ -783,6 +794,7 @@
 }
 .modal-footer {
   border-top: 1px solid var(--line);
+  flex-shrink: 0;
 }
 .form-label {
   color: var(--navy);

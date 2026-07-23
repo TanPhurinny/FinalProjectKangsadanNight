@@ -177,7 +177,7 @@ function populateEditModal(postId) {
     document.getElementById('editPostContent').value = post.content || '';
 
     setActiveCategoryCard(document.getElementById('editCategoryGrid'), post.category);
-    resizeAutoGrowTextarea(document.getElementById('editPostContent'));
+    document.getElementById('editPostContent').style.height = 'auto';
 
     const existingImages = document.getElementById('editExistingImages');
     const newImagePreview = document.getElementById('editNewImagePreview');
@@ -199,7 +199,9 @@ function populateEditModal(postId) {
         existingImages.appendChild(wrapper);
     });
 
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('editPostModal')).show();
+    const modalEl = document.getElementById('editPostModal');
+    modalEl.addEventListener('shown.bs.modal', () => resizeAutoGrowTextarea(document.getElementById('editPostContent')), { once: true });
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
 async function fetchMyPosts() {

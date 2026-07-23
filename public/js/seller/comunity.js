@@ -333,7 +333,7 @@ function populateEditModal(postId) {
   contentInput.value = content;
 
   setActiveCategoryCard(document.getElementById('editCategoryGrid'), category);
-  resizeAutoGrowTextarea(contentInput);
+  contentInput.style.height = 'auto';
 
   state.removeImageIds.clear();
   existingImages.innerHTML = '';
@@ -354,6 +354,7 @@ function populateEditModal(postId) {
   });
 
   const modalEl = document.getElementById('editPostModal');
+  modalEl.addEventListener('shown.bs.modal', () => resizeAutoGrowTextarea(contentInput), { once: true });
   bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
@@ -488,7 +489,7 @@ function resetCommentComposer() {
   if (!contentInput) return;
 
   contentInput.value = '';
-  resizeAutoGrowTextarea(contentInput);
+  contentInput.style.height = 'auto';
   updateCommentSendState();
 }
 
@@ -509,7 +510,11 @@ async function openComments(postId) {
   document.getElementById('commentPostId').value = String(postId);
   renderComments(result.comments || []);
   resetCommentComposer();
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('commentsModal')).show();
+
+  const modalEl = document.getElementById('commentsModal');
+  const contentInput = document.getElementById('commentContent');
+  modalEl.addEventListener('shown.bs.modal', () => resizeAutoGrowTextarea(contentInput), { once: true });
+  bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
 async function handleCommentSubmit(event) {
