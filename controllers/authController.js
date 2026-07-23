@@ -78,6 +78,13 @@ function respondAuthSuccess(req, res, message, data = {}, redirectPath = '/') {
     return res.redirect(redirectPath);
 }
 
+function withTabToken(redirectPath, token) {
+    if (!token) return redirectPath;
+
+    const separator = redirectPath.includes('?') ? '&' : '?';
+    return `${redirectPath}${separator}tabToken=${encodeURIComponent(token)}`;
+}
+
 function buildLoginRedirectTarget(user) {
     if (user.role === 'ADMIN' || user.role === 'STAFF') {
         return '/admin/dashboard';
@@ -186,6 +193,12 @@ exports.login = async (req, res) => {
         }
 
         const redirectPath = buildLoginRedirectTarget(user);
+
+        // สำหรับ seller ที่ submit ฟอร์มแบบ HTML (ไม่ผ่าน fetch JSON)
+        // แนบ tabToken ไปกับ URL เพื่อให้ auth ต่อแท็บทำงานได้สม่ำเสมอ
+        if (!wantsJson(req) && user.role === 'SELLER') {
+            return res.redirect(withTabToken(redirectPath, token));
+        }
 
         return respondAuthSuccess(req, res, 'เข้าสู่ระบบสำเร็จ', {
             success: true,
