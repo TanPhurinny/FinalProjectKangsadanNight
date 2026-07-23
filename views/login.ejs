@@ -167,31 +167,15 @@
                         </div>
 
                         <div id="registerPage" class="auth-page d-none">
-                        <form method="POST" action="/register"
-                            enctype="multipart/form-data" id="registerForm">
+                        <form method="POST" action="/register" id="registerForm">
                             <div id="regStep1" class="reg-step">
                                 <h3 class="text-center mb-1 fw-bold">สมัครสมาชิก</h3>
-                                <p class="auth-step-hint text-center mb-4"
-                                    id="regStep1Hint">ขั้นตอนที่ 1 — ข้อมูลบัญชี</p>
 
                                 <% if (typeof registerError !== 'undefined' &&
                                 registerError) { %>
                                 <div class="alert alert-danger small text-center"><%=
                                     registerError %></div>
                                 <% } %>
-
-                                <div class="field-group mb-3">
-                                    <label class="field-label"
-                                        for="roleSelect">ประเภทผู้ใช้งาน</label>
-                                    <select name="role" id="roleSelect"
-                                        class="form-select"
-                                        onchange="updateRegNextButton()" required>
-                                        <option value="CUSTOMER">ลูกค้าทั่วไป
-                                            (Customer)</option>
-                                        <option value="SELLER">พ่อค้า/แม่ค้า
-                                            (Seller)</option>
-                                    </select>
-                                </div>
 
                                 <div class="field-group mb-3">
                                     <label class="field-label"
@@ -275,66 +259,8 @@
                                     </div>
                                 </div>
 
-                                <button type="button" id="regNextBtn"
-                                    class="btn btn-primary w-100 py-2 mb-3"
-                                    onclick="goToRegStep2()">ถัดไป</button>
-                            </div>
-
-                            <div id="regStep2" class="reg-step d-none">
-                                <h3 class="text-center mb-1 fw-bold">ข้อมูลร้านค้า</h3>
-                                <p class="auth-step-hint text-center mb-4">ขั้นตอนที่
-                                    2 จาก 2 — เฉพาะพ่อค้า/แม่ค้า</p>
-
-                                <div class="seller-box p-3 mb-3">
-                                    <div class="field-group mb-2">
-                                        <label class="field-label"
-                                            for="shopName">ชื่อร้านค้า</label>
-                                        <input type="text" id="shopName"
-                                            name="shopName"
-                                            class="form-control form-control-sm"
-                                            placeholder="ชื่อร้านค้า" required>
-                                    </div>
-                                    <div class="field-group mb-2">
-                                        <label class="field-label"
-                                            for="productType">ประเภทสินค้า</label>
-                                        <select id="productType" name="productType"
-                                            class="form-select form-select-sm"
-                                            required>
-                                            <option value disabled
-                                                selected>เลือกประเภทสินค้า</option>
-                                            <option
-                                                value="FOOD">อาหาร/เครื่องดื่ม</option>
-                                            <option
-                                                value="FASHION">เสื้อผ้า/แฟชั่น</option>
-                                            <option value="OTHER">อื่นๆ</option>
-                                        </select>
-                                    </div>
-                                    <div class="field-group mb-2">
-                                        <label class="field-label"
-                                            for="productDetail">รายละเอียดสินค้า</label>
-                                        <textarea id="productDetail"
-                                            name="productDetail"
-                                            class="form-control form-control-sm"
-                                            rows="2"
-                                            placeholder="ขายอะไรบ้าง..." required></textarea>
-                                    </div>
-                                    <div class="field-group mb-0">
-                                        <label class="field-label"
-                                            for="productImage">รูปตัวอย่างสินค้า</label>
-                                        <input type="file" id="productImage"
-                                            name="productImage"
-                                            class="form-control form-control-sm"
-                                            accept="image/*">
-                                    </div>
-                                </div>
-
-                                <div class="d-flex gap-2 mb-3">
-                                    <button type="button"
-                                        class="btn btn-outline-secondary flex-fill"
-                                        onclick="goToRegStep1()">ย้อนกลับ</button>
-                                    <button type="submit"
-                                        class="btn btn-primary flex-fill">สร้างบัญชี</button>
-                                </div>
+                                <button type="submit"
+                                    class="btn btn-primary w-100 py-2 mb-3">สร้างบัญชี</button>
                             </div>
                         </form>
                             <div class="text-center">

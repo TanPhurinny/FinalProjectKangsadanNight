@@ -30,11 +30,7 @@ const registerSchema = z.object({
     email: z.string().trim().min(1, 'กรุณากรอกข้อมูลให้ครบถ้วน').email('รูปแบบอีเมลไม่ถูกต้อง'),
     phoneNumber: z.string().trim().optional(),
     birthDate: z.union([z.string(), z.date()]).optional().nullable()
-        .refine((value) => !value || !Number.isNaN(new Date(value).getTime()), 'วันเกิดไม่ถูกต้อง'),
-    role: z.string().optional(),
-    shopName: z.string().trim().optional(),
-    productType: z.string().trim().optional(),
-    productDetail: z.string().trim().optional()
+        .refine((value) => !value || !Number.isNaN(new Date(value).getTime()), 'วันเกิดไม่ถูกต้อง')
 });
 
 function wantsJson(req) {
@@ -220,11 +216,7 @@ exports.register = async (req, res) => {
             name: req.body.name,
             email: userModel.normalizeEmail(req.body.email),
             phoneNumber: req.body.phoneNumber,
-            birthDate: req.body.birthDate || null,
-            role: req.body.role,
-            shopName: req.body.shopName,
-            productType: req.body.productType,
-            productDetail: req.body.productDetail
+            birthDate: req.body.birthDate || null
         });
 
         if (!parsedInput.success) {
@@ -233,10 +225,6 @@ exports.register = async (req, res) => {
 
         const { username, password, name, email, birthDate } = parsedInput.data;
         const phoneNumber = String(parsedInput.data.phoneNumber || '').trim();
-        const role = parsedInput.data.role === 'SELLER' ? 'SELLER' : 'CUSTOMER';
-        const shopName = String(parsedInput.data.shopName || '').trim();
-        const productType = String(parsedInput.data.productType || '').trim();
-        const productDetail = String(parsedInput.data.productDetail || '').trim();
 
         const existingUser = await userModel.findByUsernameOrEmail(username, email);
 
@@ -264,16 +252,7 @@ exports.register = async (req, res) => {
             email,
             phoneNumber: phoneNumber || null,
             birthDate: birthDate ? new Date(birthDate) : null,
-            role,
-            shop: role === 'SELLER'
-                ? {
-                    create: {
-                        shopName: shopName || null,
-                        productType: productType || null,
-                        productDetail: productDetail || null
-                    }
-                }
-                : undefined
+            role: 'CUSTOMER'
         });
 
         if (wantsJson(req)) {

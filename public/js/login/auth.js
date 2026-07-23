@@ -27,53 +27,8 @@ function showForgotPassword() {
 
 function resetRegisterSteps() {
     const step1 = document.getElementById('regStep1');
-    const step2 = document.getElementById('regStep2');
-    if (!step1 || !step2) return;
+    if (!step1) return;
 
-    step1.classList.remove('d-none');
-    step2.classList.add('d-none');
-    updateRegNextButton();
-}
-
-// สำหรับผู้ใช้ทั่วไป (CUSTOMER) ปุ่ม "ถัดไป" จะสมัครสมาชิกทันที (submit ตรง)
-// ส่วนพ่อค้า/แม่ค้า (SELLER) จะพาไปกรอกข้อมูลร้านค้าที่ขั้นตอนที่ 2 ก่อน
-function updateRegNextButton() {
-    const roleSelect = document.getElementById('roleSelect');
-    const nextBtn = document.getElementById('regNextBtn');
-    if (!roleSelect || !nextBtn) return;
-
-    if (roleSelect.value === 'SELLER') {
-        nextBtn.type = 'button';
-        nextBtn.textContent = 'ถัดไป';
-    } else {
-        nextBtn.type = 'submit';
-        nextBtn.textContent = 'สร้างบัญชี';
-    }
-}
-
-function goToRegStep2() {
-    const step1 = document.getElementById('regStep1');
-    const step2 = document.getElementById('regStep2');
-    if (!step1 || !step2) return;
-
-    const step1Fields = step1.querySelectorAll('input, select');
-    for (const field of step1Fields) {
-        if (!field.checkValidity()) {
-            field.reportValidity();
-            return;
-        }
-    }
-
-    step1.classList.add('d-none');
-    step2.classList.remove('d-none');
-}
-
-function goToRegStep1() {
-    const step1 = document.getElementById('regStep1');
-    const step2 = document.getElementById('regStep2');
-    if (!step1 || !step2) return;
-
-    step2.classList.add('d-none');
     step1.classList.remove('d-none');
 }
 
@@ -140,33 +95,6 @@ async function submitJsonForm(form, bodyObject) {
     return response.json();
 }
 
-async function submitFormData(form) {
-    const formData = new FormData(form);
-
-    const response = await fetch(form.action, {
-        method: form.method || 'POST',
-        headers: {
-            'Accept': 'application/json'
-        },
-        body: formData
-    });
-
-    // tolerate HTML redirects or non-JSON responses
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-        return response.json();
-    }
-
-    // fallback: try to parse text and infer success message
-    const text = await response.text();
-    // if server redirected to login page with success message, return success
-    if (text && /สมัครสำเร็จ|สมัครสมาชิกสำเร็จ|success/i.test(text)) {
-        return { success: true, message: 'สมัครสมาชิกสำเร็จ' };
-    }
-
-    return { success: false, message: text || 'server returned non-json response' };
-}
-
 async function handleLoginSubmit(event) {
     event.preventDefault();
 
@@ -227,10 +155,12 @@ async function handleRegisterSubmit(event) {
     event.preventDefault();
 
     const form = event.currentTarget;
+    const formData = new FormData(form);
+    const payload = Object.fromEntries(formData.entries());
 
     try {
         renderMessage(null, '');
-        const result = await submitFormData(form);
+        const result = await submitJsonForm(form, payload);
 
         if (!result.success) {
             renderMessage('error', result.message || 'สมัครสมาชิกไม่สำเร็จ');
@@ -248,9 +178,6 @@ async function handleRegisterSubmit(event) {
 window.showRegister = showRegister;
 window.showLogin = showLogin;
 window.showForgotPassword = showForgotPassword;
-window.updateRegNextButton = updateRegNextButton;
-window.goToRegStep2 = goToRegStep2;
-window.goToRegStep1 = goToRegStep1;
 
 document.addEventListener('DOMContentLoaded', () => {
     const toggleButtons = document.querySelectorAll('.password-toggle');
@@ -273,8 +200,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (registerForm) {
         registerForm.addEventListener('submit', handleRegisterSubmit);
     }
-
-    updateRegNextButton();
 
     document.querySelectorAll('.auth-page .alert-success, .auth-page .alert-danger').forEach((alertBox) => {
         autoDismissAlert(alertBox);

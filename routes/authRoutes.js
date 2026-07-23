@@ -1,12 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const authController = require('../controllers/authController');
 const { requireAuth } = require('../middlewares/jwtAuth');
 const { authLimiter, forgotPasswordLimiter, registerLimiter } = require('../middlewares/authRateLimit');
-
-// ตั้งค่า multer รับข้อมูลฟอร์มที่มีรูปภาพ
-const upload = multer();
 
 // หน้า Login & Register UI
 router.get('/login', (req, res) => {
@@ -18,8 +14,8 @@ router.post('/api/auth/login', authLimiter, authController.login);
 router.post('/login', authLimiter, authController.login);
 
 // ระบบ Register
-router.post('/api/auth/register', registerLimiter, upload.single('productImage'), authController.register);
-router.post('/register', registerLimiter, upload.single('productImage'), authController.register);
+router.post('/api/auth/register', registerLimiter, authController.register);
+router.post('/register', registerLimiter, authController.register);
 
 // ระบบลืมรหัสผ่าน (ขอลิงก์รีเซ็ตทางอีเมล)
 router.post('/api/auth/forgot-password', forgotPasswordLimiter, authController.forgotPassword);
