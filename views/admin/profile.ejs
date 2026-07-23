@@ -209,6 +209,34 @@
                 </div>
             </div>
             <% } %>
+
+            <!-- สมัครเปิดร้านค้า (สำหรับ Customer เท่านั้น) -->
+            <% if (profileUser.role === 'CUSTOMER') { %>
+            <div class="profile-card">
+                <h3 class="profile-section-title">สมัครเปิดร้านค้า</h3>
+
+                <% if (typeof latestSellerApplication !== 'undefined' && latestSellerApplication && latestSellerApplication.status === 'PENDING') { %>
+                <p class="text-muted mb-0">
+                    <i class="fas fa-clock me-1"></i>
+                    ใบสมัครร้าน "<%= latestSellerApplication.shopName %>" ของคุณอยู่ระหว่างตรวจสอบ
+                </p>
+                <% } else if (typeof latestSellerApplication !== 'undefined' && latestSellerApplication && latestSellerApplication.status === 'APPROVED') { %>
+                <p class="text-muted mb-0">
+                    <i class="fas fa-circle-check me-1"></i>
+                    ใบสมัครร้าน "<%= latestSellerApplication.shopName %>" ได้รับการอนุมัติแล้ว กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่เพื่อใช้งานเมนูร้านค้า
+                </p>
+                <% } else { %>
+                <% if (typeof latestSellerApplication !== 'undefined' && latestSellerApplication && latestSellerApplication.status === 'REJECTED') { %>
+                <p class="text-muted">
+                    ใบสมัครร้าน "<%= latestSellerApplication.shopName %>" ครั้งก่อนไม่ผ่านการอนุมัติ<%= latestSellerApplication.rejectReason ? ` (เหตุผล: ${latestSellerApplication.rejectReason})` : '' %>
+                </p>
+                <% } %>
+                <a href="/shop-application" class="btn btn-update">
+                    <i class="fas fa-store me-2"></i>สมัครเปิดร้านค้า
+                </a>
+                <% } %>
+            </div>
+            <% } %>
         </div>
 
         <script

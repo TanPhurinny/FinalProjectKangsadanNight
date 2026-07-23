@@ -90,8 +90,49 @@ async function sendPaymentConfirmedEmail(toEmail, stallCode) {
     });
 }
 
+async function sendSellerApplicationApprovedEmail(toEmail) {
+    const transporter = getTransporter();
+
+    if (!transporter) {
+        console.warn(`Seller application approved email not sent (mailer not configured). ${toEmail}`);
+        return;
+    }
+
+    await transporter.sendMail({
+        from: `"Kangsadan Night Market" <${process.env.GMAIL_USER}>`,
+        to: toEmail,
+        subject: 'ใบสมัครเปิดร้านค้าของคุณได้รับการอนุมัติแล้ว',
+        html: `
+            <p>แอดมินได้ตรวจสอบและอนุมัติใบสมัครเปิดร้านค้าของคุณเรียบร้อยแล้ว</p>
+            <p><strong>กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่</strong> เพื่อให้บัญชีของคุณเปลี่ยนเป็นบัญชีผู้ขายและใช้งานเมนูร้านค้าได้</p>
+        `
+    });
+}
+
+async function sendSellerApplicationRejectedEmail(toEmail, reason) {
+    const transporter = getTransporter();
+
+    if (!transporter) {
+        console.warn(`Seller application rejected email not sent (mailer not configured). ${toEmail}: ${reason || ''}`);
+        return;
+    }
+
+    await transporter.sendMail({
+        from: `"Kangsadan Night Market" <${process.env.GMAIL_USER}>`,
+        to: toEmail,
+        subject: 'ใบสมัครเปิดร้านค้าของคุณไม่ผ่านการตรวจสอบ',
+        html: `
+            <p>แอดมินได้ตรวจสอบใบสมัครเปิดร้านค้าของคุณแล้ว แต่ยังไม่ผ่านการอนุมัติในครั้งนี้</p>
+            ${reason ? `<p>เหตุผล: ${reason}</p>` : ''}
+            <p>คุณสามารถแก้ไขข้อมูลและสมัครใหม่ได้ที่หน้าสมัครเปิดร้านค้า</p>
+        `
+    });
+}
+
 module.exports = {
     sendPasswordResetEmail,
     sendStallAssignedEmail,
-    sendPaymentConfirmedEmail
+    sendPaymentConfirmedEmail,
+    sendSellerApplicationApprovedEmail,
+    sendSellerApplicationRejectedEmail
 };

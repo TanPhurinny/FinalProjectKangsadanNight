@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>สมัครเปิดร้านค้า - กังสดาลไนท์</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260711-5">
+  <link rel="stylesheet" href="/stylesheets/seller/repair.css">
+    </head>
+
+    <body>
+        <script src="/js/common/tabSession.js"></script>
+  <% if (user && user.role === 'SELLER') { %>
+  <%- include('../partials/navbarSeller') %>
+  <% } else { %>
+  <%- include('../partials/navbarCustomer') %>
+  <% } %>
+
+        <header class="site-header">
+            <button class="btn-back" onclick="history.back()" title="ย้อนกลับ">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <h1 class="header-title">สมัครเปิดร้านค้า</h1>
+            <div class="header-spacer"></div>
+        </header>
+
+        <div class="container">
+            <div class="form-card">
+                <%
+                const errorParam = (typeof error !== 'undefined' && error) ? error : null;
+                const successParam = (typeof success !== 'undefined' && success) ? success : null;
+                const successMsg = successParam === 'application_submitted' ? 'ส่งใบสมัครเปิดร้านค้าสำเร็จ กรุณารอแอดมินตรวจสอบ' : null;
+                const errorMsg = {
+                    'not_customer': 'บัญชีนี้สมัครเปิดร้านค้าไม่ได้',
+                    'missing_fields': 'กรุณากรอกข้อมูลให้ครบถ้วน',
+                    'upload_failed': 'อัปโหลดรูปภาพล้มเหลว กรุณาลองใหม่',
+                    'already_pending': 'คุณมีใบสมัครที่รอตรวจสอบอยู่แล้ว',
+                    'db_error': 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่'
+                }[errorParam] || null;
+                %>
+
+                <% if (successMsg) { %>
+                <div class="form-alert form-alert--success">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span><%= successMsg %></span>
+                </div>
+                <% } %>
+
+                <% if (errorMsg) { %>
+                <div class="form-alert form-alert--danger">
+                    <i class="fa-solid fa-exclamation-circle"></i>
+                    <span><%= errorMsg %></span>
+                </div>
+                <% } %>
+
+                <% if (user.role !== 'CUSTOMER') { %>
+                <p class="text-muted">บัญชีของคุณเป็น<%= user.role === 'SELLER' ? 'ผู้ขายอยู่แล้ว' : 'บัญชีที่ไม่ใช่ลูกค้าทั่วไป' %> จึงไม่ต้องสมัครเปิดร้านค้าอีก</p>
+                <% } else if (latestApplication && latestApplication.status === 'PENDING') { %>
+                <p class="text-muted"><i class="fa-solid fa-clock me-2"></i>ใบสมัครร้าน "<%= latestApplication.shopName %>" ของคุณอยู่ระหว่างตรวจสอบ กรุณารอแอดมินอนุมัติ</p>
+                <% } else if (latestApplication && latestApplication.status === 'APPROVED') { %>
+                <p class="text-muted"><i class="fa-solid fa-circle-check me-2"></i>ใบสมัครร้าน "<%= latestApplication.shopName %>" ของคุณได้รับการอนุมัติแล้ว กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่ เพื่อใช้งานเมนูร้านค้า</p>
+                <% } else { %>
+
+                <% if (latestApplication && latestApplication.status === 'REJECTED') { %>
+                <div class="form-alert form-alert--danger">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                    <span>ใบสมัครร้าน "<%= latestApplication.shopName %>" ครั้งก่อนไม่ผ่านการอนุมัติ<%= latestApplication.rejectReason ? ` (เหตุผล: ${latestApplication.rejectReason})` : '' %> คุณสามารถแก้ไขข้อมูลและสมัครใหม่ได้ด้านล่าง</span>
+                </div>
+                <% } %>
+
+                <form action="/shop-application" method="POST"
+                    enctype="multipart/form-data">
+
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label>ชื่อร้านค้า</label>
+                            <input type="text" name="shopName" class="input-white"
+                                placeholder="เช่น ร้านส้มตำป้าแดง" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>ประเภทสินค้า</label>
+                            <select name="productType" class="input-white">
+                                <option value disabled selected>เลือกประเภท...</option>
+                                <option value="FOOD">อาหาร/เครื่องดื่ม</option>
+                                <option value="FASHION">เสื้อผ้า/แฟชั่น</option>
+                                <option value="อื่นๆ">อื่นๆ</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label>รายละเอียดสินค้า</label>
+                        <textarea name="productDetail" class="input-white"
+                            placeholder="เพิ่มรายละเอียดสินค้าที่จะขาย..."></textarea>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label>รูปหน้าร้าน (ถ้ามี)</label>
+                        <div class="upload-wrapper">
+                            <label for="imageUpload" class="upload-box"
+                                id="uploadLabel">
+                                <img id="imagePreview" src alt="Preview">
+                            </label>
+                            <input type="file" name="shopCoverImage" id="imageUpload"
+                                class="upload-input" accept="image/*">
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                        class="submit-btn"
+                        id="submitBtn">ส่งใบสมัคร</button>
+
+                </form>
+                <% } %>
+            </div>
+        </div>
+
+        <script src="/js/seller/shopApplication.js"></script>
+    </body>
+</html>

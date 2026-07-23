@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ใบสมัครร้านค้า - Admin</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+            rel="stylesheet">
+        <link rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+            rel="stylesheet">
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260711-5">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/approvals.css">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+        <link rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    </head>
+    <body class="bg-light">
+        <script src="/js/common/tabSession.js"></script>
+
+        <%- include('../partials/navbar') %>
+
+        <div class="approvals-page">
+            <%
+                const applicationsList = (typeof applications !== 'undefined' && Array.isArray(applications)) ? applications : [];
+                const summaryCounts = (typeof counts !== 'undefined' && counts) ? counts : { all: 0, pending: 0, approved: 0, rejected: 0 };
+            %>
+
+            <header class="site-header">
+                <a href="javascript:history.back()" class="btn-back"><i
+                        class="fa-solid fa-arrow-left"></i></a>
+                <h2 class="header-title">ใบสมัครร้านค้า</h2>
+                <div class="header-spacer"></div>
+            </header>
+
+            <div class="container">
+
+                <% if (typeof error !== 'undefined' && error) { %>
+                    <%
+                        const errorMessages = {
+                            missing_application_id: 'ไม่พบใบสมัครที่ต้องการ',
+                            application_not_found: 'ไม่พบใบสมัครนี้',
+                            application_already_reviewed: 'ใบสมัครนี้ถูกตรวจสอบไปแล้ว',
+                            approve_failed: 'อนุมัติไม่สำเร็จ กรุณาลองใหม่',
+                            reject_failed: 'ปฏิเสธไม่สำเร็จ กรุณาลองใหม่'
+                        };
+                    %>
+                    <div class="alert alert-danger"><%= errorMessages[error] || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง' %></div>
+                <% } %>
+                <% if (typeof success !== 'undefined' && success) { %>
+                    <%
+                        const successMessages = {
+                            application_approved: 'อนุมัติใบสมัครร้านค้าเรียบร้อย ระบบแจ้งผู้สมัครแล้ว',
+                            application_rejected: 'ปฏิเสธใบสมัครร้านค้าเรียบร้อย ระบบแจ้งผู้สมัครแล้ว'
+                        };
+                    %>
+                    <div class="alert alert-success"><%= successMessages[success] || 'ทำรายการสำเร็จ' %></div>
+                <% } %>
+
+                <div class="filter-section">
+                    <div class="summary-strip-hint">แตะเพื่อดูรายการ</div>
+                    <div class="summary-strip">
+                        <button type="button" class="summary-card" data-status-filter="all">
+                            <span class="summary-label">ทั้งหมด</span>
+                            <span class="summary-value" id="count-all"><%= summaryCounts.all %></span>
+                        </button>
+                        <button type="button" class="summary-card" data-status-filter="pending">
+                            <span class="summary-label">รอตรวจสอบ</span>
+                            <span class="summary-value"
+                                id="count-pending"><%= summaryCounts.pending %></span>
+                        </button>
+                        <button type="button" class="summary-card" data-status-filter="approved">
+                            <span class="summary-label">อนุมัติแล้ว</span>
+                            <span class="summary-value"
+                                id="count-approved"><%= summaryCounts.approved %></span>
+                        </button>
+                        <button type="button" class="summary-card" data-status-filter="rejected">
+                            <span class="summary-label">ปฏิเสธ</span>
+                            <span class="summary-value"
+                                id="count-rejected"><%= summaryCounts.rejected %></span>
+                        </button>
+                    </div>
+
+                    <div class="search-row">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="shopSearch"
+                                placeholder="ค้นหาร้านค้า...">
+                        </div>
+                        <button type="button" class="btn-clear-filters"
+                            id="clearFiltersBtn"><i
+                                class="fa-solid fa-rotate-left"></i>
+                            ล้างตัวกรอง</button>
+                    </div>
+                </div>
+
+                <div class="list-meta">พบ <span id="visibleCount">0</span>
+                    ร้าน</div>
+
+                <div class="card-list" id="applicationList">
+                    <% if (applicationsList.length === 0) { %>
+                        <div class="empty-state text-center py-5">
+                            <i class="fa-solid fa-inbox fa-2x mb-3 text-muted"></i>
+                            <div class="fw-semibold text-secondary">ยังไม่มีใบสมัครร้านค้า</div>
+                            <div class="text-muted small">เมื่อลูกค้ากดสมัครเปิดร้านค้า ระบบจะแสดงรายการที่นี่</div>
+                        </div>
+                    <% } %>
+
+                    <% applicationsList.forEach(function(application) { %>
+                        <% const detailPayload = encodeURIComponent(JSON.stringify({
+                            shopName: application.shopName || '-',
+                            productType: application.productType || '-',
+                            productDetail: application.productDetail || '-',
+                            applicantName: application.applicantName || '-',
+                            phoneNumber: application.phoneNumber || '-',
+                            email: application.email || '-',
+                            statusLabel: application.statusLabel || '-',
+                            applicationId: application.id,
+                            createdAtText: application.createdAtText || '-',
+                            rawStatus: application.status || 'pending',
+                            shopCoverImage: application.shopCoverImage || '',
+                            rejectReason: application.rejectReason || ''
+                        })); %>
+                        <div class="booking-card" data-application-id="<%= application.id %>" data-status="<%= application.status %>" data-shop="<%= application.shopName || '' %>" data-detail="<%= detailPayload %>" onclick="openDetailFromElement(this)">
+                            <div class="card-header">
+                                <h3 class="shop-name"><%= application.shopName %></h3>
+                                <span class="badge <%= application.status %>"><%= application.statusLabel %></span>
+                            </div>
+                            <div class="card-body">
+                                <p><i class="fa-solid fa-tag"></i> ประเภทสินค้า: <%= application.productType %></p>
+                                <p><i class="fa-solid fa-user"></i> ผู้สมัคร: <%= application.applicantName %></p>
+                                <p><i class="fa-solid fa-phone"></i> เบอร์: <%= application.phoneNumber %></p>
+                                <p><i class="fa-solid fa-calendar-check"></i> ยื่นคำขอ: <%= application.createdAtText %></p>
+                            </div>
+                            <div class="card-actions">
+                                <button type="button" class="btn-action <%= application.status === 'pending' ? 'btn-approve' : 'btn-neutral' %>" onclick="event.stopPropagation(); openDetailFromElement(this.closest('.booking-card'))"><%= application.status === 'pending' ? 'ตรวจสอบใบสมัคร' : 'ดูรายละเอียด' %></button>
+                            </div>
+                        </div>
+                    <% }) %>
+
+                </div>
+
+            </div>
+
+            <div class="modal-overlay" id="detailModal"
+                onclick="closeModalOnOverlay(event)">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>รายละเอียดใบสมัครร้านค้า</h3>
+                        <button class="btn-close" onclick="closePopup()"><i
+                                class="fa-solid fa-xmark"></i></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="shop-image-box" id="m-shop-image-box">
+                            <img id="m-shop-image" class="shop-image" src="" alt="รูปหน้าร้าน">
+                            <div id="m-shop-image-empty" class="shop-image-empty d-none">ไม่มีรูปหน้าร้าน</div>
+                        </div>
+
+                        <div class="detail-grid">
+                            <span class="detail-label">ชื่อร้านค้า:</span>
+                            <span class="detail-value detail-highlight" id="m-shop"></span>
+
+                            <span class="detail-label">ประเภทสินค้า:</span>
+                            <span class="detail-value" id="m-product-type"></span>
+
+                            <span class="detail-label">รายละเอียดสินค้า:</span>
+                            <span class="detail-value" id="m-product-detail"></span>
+
+                            <span class="detail-label">ผู้สมัคร:</span>
+                            <span class="detail-value detail-highlight" id="m-name"></span>
+
+                            <span class="detail-label">เบอร์โทรศัพท์:</span>
+                            <span class="detail-value" id="m-phone"></span>
+
+                            <span class="detail-label">อีเมล:</span>
+                            <span class="detail-value" id="m-email"></span>
+
+                            <span class="detail-label">วันที่ยื่นคำขอ:</span>
+                            <span class="detail-value" id="m-start"></span>
+
+                            <span class="detail-label">สถานะ:</span>
+                            <span class="detail-value" id="m-status"></span>
+                        </div>
+
+                        <div class="modal-footer" id="m-footer-actions"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <script src="/js/admin/sellerApplications.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    </body>
+</html>

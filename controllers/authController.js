@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { SignJWT } = require('jose');
 const { z } = require('zod');
 const userModel = require('../models/userModel');
+const prisma = require('../config/prismaClient');
 const { getCookieOptions, getJwtSecretKey } = require('../config/authSecrets');
 const { sendPasswordResetEmail } = require('../config/mailer');
 const logger = require('../config/logger');
@@ -429,9 +430,17 @@ exports.getProfile = async (req, res) => {
             });
         }
 
+        const latestSellerApplication = profileUser.role === 'CUSTOMER'
+            ? await prisma.sellerApplication.findFirst({
+                where: { userId: profileUser.id },
+                orderBy: { createdAt: 'desc' }
+            })
+            : null;
+
         return res.render('admin/profile', {
             user: req.user || userModel.sanitizeUser(profileUser),
             profileUser,
+            latestSellerApplication,
             success: req.query.success || null,
             error: req.query.error || null
         });

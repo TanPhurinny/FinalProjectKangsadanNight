@@ -26,6 +26,7 @@ model User {
   communityPosts CommunityPost[]
   communityLikes CommunityLike[]
   communityComments CommunityComment[]
+  sellerApplications SellerApplication[]
 }
 
 model CommunityPost {
@@ -109,6 +110,22 @@ model ShopDetail {
   isVerified    Boolean @default(false)
   userId        Int     @unique
   user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SellerApplication {
+  id             Int       @id @default(autoincrement())
+  userId         Int
+  shopName       String
+  productType    String?
+  productDetail  String?   @db.Text
+  shopCoverImage String?
+  status         Status    @default(PENDING)
+  rejectReason   String?   @db.Text
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "SellerApplication_userId_fkey")
 }
 
 model BookingRequest {

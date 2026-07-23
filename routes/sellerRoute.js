@@ -5,7 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { getAnnouncementsForUser } = require('../controllers/announcementController');
-const { repairReportSchema, bookingStallInputSchema } = require('../utils/validationSchemas');
+const { repairReportSchema, bookingStallInputSchema, sellerApplicationSchema } = require('../utils/validationSchemas');
 
 // สร้างโฟลเดอร์ upload ถ้ายังไม่มี
 const uploadDir = path.join(__dirname, '../public/uploads/repairs');
@@ -55,6 +55,35 @@ const paymentSlipStorage = multer.diskStorage({
 
 const uploadPaymentSlip = multer({
     storage: paymentSlipStorage,
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('ประเภทไฟล์ไม่ถูกต้อง'), false);
+        }
+    },
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+});
+
+// โฟลเดอร์เก็บรูปหน้าร้านตอนสมัครเปิดร้านค้า
+const shopApplicationDir = path.join(__dirname, '../public/uploads/shop-applications');
+if (!fs.existsSync(shopApplicationDir)) {
+    fs.mkdirSync(shopApplicationDir, { recursive: true });
+}
+
+const shopApplicationStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, shopApplicationDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const uploadShopApplication = multer({
+    storage: shopApplicationStorage,
     fileFilter: (req, file, cb) => {
         const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         if (allowedTypes.includes(file.mimetype)) {
@@ -525,6 +554,65 @@ router.get('/seller', isSellerOnly, async (req, res) => {
 });
 
 // เส้นทาง community ถูกแยกไปจัดการที่ routes/communityRoutes.js แล้ว
+
+// --- สมัครเปิดร้านค้า (CUSTOMER สมัครแล้วรออนุมัติเป็น SELLER) ---
+router.get('/shop-application', isAuthenticated, async (req, res) => {
+    const latestApplication = await prisma.sellerApplication.findFirst({
+        where: { userId: req.user.id },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    res.render('seller/shopApplication', {
+        user: req.user,
+        latestApplication,
+        error: req.query.error || null,
+        success: req.query.success || null
+    });
+});
+
+router.post('/shop-application', isAuthenticated, (req, res) => {
+    if (req.user.role !== 'CUSTOMER') {
+        return res.redirect('/shop-application?error=not_customer');
+    }
+
+    uploadShopApplication.single('shopCoverImage')(req, res, async (err) => {
+        if (err) {
+            return res.redirect('/shop-application?error=upload_failed');
+        }
+
+        try {
+            const parsed = sellerApplicationSchema.safeParse(req.body);
+            if (!parsed.success) {
+                return res.redirect('/shop-application?error=missing_fields');
+            }
+
+            const pendingApplication = await prisma.sellerApplication.findFirst({
+                where: { userId: req.user.id, status: 'PENDING' }
+            });
+            if (pendingApplication) {
+                return res.redirect('/shop-application?error=already_pending');
+            }
+
+            const { shopName, productType, productDetail } = parsed.data;
+            const shopCoverImage = req.file ? `/uploads/shop-applications/${req.file.filename}` : null;
+
+            await prisma.sellerApplication.create({
+                data: {
+                    userId: req.user.id,
+                    shopName,
+                    productType: productType || null,
+                    productDetail: productDetail || null,
+                    shopCoverImage,
+                    status: 'PENDING'
+                }
+            });
+
+            return res.redirect('/shop-application?success=application_submitted');
+        } catch (dbErr) {
+            return res.redirect('/shop-application?error=db_error');
+        }
+    });
+});
 
 // --- 1. หน้าแจ้งซ่อม ---
 router.get("/repair", isAuthenticated, async (req, res) => {

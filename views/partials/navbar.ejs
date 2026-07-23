@@ -31,6 +31,10 @@ const currentPath = locals.path || '';
                 class="nav-item <%= currentPath.includes('approvals') ? 'active' : '' %>">
                 <i class="fas fa-check-circle"></i> รายการอนุมัติ
             </a>
+            <a href="/admin/seller-applications"
+                class="nav-item <%= currentPath.includes('seller-applications') ? 'active' : '' %>">
+                <i class="fas fa-store"></i> ใบสมัครร้านค้า
+            </a>
             <a href="/admin/announcements"
                 class="nav-item <%= currentPath.includes('announcements') ? 'active' : '' %>">
                 <i class="fas fa-bullhorn"></i> จัดการประกาศ

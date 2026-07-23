@@ -56,6 +56,12 @@ const announcementSchema = z.object({
     category: z.string().trim().max(100).optional()
 });
 
+const sellerApplicationSchema = z.object({
+    shopName: z.string().trim().min(1).max(200),
+    productType: z.string().trim().max(100).optional(),
+    productDetail: z.string().trim().max(2000).optional()
+});
+
 module.exports = {
     USER_ROLE_VALUES,
     REPAIR_STATUS_VALUES,
@@ -65,5 +71,6 @@ module.exports = {
     repairReportSchema,
     repairStatusUpdateSchema,
     announcementSchema,
-    bookingStallInputSchema
+    bookingStallInputSchema,
+    sellerApplicationSchema
 };
