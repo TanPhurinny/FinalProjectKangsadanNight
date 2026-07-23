@@ -1,0 +1,706 @@
+/* ============================================================
+   feed.css - Community Marketplace Feed Styles
+   Theme Color: #3BB8D4
+   Mobile-First Responsive
+   ============================================================ */
+
+/* ---- CSS Variables ---- */
+:root {
+  --primary:      #3BB8D4;
+  --primary-dark: #28a0b8;
+  --primary-light:#e8f8fc;
+  --white:        #FFFFFF;
+  --bg-page:      #F5F7FA;
+  --bg-card:      #FFFFFF;
+  --border:       #E9EEF2;
+  --text-dark:    #222222;
+  --text-muted:   #666666;
+  --radius-card:  16px;
+  --radius-pill:  50px;
+  --shadow-card:  0 2px 12px rgba(0,0,0,0.07);
+  --shadow-hover: 0 6px 24px rgba(59,184,212,0.15);
+  --transition:   0.2s ease;
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+.feed-page {
+  background: var(--bg-page);
+  min-height: 100vh;
+  padding-bottom: 32px;
+}
+
+/* ============================================================
+   1. BANNER SECTION
+   ============================================================ */
+.banner-section {
+  padding: 0 12px;
+}
+
+.banner-carousel {
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.banner-img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Dot indicators */
+.banner-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  margin: 0;
+}
+
+.banner-dots button {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  border: none;
+  padding: 0;
+  transition: background var(--transition), width var(--transition);
+}
+
+.banner-dots button.active {
+  background: var(--white);
+  width: 20px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   2. FILTER CATEGORY (Sticky Pills)
+   ============================================================ */
+.filter-section {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-page);
+  padding: 10px 0 10px;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.filter-scroll-wrapper {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 4px 12px;
+}
+
+.filter-scroll-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-pills {
+  white-space: nowrap;
+  flex-wrap: nowrap;
+}
+
+.filter-pill {
+  flex-shrink: 0;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 6px 16px;
+  border: 1.5px solid var(--border);
+  transition: all var(--transition);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-pill--active {
+  background: var(--primary);
+  color: var(--white);
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(59,184,212,0.3);
+}
+
+.filter-pill--inactive {
+  background: var(--white);
+  color: var(--text-dark);
+}
+
+.filter-pill--inactive:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ============================================================
+   3. FEED SECTION
+   ============================================================ */
+.feed-section {
+  padding: 0 12px;
+}
+
+.feed-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.empty-state-card {
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-card);
+  color: var(--text-muted);
+  padding: 24px;
+  text-align: center;
+}
+
+/* ============================================================
+   POST CARD
+   ============================================================ */
+.post-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  padding: 14px 14px 0;
+  transition: box-shadow var(--transition);
+  animation: fadeInUp 0.3s ease both;
+}
+
+.post-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- POST HEADER ---- */
+.post-header {
+  margin-bottom: 10px;
+}
+.post-header-right {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.post-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--primary-light);
+  flex-shrink: 0;
+}
+
+.post-store-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  line-height: 1.2;
+}
+
+.post-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.owner-badge {
+  background: #1f9d52;
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  font-weight: 600;
+}
+.post-menu-btn {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 2px 6px;
+}
+.post-menu-btn:hover {
+  color: var(--primary-dark);
+}
+.post-category-pill {
+  display: inline-block;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  border: 1px solid rgba(59, 184, 212, 0.35);
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 4px 9px;
+  margin-bottom: 8px;
+}
+
+/* ============================================================
+   ปุ่มลอย "เขียนโพสต์" + "จัดการโพสต์ของคุณ" — วางในแถบเดียวกัน
+   แทนที่จะเป็น position:fixed คนละจุดเหมือนเดิม
+   ============================================================ */
+.feed-fab-bar {
+  position: fixed;
+  right: 16px;
+  bottom: 20px;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.manage-posts-fab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  color: var(--text-dark);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.manage-posts-fab:hover {
+  color: var(--primary-dark);
+}
+.manage-posts-fab__icon {
+  font-size: 1rem;
+}
+
+.write-post-fab {
+  border: 0;
+  border-radius: 999px;
+  background: #3bb8d4;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 14px 25px rgba(59, 184, 212, 0.35);
+}
+.write-post-fab:hover {
+  background: #28a0b8;
+}
+.fab-plus {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .feed-fab-bar {
+    right: 12px;
+    bottom: 16px;
+    gap: 8px;
+  }
+  .manage-posts-fab,
+  .write-post-fab {
+    padding: 10px 12px;
+    font-size: 0.78rem;
+  }
+  /* จอเล็กมาก: เหลือแค่ไอคอน ไม่ให้ปุ่มสองอันดันกันจนล้นขอบจอ */
+  .manage-posts-fab span:not(.manage-posts-fab__icon),
+  .write-post-fab span:not(.fab-plus) {
+    display: none;
+  }
+}
+
+.image-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+.image-preview-item {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.image-preview-item img {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+  display: block;
+}
+.remove-image-btn {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 3px 8px;
+}
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.comment-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.comment-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--primary-light);
+}
+.comment-content-wrap {
+  background: #f5f8fb;
+  border-radius: 10px;
+  padding: 8px 10px;
+  flex: 1;
+}
+.comment-author {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.comment-text {
+  font-size: 0.86rem;
+  white-space: pre-wrap;
+}
+.comment-time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.comment-empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 16px;
+}
+
+/* ============================================================
+   CUSTOM FORM UI — การ์ดเลือกประเภทโพสต์
+   ============================================================ */
+.category-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text-dark);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.category-card i {
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+.category-card:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+.category-card--active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  box-shadow: 0 0 0 2px rgba(59, 184, 212, 0.25);
+}
+.category-card--active i,
+.category-card--active {
+  color: var(--primary-dark);
+}
+
+/* ============================================================
+   CUSTOM FORM UI — Drag & Drop อัปโหลดรูป
+   ============================================================ */
+.image-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.image-dropzone i {
+  font-size: 1.8rem;
+  color: var(--primary);
+  display: block;
+  margin-bottom: 6px;
+}
+.image-dropzone:hover,
+.image-dropzone:focus-visible {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+.image-dropzone--active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+.image-dropzone__browse {
+  color: var(--primary-dark);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* ============================================================
+   CUSTOM FORM UI — กล่องพิมพ์เนื้อหาโพสต์สไตล์ Facebook
+   (ยัง submit เป็น plain text ปกติ แค่หน้าตา/ขนาดเปลี่ยนอัตโนมัติ)
+   ============================================================ */
+.fb-style-textarea {
+  width: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  font-family: inherit;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  padding: 4px 2px;
+  min-height: 60px;
+  color: var(--text-dark);
+}
+.fb-style-textarea::placeholder {
+  color: #9aa5ad;
+}
+
+/* Stall Badge */
+.stall-badge {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+  padding: 6px 14px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(59,184,212,0.2);
+}
+
+/* ---- POST CONTENT ---- */
+.post-content {
+  margin-bottom: 10px;
+}
+
+.post-text {
+  font-size: 0.875rem;
+  color: var(--text-dark);
+  line-height: 1.55;
+  white-space: pre-line;
+  margin: 0;
+}
+
+/* ============================================================
+   POST GALLERY
+   ============================================================ */
+.post-gallery {
+  display: grid;
+  gap: 2px;
+  margin: 0 -14px;
+  overflow: hidden;
+}
+
+/* 1 image: full width */
+.post-gallery--1 {
+  grid-template-columns: 1fr;
+}
+.post-gallery--1 .gallery-item { height: 240px; }
+
+/* 2 images: 2 columns */
+.post-gallery--2 {
+  grid-template-columns: 1fr 1fr;
+}
+.post-gallery--2 .gallery-item { height: 200px; }
+
+/* 3 images: left big + right 2 stacked */
+.post-gallery--3 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+}
+.post-gallery--3 .gallery-item:first-child {
+  grid-row: 1 / 3;
+  height: 200px;
+}
+.post-gallery--3 .gallery-item:not(:first-child) { height: 98px; }
+
+/* 4 images: 2x2 grid */
+.post-gallery--4 {
+  grid-template-columns: 1fr 1fr;
+}
+.post-gallery--4 .gallery-item { height: 160px; }
+
+/* Gallery item */
+.gallery-item {
+  position: relative;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.gallery-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  cursor: pointer;
+  transition: transform 0.25s ease;
+}
+
+.gallery-img:hover { transform: scale(1.03); }
+
+/* +N overlay */
+.gallery-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.52);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.gallery-overlay:hover { background: rgba(0,0,0,0.65); }
+
+.gallery-overlay span {
+  color: var(--white);
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* ============================================================
+   INTERACTION BAR
+   ============================================================ */
+.post-actions {
+  padding: 10px 0 12px;
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all var(--transition);
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.action-btn i {
+  font-size: 1.1rem;
+  transition: transform 0.18s ease;
+}
+
+.action-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.action-btn:hover i {
+  transform: scale(1.15);
+}
+
+/* Like active */
+.like-btn.is-liked {
+  color: #e53e3e;
+}
+.like-btn.is-liked i { color: #e53e3e; }
+
+/* Like animation */
+.like-btn.like-animate i {
+  animation: likePop 0.3s ease;
+}
+@keyframes likePop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+
+/* Save active */
+.save-btn.is-saved {
+  color: var(--primary);
+}
+.save-btn.is-saved i { color: var(--primary); }
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.feed-toast {
+  background: var(--primary);
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* ============================================================
+   RESPONSIVE — Tablet (≥768px)
+   ============================================================ */
+@media (min-width: 768px) {
+  .banner-section { padding: 0 20px; }
+  .banner-img { height: 240px; }
+  .filter-section { padding: 12px 0; }
+  .filter-scroll-wrapper { padding: 4px 20px; }
+  .feed-section { padding: 0 20px; }
+  .feed-container { gap: 16px; }
+
+  .post-card { padding: 18px 18px 0; }
+  .post-gallery--1 .gallery-item { height: 320px; }
+  .post-gallery--2 .gallery-item { height: 250px; }
+  .post-gallery--3 .gallery-item:first-child { height: 260px; }
+  .post-gallery--3 .gallery-item:not(:first-child) { height: 128px; }
+  .post-gallery--4 .gallery-item { height: 200px; }
+  .post-gallery { margin: 0 -18px; }
+}
+
+/* ============================================================
+   RESPONSIVE — Desktop (≥900px)
+   ============================================================ */
+@media (min-width: 900px) {
+  .banner-section { padding: 0 24px; }
+  .banner-img { height: 280px; }
+  .filter-scroll-wrapper { padding: 4px 24px; }
+  .feed-section { padding: 0 24px; }
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .post-card,
+  .gallery-img,
+  .action-btn,
+  .filter-pill { transition: none; }
+  .post-card { animation: none; }
+}

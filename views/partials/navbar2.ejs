@@ -25,6 +25,12 @@
                 <a href="/seller" class="nav-item <%= currentPath === '/seller' ? 'active' : '' %>">
                     <i class="fas fa-home"></i> หน้าหลัก
                 </a>
+                <a href="/#announcements" class="nav-item">
+                    <i class="fas fa-bullhorn"></i> ประกาศ
+                </a>
+                <a href="/community" class="nav-item <%= (currentPath.includes('community') || currentPath.includes('comunity')) ? 'active' : '' %>">
+                    <i class="fas fa-users"></i> คอมมูนิตี้
+                </a>
                 <a href="/select-zone" class="nav-item <%= currentPath.includes('select-zone') ? 'active' : '' %>">
                     <i class="fas fa-store"></i> เลือกโซนจองแผง
                 </a>

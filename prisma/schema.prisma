@@ -23,6 +23,64 @@ model User {
   shop          ShopDetail?
   sellerProfile Seller?
   passwordResetTokens PasswordResetToken[]
+  communityPosts CommunityPost[]
+  communityLikes CommunityLike[]
+  communityComments CommunityComment[]
+}
+
+model CommunityPost {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  category  String
+  content   String   @db.LongText
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images    CommunityPostImage[]
+  likes     CommunityLike[]
+  comments  CommunityComment[]
+
+  @@index([userId], map: "CommunityPost_userId_fkey")
+  @@index([createdAt], map: "CommunityPost_createdAt_idx")
+}
+
+model CommunityPostImage {
+  id       Int    @id @default(autoincrement())
+  postId   Int
+  imageUrl String
+
+  post     CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId], map: "CommunityPostImage_postId_fkey")
+}
+
+model CommunityComment {
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  userId    Int
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId], map: "CommunityComment_postId_fkey")
+  @@index([userId], map: "CommunityComment_userId_fkey")
+}
+
+model CommunityLike {
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  userId    Int
+  createdAt DateTime @default(now())
+
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId], map: "CommunityLike_postId_fkey")
+  @@index([userId], map: "CommunityLike_userId_fkey")
 }
 
 model PasswordResetToken {

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>จัดการโพสต์ของคุณ - คอมมูนิตี้</title>
+  <link rel="icon" type="image/png" href="/img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260711-5" />
+  <link rel="stylesheet" href="/stylesheets/seller/community-my-posts.css" />
+</head>
+<body>
+<script src="/js/common/tabSession.js"></script>
+<%- include('../partials/navbar2') %>
+
+<div class="my-posts-page container py-3 py-md-4">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+    <div>
+      <h2 class="h4 fw-bold mb-1">จัดการโพสต์ของคุณ</h2>
+      <p class="text-muted mb-0">ค้นหา กรอง และแก้ไขโพสต์ของร้านคุณ</p>
+    </div>
+    <a href="/community" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> กลับหน้าคอมมูนิตี้
+    </a>
+  </div>
+
+  <form id="myPostsFilterForm" class="card p-3 shadow-sm mb-3">
+    <div class="row g-2">
+      <div class="col-12 col-md-5">
+        <input type="text" class="form-control" id="searchInput" placeholder="ค้นหาจากเนื้อหาโพสต์...">
+      </div>
+      <div class="col-12 col-md-4">
+        <select class="form-select" id="categoryFilter">
+          <option value="">ทุกประเภท</option>
+          <% categories.forEach(function(category) { %>
+            <option value="<%= category %>"><%= category %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="col-12 col-md-3 d-grid">
+        <button type="submit" class="btn btn-primary">ค้นหา</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="table-responsive d-none d-lg-block">
+    <table class="table table-bordered align-middle bg-white" id="myPostsTable">
+      <thead>
+        <tr>
+          <th style="width: 130px;">รูปตัวอย่าง</th>
+          <th>ประเภท</th>
+          <th>วันที่โพสต์</th>
+          <th>ยอด Like</th>
+          <th>ยอด Comment</th>
+          <th style="width: 180px;">จัดการ</th>
+        </tr>
+      </thead>
+      <tbody id="myPostsTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="d-flex flex-column gap-2 d-lg-none" id="myPostsCardList"></div>
+
+  <div id="myPostsEmptyState" class="text-center text-muted py-4 d-none">
+    ไม่พบโพสต์ที่ตรงเงื่อนไข
+  </div>
+</div>
+
+<div class="modal fade" id="editPostModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="editPostForm">
+        <input type="hidden" id="editPostId" name="postId">
+        <div class="modal-header">
+          <h5 class="modal-title">แก้ไขโพสต์</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">เลือกประเภทโพสต์</label>
+            <div class="category-card-grid" id="editCategoryGrid" role="radiogroup" aria-label="เลือกประเภทโพสต์">
+              <% categories.forEach(function(category) { %>
+                <button type="button" class="category-card" data-category="<%= category %>" role="radio" aria-checked="false">
+                  <i class="bi <%= (categoryIcons && categoryIcons[category]) || defaultCategoryIcon %>"></i>
+                  <span><%= category %></span>
+                </button>
+              <% }) %>
+            </div>
+            <select class="visually-hidden" id="editPostCategory" name="category" required>
+              <% categories.forEach(function(category) { %>
+                <option value="<%= category %>"><%= category %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">เนื้อหาโพสต์</label>
+            <textarea class="fb-style-textarea" id="editPostContent" name="content" rows="2" maxlength="5000" placeholder="คุณกำลังคิดอะไรอยู่?" required></textarea>
+          </div>
+          <div class="mb-2">รูปภาพเดิม</div>
+          <div id="editExistingImages" class="image-preview-grid mb-3"></div>
+          <div class="mb-2">
+            <label class="form-label">เพิ่มรูปใหม่ (สูงสุดรวมไม่เกิน 10 รูป)</label>
+            <div class="image-dropzone" id="editDropzone" tabindex="0" role="button" aria-label="ลากรูปมาวางหรือคลิกเพื่อเลือกไฟล์">
+              <i class="bi bi-cloud-arrow-up"></i>
+              <p class="mb-0">ลากรูปมาวางที่นี่ หรือ <span class="image-dropzone__browse">คลิกเพื่อเลือกไฟล์</span></p>
+            </div>
+            <input class="visually-hidden" type="file" id="editPostImages" name="images" accept="image/*" multiple>
+          </div>
+          <div id="editNewImagePreview" class="image-preview-grid"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกการแก้ไข</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3" style="z-index: 9999;">
+  <div id="actionToast" class="toast align-items-center text-white border-0 feed-toast" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toastMessage">พร้อมใช้งาน</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.__MY_POSTS_INITIAL__ = <%- JSON.stringify(posts || []) %>;
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/seller/community-my-posts.js" defer></script>
+</body>
+</html>

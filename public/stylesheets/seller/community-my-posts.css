@@ -1,0 +1,190 @@
+:root {
+  --primary: #3bb8d4;
+  --primary-dark: #28a0b8;
+  --bg-card: #ffffff;
+  --border: #e9eef2;
+  --text-muted: #666666;
+}
+
+body {
+  background: #f5f7fa;
+}
+
+.my-posts-page .card {
+  border: 1px solid var(--border);
+}
+
+#myPostsTable {
+  background: var(--bg-card);
+}
+
+#myPostsTable thead th {
+  background: #eff7fb;
+  color: #2b5f6b;
+  font-weight: 600;
+}
+
+.table-thumb {
+  width: 100%;
+  max-width: 110px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.mobile-post-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.mobile-post-card .thumb {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.mobile-meta {
+  font-size: 0.87rem;
+  color: var(--text-muted);
+}
+
+.image-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.image-preview-item {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.image-preview-item img {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 3px 8px;
+}
+
+.feed-toast {
+  background: #3bb8d4;
+}
+
+/* ============================================================
+   CUSTOM FORM UI — เหมือนกับหน้าฟีดคอมมูนิตี้ (comunity.css)
+   ใช้ในโมดัลแก้ไขโพสต์ของหน้านี้
+   ============================================================ */
+.category-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  color: #222;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.category-card i {
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+.category-card:hover {
+  border-color: var(--primary);
+  background: #e8f8fc;
+}
+.category-card--active {
+  border-color: var(--primary);
+  background: #e8f8fc;
+  color: var(--primary-dark);
+  box-shadow: 0 0 0 2px rgba(59, 184, 212, 0.25);
+}
+.category-card--active i {
+  color: var(--primary-dark);
+}
+
+.image-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.image-dropzone i {
+  font-size: 1.8rem;
+  color: var(--primary);
+  display: block;
+  margin-bottom: 6px;
+}
+.image-dropzone:hover,
+.image-dropzone:focus-visible {
+  border-color: var(--primary);
+  background: #e8f8fc;
+}
+.image-dropzone--active {
+  border-color: var(--primary);
+  background: #e8f8fc;
+}
+.image-dropzone__browse {
+  color: var(--primary-dark);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.fb-style-textarea {
+  width: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  font-family: inherit;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  padding: 4px 2px;
+  min-height: 60px;
+  color: #222;
+}
+.fb-style-textarea::placeholder {
+  color: #9aa5ad;
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+}

@@ -503,6 +503,8 @@ router.get('/seller', isSellerOnly, async (req, res) => {
     });
 });
 
+// เส้นทาง community ถูกแยกไปจัดการที่ routes/communityRoutes.js แล้ว
+
 // --- 1. หน้าแจ้งซ่อม ---
 router.get("/repair", isAuthenticated, async (req, res) => {
     const user = await prisma.user.findUnique({
