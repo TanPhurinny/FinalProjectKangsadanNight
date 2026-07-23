@@ -30,6 +30,10 @@ router.post('/reset-password', forgotPasswordLimiter, authController.resetPasswo
 router.get('/logout', authController.logout);
 router.post('/logout', authController.logout);
 
+// สลับมุมมองพ่อค้าแม่ค้า <-> ลูกค้าทั่วไป (บัญชี SELLER เท่านั้น, role จริงไม่เปลี่ยน)
+router.get('/switch-view/customer', requireAuth, authController.switchToCustomerView);
+router.get('/switch-view/seller', requireAuth, authController.switchToSellerView);
+
 // ดูโปรไฟล์ของตัวเอง
 router.get('/profile', requireAuth, authController.getProfile);
 

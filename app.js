@@ -84,6 +84,8 @@ app.use((req, res, next) => {
 app.use(async (req, res, next) => {
   req.user = await getCurrentUser(req);
   res.locals.user = req.user || null;
+  // ผู้ขายที่กดสลับไปดูมุมมองลูกค้าทั่วไปชั่วคราว (session flag เท่านั้น role จริงใน JWT ไม่เปลี่ยน)
+  res.locals.viewAsCustomer = Boolean(req.user?.role === 'SELLER' && req.session?.viewAsCustomer);
   next();
 });
 
@@ -109,7 +111,7 @@ app.get('/', async (req, res) => {
   try {
     const user = req.user || null;
 
-    if (user?.role === 'SELLER') {
+    if (user?.role === 'SELLER' && !res.locals.viewAsCustomer) {
       const tabToken = req.query?.tabToken;
       const sellerPath = tabToken
         ? `/seller?tabToken=${encodeURIComponent(String(tabToken))}`
@@ -118,7 +120,7 @@ app.get('/', async (req, res) => {
     }
 
     let roleToFetch = 'GUEST';
-    if (user?.role === 'CUSTOMER') roleToFetch = 'CUSTOMER';
+    if (user?.role === 'CUSTOMER' || res.locals.viewAsCustomer) roleToFetch = 'CUSTOMER';
     else if (user?.role === 'ADMIN' || user?.role === 'STAFF') roleToFetch = 'CUSTOMER';
 
     const announcements = await announceCtrl.getAnnouncementsForUser(roleToFetch);

@@ -40,6 +40,11 @@
                     <i class="fas fa-user-circle"></i>
                     <%= user ? user.name : 'ผู้ใช้งาน' %>
                 </div>
+                <% if (locals.viewAsCustomer) { %>
+                <a href="/switch-view/seller" class="switch-view-btn" title="กลับไปเป็นพ่อค้าแม่ค้า">
+                    <i class="fas fa-right-left"></i> สลับเป็นผู้ขาย
+                </a>
+                <% } %>
                 <a href="/logout" class="logout-link">
                     <i class="fas fa-sign-out-alt me-1"></i>ออกจากระบบ
                 </a>

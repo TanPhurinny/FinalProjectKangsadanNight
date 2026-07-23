@@ -546,5 +546,22 @@ exports.logout = async (req, res) => {
     }
 };
 
+// สลับไปดูมุมมองลูกค้าทั่วไปชั่วคราว (ใช้ session flag เท่านั้น ไม่แตะ role จริงใน JWT)
+// เฉพาะบัญชี SELLER เท่านั้นที่สลับได้ เพราะ role จริงยังคงเป็น SELLER เสมอ
+exports.switchToCustomerView = (req, res) => {
+    if (req.user?.role === 'SELLER' && req.session) {
+        req.session.viewAsCustomer = true;
+    }
+    return res.redirect('/community');
+};
+
+// สลับกลับไปดูมุมมองพ่อค้าแม่ค้าตามปกติ
+exports.switchToSellerView = (req, res) => {
+    if (req.session) {
+        req.session.viewAsCustomer = false;
+    }
+    return res.redirect('/seller');
+};
+
 exports.loginSchema = loginSchema;
 exports.registerSchema = registerSchema;

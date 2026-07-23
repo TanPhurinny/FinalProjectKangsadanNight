@@ -219,7 +219,7 @@ exports.renderFeedPage = async (req, res) => {
             defaultCategoryIcon: DEFAULT_CATEGORY_ICON,
             posts,
             currentUserAvatar,
-            canCreatePost: isSeller(req.user)
+            canCreatePost: isSeller(req.user) && !req.session?.viewAsCustomer
         });
     } catch (error) {
         console.error('renderFeedPage error:', error);

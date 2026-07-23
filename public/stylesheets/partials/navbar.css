@@ -98,9 +98,9 @@
 .nav-item {
     text-decoration: none;
     color: rgba(255, 255, 255, 0.66);
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 500;
-    padding: 0 14px;
+    padding: 0 10px;
     border-radius: 0;
     border-left: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
@@ -150,15 +150,15 @@
 .user-badge {
     background: transparent;
     color: #fff;
-    padding: 8px 16px;
+    padding: 6px 12px;
     border-radius: 3px;
     border: 1px solid rgba(255, 255, 255, 0.24);
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     font-family: var(--mono, monospace);
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-left: 14px;
+    gap: 6px;
+    margin-left: 10px;
 }
 
 .user-badge-link {
@@ -177,10 +177,38 @@
 
 .logout-link {
     color: rgba(255, 255, 255, 0.66);
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     text-decoration: none;
-    margin-left: 16px;
+    margin-left: 10px;
     font-weight: 500;
+}
+
+/* ปุ่มสลับมุมมองผู้ขาย <-> ลูกค้าทั่วไป — ตั้งใจให้เป็น pill เล็กแบบเดียวกับ .user-badge
+   (ไม่ใช้ .nav-item เพราะสูง 62px ตามลิงก์เมนูหลัก จะดูเกะกะเมื่ออยู่ติดกับ user-badge/logout)
+   ขนาด/padding ตั้งใจให้เท่ากับ .user-badge ที่ย่อลงแล้ว (ดูด้านบน) เพราะเมนู seller มีลิงก์เยอะ
+   รวมกับ user-badge/ปุ่มนี้/ปุ่มออกจากระบบแล้วกว้างเกิน .nav-container (max-width:1320px) ได้ง่าย
+   ต้องย่อทุกตัวลงพร้อมกันให้พอดีแถวเดียวเสมอ ไม่ใช่แค่ตัวใดตัวหนึ่ง */
+.switch-view-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+    padding: 6px 12px;
+    border-radius: 3px;
+    border: 1px solid #2C93A8;
+    color: #2C93A8;
+    background: transparent;
+    font-size: 0.74rem;
+    font-family: var(--mono, monospace);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.switch-view-btn:hover {
+    background: #2C93A8;
+    color: #fff;
 }
 
 /* markup ใช้ utility class ของ Bootstrap (d-flex/align-items-center/shadow-sm/me-1) แต่บางหน้า
@@ -271,6 +299,12 @@
     .user-badge-link:hover,
     .user-badge-link.active {
         transform: none;
+    }
+
+    .switch-view-btn {
+        margin: 0 0 15px 0;
+        width: 100%;
+        justify-content: center;
     }
 
     .logout-link {
