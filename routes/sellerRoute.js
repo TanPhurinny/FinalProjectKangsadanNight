@@ -324,14 +324,35 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification) {
         ];
     }
 
-    const statusText = getBookingStatusText(latestBooking.status, awaitingPaymentVerification);
+    const status = String(latestBooking.status || 'PENDING').toUpperCase();
+    const statusText = getBookingStatusText(status, awaitingPaymentVerification);
     const stallLabel = latestBooking.slot?.slotNumber || '-';
+    const zoneLabel = latestBooking.zoneCode ? `โซน ${latestBooking.zoneCode}` : 'ที่แจ้งไว้';
+
+    // สถานะปฏิเสธไม่ได้เดินตาม timeline ปกติ (รอตรวจสอบ -> จัดล็อก -> เสร็จสิ้น) จึงต้องแยก
+    // แสดงเป็นการ์ดแจ้งเตือนของตัวเอง ไม่งั้นผู้ขายจะเห็นข้อความ "รอการตรวจสอบ" ค้างอยู่ทั้งที่คำขอถูกปฏิเสธไปแล้ว
+    if (status === 'REJECTED') {
+        return [
+            {
+                id: 1,
+                type: 'cancelled',
+                title: 'คำขอจองไม่ผ่านการตรวจสอบ',
+                desc: `คำขอจอง${zoneLabel} ถูกปฏิเสธ กรุณาติดต่อแอดมินหรือส่งคำขอจองใหม่อีกครั้ง`,
+                date: formatDateThai(latestBooking.createdAt),
+                time: formatTimeThai(latestBooking.createdAt),
+                status: 'REJECTED',
+                isRead: false,
+                isNew: true
+            }
+        ];
+    }
+
     const timeline = [
         {
             id: 1,
             type: 'pending-review',
             title: 'รอการตรวจสอบรายการจอง',
-            desc: `ระบบได้รับรายการจองโซน ${latestBooking.zoneCode || '-'} แล้ว`,
+            desc: `ระบบได้รับรายการจอง${zoneLabel} แล้ว`,
             date: formatDateThai(latestBooking.createdAt),
             time: formatTimeThai(latestBooking.createdAt),
             status: 'PENDING'
@@ -341,10 +362,10 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification) {
             type: 'pending-payment',
             title: awaitingPaymentVerification
                 ? `ส่งสลิปโอนเงินสำหรับล็อก ${stallLabel} แล้ว`
-                : (latestBooking.status === 'IN_PROGRESS' ? `ได้รับล็อก ${stallLabel} แล้ว` : 'ชำระเงินค่าจอง'),
+                : (status === 'IN_PROGRESS' ? `ได้รับล็อก ${stallLabel} แล้ว` : 'ชำระเงินค่าจอง'),
             desc: awaitingPaymentVerification
                 ? `แอดมินกำลังตรวจสอบสลิปโอนเงินของคุณ เมื่อยืนยันแล้วระบบจะแจ้งเตือนว่าล็อก ${stallLabel} เป็นของคุณอย่างเป็นทางการ`
-                : (latestBooking.status === 'IN_PROGRESS'
+                : (status === 'IN_PROGRESS'
                     ? `คุณได้รับล็อก ${stallLabel} กรุณาอัปโหลดสลิปโอนเงินที่หน้าสถานะการจองเพื่อยืนยัน`
                     : `สถานะล่าสุด: ${statusText} | ล็อกที่จัด: ${stallLabel}`),
             date: formatDateThai(latestBooking.createdAt),
@@ -355,14 +376,14 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification) {
             id: 3,
             type: 'success-payment',
             title: 'เสร็จสิ้นการจอง',
-            desc: 'รายการจองถูกปิดงานเรียบร้อยแล้ว',
-            date: formatDateThai(latestBooking.createdAt),
-            time: formatTimeThai(latestBooking.createdAt),
+            desc: `ยืนยันการชำระเงินเรียบร้อย ล็อก ${stallLabel} เป็นของร้านคุณอย่างเป็นทางการ`,
+            date: formatDateThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
+            time: formatTimeThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             status: 'SUCCESS'
         }
     ];
 
-    const stage = getBookingStep(latestBooking.status);
+    const stage = getBookingStep(status);
     return timeline.map((item, index) => ({
         ...item,
         isRead: index < stage,
@@ -995,6 +1016,7 @@ async function loadSellerBookingStatus(userId) {
             status: String(latestRequest.status || 'PENDING').toUpperCase(),
             zoneCode: latestRequest.zone || latestBooking?.zoneCode || '',
             createdAt: latestRequest.createdAt || latestBooking?.createdAt,
+            paymentConfirmedAt: latestRequest.paymentConfirmedAt || null,
             slot: { slotNumber: latestRequest.assignedStallCode || latestBooking?.slot?.slotNumber || '-' }
         }
         : latestBooking;

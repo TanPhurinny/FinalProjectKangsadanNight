@@ -148,6 +148,22 @@
         <div class="payment-upload-box mt-4 p-3 border rounded-3 bg-light">
           <h6 class="fw-bold mb-2 text-dark-custom"><i class="bi bi-wallet2 me-2"></i>อัปโหลดสลิปโอนเงินเพื่อยืนยันการชำระเงิน</h6>
           <p class="text-muted small mb-3">คุณได้รับล็อก <strong>${booking.slotLabel}</strong> แล้ว กรุณาชำระเงินและแนบสลิปโอนเงินเพื่อยืนยัน แอดมินจะตรวจสอบสลิปก่อนยืนยันล็อกให้เป็นของคุณ</p>
+          <div class="bank-transfer-box mb-3 p-3 border rounded-3 bg-white">
+            <h6 class="fw-bold mb-2 text-dark-custom"><i class="bi bi-bank me-2"></i>บัญชีสำหรับโอนเงิน</h6>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+              <span class="text-muted small">ธนาคาร</span>
+              <span class="fw-semibold">กสิกรไทย (KBank)</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+              <span class="text-muted small">ชื่อบัญชี</span>
+              <span class="fw-semibold">ตลาดนัดกังสดาลไนท์</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+              <span class="text-muted small">เลขที่บัญชี</span>
+              <span class="fw-semibold">123-4-56789-0</span>
+            </div>
+            <p class="text-muted small mb-0 mt-2"><i class="bi bi-info-circle me-1"></i>เลขบัญชีนี้เป็นข้อมูลจำลองสำหรับสาธิตระบบเท่านั้น</p>
+          </div>
           <form action="/booking-payment/confirm" method="POST" enctype="multipart/form-data" class="d-flex flex-column flex-sm-row gap-2">
             <input type="file" name="paymentSlip" accept="image/*" class="form-control" required />
             <button type="submit" class="btn btn-custom-primary btn-custom text-nowrap px-4"><i class="bi bi-upload me-1"></i>ส่งสลิปโอนเงิน</button>

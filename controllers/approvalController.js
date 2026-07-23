@@ -1,5 +1,6 @@
 const prisma = require('../config/prismaClient');
 const { buildZonesData } = require('./marketController');
+const { sendStallAssignedEmail, sendPaymentConfirmedEmail } = require('../config/mailer');
 
 function normalizeZone(zone) {
     return String(zone || '').trim().toUpperCase();
@@ -416,7 +417,9 @@ exports.confirmPayment = async (req, res) => {
                 paymentSlipImage: true,
                 paymentConfirmedAt: true,
                 sellerId: true,
-                sellerName: true
+                sellerName: true,
+                assignedStallCode: true,
+                description: true
             }
         });
 
@@ -470,6 +473,21 @@ exports.confirmPayment = async (req, res) => {
                 });
             }
         });
+
+        if (sellerUserId) {
+            try {
+                const sellerUser = await prisma.user.findUnique({
+                    where: { id: sellerUserId },
+                    select: { email: true }
+                });
+                if (sellerUser?.email) {
+                    const stallCode = String(requestRecord.assignedStallCode || extractAssignedStallFromDescription(requestRecord.description) || '').trim().toUpperCase();
+                    await sendPaymentConfirmedEmail(sellerUser.email, stallCode || '-');
+                }
+            } catch (mailErr) {
+                console.warn('ส่งอีเมลแจ้งยืนยันการชำระเงินไม่สำเร็จ:', mailErr.message);
+            }
+        }
 
         return res.redirect('/admin/approvals?success=payment_confirmed');
     } catch (err) {
@@ -666,6 +684,20 @@ exports.confirmBookingStall = async (req, res) => {
                 });
             }
         });
+
+        if (sellerUserId) {
+            try {
+                const sellerUser = await prisma.user.findUnique({
+                    where: { id: sellerUserId },
+                    select: { email: true }
+                });
+                if (sellerUser?.email) {
+                    await sendStallAssignedEmail(sellerUser.email, selectedStall, requestedZone ? `โซน ${requestedZone}` : '');
+                }
+            } catch (mailErr) {
+                console.warn('ส่งอีเมลแจ้งจัดล็อกไม่สำเร็จ:', mailErr.message);
+            }
+        }
 
         return res.redirect('/admin/approvals?success=stall_assigned');
     } catch (err) {

@@ -52,6 +52,46 @@ async function sendPasswordResetEmail(toEmail, resetUrl) {
     });
 }
 
+async function sendStallAssignedEmail(toEmail, stallCode, zoneLabel) {
+    const transporter = getTransporter();
+
+    if (!transporter) {
+        console.warn(`Stall assigned email not sent (mailer not configured). ${toEmail}: ล็อก ${stallCode}`);
+        return;
+    }
+
+    await transporter.sendMail({
+        from: `"Kangsadan Night Market" <${process.env.GMAIL_USER}>`,
+        to: toEmail,
+        subject: `แจ้งจัดล็อก ${stallCode} ให้ร้านค้าของคุณ`,
+        html: `
+            <p>แอดมินได้จัดล็อก <strong>${stallCode}</strong>${zoneLabel ? ` (${zoneLabel})` : ''} ให้ร้านค้าของคุณเรียบร้อยแล้ว</p>
+            <p>กรุณาเข้าสู่ระบบและอัปโหลดสลิปโอนเงินที่หน้าสถานะการจอง เพื่อยืนยันล็อกดังกล่าว</p>
+        `
+    });
+}
+
+async function sendPaymentConfirmedEmail(toEmail, stallCode) {
+    const transporter = getTransporter();
+
+    if (!transporter) {
+        console.warn(`Payment confirmed email not sent (mailer not configured). ${toEmail}: ล็อก ${stallCode}`);
+        return;
+    }
+
+    await transporter.sendMail({
+        from: `"Kangsadan Night Market" <${process.env.GMAIL_USER}>`,
+        to: toEmail,
+        subject: `ยืนยันการชำระเงินสำหรับล็อก ${stallCode}`,
+        html: `
+            <p>แอดมินได้ตรวจสอบและยืนยันสลิปโอนเงินของคุณเรียบร้อยแล้ว</p>
+            <p>ล็อก <strong>${stallCode}</strong> เป็นของร้านค้าของคุณอย่างเป็นทางการ</p>
+        `
+    });
+}
+
 module.exports = {
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    sendStallAssignedEmail,
+    sendPaymentConfirmedEmail
 };
