@@ -18,6 +18,24 @@
   <%- include('../partials/navbar2') %>
 
 <div class="feed-page" id="feedPage">
+  <header class="community-header">
+    <div>
+      <p class="community-header__eyebrow">Seller Community</p>
+      <h1 class="community-header__title">คอมมูนิตี้ผู้ขาย</h1>
+      <p class="community-header__subtitle">พูดคุย แชร์ไอเดีย และติดตามความเคลื่อนไหวของร้านค้าต่าง ๆ ในตลาด</p>
+    </div>
+    <% if (canCreatePost) { %>
+      <div class="community-header__actions">
+        <a href="/community/my-posts" class="btn btn-outline-secondary community-btn">
+          <i class="bi bi-journal-text me-2"></i>จัดการโพสต์ของคุณ
+        </a>
+        <button type="button" class="btn btn-primary community-btn" id="openCreatePostBtn" data-bs-toggle="modal" data-bs-target="#createPostModal">
+          <i class="bi bi-plus-lg me-2"></i>เขียนโพสต์
+        </button>
+      </div>
+    <% } %>
+  </header>
+
   <section class="banner-section mb-3">
     <div id="heroBannerCarousel" class="carousel slide banner-carousel" data-bs-ride="carousel" data-bs-interval="4000">
       <div class="carousel-inner">
@@ -132,18 +150,6 @@
       <% }) %>
     </div>
   </section>
-
-  <% if (canCreatePost) { %>
-    <div class="feed-fab-bar">
-      <a href="/community/my-posts" class="manage-posts-fab" aria-label="จัดการโพสต์ของคุณ">
-        <span>จัดการโพสต์ของคุณ</span>
-      </a>
-      <button type="button" class="write-post-fab" id="openCreatePostBtn" data-bs-toggle="modal" data-bs-target="#createPostModal">
-        <span class="fab-plus">+</span>
-        <span>เขียนโพสต์</span>
-      </button>
-    </div>
-  <% } %>
 
   <div class="modal fade" id="createPostModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">

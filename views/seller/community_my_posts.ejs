@@ -18,17 +18,18 @@
 <%- include('../partials/navbar2') %>
 
 <div class="my-posts-page container py-3 py-md-4">
-  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+  <header class="my-posts-header mb-3">
     <div>
-      <h2 class="h4 fw-bold mb-1">จัดการโพสต์ของคุณ</h2>
-      <p class="text-muted mb-0">ค้นหา กรอง และแก้ไขโพสต์ของร้านคุณ</p>
+      <p class="my-posts-header__eyebrow">Seller Community</p>
+      <h1 class="my-posts-header__title">จัดการโพสต์ของคุณ</h1>
+      <p class="my-posts-header__subtitle">ค้นหา กรอง และแก้ไขโพสต์ของร้านคุณ</p>
     </div>
     <a href="/community" class="btn btn-outline-secondary">
-      <i class="bi bi-arrow-left"></i> กลับหน้าคอมมูนิตี้
+      <i class="bi bi-arrow-left me-2"></i>กลับหน้าคอมมูนิตี้
     </a>
-  </div>
+  </header>
 
-  <form id="myPostsFilterForm" class="card p-3 shadow-sm mb-3">
+  <form id="myPostsFilterForm" class="my-posts-filter mb-3">
     <div class="row g-2">
       <div class="col-12 col-md-5">
         <input type="text" class="form-control" id="searchInput" placeholder="ค้นหาจากเนื้อหาโพสต์...">
@@ -47,8 +48,8 @@
     </div>
   </form>
 
-  <div class="table-responsive d-none d-lg-block">
-    <table class="table table-bordered align-middle bg-white" id="myPostsTable">
+  <div class="my-posts-table-wrap table-responsive d-none d-lg-block">
+    <table class="table align-middle" id="myPostsTable">
       <thead>
         <tr>
           <th style="width: 130px;">รูปตัวอย่าง</th>
@@ -65,7 +66,8 @@
 
   <div class="d-flex flex-column gap-2 d-lg-none" id="myPostsCardList"></div>
 
-  <div id="myPostsEmptyState" class="text-center text-muted py-4 d-none">
+  <div id="myPostsEmptyState" class="text-center py-4 d-none">
+    <i class="bi bi-inbox"></i>
     ไม่พบโพสต์ที่ตรงเงื่อนไข
   </div>
 </div>

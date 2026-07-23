@@ -1,34 +1,117 @@
 /* ============================================================
-   feed.css - Community Marketplace Feed Styles
-   Theme Color: #3BB8D4
-   Mobile-First Responsive
+   comunity.css - Seller Community Feed
+   gridgeist: sharp grid layout, visible 1px borders, no shadow,
+   no rounded-pill/rounded-4. Brand accent kept: #3BB8D4.
    ============================================================ */
 
-/* ---- CSS Variables ---- */
 :root {
   --primary:      #3BB8D4;
   --primary-dark: #28a0b8;
-  --primary-light:#e8f8fc;
-  --white:        #FFFFFF;
-  --bg-page:      #F5F7FA;
-  --bg-card:      #FFFFFF;
-  --border:       #E9EEF2;
-  --text-dark:    #222222;
-  --text-muted:   #666666;
-  --radius-card:  16px;
-  --radius-pill:  50px;
-  --shadow-card:  0 2px 12px rgba(0,0,0,0.07);
-  --shadow-hover: 0 6px 24px rgba(59,184,212,0.15);
-  --transition:   0.2s ease;
+  --primary-tint: rgba(59, 184, 212, 0.08);
+  --navy:         #12303a;
+  --ink:          #16333c;
+  --ink-soft:     #5b7a84;
+  --line:         #d7e3e6;
+  --soft-bg:      #f6f8f8;
+  --success:      #27AE60;
+  --warning:      #c98a2e;
+  --danger:       #c0392b;
+  --mono:         'IBM Plex Mono', 'Courier New', monospace;
+  --radius:       4px;
+  --radius-sm:    3px;
+  --transition:   all 0.15s ease;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 /* ============================================================
    BASE
    ============================================================ */
 .feed-page {
-  background: var(--bg-page);
+  background: #fff;
   min-height: 100vh;
   padding-bottom: 32px;
+  font-family: 'Kanit', sans-serif;
+  color: var(--ink);
+}
+
+/* ============================================================
+   0. PAGE HEADER — เข้าชุดกับ seller-dashboard-header
+   ============================================================ */
+.community-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 24px 12px 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.community-header__eyebrow {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--primary-dark);
+}
+
+.community-header__title {
+  margin: 0;
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.community-header__subtitle {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.94rem;
+  max-width: 520px;
+}
+
+.community-header__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.community-header__actions .btn {
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  padding: 10px 18px;
+  font-size: 0.92rem;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.btn-outline-secondary.community-btn {
+  border: 1px solid var(--line);
+  color: var(--navy);
+  background: #fff;
+}
+
+.btn-outline-secondary.community-btn:hover {
+  background: var(--soft-bg);
+  border-color: var(--ink-soft);
+  color: var(--navy);
+}
+
+.btn-primary.community-btn {
+  background: var(--primary);
+  border: 1px solid var(--primary);
+  color: #fff;
+}
+
+.btn-primary.community-btn:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
 }
 
 /* ============================================================
@@ -39,14 +122,15 @@
 }
 
 .banner-carousel {
-  border-radius: var(--radius-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   overflow: hidden;
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 
 .banner-img {
   width: 100%;
-  height: 180px;
+  height: 140px;
   object-fit: cover;
   display: block;
 }
@@ -66,29 +150,33 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.5);
+  background: rgba(255, 255, 255, 0.5);
   border: none;
   padding: 0;
   transition: background var(--transition), width var(--transition);
 }
 
 .banner-dots button.active {
-  background: var(--white);
-  width: 20px;
+  background: #fff;
+  width: 18px;
   border-radius: 4px;
 }
 
 /* ============================================================
-   2. FILTER CATEGORY (Sticky Pills)
+   2. FILTER CATEGORY (Sticky Segmented Tabs)
    ============================================================ */
 .filter-section {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--bg-page);
-  padding: 10px 0 10px;
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  background: #fff;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  transition: var(--transition);
+}
+
+.filter-section--scrolled {
+  box-shadow: 0 1px 0 var(--line);
 }
 
 .filter-scroll-wrapper {
@@ -96,7 +184,7 @@
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding: 4px 12px;
+  padding: 2px 12px;
 }
 
 .filter-scroll-wrapper::-webkit-scrollbar {
@@ -110,33 +198,34 @@
 
 .filter-pill {
   flex-shrink: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   font-size: 0.82rem;
-  font-weight: 500;
-  padding: 6px 16px;
-  border: 1.5px solid var(--border);
-  transition: all var(--transition);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  font-weight: 600;
+  padding: 7px 16px;
+  border: 1px solid var(--line);
+  transition: var(--transition);
+  box-shadow: none;
   cursor: pointer;
   white-space: nowrap;
+  color: var(--ink);
+  background: #fff;
 }
 
 .filter-pill--active {
   background: var(--primary);
-  color: var(--white);
+  color: #fff;
   border-color: var(--primary);
-  box-shadow: 0 2px 8px rgba(59,184,212,0.3);
 }
 
 .filter-pill--inactive {
-  background: var(--white);
-  color: var(--text-dark);
+  background: #fff;
+  color: var(--ink);
 }
 
 .filter-pill--inactive:hover {
-  background: var(--primary-light);
+  background: var(--primary-tint);
   border-color: var(--primary);
-  color: var(--primary);
+  color: var(--primary-dark);
 }
 
 /* ============================================================
@@ -152,13 +241,15 @@
   gap: 12px;
   max-width: 900px;
   margin: 0 auto;
+  padding-top: 16px;
 }
+
 .empty-state-card {
-  background: var(--bg-card);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-card);
-  color: var(--text-muted);
-  padding: 24px;
+  background: #fff;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  color: var(--ink-soft);
+  padding: 32px 24px;
   text-align: center;
 }
 
@@ -166,22 +257,17 @@
    POST CARD
    ============================================================ */
 .post-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: none;
   overflow: hidden;
   padding: 14px 14px 0;
-  transition: box-shadow var(--transition);
-  animation: fadeInUp 0.3s ease both;
+  transition: border-color var(--transition);
 }
 
 .post-card:hover {
-  box-shadow: var(--shadow-hover);
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  border-color: var(--primary);
 }
 
 /* ---- POST HEADER ---- */
@@ -195,129 +281,67 @@
 }
 
 .post-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
-  border: 2px solid var(--primary-light);
+  border: 1px solid var(--line);
   flex-shrink: 0;
 }
 
 .post-store-name {
   font-weight: 700;
-  font-size: 0.9rem;
-  color: var(--text-dark);
+  font-size: 0.92rem;
+  color: var(--navy);
   line-height: 1.2;
 }
 
 .post-time {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: 1px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  margin-top: 2px;
 }
 
 .owner-badge {
-  background: #1f9d52;
-  color: #fff;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  padding: 3px 8px;
+  background: var(--soft-bg);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
   font-weight: 600;
+  padding: 4px 8px;
 }
 .post-menu-btn {
-  border: 0;
+  border: 1px solid transparent;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--ink-soft);
   font-size: 1.2rem;
   line-height: 1;
   padding: 2px 6px;
+  border-radius: var(--radius-sm);
 }
 .post-menu-btn:hover {
   color: var(--primary-dark);
+  border-color: var(--line);
+  background: var(--soft-bg);
 }
 .post-category-pill {
   display: inline-block;
-  background: var(--primary-light);
+  background: var(--primary-tint);
   color: var(--primary-dark);
-  border: 1px solid rgba(59, 184, 212, 0.35);
-  border-radius: 999px;
-  font-size: 0.74rem;
+  border: 1px solid rgba(59, 184, 212, 0.3);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
   font-weight: 600;
   padding: 4px 9px;
   margin-bottom: 8px;
 }
 
 /* ============================================================
-   ปุ่มลอย "เขียนโพสต์" + "จัดการโพสต์ของคุณ" — วางในแถบเดียวกัน
-   แทนที่จะเป็น position:fixed คนละจุดเหมือนเดิม
+   PAGE HEADER ACTIONS — เขียนโพสต์ / จัดการโพสต์ของคุณ
+   ย้ายจากปุ่มลอยมุมจอ มาไว้ในหัวหน้าให้เข้าชุดกับหน้าอื่น ๆ ของระบบ
    ============================================================ */
-.feed-fab-bar {
-  position: fixed;
-  right: 16px;
-  bottom: 20px;
-  z-index: 300;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.manage-posts-fab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 16px;
-  border-radius: 999px;
-  background: #ffffff;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-card);
-  color: var(--text-dark);
-  text-decoration: none;
-  font-size: 0.85rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.manage-posts-fab:hover {
-  color: var(--primary-dark);
-}
-
-.write-post-fab {
-  border: 0;
-  border-radius: 999px;
-  background: #3bb8d4;
-  color: #fff;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  font-weight: 600;
-  white-space: nowrap;
-  box-shadow: 0 14px 25px rgba(59, 184, 212, 0.35);
-}
-.write-post-fab:hover {
-  background: #28a0b8;
-}
-.fab-plus {
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
-@media (max-width: 768px) {
-  .feed-fab-bar {
-    right: 12px;
-    bottom: 16px;
-    gap: 8px;
-  }
-  .manage-posts-fab,
-  .write-post-fab {
-    padding: 10px 12px;
-    font-size: 0.78rem;
-  }
-  /* จอเล็กมาก: ปุ่ม "เขียนโพสต์" เหลือแค่ไอคอน ไม่ให้ปุ่มสองอันดันกันจนล้นขอบจอ */
-  .write-post-fab span:not(.fab-plus) {
-    display: none;
-  }
-}
-
 .image-preview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
@@ -325,8 +349,8 @@
 }
 .image-preview-item {
   position: relative;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 .image-preview-item img {
@@ -339,9 +363,9 @@
   position: absolute;
   right: 6px;
   top: 6px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: var(--radius-sm);
+  background: rgba(18, 48, 58, 0.72);
   color: #fff;
   font-size: 0.7rem;
   padding: 3px 8px;
@@ -357,39 +381,43 @@
   align-items: flex-start;
 }
 .comment-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
-  border: 2px solid var(--primary-light);
+  border: 1px solid var(--line);
+  flex-shrink: 0;
 }
 .comment-content-wrap {
-  background: #f5f8fb;
-  border-radius: 10px;
+  background: var(--soft-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   padding: 8px 10px;
   flex: 1;
 }
 .comment-author {
   font-size: 0.8rem;
   font-weight: 700;
+  color: var(--navy);
 }
 .comment-text {
   font-size: 0.86rem;
   white-space: pre-wrap;
+  color: var(--ink);
 }
 .comment-time {
-  font-size: 0.72rem;
-  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
 }
 .comment-empty {
-  color: var(--text-muted);
+  color: var(--ink-soft);
   text-align: center;
   padding: 16px;
 }
 
 /* ============================================================
-   COMMENT COMPOSER — กล่องพิมพ์คอมเมนต์สไตล์ Facebook
-   (avatar + กล่อง pill ขยายสูงอัตโนมัติ + ปุ่มส่งไอคอนในตัว)
+   COMMENT COMPOSER
    ============================================================ */
 .comment-composer {
   display: flex;
@@ -397,25 +425,27 @@
   gap: 8px;
 }
 .comment-composer__avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
   flex-shrink: 0;
-  border: 2px solid var(--primary-light);
+  border: 1px solid var(--line);
 }
 .comment-composer__box {
   flex: 1;
   display: flex;
   align-items: flex-end;
   gap: 6px;
-  background: #f0f2f5;
-  border-radius: 18px;
+  background: var(--soft-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   padding: 6px 8px 6px 14px;
-  transition: background var(--transition);
+  transition: var(--transition);
 }
 .comment-composer__box:focus-within {
-  background: #e7f7fb;
+  border-color: var(--primary);
+  background: #fff;
 }
 .comment-composer__input {
   flex: 1;
@@ -428,23 +458,23 @@
   line-height: 1.4;
   max-height: 120px;
   padding: 4px 0;
-  color: var(--text-dark);
+  color: var(--ink);
 }
 .comment-composer__input::placeholder {
-  color: #9aa5ad;
+  color: var(--ink-soft);
 }
 .comment-composer__send {
   border: none;
   background: none;
-  color: var(--text-muted);
+  color: var(--ink-soft);
   width: 30px;
   height: 30px;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition);
+  transition: var(--transition);
 }
 .comment-composer__send i {
   font-size: 1rem;
@@ -454,11 +484,11 @@
   cursor: pointer;
 }
 .comment-composer__send:not(:disabled):hover {
-  background: var(--primary-light);
+  background: var(--primary-tint);
   color: var(--primary-dark);
 }
 .comment-composer__send:disabled {
-  color: #c5ccd1;
+  color: var(--line);
   cursor: default;
 }
 
@@ -476,29 +506,29 @@
   align-items: center;
   gap: 8px;
   padding: 16px 10px;
-  border: 1.5px solid var(--border);
-  border-radius: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   background: #fff;
-  color: var(--text-dark);
+  color: var(--ink);
   font-size: 0.82rem;
   font-weight: 600;
   text-align: center;
   cursor: pointer;
-  transition: all var(--transition);
+  transition: var(--transition);
 }
 .category-card i {
   font-size: 1.5rem;
-  color: var(--text-muted);
+  color: var(--ink-soft);
   transition: color var(--transition);
 }
 .category-card:hover {
   border-color: var(--primary);
-  background: var(--primary-light);
+  background: var(--primary-tint);
 }
 .category-card--active {
   border-color: var(--primary);
-  background: var(--primary-light);
-  box-shadow: 0 0 0 2px rgba(59, 184, 212, 0.25);
+  background: var(--primary-tint);
+  box-shadow: inset 0 0 0 1px var(--primary);
 }
 .category-card--active i,
 .category-card--active {
@@ -509,13 +539,13 @@
    CUSTOM FORM UI — Drag & Drop อัปโหลดรูป
    ============================================================ */
 .image-dropzone {
-  border: 2px dashed var(--border);
-  border-radius: 14px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
   padding: 24px 16px;
   text-align: center;
-  color: var(--text-muted);
+  color: var(--ink-soft);
   cursor: pointer;
-  transition: all var(--transition);
+  transition: var(--transition);
 }
 .image-dropzone i {
   font-size: 1.8rem;
@@ -526,11 +556,11 @@
 .image-dropzone:hover,
 .image-dropzone:focus-visible {
   border-color: var(--primary);
-  background: var(--primary-light);
+  background: var(--primary-tint);
 }
 .image-dropzone--active {
   border-color: var(--primary);
-  background: var(--primary-light);
+  background: var(--primary-tint);
 }
 .image-dropzone__browse {
   color: var(--primary-dark);
@@ -539,8 +569,7 @@
 }
 
 /* ============================================================
-   CUSTOM FORM UI — กล่องพิมพ์เนื้อหาโพสต์สไตล์ Facebook
-   (ยัง submit เป็น plain text ปกติ แค่หน้าตา/ขนาดเปลี่ยนอัตโนมัติ)
+   CUSTOM FORM UI — กล่องพิมพ์เนื้อหาโพสต์
    ============================================================ */
 .fb-style-textarea {
   width: 100%;
@@ -553,24 +582,25 @@
   line-height: 1.5;
   padding: 4px 2px;
   min-height: 60px;
-  color: var(--text-dark);
+  color: var(--ink);
 }
 .fb-style-textarea::placeholder {
-  color: #9aa5ad;
+  color: var(--ink-soft);
 }
 
 /* Stall Badge */
 .stall-badge {
-  background: var(--primary-light);
+  background: #fff;
   color: var(--primary-dark);
-  font-weight: 800;
-  font-size: 0.9rem;
-  letter-spacing: 0.03em;
-  padding: 6px 14px;
-  border-radius: 10px;
+  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
   flex-shrink: 0;
-  border: 1.5px solid rgba(59,184,212,0.2);
+  border: 1px solid var(--line);
 }
 
 /* ---- POST CONTENT ---- */
@@ -579,9 +609,9 @@
 }
 
 .post-text {
-  font-size: 0.875rem;
-  color: var(--text-dark);
-  line-height: 1.55;
+  font-size: 0.9rem;
+  color: var(--ink);
+  line-height: 1.6;
   white-space: pre-line;
   margin: 0;
 }
@@ -600,13 +630,13 @@
 .post-gallery--1 {
   grid-template-columns: 1fr;
 }
-.post-gallery--1 .gallery-item { height: 240px; }
+.post-gallery--1 .gallery-item { height: 220px; }
 
 /* 2 images: 2 columns */
 .post-gallery--2 {
   grid-template-columns: 1fr 1fr;
 }
-.post-gallery--2 .gallery-item { height: 200px; }
+.post-gallery--2 .gallery-item { height: 190px; }
 
 /* 3 images: left big + right 2 stacked */
 .post-gallery--3 {
@@ -615,21 +645,21 @@
 }
 .post-gallery--3 .gallery-item:first-child {
   grid-row: 1 / 3;
-  height: 200px;
+  height: 190px;
 }
-.post-gallery--3 .gallery-item:not(:first-child) { height: 98px; }
+.post-gallery--3 .gallery-item:not(:first-child) { height: 94px; }
 
 /* 4 images: 2x2 grid */
 .post-gallery--4 {
   grid-template-columns: 1fr 1fr;
 }
-.post-gallery--4 .gallery-item { height: 160px; }
+.post-gallery--4 .gallery-item { height: 150px; }
 
 /* Gallery item */
 .gallery-item {
   position: relative;
   overflow: hidden;
-  background: var(--border);
+  background: var(--soft-bg);
 }
 
 .gallery-img {
@@ -647,21 +677,20 @@
 .gallery-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.52);
+  background: rgba(18, 48, 58, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: background var(--transition);
 }
-.gallery-overlay:hover { background: rgba(0,0,0,0.65); }
+.gallery-overlay:hover { background: rgba(18, 48, 58, 0.72); }
 
 .gallery-overlay span {
-  color: var(--white);
-  font-size: 1.6rem;
-  font-weight: 800;
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 700;
   letter-spacing: -0.02em;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
 /* ============================================================
@@ -669,45 +698,46 @@
    ============================================================ */
 .post-actions {
   padding: 10px 0 12px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line);
   margin-top: 12px;
 }
 
 .action-btn {
   background: none;
-  border: none;
-  padding: 6px 8px;
-  border-radius: 8px;
-  color: var(--text-muted);
+  border: 1px solid transparent;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
   font-size: 0.85rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 5px;
-  transition: all var(--transition);
+  transition: var(--transition);
   font-family: inherit;
   font-weight: 500;
 }
 
 .action-btn i {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   transition: transform 0.18s ease;
 }
 
 .action-btn:hover {
-  background: var(--primary-light);
-  color: var(--primary);
+  background: var(--primary-tint);
+  border-color: var(--line);
+  color: var(--primary-dark);
 }
 
 .action-btn:hover i {
-  transform: scale(1.15);
+  transform: scale(1.1);
 }
 
 /* Like active */
 .like-btn.is-liked {
-  color: #e53e3e;
+  color: #c0392b;
 }
-.like-btn.is-liked i { color: #e53e3e; }
+.like-btn.is-liked i { color: #c0392b; }
 
 /* Like animation */
 .like-btn.like-animate i {
@@ -730,28 +760,65 @@
    ============================================================ */
 .feed-toast {
   background: var(--primary);
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+.modal-content {
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+.modal-header {
+  background: var(--navy);
+  color: #fff;
+  border: none;
+}
+.modal-header .btn-close {
+  filter: brightness(0) invert(1);
+}
+.modal-footer {
+  border-top: 1px solid var(--line);
+}
+.form-label {
+  color: var(--navy);
+  font-weight: 500;
+}
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  border-radius: var(--radius-sm);
+}
+.btn-primary:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+.btn-outline-secondary {
+  border-radius: var(--radius-sm);
 }
 
 /* ============================================================
    RESPONSIVE — Tablet (≥768px)
    ============================================================ */
 @media (min-width: 768px) {
+  .community-header { margin: 28px 20px 22px; }
   .banner-section { padding: 0 20px; }
-  .banner-img { height: 240px; }
-  .filter-section { padding: 12px 0; }
-  .filter-scroll-wrapper { padding: 4px 20px; }
+  .banner-img { height: 220px; }
+  .filter-section { padding: 14px 0; }
+  .filter-scroll-wrapper { padding: 2px 20px; }
   .feed-section { padding: 0 20px; }
   .feed-container { gap: 16px; }
 
   .post-card { padding: 18px 18px 0; }
-  .post-gallery--1 .gallery-item { height: 320px; }
-  .post-gallery--2 .gallery-item { height: 250px; }
-  .post-gallery--3 .gallery-item:first-child { height: 260px; }
-  .post-gallery--3 .gallery-item:not(:first-child) { height: 128px; }
-  .post-gallery--4 .gallery-item { height: 200px; }
+  .post-gallery--1 .gallery-item { height: 300px; }
+  .post-gallery--2 .gallery-item { height: 240px; }
+  .post-gallery--3 .gallery-item:first-child { height: 250px; }
+  .post-gallery--3 .gallery-item:not(:first-child) { height: 123px; }
+  .post-gallery--4 .gallery-item { height: 190px; }
   .post-gallery { margin: 0 -18px; }
 }
 
@@ -760,9 +827,23 @@
    ============================================================ */
 @media (min-width: 900px) {
   .banner-section { padding: 0 24px; }
-  .banner-img { height: 280px; }
-  .filter-scroll-wrapper { padding: 4px 24px; }
+  .banner-img { height: 260px; }
+  .filter-scroll-wrapper { padding: 2px 24px; }
   .feed-section { padding: 0 24px; }
+}
+
+@media (max-width: 575.98px) {
+  .community-header {
+    align-items: stretch;
+    margin: 16px 12px 16px;
+  }
+  .community-header__actions {
+    width: 100%;
+  }
+  .community-header__actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
 }
 
 /* ============================================================
@@ -773,5 +854,4 @@
   .gallery-img,
   .action-btn,
   .filter-pill { transition: none; }
-  .post-card { animation: none; }
 }
