@@ -139,6 +139,9 @@
     "zod": "^4.4.3"
   },
   "scripts": {
+    "postinstall": "prisma generate",
+    "prestart": "prisma generate",
+    "predev": "prisma generate",
     "start": "node app.js",
     "dev": "nodemon app.js",
     "test": "vitest run",

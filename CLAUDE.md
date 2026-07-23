@@ -5,13 +5,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm install              # install dependencies
-npx prisma generate       # regenerate Prisma client after schema changes
+npm install              # install dependencies (also runs `prisma generate` via postinstall)
 npx prisma migrate dev    # create/apply a migration during development
 node prisma/seed.js       # seed the database (also runs via `npx prisma db seed`)
-npm start                 # run the app (node app.js)
-npm run dev               # run with nodemon (auto-restart)
+npm start                 # run the app (node app.js) — prestart hook regenerates the Prisma client first
+npm run dev               # run with nodemon (auto-restart) — predev hook regenerates the Prisma client first
 ```
+
+`npm start`/`npm run dev`/`npm install` all regenerate the Prisma client automatically (`postinstall`/`prestart`/`predev` scripts in `package.json`), so the client never drifts out of sync with `prisma/schema.prisma` after a `git pull` picks up a schema change. Only run `node app.js` directly (bypassing npm) if you've already generated the client yourself.
 
 There is no test suite, lint config, or build step in this project. To verify a change boots correctly:
 
