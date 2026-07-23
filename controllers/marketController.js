@@ -308,3 +308,75 @@ exports.getSlotsPage = async (req, res) => {
         res.status(500).send("Error loading slots map");
     }
 };
+
+// ผังตลาดสำหรับลูกค้าทั่วไป/ผู้ขาย (read-only, ไม่มี action จัดแผง) — ใช้ query logic เดียวกับ
+// getSlotsPage แต่ตัด field ที่เป็นข้อมูลผู้จอง (ชื่อ/เบอร์โทร/วันที่/หมายเหตุ) ออกตั้งแต่ฝั่ง server
+// เพราะ payload ฝัง <script type="application/json"> เปิด view-source ดูตรงๆ ได้ ไม่ใช่แค่ซ่อนใน UI
+exports.getMarketMapPage = async (req, res) => {
+    try {
+        const zonesData = await buildZonesData();
+
+        const approvedRequests = await prisma.bookingRequest.findMany({
+            where: { status: 'APPROVED', assignedStallCode: { not: null } },
+            select: {
+                productName: true,
+                description: true,
+                sellerName: true,
+                zone: true,
+                assignedStallCode: true,
+                productImage: true,
+                seller: {
+                    select: {
+                        shopName: true,
+                        productDetail: true,
+                        productImage: true,
+                        productType: { select: { name: true } }
+                    }
+                }
+            }
+        });
+
+        const missingShopInfoNames = [...new Set(
+            approvedRequests.filter((r) => !r.seller?.productType?.name).map((r) => r.sellerName).filter(Boolean)
+        )];
+        const shopInfoByName = {};
+        if (missingShopInfoNames.length) {
+            const sellerUsers = await prisma.user.findMany({
+                where: { role: 'SELLER', name: { in: missingShopInfoNames } },
+                select: { name: true, shop: { select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true } } }
+            });
+            sellerUsers.forEach((u) => {
+                if (u.shop) shopInfoByName[u.name] = u.shop;
+            });
+        }
+
+        const bookingByStallCode = {};
+        approvedRequests.forEach((request) => {
+            const stallCode = String(request.assignedStallCode || '').trim().toUpperCase();
+            if (!stallCode) return;
+
+            const fallbackShop = shopInfoByName[request.sellerName] || {};
+            const product = request.seller?.productType?.name
+                || fallbackShop.productType
+                || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
+            const productDetail = request.seller?.productDetail || fallbackShop.productDetail || request.description || '-';
+            const shopImage = request.productImage || request.seller?.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
+
+            bookingByStallCode[stallCode] = {
+                shop: request.seller?.shopName || request.productName || '-',
+                product,
+                productDetail,
+                image: shopImage
+            };
+        });
+
+        res.render('marketMap', {
+            zonesData,
+            bookingByStallCode,
+            user: req.user
+        });
+    } catch (error) {
+        console.error("Market Map Page Error:", error);
+        res.status(500).send("Error loading market map");
+    }
+};

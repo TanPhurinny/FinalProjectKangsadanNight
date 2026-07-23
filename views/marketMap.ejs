@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ผังตลาด — กังสดาลไนท์</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+            rel="stylesheet" />
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet" />
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260724-2">
+        <link rel="stylesheet" href="/stylesheets/marketMap.css">
+    </head>
+    <body>
+        <script src="/js/common/tabSession.js"></script>
+        <% if (user && user.role === 'SELLER') { %>
+        <%- include('partials/navbarSeller') %>
+        <% } else { %>
+        <%- include('partials/navbarCustomer') %>
+        <% } %>
+
+        <%
+        const zonesList = locals.zonesData || [];
+        const zoneByCode = zonesList.reduce((acc, zone) => {
+            acc[zone.code] = zone;
+            return acc;
+        }, {});
+        const otherZones = zonesList.filter((zone) => !['A', 'B', 'C', 'D', 'E', 'F', 'X'].includes(zone.code));
+        %>
+
+        <div class="market-map-page">
+
+            <!-- TOP BAR -->
+            <div class="top-bar">
+                <div class="bar-title"><i class="fa-solid fa-map fa-sm me-1"
+                        style="color:var(--primary)"></i> ผังตลาด</div>
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="searchInput"
+                        placeholder="ค้นหาร้านค้า เช่น หมูปิ้ง, เสื้อผ้า, ก๋วยเตี๋ยว..." />
+                    <button id="clearBtn" onclick="clearSearch()">✕</button>
+                </div>
+                <span id="resultBadge"></span>
+            </div>
+
+            <!-- QUICK TAGS -->
+            <div class="tag-bar">
+                <span class="tag-lbl">ค้นหาด่วน:</span>
+                <button class="qtag qtag-empty"
+                    onclick="quickStatusFilter(this,'EMPTY')"><i
+                        class="fa-solid fa-circle-check fa-xs"></i> แผงว่าง</button>
+                <button class="qtag qtag-booked"
+                    onclick="quickStatusFilter(this,'BOOKED')"><i
+                        class="fa-solid fa-store fa-xs"></i> มีร้านค้าแล้ว</button>
+            </div>
+
+            <!-- PAGE BODY -->
+            <div class="page-body">
+                <div class="map-shell">
+                    <div class="road-top">
+                        <span class="road-top-label">ถนน</span>
+                        <div class="sign-charoen"><div class="sign-dot"></div>
+                            เจริญหมูกระทะ</div>
+                    </div>
+                    <div class="map-mid">
+                        <div class="road-left">
+                            <div class="stripe-v"></div>
+                            <span class="road-left-text">ทางเข้าตลาด 62
+                                บล็อค</span>
+                            <span class="road-arrow"><i
+                                    class="fa-solid fa-arrow-down"></i></span>
+                        </div>
+
+                        <div class="zone-canvas">
+                            <div class="zone-block" id="zone-E"
+                                onclick="openZone('E')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        E</div><div
+                                        class="z-sub"><%= zoneByCode.E ? zoneByCode.E.description : '-' %></div></div>
+                            </div>
+                            <div class="zone-block" id="zone-D"
+                                onclick="openZone('D')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        D</div><div
+                                        class="z-sub"><%= zoneByCode.D ? zoneByCode.D.description : '-' %></div></div>
+                            </div>
+                            <% if (zoneByCode.X) { %>
+                            <div class="zone-block" id="zone-X"
+                                onclick="openZone('X')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        X</div><div
+                                        class="z-sub"><%= zoneByCode.X.description %></div></div>
+                            </div>
+                            <% } %>
+                            <div class="zone-block" id="zone-A"
+                                onclick="openZone('A')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        A</div><div
+                                        class="z-sub"><%= zoneByCode.A ? zoneByCode.A.description : '-' %></div></div>
+                            </div>
+                            <div class="zone-block" id="zone-F"
+                                onclick="openZone('F')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        F</div><div
+                                        class="z-sub"><%= zoneByCode.F ? zoneByCode.F.description : '-' %></div></div>
+                            </div>
+                            <div class="zone-block" id="zone-B"
+                                onclick="openZone('B')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        B</div><div
+                                        class="z-sub"><%= zoneByCode.B ? zoneByCode.B.description : '-' %></div></div>
+                            </div>
+                            <div class="zone-block" id="zone-C"
+                                onclick="openZone('C')">
+                                <div class="zone-label"><div class="z-title">โซน
+                                        C</div><div
+                                        class="z-sub"><%= zoneByCode.C ? zoneByCode.C.description : '-' %></div></div>
+                            </div>
+                            <div class="facility-btns">
+                                <button class="btn-facility btn-facility-trash"><i
+                                        class="fa-solid fa-dumpster fa-xs"></i>
+                                    จุดทิ้งขยะ</button>
+                                <button class="btn-facility btn-facility-restroom"><i
+                                        class="fa-solid fa-restroom fa-xs"></i>
+                                    ห้องน้ำ</button>
+                                <button class="btn-facility btn-facility-office"><i
+                                        class="fa-solid fa-user-tie fa-xs"></i>
+                                    ออฟฟิศ</button>
+                            </div>
+                        </div>
+
+                        <div class="road-right">
+                            <span class="road-right-text">ลานจอดรถ
+                                กังสดาลไนท์</span>
+                        </div>
+                    </div>
+                    <div class="road-bottom">
+                        <div class="stripe-h"></div>
+                        <span class="sign-inout">เข้า-ออก</span>
+                    </div>
+                </div>
+
+                <% if (otherZones.length) { %>
+                <div class="other-zones-bar">
+                    <span class="tag-lbl">โซนอื่นๆ:</span>
+                    <% otherZones.forEach((zone) => { %>
+                    <button type="button" class="zone-chip"
+                        onclick="openZone('<%= zone.code %>')">โซน <%= zone.code
+                        %> <small>(<%= zone.description %>)</small></button>
+                    <% }) %>
+                </div>
+                <% } %>
+            </div>
+
+            <!-- BACKDROP -->
+            <div class="backdrop" id="backdrop" onclick="closeZone()"></div>
+
+            <!-- BOTTOM DRAWER -->
+            <div class="drawer" id="drawer">
+
+                <div class="drawer-handle-wrap">
+                    <div class="drawer-handle"></div>
+                </div>
+
+                <div class="drawer-head">
+                    <div>
+                        <div class="zone-pill" id="zonePill">
+                            <div class="zone-dot" id="zoneDot"></div>
+                            <span id="drawerTitle">—</span>
+                        </div>
+                        <div class="head-sub" id="drawerSub"></div>
+                    </div>
+                    <div class="head-right">
+                        <div class="drawer-stats" id="drawerStats"></div>
+                        <button class="btn-close-drawer"
+                            onclick="closeZone()">✕</button>
+                    </div>
+                </div>
+
+                <div class="drawer-legend">
+                    <div class="leg"><div class="leg-box"
+                            style="background:#fff;"></div>ว่าง</div>
+                    <div class="leg"><div class="leg-box"
+                            style="background:#8a9aa0;border-color:#6b7a80;"></div>มีร้านค้าแล้ว</div>
+                    <div class="leg"><div class="leg-box"
+                            style="background:#c98a2e;border-color:#a06c1f;"></div>ซ่อมบำรุง</div>
+                    <div class="leg"><div class="leg-box"
+                            style="border:2px solid #e2b83a;background:#fff;"></div>ผลค้นหา</div>
+                </div>
+
+                <div class="info-card-backdrop" id="infoCardBackdrop" onclick="hideInfo()"></div>
+                <div class="info-card" id="infoCard">
+                    <button type="button" class="ic-close" onclick="hideInfo()" aria-label="ปิด">✕</button>
+                    <div class="ic-title"><i
+                            class="fa-solid fa-store fa-xs"></i><span
+                            id="ic-head"></span></div>
+                    <img id="ic-image" class="ic-image d-none" alt="รูปร้านค้า" />
+                    <div class="ic-grid">
+                        <div class="ig"><label>ชื่อร้านค้า</label><span
+                                id="ic-shop"></span></div>
+                        <div class="ig"><label>ประเภทสินค้า</label><span
+                                id="ic-product"></span></div>
+                        <div class="ig ic-span2"><label>ขายอะไรบ้าง</label><span
+                                id="ic-detail"></span></div>
+                    </div>
+                </div>
+
+                <div class="drawer-grid">
+                    <div class="stall-flex" id="stallGrid"></div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <script type="application/json" id="zonesDataJson"><%- JSON.stringify(zoneByCode).replace(/</g, '\\u003c') %></script>
+        <script type="application/json" id="bookingByStallJson"><%- JSON.stringify(locals.bookingByStallCode || {}).replace(/</g, '\\u003c') %></script>
+        <script src="/js/marketMap.js"></script>
+    </body>
+</html>

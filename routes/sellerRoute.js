@@ -5,6 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { getAnnouncementsForUser } = require('../controllers/announcementController');
+const { getMarketMapPage } = require('../controllers/marketController');
 const { repairReportSchema, bookingStallInputSchema, sellerApplicationSchema } = require('../utils/validationSchemas');
 
 // สร้างโฟลเดอร์ upload ถ้ายังไม่มี
@@ -554,6 +555,9 @@ router.get('/seller', isSellerOnly, async (req, res) => {
 });
 
 // เส้นทาง community ถูกแยกไปจัดการที่ routes/communityRoutes.js แล้ว
+
+// --- ผังตลาด (read-only สำหรับลูกค้าทั่วไป/ผู้ขาย ดูร้านค้า+ค้นหาร้านค้า) ---
+router.get('/market-map', isAuthenticated, getMarketMapPage);
 
 // --- หน้าประกาศ (แยกประกาศสำคัญ / ข่าวสารทั่วไป) ---
 router.get('/announcements', isAuthenticated, async (req, res) => {
