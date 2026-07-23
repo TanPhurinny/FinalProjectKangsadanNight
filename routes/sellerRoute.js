@@ -555,6 +555,20 @@ router.get('/seller', isSellerOnly, async (req, res) => {
 
 // เส้นทาง community ถูกแยกไปจัดการที่ routes/communityRoutes.js แล้ว
 
+// --- หน้าประกาศ (แยกประกาศสำคัญ / ข่าวสารทั่วไป) ---
+router.get('/announcements', isAuthenticated, async (req, res) => {
+    const roleToFetch = req.user.role === 'SELLER' ? 'SELLER' : 'CUSTOMER';
+    const announcements = await getAnnouncementsForUser(roleToFetch);
+    const importantAnnouncements = announcements.filter((a) => a.isImportant);
+    const generalAnnouncements = announcements.filter((a) => !a.isImportant);
+
+    res.render('announcements', {
+        user: req.user,
+        importantAnnouncements,
+        generalAnnouncements
+    });
+});
+
 // --- สมัครเปิดร้านค้า (CUSTOMER สมัครแล้วรออนุมัติเป็น SELLER) ---
 router.get('/shop-application', isAuthenticated, async (req, res) => {
     const latestApplication = await prisma.sellerApplication.findFirst({

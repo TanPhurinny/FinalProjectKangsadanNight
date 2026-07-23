@@ -22,7 +22,7 @@
             <a href="/seller" class="nav-item <%= currentPath === '/seller' ? 'active' : '' %>">
                 <i class="fas fa-home"></i> หน้าหลัก
             </a>
-            <a href="/#announcements" class="nav-item">
+            <a href="/announcements" class="nav-item <%= currentPath.includes('announcements') ? 'active' : '' %>">
                 <i class="fas fa-bullhorn"></i> ประกาศ
             </a>
             <a href="/community" class="nav-item <%= (currentPath.includes('community') || currentPath.includes('comunity')) ? 'active' : '' %>">

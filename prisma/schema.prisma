@@ -220,6 +220,7 @@ model Announcement {
   updatedAt   DateTime @updatedAt
   image       String?
   targetRoles Json?
+  isImportant Boolean  @default(false)
   author      User     @relation(fields: [authorId], references: [id])
 
   @@index([authorId], map: "Announcement_authorId_fkey")

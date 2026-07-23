@@ -124,6 +124,11 @@ function prepareCreate() {
     if (customerCheckbox) {
         customerCheckbox.checked = true;
     }
+
+    const importantCheckbox = document.getElementById('formIsImportant');
+    if (importantCheckbox) {
+        importantCheckbox.checked = false;
+    }
 }
 
 // ฟังก์ชันเตรียม Modal สำหรับแก้ไข (ดึงข้อมูลเก่ามาใส่)
@@ -141,6 +146,7 @@ function prepareEdit(dataString) {
     document.getElementById('formTitle').value = data.title;
     document.getElementById('formCategory').value = data.category;
     document.getElementById('formContent').value = data.content;
+    document.getElementById('formIsImportant').checked = Boolean(data.isImportant);
 
     document.querySelectorAll('input[name="targetRoles"]').forEach((checkbox) => {
         checkbox.checked = selectedRoles.includes(checkbox.value);

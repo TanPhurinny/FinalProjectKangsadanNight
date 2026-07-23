@@ -69,6 +69,7 @@ exports.createAnnouncement = async (req, res) => {
         const imageName = req.file ? req.file.filename : null;
         const normalizedRoles = normalizeTargetRoles(targetRoles);
         const fallbackRole = normalizedRoles.includes('SELLER') ? 'SELLER' : 'CUSTOMER';
+        const isImportant = req.body.isImportant === 'on' || req.body.isImportant === 'true';
 
         await prisma.announcement.create({
             data: {
@@ -78,6 +79,7 @@ exports.createAnnouncement = async (req, res) => {
                 targetRole: fallbackRole,
                 targetRoles: normalizedRoles,
                 image: imageName,
+                isImportant,
                 authorId: req.user.id
             }
         });
@@ -101,12 +103,14 @@ exports.updateAnnouncement = async (req, res) => {
     try {
         const normalizedRoles = normalizeTargetRoles(targetRoles);
         const fallbackRole = normalizedRoles.includes('SELLER') ? 'SELLER' : 'CUSTOMER';
+        const isImportant = req.body.isImportant === 'on' || req.body.isImportant === 'true';
         const updateData = {
             title,
             content,
             category,
             targetRole: fallbackRole,
-            targetRoles: normalizedRoles
+            targetRoles: normalizedRoles,
+            isImportant
         };
         
         // ถ้ามีการอัปโหลดรูปใหม่ค่อยเปลี่ยน ถ้าไม่มีให้ใช้รูปเดิมใน DB

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ประกาศ - กังสดาลไนท์</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260724-2">
+        <link rel="stylesheet" href="/stylesheets/announcements.css">
+    </head>
+
+    <body>
+        <script src="/js/common/tabSession.js"></script>
+        <% if (user && user.role === 'SELLER') { %>
+        <%- include('partials/navbarSeller') %>
+        <% } else { %>
+        <%- include('partials/navbarCustomer') %>
+        <% } %>
+
+        <header class="site-header">
+            <button class="btn-back" onclick="history.back()" title="ย้อนกลับ">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <h1 class="header-title">ประกาศ</h1>
+            <div class="header-spacer"></div>
+        </header>
+
+        <div class="announcements-shell">
+            <%
+                const importantList = (typeof importantAnnouncements !== 'undefined' && Array.isArray(importantAnnouncements)) ? importantAnnouncements : [];
+                const generalList = (typeof generalAnnouncements !== 'undefined' && Array.isArray(generalAnnouncements)) ? generalAnnouncements : [];
+
+                function toThaiDate(value) {
+                    return new Date(value).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' });
+                }
+
+                function preview(text, max) {
+                    const clean = String(text || '');
+                    return clean.length > max ? clean.slice(0, max) + '...' : clean;
+                }
+            %>
+
+            <section class="announce-section">
+                <div class="announce-section-head">
+                    <span class="announce-section-title important"><i class="fas fa-triangle-exclamation"></i> ประกาศสำคัญ</span>
+                    <span class="announce-section-count"><%= importantList.length %> รายการ</span>
+                </div>
+
+                <% if (importantList.length === 0) { %>
+                <div class="announce-empty">ยังไม่มีประกาศสำคัญในขณะนี้</div>
+                <% } else { %>
+                <div class="important-list">
+                    <% importantList.forEach((post) => { %>
+                    <div class="important-row"
+                        onclick="openAnnouncementDetail(this)"
+                        data-title="<%= encodeURIComponent(post.title) %>"
+                        data-content="<%= encodeURIComponent(post.content) %>"
+                        data-category="<%= encodeURIComponent(post.category) %>"
+                        data-date="<%= encodeURIComponent(toThaiDate(post.createdAt)) %>"
+                        data-image="<%= post.image ? encodeURIComponent('/uploads/announcements/' + post.image) : '' %>">
+                        <% if (post.image) { %>
+                        <img class="important-row-thumb" src="/uploads/announcements/<%= post.image %>" alt="<%= post.title %>">
+                        <% } else { %>
+                        <div class="important-row-thumb-empty"><i class="fas fa-bullhorn"></i></div>
+                        <% } %>
+                        <div class="important-row-body">
+                            <div class="important-row-meta">
+                                <span class="important-row-category"><%= post.category %></span>
+                                <span><%= toThaiDate(post.createdAt) %></span>
+                            </div>
+                            <div class="important-row-title"><%= post.title %></div>
+                            <div class="important-row-preview"><%= preview(post.content, 90) %></div>
+                        </div>
+                        <div class="important-row-action">อ่านต่อ <i class="fas fa-chevron-right"></i></div>
+                    </div>
+                    <% }); %>
+                </div>
+                <% } %>
+            </section>
+
+            <section class="announce-section">
+                <div class="announce-section-head">
+                    <span class="announce-section-title"><i class="fas fa-newspaper"></i> ข่าวสารทั่วไป</span>
+                    <span class="announce-section-count"><%= generalList.length %> รายการ</span>
+                </div>
+
+                <% if (generalList.length === 0) { %>
+                <div class="announce-empty">ยังไม่มีข่าวสารทั่วไปในขณะนี้</div>
+                <% } else { %>
+                <div class="general-grid">
+                    <% generalList.forEach((post) => { %>
+                    <div class="general-card"
+                        onclick="openAnnouncementDetail(this)"
+                        data-title="<%= encodeURIComponent(post.title) %>"
+                        data-content="<%= encodeURIComponent(post.content) %>"
+                        data-category="<%= encodeURIComponent(post.category) %>"
+                        data-date="<%= encodeURIComponent(toThaiDate(post.createdAt)) %>"
+                        data-image="<%= post.image ? encodeURIComponent('/uploads/announcements/' + post.image) : '' %>">
+                        <div class="general-card-media">
+                            <% if (post.image) { %>
+                            <img src="/uploads/announcements/<%= post.image %>" alt="<%= post.title %>">
+                            <% } else { %>
+                            <div class="general-card-media-empty"><i class="fas fa-bullhorn"></i></div>
+                            <% } %>
+                            <span class="general-card-category"><%= post.category %></span>
+                        </div>
+                        <div class="general-card-body">
+                            <span class="general-card-date"><%= toThaiDate(post.createdAt) %></span>
+                            <h3 class="general-card-title"><%= post.title %></h3>
+                            <p class="general-card-preview"><%= preview(post.content, 120) %></p>
+                            <span class="general-card-readmore">อ่านต่อ →</span>
+                        </div>
+                    </div>
+                    <% }); %>
+                </div>
+                <% } %>
+            </section>
+        </div>
+
+        <div class="detail-overlay" id="detailOverlay" onclick="closeDetailModal(event)">
+            <div class="detail-card" onclick="event.stopPropagation()">
+                <button class="detail-close" onclick="closeDetailModal(event)">&times;</button>
+                <img id="detailImage" class="detail-image" src="" alt="รูปประกาศ" style="display: none;" onclick="openLightbox(this.src)">
+                <div class="detail-meta">
+                    <span id="detailCategory"></span>
+                    <span id="detailDate"></span>
+                </div>
+                <div class="detail-title" id="detailTitle"></div>
+                <div class="detail-content" id="detailContent"></div>
+            </div>
+        </div>
+
+        <div class="lightbox-overlay" id="lightboxOverlay" onclick="closeLightbox()">
+            <button class="lightbox-close" onclick="closeLightbox(event)">&times;</button>
+            <img id="lightboxImage" src="" alt="รูปประกาศ (ขยาย)">
+        </div>
+
+        <script src="/js/announcements.js"></script>
+    </body>
+</html>
