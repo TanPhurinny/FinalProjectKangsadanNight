@@ -1,4 +1,18 @@
 /* public/css/navbar.css — gridgeist */
+
+/* markup ตั้งใจให้ .nav-container ที่มี max-width + padding คำนวณแบบ border-box
+   (padding รวมอยู่ใน max-width ไม่ใช่บวกเพิ่ม) — ปกติได้ box-sizing:border-box มาฟรีจาก
+   Bootstrap reset ของแต่ละหน้า แต่บางหน้าที่ include navbar partial นี้ไม่ได้โหลด Bootstrap
+   (เช่น marketMap.ejs, announcements.ejs) เลยใช้ content-box แทน ทำให้ nav กว้างเกิน
+   max-width จริงไป 40px (เท่ากับ padding ซ้าย+ขวา) และ wrap ไม่เหมือนหน้าอื่น — ประกาศ
+   border-box ไว้ในนี้ตรงๆ ให้ navbar หน้าตาเหมือนกันทุกหน้าไม่ว่าจะมี Bootstrap หรือไม่ */
+.management-nav,
+.management-nav *,
+.management-nav *::before,
+.management-nav *::after {
+    box-sizing: border-box;
+}
+
 .management-nav {
     background: var(--navy, #12303a);
     box-shadow: none;
@@ -167,6 +181,26 @@
     text-decoration: none;
     margin-left: 16px;
     font-weight: 500;
+}
+
+/* markup ใช้ utility class ของ Bootstrap (d-flex/align-items-center/shadow-sm/me-1) แต่บางหน้า
+   ที่ include navbar partial นี้ไม่ได้โหลด Bootstrap CSS ด้วย ทำให้หน้าตา nav-actions ต่างกันไปตามหน้า
+   — เลยประกาศ fallback ของ utility class เหล่านั้นไว้ในนี้ ให้ navbar ทำงานถูกต้องเสมอไม่ว่าหน้านั้นจะมี
+   Bootstrap หรือไม่ */
+.management-nav .d-flex {
+    display: flex;
+}
+
+.management-nav .align-items-center {
+    align-items: center;
+}
+
+.management-nav .shadow-sm {
+    box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .1);
+}
+
+.management-nav .me-1 {
+    margin-right: .25rem;
 }
 
 .logout-link:hover {
