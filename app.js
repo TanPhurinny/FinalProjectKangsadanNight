@@ -99,6 +99,7 @@ app.use((req, res, next) => {
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const marketRoutes = require('./routes/marketRoutes');
+const communityRoutes = require('./routes/communityRoutes');
 const sellerRoute = require('./routes/sellerRoute');
 const announceCtrl = require('./controllers/announcementController');
 
@@ -108,9 +109,16 @@ app.get('/', async (req, res) => {
   try {
     const user = req.user || null;
 
+    if (user?.role === 'SELLER') {
+      const tabToken = req.query?.tabToken;
+      const sellerPath = tabToken
+        ? `/seller?tabToken=${encodeURIComponent(String(tabToken))}`
+        : '/seller';
+      return res.redirect(sellerPath);
+    }
+
     let roleToFetch = 'GUEST';
-    if (user?.role === 'SELLER') roleToFetch = 'SELLER';
-    else if (user?.role === 'CUSTOMER') roleToFetch = 'CUSTOMER';
+    if (user?.role === 'CUSTOMER') roleToFetch = 'CUSTOMER';
     else if (user?.role === 'ADMIN' || user?.role === 'STAFF') roleToFetch = 'CUSTOMER';
 
     const announcements = await announceCtrl.getAnnouncementsForUser(roleToFetch);
@@ -135,6 +143,7 @@ app.get('/', async (req, res) => {
 app.use('/', authRoutes); // Login, Register, Logout
 app.use('/admin', adminRoutes); // Dashboard, Users, Requests
 app.use('/market', marketRoutes); // Slots, Products
+app.use('/', communityRoutes); // Community Feed APIs + Pages
 app.use('/', sellerRoute); // เลือกโซน, แจ้งซ่อม, จองแผง
 
 // --- 6. Error Handling 404 (ต้องอยู่ท้ายสุดเสมอ) ---
