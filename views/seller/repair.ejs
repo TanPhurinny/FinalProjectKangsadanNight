@@ -17,7 +17,11 @@
 
     <body>
         <script src="/js/common/tabSession.js"></script>
-  <%- include('../partials/navbar2') %>
+  <% if (user && user.role === 'SELLER') { %>
+  <%- include('../partials/navbarSeller') %>
+  <% } else { %>
+  <%- include('../partials/navbarCustomer') %>
+  <% } %>
 
         <header class="site-header">
             <button class="btn-back" onclick="history.back()" title="ย้อนกลับ">

@@ -1,0 +1,54 @@
+<%
+    // ตรวจสอบหน้าปัจจุบันจาก URL path เพื่อไฮไลต์เมนูที่ใช้งานอยู่
+    // หน้าแรกของลูกค้าทั่วไปคือฟีดคอมมูนิตี้ (ตั้งแต่ล็อกอินเข้ามาจะมาที่นี่เลย)
+    const currentPath = locals.path || '';
+    const isStaffOrAdmin = user && (user.role === 'ADMIN' || user.role === 'STAFF');
+    const homePath = isStaffOrAdmin ? '/admin/dashboard' : '/community';
+    const isCommunityPath = currentPath.includes('community') || currentPath.includes('comunity');
+%>
+
+<nav class="management-nav">
+    <div class="nav-container">
+        <a href="<%= homePath %>" class="nav-brand <%= isCommunityPath ? 'active' : '' %>">
+            <img src="/img/favicon.png" alt="Kang Night Logo" class="nav-logo">
+            KangsadanNight
+        </a>
+
+        <button class="nav-toggle" id="navToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <div class="nav-links" id="navMenu">
+            <a href="/community" class="nav-item <%= isCommunityPath ? 'active' : '' %>">
+                <i class="fas fa-home"></i> หน้าหลัก
+            </a>
+            <a href="/#announcements" class="nav-item">
+                <i class="fas fa-bullhorn"></i> ประกาศ
+            </a>
+            <a href="/booking-status" class="nav-item <%= currentPath.includes('booking-status') ? 'active' : '' %>">
+                <i class="fas fa-clipboard-list"></i> สถานะการจอง
+            </a>
+            <a href="/shop-application" class="nav-item <%= currentPath.includes('shop-application') ? 'active' : '' %>">
+                <i class="fas fa-store"></i> สมัครเปิดร้านค้า
+            </a>
+            <a href="/repair" class="nav-item <%= currentPath.includes('repair') ? 'active' : '' %>">
+                <i class="fas fa-tools"></i> แจ้งซ่อม
+            </a>
+            <a href="/notifications" class="nav-item <%= currentPath.includes('notifications') ? 'active' : '' %>">
+                <i class="fas fa-bell"></i> แจ้งเตือน
+            </a>
+
+            <div class="nav-actions d-flex align-items-center">
+                <div class="user-badge shadow-sm">
+                    <i class="fas fa-user-circle"></i>
+                    <%= user ? user.name : 'ผู้ใช้งาน' %>
+                </div>
+                <a href="/logout" class="logout-link">
+                    <i class="fas fa-sign-out-alt me-1"></i>ออกจากระบบ
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<script src="/js/partials/navbar.js"></script>

@@ -91,7 +91,7 @@ function buildLoginRedirectTarget(user) {
         return '/seller';
     }
 
-    return '/profile';
+    return '/community';
 }
 
 function createToken(user) {

@@ -20,7 +20,11 @@
 %>
 <body data-page="booking-status" data-page-data="<%= encodeURIComponent(pageDataJson) %>">
 <script src="/js/common/tabSession.js"></script>
-  <%- include('../partials/navbar2') %>
+  <% if (user && user.role === 'SELLER') { %>
+  <%- include('../partials/navbarSeller') %>
+  <% } else { %>
+  <%- include('../partials/navbarCustomer') %>
+  <% } %>
 
   <main class="container page-shell">
     <% if (typeof error !== 'undefined' && error) { %>

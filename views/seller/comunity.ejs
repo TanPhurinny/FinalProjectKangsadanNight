@@ -15,7 +15,11 @@
 </head>
 <body data-can-create-post="<%= canCreatePost ? '1' : '0' %>" data-categories='<%- JSON.stringify(categories || []) %>'>
 <script src="/js/common/tabSession.js"></script>
-  <%- include('../partials/navbar2') %>
+  <% if (user && user.role === 'SELLER') { %>
+  <%- include('../partials/navbarSeller') %>
+  <% } else { %>
+  <%- include('../partials/navbarCustomer') %>
+  <% } %>
 
 <div class="feed-page" id="feedPage">
   <header class="community-header">

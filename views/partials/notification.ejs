@@ -20,7 +20,11 @@
   const notificationPageDataJson = JSON.stringify({ booking: notificationBookingPayload, notifications: notificationListPayload });
 %>
 <body data-page="notifications" data-page-data="<%= encodeURIComponent(notificationPageDataJson) %>">
-  <%- include('../partials/navbar2') %>
+  <% if (user && user.role === 'SELLER') { %>
+  <%- include('../partials/navbarSeller') %>
+  <% } else { %>
+  <%- include('../partials/navbarCustomer') %>
+  <% } %>
 
   <main class="container page-shell">
     <div class="page-hero">

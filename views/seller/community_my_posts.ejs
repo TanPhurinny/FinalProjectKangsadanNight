@@ -15,7 +15,11 @@
 </head>
 <body>
 <script src="/js/common/tabSession.js"></script>
-<%- include('../partials/navbar2') %>
+<% if (user && user.role === 'SELLER') { %>
+<%- include('../partials/navbarSeller') %>
+<% } else { %>
+<%- include('../partials/navbarCustomer') %>
+<% } %>
 
 <div class="my-posts-page container py-3 py-md-4">
   <header class="my-posts-header mb-3">
