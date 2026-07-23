@@ -240,6 +240,7 @@ exports.getApprovalsPage = async (req, res) => {
 
         const zoneCounts = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
         const statusCounts = { PENDING: 0, APPROVED: 0, REJECTED: 0, IN_PROGRESS: 0, SUCCESS: 0 };
+        let awaitingSlipCount = 0;
 
         const bookingRows = await Promise.all(bookingRequests.map(async (request) => {
             const zoneCode = String(request.zone || '').trim().toUpperCase();
@@ -317,6 +318,10 @@ exports.getApprovalsPage = async (req, res) => {
                 statusCounts[statusCode] += 1;
             }
 
+            if (statusCode === 'IN_PROGRESS' && request.paymentSlipImage) {
+                awaitingSlipCount += 1;
+            }
+
             return {
                 id: request.id,
                 productName: request.productName,
@@ -360,7 +365,8 @@ exports.getApprovalsPage = async (req, res) => {
                 pending: statusCounts.PENDING,
                 approved: statusCounts.APPROVED,
                 rejected: statusCounts.REJECTED,
-                inProgress: statusCounts.IN_PROGRESS,
+                inProgress: statusCounts.IN_PROGRESS - awaitingSlipCount,
+                awaitingSlip: awaitingSlipCount,
                 success: statusCounts.SUCCESS,
                 zones: zoneCounts
             },

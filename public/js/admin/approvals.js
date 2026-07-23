@@ -14,6 +14,7 @@ const countAllEl = document.getElementById('count-all');
 const countPendingEl = document.getElementById('count-pending');
 const countApprovedEl = document.getElementById('count-approved');
 const countInProgressEl = document.getElementById('count-in_progress');
+const countAwaitingSlipEl = document.getElementById('count-awaiting_slip');
 const countSuccessEl = document.getElementById('count-success');
 const countRejectedEl = document.getElementById('count-rejected');
 const countAEl = document.getElementById('count-A');
@@ -71,23 +72,33 @@ function confirmArrangeStall(stall) {
 }
 
 function submitConfirmPayment(requestId) {
-    const confirmed = window.confirm('ยืนยันว่าตรวจสอบสลิปโอนเงินแล้ว และต้องการปิดล็อกให้ร้านนี้เป็นทางการ?');
-    if (!confirmed) {
-        return;
-    }
+    Swal.fire({
+        title: 'ยืนยันการชำระเงิน?',
+        text: 'ยืนยันว่าตรวจสอบสลิปโอนเงินแล้ว และต้องการปิดล็อกให้ร้านนี้เป็นทางการ',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3BB8D4',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'ยืนยัน',
+        cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+        if (!result.isConfirmed) {
+            return;
+        }
 
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/admin/approvals/confirm-payment';
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/approvals/confirm-payment';
 
-    const requestField = document.createElement('input');
-    requestField.type = 'hidden';
-    requestField.name = 'requestId';
-    requestField.value = String(requestId);
+        const requestField = document.createElement('input');
+        requestField.type = 'hidden';
+        requestField.name = 'requestId';
+        requestField.value = String(requestId);
 
-    form.appendChild(requestField);
-    document.body.appendChild(form);
-    form.submit();
+        form.appendChild(requestField);
+        document.body.appendChild(form);
+        form.submit();
+    });
 }
 
 // สถานะ pending = ยังไม่ได้ตรวจสอบร้าน -> ตรวจร้าน (อนุมัติ/ปฏิเสธ)
@@ -216,8 +227,15 @@ function applyFilters() {
         const cZone = card.dataset.zone;
         const cShop = (card.dataset.shop || '').toLowerCase();
 
+        const hasSlip = card.dataset.hasSlip === 'true';
         const matchStatus = currentStatus === 'all'
-            || (currentStatus === 'unpaid' ? UNPAID_STATUSES.includes(cStatus) : cStatus === currentStatus);
+            || (currentStatus === 'unpaid'
+                ? UNPAID_STATUSES.includes(cStatus)
+                : currentStatus === 'in_progress'
+                    ? cStatus === 'in_progress' && !hasSlip
+                    : currentStatus === 'awaiting_slip'
+                        ? cStatus === 'in_progress' && hasSlip
+                        : cStatus === currentStatus);
         const matchZone = currentZone === 'all' || cZone === currentZone;
         const matchCategory = currentCategory === 'all' || ZONE_CATEGORY[cZone] === currentCategory;
         const matchSearch = !currentSearch || cShop.includes(currentSearch);
@@ -241,6 +259,7 @@ function updateSummaryCounters() {
         pending: 0,
         approved: 0,
         in_progress: 0,
+        awaiting_slip: 0,
         success: 0,
         rejected: 0,
         A: 0,
@@ -256,8 +275,15 @@ function updateSummaryCounters() {
 
         const status = card.dataset.status;
         const zone = card.dataset.zone;
+        const hasSlip = card.dataset.hasSlip === 'true';
 
-        if (status in counters) {
+        if (status === 'in_progress') {
+            if (hasSlip) {
+                counters.awaiting_slip += 1;
+            } else {
+                counters.in_progress += 1;
+            }
+        } else if (status in counters) {
             counters[status] += 1;
         }
 
@@ -280,6 +306,10 @@ function updateSummaryCounters() {
 
     if (countInProgressEl) {
         countInProgressEl.textContent = counters.in_progress;
+    }
+
+    if (countAwaitingSlipEl) {
+        countAwaitingSlipEl.textContent = counters.awaiting_slip;
     }
 
     if (countSuccessEl) {

@@ -544,6 +544,7 @@
 .approvals-page .modal-content {
     width: 100%;
     max-width: 520px;
+    max-height: calc(100vh - 32px);
     background: #fff;
     border: 1px solid var(--line);
     border-radius: 4px;
@@ -551,6 +552,8 @@
     box-shadow: none;
     transform: translateY(8px);
     transition: var(--transition);
+    display: flex;
+    flex-direction: column;
 }
 
 .approvals-page .modal-overlay.active .modal-content {
@@ -564,6 +567,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .approvals-page .modal-header h3 {
@@ -583,6 +587,7 @@
 
 .approvals-page .modal-body {
     padding: 20px;
+    overflow-y: auto;
 }
 
 .approvals-page .shop-image-box {
@@ -658,6 +663,10 @@
 .approvals-page .payment-slip-thumb:hover {
     border-color: var(--navy);
     box-shadow: 0 0 0 2px rgba(18, 48, 58, 0.12);
+}
+
+.swal2-container {
+    z-index: 1300 !important;
 }
 
 .approvals-page .slip-lightbox-overlay {
