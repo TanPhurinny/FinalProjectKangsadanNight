@@ -26,6 +26,15 @@ function isSeller(user) {
     return String(user?.role || '').toUpperCase() === 'SELLER';
 }
 
+async function getUserAvatar(userId) {
+    const shop = await prisma.shopDetail.findUnique({
+        where: { userId },
+        select: { productImage: true }
+    });
+
+    return shop?.productImage || '/img/favicon.png';
+}
+
 function parseDateTimeThai(dateValue) {
     if (!dateValue) {
         return { date: '-', time: '-' };
@@ -197,7 +206,10 @@ async function fetchPostOrThrow(postId) {
 
 exports.renderFeedPage = async (req, res) => {
     try {
-        const posts = await fetchFeedPosts(req.user.id);
+        const [posts, currentUserAvatar] = await Promise.all([
+            fetchFeedPosts(req.user.id),
+            getUserAvatar(req.user.id)
+        ]);
 
         return res.render('seller/comunity', {
             user: req.user,
@@ -206,6 +218,7 @@ exports.renderFeedPage = async (req, res) => {
             categoryIcons: COMMUNITY_CATEGORY_ICONS,
             defaultCategoryIcon: DEFAULT_CATEGORY_ICON,
             posts,
+            currentUserAvatar,
             canCreatePost: isSeller(req.user)
         });
     } catch (error) {

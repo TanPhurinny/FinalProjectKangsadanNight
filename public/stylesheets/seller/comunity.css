@@ -279,9 +279,6 @@
 .manage-posts-fab:hover {
   color: var(--primary-dark);
 }
-.manage-posts-fab__icon {
-  font-size: 1rem;
-}
 
 .write-post-fab {
   border: 0;
@@ -315,8 +312,7 @@
     padding: 10px 12px;
     font-size: 0.78rem;
   }
-  /* จอเล็กมาก: เหลือแค่ไอคอน ไม่ให้ปุ่มสองอันดันกันจนล้นขอบจอ */
-  .manage-posts-fab span:not(.manage-posts-fab__icon),
+  /* จอเล็กมาก: ปุ่ม "เขียนโพสต์" เหลือแค่ไอคอน ไม่ให้ปุ่มสองอันดันกันจนล้นขอบจอ */
   .write-post-fab span:not(.fab-plus) {
     display: none;
   }
@@ -389,6 +385,81 @@
   color: var(--text-muted);
   text-align: center;
   padding: 16px;
+}
+
+/* ============================================================
+   COMMENT COMPOSER — กล่องพิมพ์คอมเมนต์สไตล์ Facebook
+   (avatar + กล่อง pill ขยายสูงอัตโนมัติ + ปุ่มส่งไอคอนในตัว)
+   ============================================================ */
+.comment-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.comment-composer__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid var(--primary-light);
+}
+.comment-composer__box {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  background: #f0f2f5;
+  border-radius: 18px;
+  padding: 6px 8px 6px 14px;
+  transition: background var(--transition);
+}
+.comment-composer__box:focus-within {
+  background: #e7f7fb;
+}
+.comment-composer__input {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  max-height: 120px;
+  padding: 4px 0;
+  color: var(--text-dark);
+}
+.comment-composer__input::placeholder {
+  color: #9aa5ad;
+}
+.comment-composer__send {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+}
+.comment-composer__send i {
+  font-size: 1rem;
+}
+.comment-composer__send:not(:disabled) {
+  color: var(--primary);
+  cursor: pointer;
+}
+.comment-composer__send:not(:disabled):hover {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+}
+.comment-composer__send:disabled {
+  color: #c5ccd1;
+  cursor: default;
 }
 
 /* ============================================================

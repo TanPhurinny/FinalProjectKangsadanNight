@@ -136,7 +136,6 @@
   <% if (canCreatePost) { %>
     <div class="feed-fab-bar">
       <a href="/community/my-posts" class="manage-posts-fab" aria-label="จัดการโพสต์ของคุณ">
-        <span class="manage-posts-fab__icon">📝</span>
         <span>จัดการโพสต์ของคุณ</span>
       </a>
       <button type="button" class="write-post-fab" id="openCreatePostBtn" data-bs-toggle="modal" data-bs-target="#createPostModal">
@@ -257,11 +256,14 @@
         </div>
         <div class="modal-body">
           <div id="commentsList" class="comments-list"></div>
-          <form id="commentForm" class="mt-3">
+          <form id="commentForm" class="comment-composer mt-3">
             <input type="hidden" id="commentPostId">
-            <div class="input-group">
-              <input type="text" id="commentContent" class="form-control" placeholder="พิมพ์คอมเมนต์..." maxlength="1000" required>
-              <button class="btn btn-primary" type="submit">ส่ง</button>
+            <img src="<%= currentUserAvatar %>" alt="คุณ" class="comment-composer__avatar">
+            <div class="comment-composer__box">
+              <textarea id="commentContent" class="comment-composer__input" placeholder="พิมพ์คอมเมนต์..." maxlength="1000" rows="1" required></textarea>
+              <button class="comment-composer__send" type="submit" aria-label="ส่งคอมเมนต์" disabled>
+                <i class="bi bi-send-fill"></i>
+              </button>
             </div>
           </form>
         </div>
