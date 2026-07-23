@@ -76,29 +76,49 @@
     margin-bottom: 20px;
 }
 
+.approvals-page .summary-strip-hint {
+    font-size: 0.74rem;
+    color: var(--ink-soft);
+    font-family: var(--mono);
+    margin-bottom: 6px;
+}
+
 .approvals-page .summary-strip {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0;
+    gap: 10px;
     margin-bottom: 14px;
-    border: 1px solid var(--line);
-    border-radius: 3px;
-    overflow: hidden;
 }
 
 .approvals-page .summary-card {
-    border: none;
-    border-right: 1px solid var(--line);
-    border-radius: 0;
+    border: 1px solid var(--line);
+    border-radius: 3px;
     background: #fff;
     padding: 10px 12px;
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: 3px;
+    width: 100%;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: var(--transition);
 }
 
-.approvals-page .summary-card:last-child {
-    border-right: none;
+.approvals-page .summary-card:hover {
+    border-color: var(--primary-color);
+    background: #f3f6f8;
+}
+
+.approvals-page .summary-card.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.approvals-page .summary-card.active .summary-label,
+.approvals-page .summary-card.active .summary-value {
+    color: #fff;
 }
 
 .approvals-page .summary-label {
@@ -242,42 +262,6 @@
     outline: none;
     border-color: var(--navy);
     box-shadow: 0 0 0 2px rgba(18, 48, 58, 0.12);
-}
-
-.approvals-page .btn-toggle-advanced {
-    align-self: flex-end;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 9px 14px;
-    border: 1px solid var(--line);
-    border-radius: 3px;
-    background: #fff;
-    color: var(--ink-soft);
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: var(--transition);
-}
-
-.approvals-page .btn-toggle-advanced:hover {
-    border-color: var(--primary-color);
-    color: var(--primary-dark);
-}
-
-.approvals-page .btn-toggle-advanced.active {
-    background: var(--navy);
-    border-color: var(--navy);
-    color: #fff;
-}
-
-.approvals-page .btn-toggle-advanced.active .fa-chevron-down {
-    transform: rotate(180deg);
-}
-
-.approvals-page .filter-row-advanced {
-    padding-top: 4px;
 }
 
 .approvals-page .type-summary {
@@ -748,10 +732,6 @@
 
     .approvals-page .summary-strip {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .approvals-page .summary-card:nth-child(2n) {
-        border-right: none;
     }
 
     .approvals-page .card-body {

@@ -71,41 +71,42 @@
                 <% } %>
 
                 <div class="filter-section">
+                    <div class="summary-strip-hint">แตะเพื่อดูรายการ</div>
                     <div class="summary-strip">
-                        <div class="summary-card">
+                        <button type="button" class="summary-card" data-status-filter="all">
                             <span class="summary-label">ทั้งหมด</span>
                             <span class="summary-value" id="count-all"><%= summaryCounts.all %></span>
-                        </div>
-                        <div class="summary-card">
+                        </button>
+                        <button type="button" class="summary-card" data-status-filter="pending">
                             <span class="summary-label">รอตรวจสอบร้าน</span>
                             <span class="summary-value"
                                 id="count-pending"><%= summaryCounts.pending %></span>
-                        </div>
-                        <div class="summary-card">
+                        </button>
+                        <button type="button" class="summary-card" data-status-filter="approved">
                             <span class="summary-label">รอจัดล็อก</span>
                             <span class="summary-value"
                                 id="count-approved"><%= summaryCounts.approved %></span>
-                        </div>
-                        <div class="summary-card">
+                        </button>
+                        <button type="button" class="summary-card" data-status-filter="in_progress">
                             <span class="summary-label">รอชำระเงิน</span>
                             <span class="summary-value"
                                 id="count-in_progress"><%= summaryCounts.inProgress || 0 %></span>
-                        </div>
-                        <div class="summary-card">
+                        </button>
+                        <button type="button" class="summary-card" data-status-filter="awaiting_slip">
                             <span class="summary-label">รอตรวจสอบสลิป</span>
                             <span class="summary-value"
                                 id="count-awaiting_slip"><%= summaryCounts.awaitingSlip || 0 %></span>
-                        </div>
-                        <div class="summary-card">
+                        </button>
+                        <button type="button" class="summary-card" data-status-filter="success">
                             <span class="summary-label">สำเร็จ</span>
                             <span class="summary-value"
                                 id="count-success"><%= summaryCounts.success || 0 %></span>
-                        </div>
-                        <div class="summary-card">
+                        </button>
+                        <button type="button" class="summary-card" data-status-filter="rejected">
                             <span class="summary-label">ปฏิเสธ</span>
                             <span class="summary-value"
                                 id="count-rejected"><%= summaryCounts.rejected %></span>
-                        </div>
+                        </button>
                     </div>
 
                     <div class="search-row">
@@ -120,27 +121,7 @@
                             ล้างตัวกรอง</button>
                     </div>
 
-                    <div class="filter-row-selects">
-                        <div class="filter-select-group">
-                            <label class="filter-title" for="statusSelect">สถานะ / การชำระเงิน</label>
-                            <select id="statusSelect" class="filter-select">
-                                <option value="all">ทั้งหมด</option>
-                                <option value="pending">รอตรวจสอบร้าน</option>
-                                <option value="approved">รอจัดล็อก</option>
-                                <option value="in_progress">รอชำระเงิน</option>
-                                <option value="awaiting_slip">รอตรวจสอบสลิป</option>
-                                <option value="unpaid">ยังไม่จ่าย (รวมทุกขั้นก่อนชำระ)</option>
-                                <option value="success">จ่ายแล้ว / สำเร็จ</option>
-                                <option value="rejected">ปฏิเสธ</option>
-                            </select>
-                        </div>
-
-                        <button type="button" class="btn-toggle-advanced" id="toggleAdvancedFiltersBtn">
-                            <i class="fa-solid fa-sliders"></i> ตัวกรองเพิ่มเติม (โซน/หมวดหมู่) <i class="fa-solid fa-chevron-down"></i>
-                        </button>
-                    </div>
-
-                    <div class="filter-row-selects filter-row-advanced d-none" id="advancedFilters">
+                    <div class="filter-row-selects" id="advancedFilters">
                         <div class="filter-select-group">
                             <label class="filter-title" for="categorySelect">หมวดหมู่</label>
                             <select id="categorySelect" class="filter-select">
@@ -187,6 +168,25 @@
                     <% } %>
 
                     <% bookingRequestsList.forEach(function(request) { %>
+                        <%
+                            // ปุ่มบนการ์ดต้องบอก action จริงที่ต้องทำต่อ ไม่ใช่ "ดูรายละเอียด" เฉยๆ
+                            // เพื่อให้แอดมินกวาดตาดูลิสต์แล้วรู้เลยว่าใบไหนรออะไรอยู่ ไม่ต้องเปิดทีละใบ
+                            let cardActionLabel = 'ดูรายละเอียด';
+                            let cardActionClass = 'btn-neutral';
+                            if (request.status === 'pending') {
+                                cardActionLabel = 'ตรวจสอบร้านค้า';
+                                cardActionClass = 'btn-approve';
+                            } else if (request.status === 'approved') {
+                                cardActionLabel = 'จัดล็อกให้ร้านนี้';
+                                cardActionClass = 'btn-approve';
+                            } else if (request.status === 'in_progress' && request.paymentSlipImage) {
+                                cardActionLabel = 'ตรวจสอบสลิป';
+                                cardActionClass = 'btn-approve';
+                            } else if (request.status === 'in_progress') {
+                                cardActionLabel = 'รอผู้ขายชำระเงิน';
+                                cardActionClass = 'btn-neutral';
+                            }
+                        %>
                         <% const detailPayload = encodeURIComponent(JSON.stringify({
                             productName: request.productName || '-',
                             zoneLabel: request.zoneLabel || '-',
@@ -218,7 +218,7 @@
                                 <p><i class="fa-solid fa-calendar-check"></i> ยื่นคำขอ: <%= request.createdAtText %></p>
                             </div>
                             <div class="card-actions">
-                                <button type="button" class="btn-action btn-approve" onclick="event.stopPropagation(); openDetailFromElement(this.closest('.booking-card'))">ดูรายละเอียด</button>
+                                <button type="button" class="btn-action <%= cardActionClass %>" onclick="event.stopPropagation(); openDetailFromElement(this.closest('.booking-card'))"><%= cardActionLabel %></button>
                             </div>
                         </div>
                     <% }) %>

@@ -1,8 +1,5 @@
-const statusSelect = document.getElementById('statusSelect');
 const categorySelect = document.getElementById('categorySelect');
 const zoneSelect = document.getElementById('zoneSelect');
-const advancedFilters = document.getElementById('advancedFilters');
-const toggleAdvancedFiltersBtn = document.getElementById('toggleAdvancedFiltersBtn');
 const cards = document.querySelectorAll('.booking-card');
 
 // โซนไหนอยู่หมวดหมู่ไหน (ตรงกับ productCategory ของ Zone ในฐานข้อมูล)
@@ -31,11 +28,6 @@ let currentStatus = 'all';
 let currentZone = 'all';
 let currentCategory = 'all';
 let currentSearch = '';
-
-// จ่ายแล้ว = แอดมินยืนยันสลิปแล้ว (SUCCESS) / ยังไม่จ่าย = ยังไม่ถึงขั้นตอนจ่ายเงินหรือรอแอดมินตรวจสลิปอยู่
-// (ไม่รวม REJECTED เพราะร้านที่ถูกปฏิเสธไม่มีทางไปถึงขั้นตอนชำระเงินอยู่แล้ว) - รวมเป็นตัวเลือกเดียว
-// "unpaid" อยู่ใน dropdown สถานะเพื่อไม่ให้มีแถวตัวกรองแยกซ้ำซ้อน
-const UNPAID_STATUSES = ['pending', 'approved', 'in_progress'];
 
 function navigateToBookingStall(stall) {
     const zoneChar = stall.charAt(0);
@@ -229,13 +221,11 @@ function applyFilters() {
 
         const hasSlip = card.dataset.hasSlip === 'true';
         const matchStatus = currentStatus === 'all'
-            || (currentStatus === 'unpaid'
-                ? UNPAID_STATUSES.includes(cStatus)
-                : currentStatus === 'in_progress'
-                    ? cStatus === 'in_progress' && !hasSlip
-                    : currentStatus === 'awaiting_slip'
-                        ? cStatus === 'in_progress' && hasSlip
-                        : cStatus === currentStatus);
+            || (currentStatus === 'in_progress'
+                ? cStatus === 'in_progress' && !hasSlip
+                : currentStatus === 'awaiting_slip'
+                    ? cStatus === 'in_progress' && hasSlip
+                    : cStatus === currentStatus);
         const matchZone = currentZone === 'all' || cZone === currentZone;
         const matchCategory = currentCategory === 'all' || ZONE_CATEGORY[cZone] === currentCategory;
         const matchSearch = !currentSearch || cShop.includes(currentSearch);
@@ -345,12 +335,21 @@ function updateSummaryCounters() {
     }
 }
 
-if (statusSelect) {
-    statusSelect.addEventListener('change', () => {
-        currentStatus = statusSelect.value;
-        applyFilters();
+const summaryCards = document.querySelectorAll('.summary-card[data-status-filter]');
+
+function setStatusFilter(status) {
+    currentStatus = status;
+    summaryCards.forEach((card) => {
+        card.classList.toggle('active', card.dataset.statusFilter === status);
     });
+    applyFilters();
 }
+
+summaryCards.forEach((card) => {
+    card.addEventListener('click', () => {
+        setStatusFilter(card.dataset.statusFilter);
+    });
+});
 
 if (zoneSelect) {
     zoneSelect.addEventListener('change', () => {
@@ -366,13 +365,6 @@ if (categorySelect) {
     });
 }
 
-if (toggleAdvancedFiltersBtn && advancedFilters) {
-    toggleAdvancedFiltersBtn.addEventListener('click', () => {
-        const isOpen = advancedFilters.classList.toggle('d-none') === false;
-        toggleAdvancedFiltersBtn.classList.toggle('active', isOpen);
-    });
-}
-
 if (searchInput) {
     searchInput.addEventListener('input', (event) => {
         currentSearch = event.target.value.trim().toLowerCase();
@@ -383,19 +375,15 @@ if (searchInput) {
 const clearFiltersBtn = document.getElementById('clearFiltersBtn');
 if (clearFiltersBtn) {
     clearFiltersBtn.addEventListener('click', () => {
-        currentStatus = 'all';
         currentZone = 'all';
         currentCategory = 'all';
         currentSearch = '';
         if (searchInput) searchInput.value = '';
 
-        if (statusSelect) statusSelect.value = 'all';
         if (zoneSelect) zoneSelect.value = 'all';
         if (categorySelect) categorySelect.value = 'all';
-        if (advancedFilters) advancedFilters.classList.add('d-none');
-        if (toggleAdvancedFiltersBtn) toggleAdvancedFiltersBtn.classList.remove('active');
 
-        applyFilters();
+        setStatusFilter('all');
     });
 }
 
@@ -582,4 +570,4 @@ document.addEventListener('keydown', (event) => {
 });
 
 updateSummaryCounters();
-applyFilters();
+setStatusFilter(currentStatus);
