@@ -49,8 +49,7 @@ const ZONE_DEFINITIONS = [
       { rowCode: 'B3', start: 301, end: 323 },
       { rowCode: 'B4', start: 401, end: 423 },
       { rowCode: 'B5', start: 501, end: 523 },
-      { rowCode: 'B6', start: 601, end: 623 },
-      { rowCode: 'B7', start: 701, end: 715 }
+      { rowCode: 'B6', start: 601, end: 623 }
     ]
   },
   {
@@ -73,7 +72,10 @@ const ZONE_DEFINITIONS = [
     size: '4x3',
     basePrice: 250,
     displayOrder: 4,
-    rows: [{ rowCode: 'D2', start: 201, end: 212 }]
+    rows: [
+      { rowCode: 'D2', start: 201, end: 209 },
+      { rowCode: 'D2b', start: 211, end: 212 }
+    ]
   },
   {
     code: 'E',

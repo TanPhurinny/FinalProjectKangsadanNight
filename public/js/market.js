@@ -236,10 +236,6 @@ marginLeft:"10px"
 });
 
 const smallBoxes=[
-'B701-B703',
-'B704-B707',
-'B708-B711',
-'B712-B715',
 'B801-B804'
 ];
 

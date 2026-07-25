@@ -72,7 +72,7 @@ function closeZone() {
     document.getElementById('backdrop').classList.remove('show');
 }
 
-// โซน D ในผังจริงเป็นรูปตัว L (แถวบน D201-D208 8 ช่อง, ต่อลงมาแนวตั้ง D209-D210 ใต้ D208,
+// โซน D ในผังจริงเป็นรูปตัว L (แถวบน D201-D208 8 ช่อง, ต่อลงมาแนวตั้ง D209 ใต้ D208,
 // และมีกลุ่ม D211-D212 แยกอยู่ระดับล่างซ้าย) เก็บตำแหน่งจริงไว้ตรงนี้เพราะฐานข้อมูลไม่มีพิกัด x/y
 const ZONE_D_LAYOUT = [
     { code: 'D201', col: 3, row: 1 }, { code: 'D202', col: 4, row: 1 },
@@ -80,8 +80,7 @@ const ZONE_D_LAYOUT = [
     { code: 'D205', col: 7, row: 1 }, { code: 'D206', col: 8, row: 1 },
     { code: 'D207', col: 9, row: 1 }, { code: 'D208', col: 10, row: 1 },
     { code: 'D211', col: 2, row: 2 }, { code: 'D212', col: 3, row: 2 },
-    { code: 'D209', col: 10, row: 2 },
-    { code: 'D210', col: 10, row: 3 }
+    { code: 'D209', col: 10, row: 2 }
 ];
 
 function renderDZoneGrid(z, stallByCode) {
