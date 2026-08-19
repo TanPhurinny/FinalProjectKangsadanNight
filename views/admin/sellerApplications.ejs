@@ -117,8 +117,16 @@
                             shopName: application.shopName || '-',
                             productType: application.productType || '-',
                             productDetail: application.productDetail || '-',
-                            applicantName: application.applicantName || '-',
+                            sellerName: application.sellerName || '-',
+                            idCardNumber: application.idCardNumber || '-',
+                            bankAccountNumber: application.bankAccountNumber || '-',
+                            bankAccountName: application.bankAccountName || '-',
                             phoneNumber: application.phoneNumber || '-',
+                            houseNumber: application.houseNumber || '-',
+                            subdistrict: application.subdistrict || '-',
+                            district: application.district || '-',
+                            province: application.province || '-',
+                            applicantName: application.applicantName || '-',
                             email: application.email || '-',
                             statusLabel: application.statusLabel || '-',
                             applicationId: application.id,
@@ -173,11 +181,26 @@
                             <span class="detail-label">รายละเอียดสินค้า:</span>
                             <span class="detail-value" id="m-product-detail"></span>
 
+                            <span class="detail-label">ชื่อผู้ขาย:</span>
+                            <span class="detail-value detail-highlight" id="m-seller-name"></span>
+
+                            <span class="detail-label">เลขบัตรประชาชน:</span>
+                            <span class="detail-value" id="m-id-card"></span>
+
                             <span class="detail-label">ผู้สมัคร:</span>
                             <span class="detail-value detail-highlight" id="m-name"></span>
 
                             <span class="detail-label">เบอร์โทรศัพท์:</span>
                             <span class="detail-value" id="m-phone"></span>
+
+                            <span class="detail-label">เลขบัญชีธนาคาร:</span>
+                            <span class="detail-value" id="m-bank-account"></span>
+
+                            <span class="detail-label">ชื่อบัญชีธนาคาร:</span>
+                            <span class="detail-value" id="m-bank-name"></span>
+
+                            <span class="detail-label">ที่อยู่:</span>
+                            <span class="detail-value" id="m-address"></span>
 
                             <span class="detail-label">อีเมล:</span>
                             <span class="detail-value" id="m-email"></span>

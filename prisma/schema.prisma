@@ -22,78 +22,32 @@ model User {
   requests      MaintenanceReport[]
   shop          ShopDetail?
   sellerProfile Seller?
-  passwordResetTokens PasswordResetToken[]
-  communityPosts CommunityPost[]
-  communityLikes CommunityLike[]
-  communityComments CommunityComment[]
   sellerApplications SellerApplication[]
 }
 
-model CommunityPost {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  category  String
-  content   String   @db.LongText
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model SellerApplication {
+  id                Int       @id @default(autoincrement())
+  userId            Int
+  shopName          String
+  productType       String?
+  productDetail     String?   @db.Text
+  sellerName        String?
+  idCardNumber      String?
+  bankAccountNumber String?
+  bankAccountName   String?
+  phoneNumber       String?
+  houseNumber       String?
+  subdistrict       String?
+  district          String?
+  province          String?
+  shopCoverImage    String?
+  status            Status    @default(PENDING)
+  rejectReason      String?   @db.Text
+  reviewedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  author    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  images    CommunityPostImage[]
-  likes     CommunityLike[]
-  comments  CommunityComment[]
-
-  @@index([userId], map: "CommunityPost_userId_fkey")
-  @@index([createdAt], map: "CommunityPost_createdAt_idx")
-}
-
-model CommunityPostImage {
-  id       Int    @id @default(autoincrement())
-  postId   Int
-  imageUrl String
-
-  post     CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@index([postId], map: "CommunityPostImage_postId_fkey")
-}
-
-model CommunityComment {
-  id        Int      @id @default(autoincrement())
-  postId    Int
-  userId    Int
-  content   String   @db.Text
-  createdAt DateTime @default(now())
-
-  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([postId], map: "CommunityComment_postId_fkey")
-  @@index([userId], map: "CommunityComment_userId_fkey")
-}
-
-model CommunityLike {
-  id        Int      @id @default(autoincrement())
-  postId    Int
-  userId    Int
-  createdAt DateTime @default(now())
-
-  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-  @@index([postId], map: "CommunityLike_postId_fkey")
-  @@index([userId], map: "CommunityLike_userId_fkey")
-}
-
-model PasswordResetToken {
-  id        Int      @id @default(autoincrement())
-  tokenHash String   @unique
-  userId    Int
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId], map: "PasswordResetToken_userId_fkey")
+  @@index([userId], map: "SellerApplication_userId_fkey")
 }
 
 model ShopDetail {
@@ -112,22 +66,6 @@ model ShopDetail {
   user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model SellerApplication {
-  id             Int       @id @default(autoincrement())
-  userId         Int
-  shopName       String
-  productType    String?
-  productDetail  String?   @db.Text
-  shopCoverImage String?
-  status         Status    @default(PENDING)
-  rejectReason   String?   @db.Text
-  reviewedAt     DateTime?
-  createdAt      DateTime  @default(now())
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId], map: "SellerApplication_userId_fkey")
-}
-
 model BookingRequest {
   id           Int      @id @default(autoincrement())
   productName  String
@@ -139,8 +77,6 @@ model BookingRequest {
   productImage String?
   sellerId     Int?
   status       Status   @default(PENDING)
-  paymentSlipImage   String?
-  paymentConfirmedAt DateTime?
   createdAt    DateTime @default(now())
   seller       Seller?  @relation(fields: [sellerId], references: [id], onDelete: SetNull)
 
@@ -220,7 +156,6 @@ model Announcement {
   updatedAt   DateTime @updatedAt
   image       String?
   targetRoles Json?
-  isImportant Boolean  @default(false)
   author      User     @relation(fields: [authorId], references: [id])
 
   @@index([authorId], map: "Announcement_authorId_fkey")

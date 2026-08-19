@@ -4,7 +4,8 @@ import {
     repairReportSchema,
     repairStatusUpdateSchema,
     announcementSchema,
-    bookingStallInputSchema
+    bookingStallInputSchema,
+    sellerApplicationSchema
 } from '../utils/validationSchemas.js';
 
 describe('updateRoleSchema', () => {
@@ -126,6 +127,44 @@ describe('announcementSchema', () => {
 
     it('rejects an empty title', () => {
         const result = announcementSchema.safeParse({ title: '', content: 'เนื้อหา' });
+        expect(result.success).toBe(false);
+    });
+});
+
+describe('sellerApplicationSchema', () => {
+    it('accepts the required seller application details', () => {
+        const result = sellerApplicationSchema.safeParse({
+            shopName: 'ร้านส้มตำป้าแดง',
+            sellerName: 'สมชาย ใจดี',
+            idCardNumber: '1234567890123',
+            phoneNumber: '0812345678',
+            bankAccountNumber: '1234567890',
+            bankAccountName: 'สมชาย ใจดี',
+            houseNumber: '123/45',
+            subdistrict: 'เมืองเก่า',
+            district: 'บางเขน',
+            province: 'กรุงเทพมหานคร',
+            productType: 'FOOD',
+            productDetail: 'ขายส้มตำและอาหารจานเดียว'
+        });
+
+        expect(result.success).toBe(true);
+    });
+
+    it('rejects invalid Thai ID or phone number', () => {
+        const result = sellerApplicationSchema.safeParse({
+            shopName: 'ร้านส้มตำป้าแดง',
+            sellerName: 'สมชาย ใจดี',
+            idCardNumber: '123',
+            phoneNumber: 'abc',
+            bankAccountNumber: '1234567890',
+            bankAccountName: 'สมชาย ใจดี',
+            houseNumber: '123/45',
+            subdistrict: 'เมืองเก่า',
+            district: 'บางเขน',
+            province: 'กรุงเทพมหานคร'
+        });
+
         expect(result.success).toBe(false);
     });
 });

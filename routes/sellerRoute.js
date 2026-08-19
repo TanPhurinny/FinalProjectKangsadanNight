@@ -611,7 +611,20 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
                 return res.redirect('/shop-application?error=already_pending');
             }
 
-            const { shopName, productType, productDetail } = parsed.data;
+            const {
+                shopName,
+                productType,
+                productDetail,
+                sellerName,
+                idCardNumber,
+                bankAccountNumber,
+                bankAccountName,
+                phoneNumber,
+                houseNumber,
+                subdistrict,
+                district,
+                province
+            } = parsed.data;
             const shopCoverImage = req.file ? `/uploads/shop-applications/${req.file.filename}` : null;
 
             await prisma.sellerApplication.create({
@@ -620,6 +633,15 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
                     shopName,
                     productType: productType || null,
                     productDetail: productDetail || null,
+                    sellerName,
+                    idCardNumber,
+                    bankAccountNumber,
+                    bankAccountName,
+                    phoneNumber,
+                    houseNumber,
+                    subdistrict,
+                    district,
+                    province,
                     shopCoverImage,
                     status: 'PENDING'
                 }

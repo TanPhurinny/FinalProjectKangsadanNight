@@ -8,7 +8,6 @@ const { isStaffOrAdmin, isAdminOnly } = require('../middlewares/auth');
 // --- 1. Import Controllers ---
 const userCtrl = require('../controllers/userController');
 const approvalCtrl = require('../controllers/approvalController');
-const sellerApplicationCtrl = require('../controllers/sellerApplicationController');
 const requestCtrl = require('../controllers/requestController');
 const marketCtrl = require('../controllers/marketController');
 const announceCtrl = require('../controllers/announcementController'); 
@@ -71,12 +70,8 @@ router.get('/users/delete/:id', isAdminOnly, userCtrl.deleteUser);
 // --- 7. Approvals & Requests ---
 router.get('/approvals', approvalCtrl.getApprovalsPage);
 router.post('/approvals/confirm', approvalCtrl.confirmApproval);
-router.post('/approvals/confirm-payment', approvalCtrl.confirmPayment);
 router.get('/requests', requestCtrl.getRequestsPage);
 router.post('/requests/update-status', requestCtrl.updateStatus);
-router.get('/seller-applications', sellerApplicationCtrl.getSellerApplicationsPage);
-router.post('/seller-applications/approve', sellerApplicationCtrl.approveSellerApplication);
-router.post('/seller-applications/reject', sellerApplicationCtrl.rejectSellerApplication);
 
 // --- 8. Booking Management (แก้ไข Path ไฟล์ EJS) ---
 

@@ -56,10 +56,29 @@ const announcementSchema = z.object({
     category: z.string().trim().max(100).optional()
 });
 
+const thaiIdRegex = /^\d{13}$/;
+const thaiPhoneRegex = /^0\d{9,10}$/;
+
+const nullableOptionalString = (maxLength) => z
+    .union([
+        z.string().trim().max(maxLength).optional(),
+        z.literal('')
+    ])
+    .transform((value) => (value === '' ? null : value ?? null));
+
 const sellerApplicationSchema = z.object({
     shopName: z.string().trim().min(1).max(200),
-    productType: z.string().trim().max(100).optional(),
-    productDetail: z.string().trim().max(2000).optional()
+    sellerName: z.string().trim().min(1).max(200),
+    idCardNumber: z.string().trim().regex(thaiIdRegex, 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก'),
+    phoneNumber: z.string().trim().regex(thaiPhoneRegex, 'เบอร์โทรศัพท์ต้องเป็นตัวเลขไทยที่ถูกต้อง'),
+    bankAccountNumber: z.string().trim().min(4).max(30),
+    bankAccountName: z.string().trim().min(2).max(200),
+    houseNumber: z.string().trim().min(1).max(200),
+    subdistrict: z.string().trim().min(1).max(200),
+    district: z.string().trim().min(1).max(200),
+    province: z.string().trim().min(1).max(200),
+    productType: nullableOptionalString(100),
+    productDetail: nullableOptionalString(2000)
 });
 
 module.exports = {

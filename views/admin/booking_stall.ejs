@@ -4,40 +4,521 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>จัดผังตลาด - Admin</title>
-    <link rel="icon" type="image/png" href="/img/favicon.png">
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap"
       rel="stylesheet" />
     <link rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260724-6">
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
     <link rel="stylesheet" href="/stylesheets/admin/theme.css">
     <link rel="stylesheet" href="/stylesheets/responsive.css">
     <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
-    <link rel="stylesheet" href="/stylesheets/admin/bookingStall.css">
+    <style>
+    :root {
+      --primary: #3BB8D4;
+      --primary-dark: #2a9ab5;
+      --bg: #f4f5f7;
+      --card-bg: #ffffff;
+      --text-main: #1a2b2b;
+      --text-sub: #6b8a8a;
+      --border: #d4d4d4;
+      --radius: 12px;
+      
+      /* Colors for Map Legend */
+      --stall-empty: #ffffff;
+      --stall-booked: #9ca3af;
+      --stall-selected: #3BB8D4;
+    }
+
+    .booking-stall-page,
+    .booking-stall-page * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+    }
+
+    .booking-stall-page {
+      font-family: 'Kanit', sans-serif;
+      background: #f4f7fb;
+      color: var(--dark-color);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .site-header {
+      background: #fff;
+      border-bottom: 1px solid #e8eef2;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 10px rgba(44,62,80,0.05);
+    }
+    .btn-back {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--dark-color); text-decoration: none; font-size: 18px;
+      background: #f5f9fc;
+      border: 1px solid #e2edf3;
+      transition: 0.2s;
+    }
+    .btn-back:hover {
+      background: #ebf5fb;
+      border-color: #cfe6f3;
+    }
+    .header-title {
+      flex: 1; text-align: center; font-family: 'Prompt', sans-serif;
+      font-size: 20px; font-weight: 600; margin: 0;
+    }
+    .header-spacer { width: 40px; }
+
+    .container {
+      max-width: 1200px;
+      margin: 20px auto 60px;
+      padding: 0 16px;
+    }
+
+    /* ── APPLICANT INFO CARD (ข้อมูลผู้ขอเช่า) ── */
+    .applicant-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+      border: 1px solid #eaeaea;
+      border-left: 5px solid var(--primary);
+    }
+    .applicant-header {
+      font-family: 'Prompt', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--primary-dark);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px dashed var(--border);
+      padding-bottom: 12px;
+    }
+    .applicant-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px 20px;
+    }
+    .info-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .info-group label {
+      font-size: 13px;
+      color: var(--text-sub);
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .info-group span {
+      font-size: 15px;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+    .note-full-width {
+      grid-column: 1 / -1;
+      background: #fdfae8;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border-left: 3px solid #FF9F1C;
+    }
+
+    /* ── MAP CONTROLS (Top Bar) ── */
+    .map-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 16px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #eaeaea;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .zone-select-wrapper {
+      flex: 1;
+    }
+    .zone-select-wrapper label {
+      display: block; font-weight: 600; font-size: 18px; font-family: 'Prompt', sans-serif;
+    }
+    .zone-select-wrapper span {
+      font-size: 13px; color: #666; display: block; margin-bottom: 12px;
+    }
+    
+    /* ปุ่มเลือกโซน */
+    .zone-btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .btn-zone {
+      padding: 8px 20px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      background: #fff;
+      color: #555;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-zone:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .btn-zone.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .btn-zone small {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+    
+    /* Legend */
+    .legend-box {
+      display: flex; gap: 16px; align-items: center;
+      background: #fff; padding: 10px 20px; border-radius: 30px;
+      border: 1px solid #eaeaea; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      margin-top: auto;
+      margin-bottom: auto;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+    .color-box { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #bbb; }
+    .color-empty { background: var(--stall-empty); }
+    .color-booked { background: var(--stall-booked); border-color: #777;}
+    .color-selected { background: var(--stall-selected); border-color: var(--primary-dark); }
+    .color-requested { border: 2px solid var(--primary); background: transparent; }
+
+    /* ── MAP OUTER & INNER ── */
+    .map-outer {
+      display: flex;
+      background: #e5e5e5;
+      border: 2px solid #bbb;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .map-inner {
+      flex: 1;
+      background: #fff;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-width: 800px; 
+    }
+
+    /* Roads */
+    .road-left {
+      width: 50px; min-width: 50px; background: #e5e5e5;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      border-right: 2px solid #bbb; position: relative; gap: 10px;
+    }
+    .road-left-stripe {
+      position: absolute; top: 0; left: 0; bottom: 0; width: 12px; left: 8px;
+      background: repeating-linear-gradient(180deg, #f5c200 0px, #f5c200 20px, #222 20px, #222 40px);
+    }
+    .road-left-text {
+      writing-mode: vertical-rl; transform: rotate(180deg);
+      font-size: 14px; font-weight: 700; position: relative; z-index: 2; margin-left: 10px;
+    }
+    .road-right {
+      width: 50px; min-width: 50px; background: #e5e5e5;
+      display: flex; align-items: center; justify-content: center;
+      border-left: 2px solid #bbb;
+    }
+    .road-right-text {
+      writing-mode: vertical-rl; font-size: 14px; font-weight: 700;
+    }
+
+    .road-top {
+      height: 50px; background: #e5e5e5; border-bottom: 2px solid #bbb;
+      display: flex; align-items: center; justify-content: flex-end; padding: 0 20px;
+    }
+    .road-top-sign {
+      background: #f5c200; font-weight: 700; font-size: 14px; padding: 6px 16px; border-radius: 4px;
+    }
+    .road-bottom {
+      height: 50px; background: #e5e5e5; border-top: 2px solid #bbb;
+      display: flex; align-items: center; justify-content: flex-end; padding: 0 20px;
+    }
+    .road-bottom-stripe {
+      flex: 1; height: 12px; margin-right: 20px;
+      background: repeating-linear-gradient(90deg, #f5c200 0px, #f5c200 24px, #222 24px, #222 48px);
+    }
+
+    /* ── STALL GRID ── */
+    .admin-zone-canvas {
+      padding: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 30px; 
+      min-height: 400px;
+    }
+
+    .col-block {
+      display: flex;
+      gap: 0px; 
+    }
+
+    .stall-column {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stall-cell {
+      width: 55px;
+      height: 28px;
+      border: 1px solid #555;
+      background: var(--stall-empty);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #111;
+      cursor: pointer;
+      margin-top: -1px; 
+      margin-left: -1px;
+      transition: background 0.15s;
+    }
+
+    .stall-cell:hover:not(.booked) { background: #e0f6fb; }
+    
+    .stall-cell.booked { 
+      background: var(--stall-booked); 
+      color: #333; 
+      cursor: help; 
+    }
+    .stall-cell.selected { 
+      background: var(--stall-selected); 
+      color: #fff; 
+      border-color: #2a9ab5; 
+      z-index: 2; 
+    }
+    
+    /* คลาสสำหรับไฮไลต์ "แถวที่รีเควสมา" */
+    .stall-cell.requested-range {
+      border: 2px solid var(--primary) !important;
+      z-index: 1; /* ให้อยู่เหนือขอบสีดำปกติ */
+    }
+
+    .facility-box {
+      position: absolute;
+      bottom: 65px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .btn-facility {
+      background: #f5c200; font-weight: 700; border: 1px solid #d4a000;
+      padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer;
+    }
+
+    /* ── ACTION FOOTER ── */
+    .action-footer {
+      margin-top: 24px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 16px;
+    }
+    .btn-save {
+      background: var(--primary); color: #fff; border: none; padding: 12px 30px;
+      font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 600;
+      border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(59,184,212,0.3);
+      min-width: 210px;
+      text-align: center;
+    }
+    .btn-reject-main {
+      background: var(--stall-booked); color: #ffffff; border: none; padding: 12px 30px;
+      font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 600;
+      border-radius: 8px; cursor: pointer;
+      min-width: 210px;
+      text-align: center;
+    }
+    .btn-reject-main:hover {
+      background: var(--stall-booked);
+    }
+
+
+    /* ==========================================
+       📍 TOOLTIP (สำหรับแผงสีเทาที่ถูกจองแล้ว)
+       ========================================== */
+    .admin-tooltip {
+      position: fixed;
+      z-index: 9999;
+      background: #fff;
+      width: 320px;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      border: 1px solid #ccc;
+      display: none;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .tt-header {
+      background: var(--primary);
+      color: #fff;
+      padding: 12px 16px;
+      font-family: 'Prompt', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .tt-body { padding: 16px; }
+    .tt-row { display: flex; gap: 16px; margin-bottom: 14px; }
+    .tt-group { flex: 1; margin-bottom: 14px; }
+    .tt-group:last-child { margin-bottom: 0; }
+    .tt-label { display: block; font-size: 13px; color: #222; font-weight: 700; margin-bottom: 2px; }
+    .tt-value { display: block; font-size: 14px; color: #555; }
+
+    /* ── CONFIRM SUMMARY ── */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+      padding: 16px;
+    }
+    .confirm-overlay.active { display: flex; }
+
+    .confirm-card {
+      width: 100%;
+      max-width: 560px;
+      background: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.22);
+      border: 1px solid #e5e7eb;
+    }
+    .confirm-head {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff;
+      padding: 14px 18px;
+      font-family: 'Prompt', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .confirm-close {
+      border: none;
+      background: transparent;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    .confirm-body {
+      padding: 18px;
+    }
+    .confirm-grid {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 10px 12px;
+      margin-bottom: 14px;
+    }
+    .confirm-label {
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .confirm-value {
+      color: #1f2937;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .confirm-value.highlight {
+      color: var(--primary-dark);
+      font-weight: 700;
+    }
+    .confirm-note {
+      background: #fff8e1;
+      border-left: 4px solid #f59e0b;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #5b4a1a;
+    }
+    .confirm-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .btn-cancel-confirm,
+    .btn-final-confirm {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-family: 'Prompt', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-cancel-confirm {
+      background: #9ca3af;
+      color: #fff;
+    }
+    .btn-final-confirm {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    @media (max-width: 768px) {
+      .applicant-body { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .confirm-grid {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .confirm-actions {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 500px) {
+      .applicant-body { grid-template-columns: 1fr; }
+    }
+  </style>
   </head>
   <body>
-    <script src="/js/common/tabSession.js"></script>
 
     <%- include('../partials/navbar') %>
 
     <div class="booking-stall-page">
 
       <div id="adminTooltip" class="admin-tooltip">
-        <img id="tt-image" class="tt-image d-none" alt="รูปร้านค้า" />
         <div class="tt-header">แผง <span id="tt-stall-id"></span></div>
         <div class="tt-body">
           <div class="tt-group">
             <span class="tt-label">ชื่อร้านค้า</span>
             <span class="tt-value" id="tt-shop"></span>
-          </div>
-          <div class="tt-group">
-            <span class="tt-label">ขายอะไร</span>
-            <span class="tt-value" id="tt-product"></span>
           </div>
 
           <div class="tt-row" style="margin-bottom:0;">
@@ -81,16 +562,12 @@
             ข้อมูลผู้ที่ส่งคำขอเช่าแผงเข้ามา
           </div>
           <div class="applicant-body">
-            <div class="info-group applicant-image-group">
-              <img id="app-image" class="applicant-product-image" src=""
-                alt="รูปสินค้า/ร้านค้า" style="display:none;">
-            </div>
             <div class="info-group">
               <label>ชื่อผู้จอง</label>
               <span id="app-name">-</span>
             </div>
             <div class="info-group">
-              <label>ชื่อร้าน</label>
+              <label>ชื่อร้านค้า</label>
               <span id="app-shop">-</span>
             </div>
             <div class="info-group">
@@ -106,22 +583,7 @@
               <label>ช่วงเวลาที่จอง</label>
               <span id="app-date">-</span>
             </div>
-            <div class="info-group">
-              <label>ประเภทสินค้า</label>
-              <span id="app-product-type">-</span>
-            </div>
-            <div class="info-group">
-              <label>สินค้าที่จะขาย</label>
-              <span id="app-product-name" style="font-weight: 700;">-</span>
-            </div>
-            <div
-              class="info-group note-full-width">
-              <label
-                style="color: #0f766e; font-size: 12px;">รายละเอียดสินค้า</label>
-              <span id="app-product-detail"
-                style="color: #333; font-size: 13px; margin-top: 4px;">-</span>
-            </div>
-            <div
+            <div class="info-group"></div> <div
               class="info-group note-full-width">
               <label
                 style="color: #d97706; font-size: 12px;">หมายเหตุเพิ่มเติมจากผู้จอง</label>
@@ -136,13 +598,6 @@
             <label>โซน</label>
             <span>ระบุโซนที่ต้องการจอง</span>
 
-            <div class="view-toggle" id="viewToggle">
-              <button type="button" class="toggle-btn active"
-                data-mode="buttons">รายการปุ่ม</button>
-              <button type="button" class="toggle-btn"
-                data-mode="overview">ผังภาพรวม</button>
-            </div>
-
             <div class="zone-btn-group" id="zoneButtons">
               <button class="btn-zone active" data-zone="A">โซน A
                 <small>(แฟชั่น/พิเศษอาหาร A901-A923)</small></button>
@@ -156,32 +611,6 @@
                 <small>(แฟชั่น)</small></button>
               <button class="btn-zone" data-zone="F">โซน F
                 <small>(อาหาร)</small></button>
-              <button class="btn-zone" data-zone="X">โซน X
-                <small>(อาหาร)</small></button>
-            </div>
-
-            <div class="ov-zone-canvas" id="zoneOverviewCanvas" style="display:none;">
-              <div class="ov-zone-block ov-zone-A" data-zone="A">
-                <div class="ov-zone-title">โซน A</div>
-              </div>
-              <div class="ov-zone-block ov-zone-E" data-zone="E">
-                <div class="ov-zone-title">โซน E</div>
-              </div>
-              <div class="ov-zone-block ov-zone-F" data-zone="F">
-                <div class="ov-zone-title">โซน F</div>
-              </div>
-              <div class="ov-zone-block ov-zone-D" data-zone="D">
-                <div class="ov-zone-title">โซน D</div>
-              </div>
-              <div class="ov-zone-block ov-zone-X" data-zone="X">
-                <div class="ov-zone-title">โซน X</div>
-              </div>
-              <div class="ov-zone-block ov-zone-B" data-zone="B">
-                <div class="ov-zone-title">โซน B</div>
-              </div>
-              <div class="ov-zone-block ov-zone-C" data-zone="C">
-                <div class="ov-zone-title">โซน C</div>
-              </div>
             </div>
 
           </div>
@@ -191,10 +620,6 @@
               ว่าง</div>
             <div class="legend-item"><div class="color-box color-booked"></div>
               จองแล้ว</div>
-            <div class="legend-item"><div class="color-box color-near-expiry"></div>
-              ใกล้หมดอายุ (≤7 วัน)</div>
-            <div class="legend-item"><div class="color-box color-expired"></div>
-              หมดอายุแล้ว</div>
             <div class="legend-item"><div
                 class="color-box color-selected"></div>
               เลือกอยู่</div>
@@ -214,12 +639,18 @@
 
           <div class="map-inner">
             <div class="road-top">
-              <span class="road-top-label">ถนน</span>
               <div class="road-top-sign"><i class="fa-solid fa-location-dot"
                   style="color:red;"></i> เจริญหมูกระทะ</div>
             </div>
 
             <div class="admin-zone-canvas" id="adminGrid"></div>
+
+            <div class="facility-box">
+              <button class="btn-facility"><i class="fa-solid fa-restroom"></i>
+                ห้องน้ำ</button>
+              <button class="btn-facility"><i class="fa-solid fa-user-tie"></i>
+                ออฟฟิศ</button>
+            </div>
 
             <div class="road-bottom">
               <div class="road-bottom-stripe"></div>
@@ -272,6 +703,11 @@
               <span class="confirm-value" id="c-date">-</span>
             </div>
 
+            <div class="confirm-note">
+              <strong>หมายเหตุจากผู้จอง:</strong><br>
+              <span id="c-note">-</span>
+            </div>
+
             <div class="confirm-actions">
               <button class="btn-cancel-confirm"
                 onclick="closeConfirmSummary()">ย้อนกลับ</button>
@@ -284,8 +720,230 @@
 
     </div>
 
-    <script type="application/json" id="pageDataJson"><%- JSON.stringify(pageData || {}).replace(/</g, '\\u003c') %></script>
-    <script src="/js/admin/bookingStall.js"></script>
+    <script>
+  const PAGE_DATA = <%- JSON.stringify(pageData || {}) %>;
+  const REQUEST_DATA = PAGE_DATA.bookingRequest || {};
+  const ZONES_LAYOUT = PAGE_DATA.layoutByZone || {};
+  const BOOKED_STALLS = new Set(PAGE_DATA.bookedStalls || []);
+
+  let currentSelectedStall = String(REQUEST_DATA.assignedStallCode || '').trim().toUpperCase() || null;
+  let currentZone = (REQUEST_DATA.zone || Object.keys(ZONES_LAYOUT)[0] || 'A').toUpperCase();
+
+  const tooltip = document.getElementById('adminTooltip');
+  const confirmOverlay = document.getElementById('confirmOverlay');
+  const zoneBtns = document.querySelectorAll('.btn-zone');
+
+  function setApplicantData() {
+    document.getElementById('app-name').textContent = REQUEST_DATA.sellerName || '-';
+    document.getElementById('app-shop').textContent = REQUEST_DATA.shop || '-';
+    document.getElementById('app-phone').textContent = REQUEST_DATA.phone || '-';
+    document.getElementById('app-zone').textContent = REQUEST_DATA.zoneText || '-';
+    document.getElementById('app-date').textContent = REQUEST_DATA.dateText || '-';
+    document.getElementById('app-note').textContent = REQUEST_DATA.note || '-';
+  }
+
+  function renderZoneButtons() {
+    const availableZones = Object.keys(ZONES_LAYOUT);
+    zoneBtns.forEach((btn) => {
+      const zone = (btn.dataset.zone || '').toUpperCase();
+      btn.style.display = availableZones.includes(zone) ? 'inline-flex' : 'none';
+    });
+  }
+
+  function setActiveZoneBtn(zoneCode) {
+    zoneBtns.forEach((b) => {
+      b.classList.toggle('active', (b.dataset.zone || '').toUpperCase() === zoneCode);
+    });
+  }
+
+  function formatStallCode(prefix, number) {
+    return `${prefix}${String(number).padStart(3, '0')}`;
+  }
+
+  function renderGrid(zoneKey) {
+    const gridContainer = document.getElementById('adminGrid');
+    gridContainer.innerHTML = '';
+
+    const layout = ZONES_LAYOUT[zoneKey] || [];
+    if (!layout.length) {
+      gridContainer.innerHTML = '<div style="padding:24px; color:#666;">ไม่มีข้อมูลแผงสำหรับโซนนี้</div>';
+      return;
+    }
+
+    layout.forEach((colData) => {
+      const prefix = colData[0];
+      const rowCount = Number(colData[1] || 0);
+      const startNumber = Number(colData[2] || 1);
+
+      const blockDiv = document.createElement('div');
+      blockDiv.className = 'col-block';
+      const colDiv = document.createElement('div');
+      colDiv.className = 'stall-column';
+
+      for (let offset = 0; offset < rowCount; offset += 1) {
+        const stallNumber = startNumber + offset;
+        const stallName = formatStallCode(zoneKey, stallNumber);
+
+        const cell = document.createElement('div');
+        cell.className = 'stall-cell';
+        cell.textContent = stallName;
+
+        const isBooked = BOOKED_STALLS.has(stallName);
+        if (isBooked) {
+          cell.classList.add('booked');
+          cell.addEventListener('mouseenter', (e) => showTooltip(e, stallName));
+          cell.addEventListener('mouseleave', hideTooltip);
+          cell.addEventListener('mousemove', moveTooltip);
+        } else {
+          cell.addEventListener('click', () => {
+            document.querySelectorAll('.stall-cell').forEach((c) => c.classList.remove('selected'));
+            cell.classList.add('selected');
+            currentSelectedStall = stallName;
+          });
+        }
+
+        if (stallName === currentSelectedStall) {
+          cell.classList.add('selected');
+        }
+
+        colDiv.appendChild(cell);
+      }
+
+      blockDiv.appendChild(colDiv);
+      gridContainer.appendChild(blockDiv);
+    });
+  }
+
+  function showTooltip(e, stallName) {
+    document.getElementById('tt-stall-id').textContent = stallName;
+    document.getElementById('tt-shop').textContent = 'มีผู้จองแล้ว';
+    document.getElementById('tt-lock').textContent = stallName;
+    document.getElementById('tt-date').textContent = '-';
+    document.getElementById('tt-name').textContent = '-';
+    document.getElementById('tt-phone').textContent = '-';
+    document.getElementById('tt-note').textContent = 'ล็อกนี้ไม่ว่าง';
+
+    tooltip.style.display = 'block';
+    moveTooltip(e);
+  }
+
+  function hideTooltip() {
+    tooltip.style.display = 'none';
+  }
+
+  function moveTooltip(e) {
+    let x = e.clientX + 15;
+    let y = e.clientY + 15;
+
+    if (x + tooltip.offsetWidth > window.innerWidth) {
+      x = e.clientX - tooltip.offsetWidth - 10;
+    }
+    if (y + tooltip.offsetHeight > window.innerHeight) {
+      y = e.clientY - tooltip.offsetHeight - 10;
+    }
+
+    tooltip.style.left = `${x}px`;
+    tooltip.style.top = `${y}px`;
+  }
+
+  function confirmStall() {
+    if (!currentSelectedStall) {
+      if (window.Swal && typeof window.Swal.fire === 'function') {
+        Swal.fire({
+          icon: 'warning',
+          title: 'ยังไม่ได้เลือกแผงค้า',
+          text: 'กรุณาคลิกเลือกแผงค้า 1 ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้า',
+          confirmButtonText: 'ตกลง',
+          confirmButtonColor: '#3BB8D4'
+        });
+      } else {
+        alert('กรุณาคลิกเลือกแผงค้า 1 ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้า');
+      }
+      return;
+    }
+    openConfirmSummary();
+  }
+
+  function openConfirmSummary() {
+    document.getElementById('c-stall').textContent = currentSelectedStall;
+    document.getElementById('c-shop').textContent = document.getElementById('app-shop').textContent || '-';
+    document.getElementById('c-name').textContent = document.getElementById('app-name').textContent || '-';
+    document.getElementById('c-phone').textContent = document.getElementById('app-phone').textContent || '-';
+    document.getElementById('c-zone').textContent = document.getElementById('app-zone').textContent || '-';
+    document.getElementById('c-date').textContent = document.getElementById('app-date').textContent || '-';
+    document.getElementById('c-note').textContent = document.getElementById('app-note').textContent || '-';
+    confirmOverlay.classList.add('active');
+  }
+
+  function closeConfirmSummary() {
+    confirmOverlay.classList.remove('active');
+  }
+
+  function closeConfirmOnOverlay(event) {
+    if (event.target === confirmOverlay) {
+      closeConfirmSummary();
+    }
+  }
+
+  function postForm(action, fields) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = action;
+
+    Object.keys(fields).forEach((key) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = String(fields[key] || '');
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function submitConfirmStall() {
+    postForm('/admin/booking-stall/confirm', {
+      requestId: REQUEST_DATA.id || '',
+      selectedStall: currentSelectedStall || ''
+    });
+  }
+
+  function rejectStall() {
+    const ok = window.confirm('คุณแน่ใจหรือไม่ที่จะปฏิเสธคำขอนี้?');
+    if (!ok) return;
+
+    postForm('/admin/booking-stall/reject', {
+      requestId: REQUEST_DATA.id || ''
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    setApplicantData();
+    renderZoneButtons();
+    setActiveZoneBtn(currentZone);
+    renderGrid(currentZone);
+
+    zoneBtns.forEach((btn) => {
+      btn.addEventListener('click', function () {
+        const selectedZone = String(this.dataset.zone || '').toUpperCase();
+        if (!ZONES_LAYOUT[selectedZone]) {
+          return;
+        }
+        currentZone = selectedZone;
+        setActiveZoneBtn(selectedZone);
+        renderGrid(selectedZone);
+      });
+    });
+  });
+
+  window.confirmStall = confirmStall;
+  window.closeConfirmSummary = closeConfirmSummary;
+  window.closeConfirmOnOverlay = closeConfirmOnOverlay;
+  window.submitConfirmStall = submitConfirmStall;
+  window.rejectStall = rejectStall;
+
+</script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   </body>
 </html>

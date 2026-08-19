@@ -4,7 +4,6 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>รายการจองรออนุมัติ - Admin</title>
-        <link rel="icon" type="image/png" href="/img/favicon.png">
 
         <link
             href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
@@ -12,17 +11,14 @@
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <link
-            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap"
             rel="stylesheet">
-        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260724-6">
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/admin/approvals.css">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
-        <link rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     </head>
     <body class="bg-light">
-        <script src="/js/common/tabSession.js"></script>
 
         <%- include('../partials/navbar') %>
 
@@ -42,107 +38,58 @@
 
             <div class="container">
 
-                <% if (typeof error !== 'undefined' && error) { %>
-                    <%
-                        const errorMessages = {
-                            shop_not_verified_yet: 'ต้องอนุมัติร้านค้าให้ผ่านการตรวจสอบก่อน จึงจะจัดล็อกให้ได้',
-                            stall_not_found: 'ไม่พบแผงที่เลือก',
-                            stall_unavailable: 'แผงนี้ถูกจองไปแล้ว กรุณาเลือกแผงอื่น',
-                            request_not_found: 'ไม่พบรายการคำขอนี้',
-                            invalid_status: 'สถานะที่ส่งมาไม่ถูกต้อง',
-                            update_failed: 'บันทึกไม่สำเร็จ กรุณาลองใหม่',
-                            payment_not_awaiting_verification: 'รายการนี้ยังไม่มีสลิปโอนเงินที่รอตรวจสอบ',
-                            payment_already_confirmed: 'ยืนยันการชำระเงินของรายการนี้ไปแล้ว',
-                            confirm_payment_failed: 'ยืนยันการชำระเงินไม่สำเร็จ กรุณาลองใหม่'
-                        };
-                    %>
-                    <div class="alert alert-danger"><%= errorMessages[error] || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง' %></div>
-                <% } %>
-                <% if (typeof success !== 'undefined' && success) { %>
-                    <%
-                        const successMessages = {
-                            status_updated: 'อัปเดตสถานะเรียบร้อย',
-                            stall_assigned: 'จัดล็อกให้ร้านค้าเรียบร้อย ระบบแจ้งเตือนผู้ขายแล้ว',
-                            request_rejected: 'ปฏิเสธคำขอเรียบร้อย',
-                            payment_confirmed: 'ยืนยันการชำระเงินเรียบร้อย ระบบแจ้งเตือนผู้ขายว่าได้ล็อกแล้ว'
-                        };
-                    %>
-                    <div class="alert alert-success"><%= successMessages[success] || 'ทำรายการสำเร็จ' %></div>
-                <% } %>
-
                 <div class="filter-section">
-                    <div class="summary-strip-hint">แตะเพื่อดูรายการ</div>
                     <div class="summary-strip">
-                        <button type="button" class="summary-card" data-status-filter="all">
+                        <div class="summary-card">
                             <span class="summary-label">ทั้งหมด</span>
                             <span class="summary-value" id="count-all"><%= summaryCounts.all %></span>
-                        </button>
-                        <button type="button" class="summary-card" data-status-filter="pending">
-                            <span class="summary-label">รอตรวจสอบร้าน</span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-label">รออนุมัติ</span>
                             <span class="summary-value"
                                 id="count-pending"><%= summaryCounts.pending %></span>
-                        </button>
-                        <button type="button" class="summary-card" data-status-filter="approved">
-                            <span class="summary-label">รอจัดล็อก</span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-label">อนุมัติแล้ว</span>
                             <span class="summary-value"
                                 id="count-approved"><%= summaryCounts.approved %></span>
-                        </button>
-                        <button type="button" class="summary-card" data-status-filter="in_progress">
-                            <span class="summary-label">รอชำระเงิน</span>
-                            <span class="summary-value"
-                                id="count-in_progress"><%= summaryCounts.inProgress || 0 %></span>
-                        </button>
-                        <button type="button" class="summary-card" data-status-filter="awaiting_slip">
-                            <span class="summary-label">รอตรวจสอบสลิป</span>
-                            <span class="summary-value"
-                                id="count-awaiting_slip"><%= summaryCounts.awaitingSlip || 0 %></span>
-                        </button>
-                        <button type="button" class="summary-card" data-status-filter="success">
-                            <span class="summary-label">สำเร็จ</span>
-                            <span class="summary-value"
-                                id="count-success"><%= summaryCounts.success || 0 %></span>
-                        </button>
-                        <button type="button" class="summary-card" data-status-filter="rejected">
+                        </div>
+                        <div class="summary-card">
                             <span class="summary-label">ปฏิเสธ</span>
                             <span class="summary-value"
                                 id="count-rejected"><%= summaryCounts.rejected %></span>
-                        </button>
+                        </div>
                     </div>
 
-                    <div class="search-row">
-                        <div class="search-box">
-                            <i class="fa-solid fa-magnifying-glass"></i>
-                            <input type="text" id="shopSearch"
-                                placeholder="ค้นหาร้านค้า...">
-                        </div>
-                        <button type="button" class="btn-clear-filters"
-                            id="clearFiltersBtn"><i
-                                class="fa-solid fa-rotate-left"></i>
-                            ล้างตัวกรอง</button>
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="shopSearch"
+                            placeholder="ค้นหาร้านค้า...">
                     </div>
 
-                    <div class="filter-row-selects" id="advancedFilters">
-                        <div class="filter-select-group">
-                            <label class="filter-title" for="categorySelect">หมวดหมู่</label>
-                            <select id="categorySelect" class="filter-select">
-                                <option value="all">ทั้งหมด</option>
-                                <option value="FASHION">แฟชั่น</option>
-                                <option value="FOOD">อาหาร</option>
-                            </select>
-                        </div>
+                    <div class="filter-title">สถานะการจอง</div>
+                    <div class="filter-group" id="statusFilters">
+                        <button class="btn-filter active"
+                            data-status="all">ทั้งหมด</button>
+                        <button class="btn-filter"
+                            data-status="pending">รออนุมัติ</button>
+                        <button class="btn-filter"
+                            data-status="approved">อนุมัติแล้ว</button>
+                        <button class="btn-filter"
+                            data-status="rejected">ปฏิเสธ</button>
+                    </div>
 
-                        <div class="filter-select-group">
-                            <label class="filter-title" for="zoneSelect">โซน</label>
-                            <select id="zoneSelect" class="filter-select">
-                                <option value="all">ทุกโซน</option>
-                                <option value="A">โซน A</option>
-                                <option value="B">โซน B</option>
-                                <option value="C">โซน C</option>
-                                <option value="D">โซน D</option>
-                                <option value="E">โซน E</option>
-                                <option value="F">โซน F</option>
-                            </select>
-                        </div>
+                    <div
+                        class="filter-title filter-title-spaced">โซน</div>
+                    <div class="filter-group" id="zoneFilters">
+                        <button class="btn-filter active"
+                            data-zone="all">ทุกโซน</button>
+                        <button class="btn-filter" data-zone="A">โซน A</button>
+                        <button class="btn-filter" data-zone="B">โซน B</button>
+                        <button class="btn-filter" data-zone="C">โซน C</button>
+                        <button class="btn-filter" data-zone="D">โซน D</button>
+                        <button class="btn-filter" data-zone="E">โซน E</button>
+                        <button class="btn-filter" data-zone="F">โซน F</button>
                     </div>
 
                     <div class="type-summary" id="typeSummary">
@@ -168,45 +115,7 @@
                     <% } %>
 
                     <% bookingRequestsList.forEach(function(request) { %>
-                        <%
-                            // ปุ่มบนการ์ดต้องบอก action จริงที่ต้องทำต่อ ไม่ใช่ "ดูรายละเอียด" เฉยๆ
-                            // เพื่อให้แอดมินกวาดตาดูลิสต์แล้วรู้เลยว่าใบไหนรออะไรอยู่ ไม่ต้องเปิดทีละใบ
-                            let cardActionLabel = 'ดูรายละเอียด';
-                            let cardActionClass = 'btn-neutral';
-                            if (request.status === 'pending') {
-                                cardActionLabel = 'ตรวจสอบร้านค้า';
-                                cardActionClass = 'btn-approve';
-                            } else if (request.status === 'approved') {
-                                cardActionLabel = 'จัดล็อกให้ร้านนี้';
-                                cardActionClass = 'btn-approve';
-                            } else if (request.status === 'in_progress' && request.paymentSlipImage) {
-                                cardActionLabel = 'ตรวจสอบสลิป';
-                                cardActionClass = 'btn-approve';
-                            } else if (request.status === 'in_progress') {
-                                cardActionLabel = 'รอผู้ขายชำระเงิน';
-                                cardActionClass = 'btn-neutral';
-                            }
-                        %>
-                        <% const detailPayload = encodeURIComponent(JSON.stringify({
-                            productName: request.productName || '-',
-                            zoneLabel: request.zoneLabel || '-',
-                            sellerName: request.sellerName || '-',
-                            phone: request.phone || '-',
-                            statusLabel: request.statusLabel || '-',
-                            requestId: request.id,
-                            createdAtText: request.createdAtText || '-',
-                            rawStatus: request.status || 'pending',
-                            productImage: request.productImage || '',
-                            smallApplianceCount: request.smallApplianceCount || 0,
-                            largeApplianceCount: request.largeApplianceCount || 0,
-                            electricityFee: request.electricityFee || 0,
-                            rentTotal: request.rentTotal || 0,
-                            grandTotalText: request.grandTotalText || '-',
-                            rentalStartDateText: request.rentalStartDateText || '-',
-                            rentalEndDateText: request.rentalEndDateText || '-',
-                            paymentSlipImage: request.paymentSlipImage || ''
-                        })); %>
-                        <div class="booking-card" data-request-id="<%= request.id %>" data-status="<%= request.status %>" data-has-slip="<%= request.paymentSlipImage ? 'true' : 'false' %>" data-zone="<%= request.zone || '' %>" data-shop="<%= request.productName || '' %>" data-detail="<%= detailPayload %>" onclick="openDetailFromElement(this)">
+                        <div class="booking-card" data-request-id="<%= request.id %>" data-status="<%= request.status %>" data-zone="<%= request.zone || '' %>" data-shop="<%= request.productName || '' %>" onclick='openDetail(<%- JSON.stringify(request.productName || "-") %>, <%- JSON.stringify(request.zoneLabel || "-") %>, <%- JSON.stringify(request.sellerName || "-") %>, <%- JSON.stringify(request.phone || "-") %>, <%- JSON.stringify(request.statusLabel || "-") %>, <%- JSON.stringify(request.description || "-") %>, <%= request.id %>, <%- JSON.stringify(request.createdAtText || "-") %>, <%- JSON.stringify(request.status || "pending") %>, <%- JSON.stringify(request.productImage || "") %>, <%- JSON.stringify(request.assignedStallCode || "") %>)'>
                             <div class="card-header">
                                 <h3 class="shop-name"><%= request.productName %></h3>
                                 <span class="badge <%= request.status %>"><%= request.statusLabel %></span>
@@ -216,9 +125,10 @@
                                 <p><i class="fa-solid fa-store"></i> ผู้จอง: <%= request.sellerName %></p>
                                 <p><i class="fa-solid fa-phone"></i> เบอร์: <%= request.phone %></p>
                                 <p><i class="fa-solid fa-calendar-check"></i> ยื่นคำขอ: <%= request.createdAtText %></p>
+                                <p><i class="fa-solid fa-hashtag"></i> แผงที่จัด: <%= request.assignedStallCode || '-' %></p>
                             </div>
                             <div class="card-actions">
-                                <button type="button" class="btn-action <%= cardActionClass %>" onclick="event.stopPropagation(); openDetailFromElement(this.closest('.booking-card'))"><%= cardActionLabel %></button>
+                                <button type="button" class="btn-action btn-approve" onclick="event.stopPropagation(); openDetail(<%- JSON.stringify(request.productName || "-") %>, <%- JSON.stringify(request.zoneLabel || "-") %>, <%- JSON.stringify(request.sellerName || "-") %>, <%- JSON.stringify(request.phone || "-") %>, <%- JSON.stringify(request.statusLabel || "-") %>, <%- JSON.stringify(request.description || "-") %>, <%= request.id %>, <%- JSON.stringify(request.createdAtText || "-") %>, <%- JSON.stringify(request.status || "pending") %>, <%- JSON.stringify(request.productImage || "") %>, <%- JSON.stringify(request.assignedStallCode || "") %>)">ดูรายละเอียด</button>
                             </div>
                         </div>
                     <% }) %>
@@ -237,13 +147,6 @@
                     </div>
 
                     <div class="modal-body">
-                        <div id="m-payment-slip-box" class="d-none payment-slip-box payment-slip-box-top">
-                            <div class="payment-slip-instruction" id="m-slip-instruction"></div>
-                            <div class="payment-slip-amount">ยอดที่ต้องชำระ: <strong id="m-slip-amount"></strong></div>
-                            <span class="detail-label d-block mb-2 mt-2">สลิปโอนเงินที่ผู้ขายแนบ (คลิกที่รูปเพื่อขยาย):</span>
-                            <img id="m-payment-slip" class="payment-slip-thumb" src="" alt="สลิปโอนเงิน" onclick="openSlipLightbox(this.src)" />
-                        </div>
-
                         <div class="shop-image-box" id="m-shop-image-box">
                             <img id="m-shop-image" class="shop-image" src="" alt="รูปภาพร้านค้า">
                             <div id="m-shop-image-empty" class="shop-image-empty d-none">ไม่มีรูปภาพร้านค้า</div>
@@ -269,38 +172,25 @@
                             <span class="detail-label">สถานะ:</span>
                             <span class="detail-value" id="m-status"></span>
 
-                            <span class="detail-label">เครื่องใช้ไฟฟ้าขนาดเล็ก:</span>
-                            <span class="detail-value" id="m-small-appliance"></span>
-
-                            <span class="detail-label">เครื่องใช้ไฟฟ้าขนาดใหญ่:</span>
-                            <span class="detail-value" id="m-large-appliance"></span>
-
-                            <span class="detail-label">ค่าไฟฟ้ารวม:</span>
-                            <span class="detail-value" id="m-electricity-fee"></span>
-
-                            <span class="detail-label">วันเริ่มจอง:</span>
-                            <span class="detail-value" id="m-rental-start"></span>
-
-                            <span class="detail-label">วันสิ้นสุดจอง:</span>
-                            <span class="detail-value" id="m-rental-end"></span>
-
-                            <span class="detail-label">ราคารวมทั้งหมด:</span>
-                            <span class="detail-value detail-highlight" id="m-grand-total"></span>
+                            <span class="detail-label">แผงที่จัด:</span>
+                            <span class="detail-value" id="m-assigned-stall"></span>
                         </div>
 
-                        <div class="modal-footer" id="m-footer-actions"></div>
+                        <div class="note-box">
+                            <strong>หมายเหตุจากผู้เช่า:</strong><br>
+                            <span id="m-note"></span>
+                        </div>
+
+                        <div class="modal-footer" id="m-footer-actions">
+                            <button type="button" class="btn-action btn-reject" id="m-reject-btn">ปฏิเสธการจอง</button>
+                            <button type="button" class="btn-action btn-approve" id="m-approve-btn">อนุมัติการจอง</button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="modal-overlay slip-lightbox-overlay" id="slipLightbox" onclick="closeSlipLightbox()">
-                <button type="button" class="btn-close slip-lightbox-close" onclick="closeSlipLightbox()"><i class="fa-solid fa-xmark"></i></button>
-                <img id="slipLightboxImg" class="slip-lightbox-img" src="" alt="สลิปโอนเงิน (ขยาย)" onclick="event.stopPropagation()" />
-            </div>
-
         </div>
         <script src="/js/admin/approvals.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     </body>
 </html>
