@@ -32,6 +32,17 @@ const bookingStallInputSchema = z.object({
     storeDetail: z.string().max(2000).optional(),
     dateStart: z.string().trim().min(1).max(20),
     dateEnd: z.string().trim().min(1).max(20)
+}).refine((value) => {
+    const start = new Date(value.dateStart);
+    const end = new Date(value.dateEnd);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
+    if (end < start) return false;
+    const diffMs = end.getTime() - start.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+    return diffDays >= 3;
+}, {
+    message: 'รอบการจองต้องมีระยะเวลาตั้งแต่ 3 วันขึ้นไป',
+    path: ['dateEnd']
 });
 
 const updateRoleSchema = z.object({

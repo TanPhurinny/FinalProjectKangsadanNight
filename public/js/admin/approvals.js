@@ -239,6 +239,7 @@ if (searchInput) {
 }
 
 function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, createdAtText, rawStatus, shopImage, assignedStallCode) {
+    const pageState = window.APPROVAL_PAGE_STATE || { isEditable: true };
     currentBooking = {
         shop,
         zoneType,
@@ -246,7 +247,8 @@ function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, c
         requestId,
         rawStatus,
         shopImage,
-        assignedStallCode
+        assignedStallCode,
+        isEditable: pageState.isEditable !== false
     };
 
     document.getElementById('m-shop').innerText = shop;
@@ -284,7 +286,8 @@ function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, c
 
     const footer = document.getElementById('m-footer-actions');
     if (footer) {
-        footer.style.display = rawStatus === 'pending' ? 'flex' : 'none';
+        const isActionAllowed = pageState.isEditable !== false && rawStatus === 'pending';
+        footer.style.display = isActionAllowed ? 'flex' : 'none';
     }
 
     modal.classList.add('active');

@@ -63,9 +63,28 @@
         <input type="text" class="field-input" value="<%= zone ? ('โซน ' + zone) : 'ไม่ระบุ' %>" readonly />
       </div>
 
+      <% if (bookingRoundInfo) { %>
+      <div class="field-group">
+        <label class="field-label">รอบการจองปัจจุบัน</label>
+        <div class="field-input readonly-box">
+          รอบที่ <strong><%= bookingRoundInfo.roundNumber %></strong>
+          &nbsp;|&nbsp;
+          <%= new Date(bookingRoundInfo.cycleStart).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>
+          &nbsp;ถึง&nbsp;
+          <%= new Date(bookingRoundInfo.cycleEnd).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>
+          <br />
+          <small><strong>สถานะ:</strong> <%= bookingRoundSummary && bookingRoundSummary.status ? bookingRoundSummary.status : 'เปิดจอง' %> — <%= bookingRoundSummary && bookingRoundSummary.statusText ? bookingRoundSummary.statusText : 'ยังสามารถส่งคำขอได้ตามรอบปัจจุบัน' %></small>
+        </div>
+      </div>
+      <% } %>
+
       <div class="field-group">
         <label class="field-label">จำนวนล็อกแผง</label>
         <input type="number" class="field-input" id="stallCount" name="stallCount" min="1" value="1" required />
+      </div>
+
+      <div class="alert-box info-box">
+        ระบบจัดรอบ 14 วันต่อเนื่องอัตโนมัติ และต้องจองขั้นต่ำ 3 วันขึ้นไป ทุกล็อคจะมีการแจ้งเตือนในวันพุธก่อนวันยืนยันและปิดรอบ
       </div>
 
       <div class="field-group">

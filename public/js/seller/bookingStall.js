@@ -67,6 +67,8 @@ document.querySelectorAll('input[name="cornerZone"]').forEach((el) => {
 });
 
 bookingForm.addEventListener('submit', (event) => {
+    const stallCount = Math.max(1, readCount(stallCountInput, 1));
+
     if (!dateStartInput.value || !dateEndInput.value) {
         event.preventDefault();
         window.alert('กรุณาเลือกวันที่เช่าให้ครบถ้วน');
@@ -79,6 +81,18 @@ bookingForm.addEventListener('submit', (event) => {
         event.preventDefault();
         window.alert('วันที่สิ้นสุดต้องมากกว่าหรือเท่ากับวันที่เริ่มเช่า');
         return;
+    }
+
+    const diffDays = Math.floor((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    if (diffDays < 3) {
+        event.preventDefault();
+        window.alert('การจองต้องมีระยะเวลาตั้งแต่ 3 วันขึ้นไป');
+        return;
+    }
+
+    const isWednesday = new Date().getDay() === 3;
+    if (isWednesday && stallCount > 0) {
+        window.alert('ทุกล็อคจะได้รับการแจ้งเตือนในวันพุธก่อนปิดรอบ กรุณาตรวจสอบข้อมูลให้ครบถ้วนก่อนยืนยัน');
     }
 });
 
