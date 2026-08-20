@@ -15,7 +15,8 @@ const BOOKING_BY_STALL = readJsonScript('bookingByStallJson');
 let activeZone = null;
 let selectedStall = null;
 let currentQuery = '';
-let currentStatusFilter = null; // 'EMPTY' | 'BOOKED' | 'MAINTENANCE' | null
+let currentStatusFilter = null; // 'EMPTY' | 'BOOKED' | 'MAINTENANCE' | 'NEAR_EXPIRY' | 'SPECIAL' | null
+let showLotColors = true; // เปิด/ปิดสีมุมพิเศษบนผัง
 
 function stallMatchesFilter(id, stall) {
     if (currentStatusFilter) {
@@ -24,6 +25,9 @@ function stallMatchesFilter(id, stall) {
         }
         if (currentStatusFilter === 'NEAR_EXPIRY') {
             return stall.expiryState === 'near' || stall.expiryState === 'expired';
+        }
+        if (currentStatusFilter === 'SPECIAL') {
+            return !!stall.lotColor && stall.lotColor !== 'ไม่มี';
         }
         return stall.status === currentStatusFilter;
     }
@@ -83,6 +87,22 @@ const ZONE_D_LAYOUT = [
     { code: 'D209', col: 10, row: 2 }
 ];
 
+// map สีจริงของล็อคมุมพิเศษ (จาก CSV) ไปเป็น class สี — ฟ้า กับ ฟ้า-A9 ใช้เฉดเดียวกัน (ต่างกันแค่ส่วนเพิ่มราคา)
+function lotColorClass(color) {
+    if (!showLotColors) return '';
+    if (color === 'ชมพู') return 'lot-pink';
+    if (color === 'ฟ้า' || color === 'ฟ้า-A9') return 'lot-blue';
+    if (color === 'เหลือง') return 'lot-yellow';
+    return '';
+}
+
+function toggleLotColors(btn) {
+    showLotColors = !showLotColors;
+    btn.classList.toggle('active', showLotColors);
+    if (activeZone) renderGrid(activeZone);
+}
+window.toggleLotColors = toggleLotColors;
+
 function renderDZoneGrid(z, stallByCode) {
     const grid = document.getElementById('stallGrid');
     const layout = document.createElement('div');
@@ -108,6 +128,8 @@ function renderDZoneGrid(z, stallByCode) {
         cell.style.gridRow = `${pos.row} / ${pos.row + 1}`;
         cell.textContent = pos.code;
         cell.dataset.stall = pos.code;
+        const lotClass = lotColorClass(stall.lotColor);
+        if (lotClass) cell.classList.add(lotClass);
 
         const bk = BOOKING_BY_STALL[pos.code];
         if (stall.status === 'BOOKED') {
@@ -132,7 +154,7 @@ function renderDZoneGrid(z, stallByCode) {
                 selectEmpty(pos.code, cell);
             });
         } else {
-            cell.dataset.tooltip = `แผง ${pos.code}\nว่าง`;
+            cell.dataset.tooltip = `แผง ${pos.code}\nว่าง\n${lotPriceLabel(stall)}`;
             cell.addEventListener('click', (e) => {
                 e.stopPropagation();
                 selectEmpty(pos.code, cell);
@@ -200,6 +222,9 @@ function renderGrid(z) {
             cell.className = stall.small ? 'stall-cell stall-cell-small' : 'stall-cell';
             cell.textContent = id;
             cell.dataset.stall = id;
+            if (isHorizontalZone) cell.classList.add('tt-below');
+            const lotClass = lotColorClass(stall.lotColor);
+            if (lotClass) cell.classList.add(lotClass);
 
             const bk = BOOKING_BY_STALL[id];
 
@@ -225,7 +250,7 @@ function renderGrid(z) {
                     selectEmpty(id, cell);
                 });
             } else {
-                cell.dataset.tooltip = `แผง ${id}\nว่าง`;
+                cell.dataset.tooltip = `แผง ${id}\nว่าง\n${lotPriceLabel(stall)}`;
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     selectEmpty(id, cell);
@@ -249,6 +274,12 @@ function selectEmpty(id, cell) {
     cell.classList.add('selected');
     selectedStall = id;
     hideInfo();
+}
+
+function lotPriceLabel(stall) {
+    if (!stall.lotType || stall.pricePerDay == null) return 'ยังไม่ระบุราคา';
+    const colorText = stall.lotColor && stall.lotColor !== 'ไม่มี' ? ` (สี ${stall.lotColor})` : '';
+    return `${stall.lotType}${colorText} — ${stall.pricePerDay.toLocaleString('th-TH')} บาท/วัน`;
 }
 
 function showInfo(id) {
@@ -288,7 +319,7 @@ function hideInfo() {
 }
 window.hideInfo = hideInfo;
 
-const STATUS_LABELS = { EMPTY: 'แผงว่าง', BOOKED: 'แผงที่จองแล้ว', MAINTENANCE: 'แผงซ่อมบำรุง' };
+const STATUS_LABELS = { EMPTY: 'แผงว่าง', BOOKED: 'แผงที่จองแล้ว', MAINTENANCE: 'แผงซ่อมบำรุง', SPECIAL: 'แผงมุมพิเศษ' };
 
 function refreshFilterResults() {
     const badge = document.getElementById('resultBadge');

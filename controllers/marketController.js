@@ -1,4 +1,5 @@
 const prisma = require('../config/prismaClient');
+const { getLotPricing } = require('../utils/lotPricing');
 
 const ZONE_CATEGORY_META = {
     FASHION: { icon: 'fa-shirt', description: 'โซนแฟชั่น' },
@@ -142,11 +143,17 @@ async function buildZonesData() {
         description: ZONE_CATEGORY_LABEL[zone.productCategory] || 'พื้นที่เอนกประสงค์',
         columns: zone.rows.map((row) => ({
             rowCode: row.rowCode,
-            stalls: row.stalls.map((stall) => ({
-                code: stall.stallCode,
-                status: stall.status,
-                expiryState: computeExpiryState(stall.status, stall.bookingEndDate)
-            }))
+            stalls: row.stalls.map((stall) => {
+                const pricing = getLotPricing(stall.stallCode);
+                return {
+                    code: stall.stallCode,
+                    status: stall.status,
+                    expiryState: computeExpiryState(stall.status, stall.bookingEndDate),
+                    lotType: pricing.type,
+                    lotColor: pricing.color,
+                    pricePerDay: pricing.pricePerDay
+                };
+            })
         }))
     }));
 
