@@ -214,12 +214,6 @@ body {
     border-color: #4b5960;
 }
 
-.qtag-color-toggle.active {
-    background: #e2b83a;
-    border-color: #b8952b;
-    color: #fff;
-}
-
 .page-body {
     padding: 16px 18px 40px;
 }
@@ -854,48 +848,6 @@ body {
 
 .stall-cell.maintenance:hover {
     background: #a06c1f;
-}
-
-/* สีจริงของล็อคมุมพิเศษ (จาก data/lots.csv) — ชมพู/ฟ้า/ฟ้า-A9/เหลือง */
-.stall-cell.lot-pink {
-    background: #ec4899;
-    color: #fff;
-}
-
-.stall-cell.lot-pink:hover {
-    background: #db2777;
-}
-
-.stall-cell.lot-blue {
-    background: #38bdf8;
-    color: #0c2733;
-}
-
-.stall-cell.lot-blue:hover {
-    background: #0ea5e9;
-    color: #fff;
-}
-
-.stall-cell.lot-yellow {
-    background: #facc15;
-    color: #3a2c02;
-}
-
-.stall-cell.lot-yellow:hover {
-    background: #eab308;
-}
-
-/* ล็อคมุมพิเศษที่มีร้านค้าแล้ว/ซ่อมบำรุงอยู่ ยังคงใช้สีสถานะเป็นพื้นหลัง แต่ขอบซ้ายบอกสีมุมพิเศษไว้ */
-.stall-cell.booked.lot-pink, .stall-cell.maintenance.lot-pink {
-    box-shadow: inset 3px 0 0 #ec4899;
-}
-
-.stall-cell.booked.lot-blue, .stall-cell.maintenance.lot-blue {
-    box-shadow: inset 3px 0 0 #38bdf8;
-}
-
-.stall-cell.booked.lot-yellow, .stall-cell.maintenance.lot-yellow {
-    box-shadow: inset 3px 0 0 #facc15;
 }
 
 .stall-cell-small {

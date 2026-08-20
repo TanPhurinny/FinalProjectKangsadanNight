@@ -244,7 +244,7 @@ exports.getSlotsPage = async (req, res) => {
         const zonesData = await buildZonesData();
 
         const approvedRequests = await prisma.bookingRequest.findMany({
-            where: { status: 'APPROVED', assignedStallCode: { not: null } },
+            where: { status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] }, assignedStallCode: { not: null } },
             select: {
                 productName: true,
                 description: true,
@@ -319,12 +319,27 @@ exports.getSlotsPage = async (req, res) => {
 // ผังตลาดสำหรับลูกค้าทั่วไป/ผู้ขาย (read-only, ไม่มี action จัดแผง) — ใช้ query logic เดียวกับ
 // getSlotsPage แต่ตัด field ที่เป็นข้อมูลผู้จอง (ชื่อ/เบอร์โทร/วันที่/หมายเหตุ) ออกตั้งแต่ฝั่ง server
 // เพราะ payload ฝัง <script type="application/json"> เปิด view-source ดูตรงๆ ได้ ไม่ใช่แค่ซ่อนใน UI
+// ตัดข้อมูลราคา/สีมุมพิเศษออกจากผังฝั่งลูกค้า-ผู้ขาย เพราะเป็นข้อมูลที่แอดมินใช้จัดการเท่านั้น
+// ไม่เกี่ยวกับการค้นหาร้านค้า (หน้านี้ควรมีไว้แค่ค้นหาร้าน/อาหาร)
+function stripLotPricing(zonesData) {
+    return zonesData.map((zone) => ({
+        ...zone,
+        columns: zone.columns.map((column) => ({
+            ...column,
+            stalls: column.stalls.map((stall) => {
+                const { lotType, lotColor, pricePerDay, ...rest } = stall;
+                return rest;
+            })
+        }))
+    }));
+}
+
 exports.getMarketMapPage = async (req, res) => {
     try {
-        const zonesData = await buildZonesData();
+        const zonesData = stripLotPricing(await buildZonesData());
 
         const approvedRequests = await prisma.bookingRequest.findMany({
-            where: { status: 'APPROVED', assignedStallCode: { not: null } },
+            where: { status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] }, assignedStallCode: { not: null } },
             select: {
                 productName: true,
                 description: true,
