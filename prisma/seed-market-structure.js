@@ -49,8 +49,7 @@ const ZONE_DEFINITIONS = [
       { rowCode: 'B3', start: 301, end: 323 },
       { rowCode: 'B4', start: 401, end: 423 },
       { rowCode: 'B5', start: 501, end: 523 },
-      { rowCode: 'B6', start: 601, end: 623 },
-      { rowCode: 'B7', start: 701, end: 715 }
+      { rowCode: 'B6', start: 601, end: 623 }
     ]
   },
   {
