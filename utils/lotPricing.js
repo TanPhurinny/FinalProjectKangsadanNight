@@ -9,7 +9,8 @@ const CSV_PATH = path.join(__dirname, '..', 'data', 'lots.csv');
 const BASE_PRICES = {
     'แฟชั่น 3x3': 209,
     'อาหาร 3x3': 259,
-    'อาหาร 2x2': 249
+    'อาหาร 2x2': 249,
+    'อาหาร 2x3': 120
 };
 
 const COLOR_SURCHARGE = {
@@ -27,7 +28,8 @@ const ZONE_DEFAULT_TYPE = {
     B: 'อาหาร 3x3',
     C: 'แฟชั่น 3x3',
     E: 'แฟชั่น 3x3',
-    F: 'อาหาร 2x2'
+    F: 'อาหาร 2x2',
+    T: 'อาหาร 2x3'
 };
 
 function parseCsv(text) {
