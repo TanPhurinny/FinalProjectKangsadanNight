@@ -462,6 +462,42 @@
       z-index: 2;
     }
 
+    /* สีจริงของล็อคมุมพิเศษ (จาก data/lots.csv) — ชมพู/ฟ้า/ฟ้า-A9/เหลือง */
+    .stall-cell.lot-pink {
+      background: #ec4899;
+      color: #fff;
+    }
+    .stall-cell.lot-pink:hover { background: #db2777; }
+
+    .stall-cell.lot-blue {
+      background: #38bdf8;
+      color: #0c2733;
+    }
+    .stall-cell.lot-blue:hover {
+      background: #0ea5e9;
+      color: #fff;
+    }
+
+    .stall-cell.lot-yellow {
+      background: #facc15;
+      color: #3a2c02;
+    }
+    .stall-cell.lot-yellow:hover { background: #eab308; }
+
+    /* ล็อคมุมพิเศษที่จองแล้วอยู่ ยังคงใช้สีสถานะเป็นพื้นหลัง แต่ขอบซ้ายบอกสีมุมพิเศษไว้ */
+    .stall-cell.booked.lot-pink { box-shadow: inset 3px 0 0 #ec4899; }
+    .stall-cell.booked.lot-blue { box-shadow: inset 3px 0 0 #38bdf8; }
+    .stall-cell.booked.lot-yellow { box-shadow: inset 3px 0 0 #facc15; }
+
+    /* เลือกไว้แล้วต้องเห็นชัดกว่าสีมุมพิเศษเสมอ */
+    .stall-cell.selected.lot-pink,
+    .stall-cell.selected.lot-blue,
+    .stall-cell.selected.lot-yellow {
+      background: var(--stall-selected) !important;
+      color: #fff !important;
+      box-shadow: none;
+    }
+
     .zone-d-layout {
       display: grid;
       grid-template-columns: repeat(10, 55px);

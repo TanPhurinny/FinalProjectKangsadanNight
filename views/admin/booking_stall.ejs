@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="/stylesheets/responsive.css">
     <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="/stylesheets/admin/bookingStall.css">
 
     <style>
     :root {
@@ -195,14 +196,113 @@
       font-size: 11px;
       opacity: 0.8;
     }
-    
+
+    /* สลับปุ่มเลือกโซน / ดูแบบผัง */
+    .view-toggle-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .toggle-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      background: #fff;
+      color: #555;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .toggle-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .toggle-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    /* ผังย่อคลิกเลือกโซน (แทนรายการปุ่ม) — ตำแหน่งอิงผังจริงเหมือนหน้า /admin/slots */
+    .ov-canvas {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      min-height: 260px;
+      background: #eef3f5;
+      border-radius: 8px;
+      border: 1px solid #eaeaea;
+    }
+    .ov-block {
+      position: absolute;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      font-family: 'Prompt', sans-serif;
+      font-weight: 600;
+      font-size: 12px;
+      line-height: 1.25;
+      padding: 4px;
+      box-sizing: border-box;
+      border: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .ov-title {
+      max-width: 100%;
+      overflow-wrap: break-word;
+    }
+    .ov-block:hover {
+      transform: scale(1.03);
+      z-index: 2;
+    }
+    .ov-block.active {
+      border-color: var(--primary-dark);
+      box-shadow: 0 0 0 2px var(--primary);
+    }
+    #ov-zone-A { top: 8%; left: 2%; width: 23%; height: 84%; background: #E5D9F2; color: #441752; }
+    #ov-zone-E { top: 8%; left: 27%; width: 17%; height: 14%; background: #FFB5DA; color: #c0006e; }
+    #ov-zone-F { top: 24%; left: 27%; width: 18%; height: 68%; background: #FDBF60; color: #a84800; }
+    #ov-zone-D { top: 8%; left: 47%; width: 17%; height: 14%; background: #C8FFE0; color: #0a7a5a; }
+    #ov-zone-X { top: 8%; left: 66%; width: 15%; height: 14%; background: #FDBF60; color: #a84800; }
+    #ov-zone-B { top: 24%; left: 47%; width: 51%; height: 68%; background: #FDBF60; color: #a84800; }
+    #ov-zone-C { bottom: 4%; left: 2%; width: 23%; height: 12%; background: #FFB5DA; color: #c0006e; }
+    #ov-zone-E .ov-title, #ov-zone-D .ov-title, #ov-zone-X .ov-title, #ov-zone-C .ov-title {
+      font-size: 11px;
+    }
+
     /* Legend */
     .legend-box {
-      display: flex; gap: 16px; align-items: center;
-      background: #fff; padding: 10px 20px; border-radius: 30px;
-      border: 1px solid #eaeaea; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-      margin-top: auto;
-      margin-bottom: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      background: #fff;
+      padding: 16px 24px;
+      border-radius: 16px;
+      border: 1px solid #eaeaea;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      margin-top: 20px;
+    }
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+    }
+    .legend-divider {
+      width: 100%;
+      max-width: 480px;
+      height: 1px;
+      background: #eaeaea;
     }
     .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
     .color-box { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #bbb; }
@@ -210,6 +310,19 @@
     .color-booked { background: var(--stall-booked); border-color: #777;}
     .color-selected { background: var(--stall-selected); border-color: var(--primary-dark); }
     .color-requested { border: 2px solid var(--primary); background: transparent; }
+    .color-pink { background: #ec4899; border-color: #db2777; }
+    .color-blue { background: #38bdf8; border-color: #0ea5e9; }
+    .color-yellow { background: #facc15; border-color: #eab308; }
+
+    .btn-color-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 30px; font-size: 13px; font-weight: 700;
+      border: 1px solid #eaeaea; background: #fff; color: var(--text-main);
+      cursor: pointer; transition: 0.15s;
+    }
+    .btn-color-toggle.active {
+      background: #7e57c2; border-color: #5e3f9a; color: #fff;
+    }
 
     /* ── MAP OUTER & INNER ── */
     .map-outer {
@@ -287,6 +400,12 @@
       flex-direction: column;
     }
 
+    /* โซนแนวนอน (C/E/X) — ต้อง specificity สูงกว่า .stall-column เฉยๆ ด้านบน
+       เพื่อไม่ให้ flex-direction:column ทับ flex-direction:row ของ bookingStall.css */
+    .stall-column.stall-column-horizontal {
+      flex-direction: row;
+    }
+
     .stall-cell {
       width: 55px;
       height: 28px;
@@ -324,17 +443,6 @@
       z-index: 1; /* ให้อยู่เหนือขอบสีดำปกติ */
     }
 
-    .facility-box {
-      position: absolute;
-      bottom: 65px;
-      right: 20px;
-      display: flex;
-      gap: 10px;
-    }
-    .btn-facility {
-      background: #f5c200; font-weight: 700; border: 1px solid #d4a000;
-      padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer;
-    }
 
     /* ── ACTION FOOTER ── */
     .action-footer {
@@ -598,6 +706,13 @@
             <label>โซน</label>
             <span>ระบุโซนที่ต้องการจอง</span>
 
+            <div class="view-toggle-group">
+              <button type="button" class="toggle-btn active" data-mode="buttons">
+                <i class="fa-solid fa-list"></i> เลือกจากรายการ</button>
+              <button type="button" class="toggle-btn" data-mode="overview">
+                <i class="fa-solid fa-map"></i> ดูแบบผัง</button>
+            </div>
+
             <div class="zone-btn-group" id="zoneButtons">
               <button class="btn-zone active" data-zone="A">โซน A
                 <small>(แฟชั่น/พิเศษอาหาร A901-A923)</small></button>
@@ -611,21 +726,53 @@
                 <small>(แฟชั่น)</small></button>
               <button class="btn-zone" data-zone="F">โซน F
                 <small>(อาหาร)</small></button>
+              <button class="btn-zone" data-zone="X">โซน X
+                <small>(อาหาร/บูธพิเศษ)</small></button>
             </div>
 
-          </div>
+            <div class="ov-canvas" id="zoneOverviewCanvas" style="display:none;">
+              <div class="ov-block" id="ov-zone-E" data-zone="E">
+                <span class="ov-title">โซน E</span></div>
+              <div class="ov-block" id="ov-zone-D" data-zone="D">
+                <span class="ov-title">โซน D</span></div>
+              <div class="ov-block" id="ov-zone-X" data-zone="X">
+                <span class="ov-title">โซน X</span></div>
+              <div class="ov-block" id="ov-zone-A" data-zone="A">
+                <span class="ov-title">โซน A</span></div>
+              <div class="ov-block" id="ov-zone-F" data-zone="F">
+                <span class="ov-title">โซน F</span></div>
+              <div class="ov-block" id="ov-zone-B" data-zone="B">
+                <span class="ov-title">โซน B</span></div>
+              <div class="ov-block" id="ov-zone-C" data-zone="C">
+                <span class="ov-title">โซน C</span></div>
+            </div>
 
-          <div class="legend-box">
-            <div class="legend-item"><div class="color-box color-empty"></div>
-              ว่าง</div>
-            <div class="legend-item"><div class="color-box color-booked"></div>
-              จองแล้ว</div>
-            <div class="legend-item"><div
-                class="color-box color-selected"></div>
-              เลือกอยู่</div>
-            <div class="legend-item"><div
-                class="color-box color-requested"></div>
-              แถวที่คำขอระบุ</div>
+            <div class="legend-box">
+              <div class="legend-row">
+                <div class="legend-item"><div class="color-box color-empty"></div>
+                  ว่าง</div>
+                <div class="legend-item"><div class="color-box color-booked"></div>
+                  จองแล้ว</div>
+                <div class="legend-item"><div
+                    class="color-box color-selected"></div>
+                  เลือกอยู่</div>
+                <div class="legend-item"><div
+                    class="color-box color-requested"></div>
+                  แถวที่คำขอระบุ</div>
+              </div>
+              <div class="legend-divider"></div>
+              <div class="legend-row">
+                <div class="legend-item"><div class="color-box color-pink"></div>
+                  มุมพิเศษชมพู</div>
+                <div class="legend-item"><div class="color-box color-blue"></div>
+                  มุมพิเศษฟ้า</div>
+                <div class="legend-item"><div class="color-box color-yellow"></div>
+                  มุมพิเศษเหลือง</div>
+                <button type="button" class="btn-color-toggle active"
+                  onclick="toggleLotColors(this)"><i class="fa-solid fa-palette"></i> สีมุมพิเศษ</button>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -644,13 +791,6 @@
             </div>
 
             <div class="admin-zone-canvas" id="adminGrid"></div>
-
-            <div class="facility-box">
-              <button class="btn-facility"><i class="fa-solid fa-restroom"></i>
-                ห้องน้ำ</button>
-              <button class="btn-facility"><i class="fa-solid fa-user-tie"></i>
-                ออฟฟิศ</button>
-            </div>
 
             <div class="road-bottom">
               <div class="road-bottom-stripe"></div>
@@ -723,15 +863,37 @@
     <script>
   const PAGE_DATA = <%- JSON.stringify(pageData || {}) %>;
   const REQUEST_DATA = PAGE_DATA.bookingRequest || {};
-  const ZONES_LAYOUT = PAGE_DATA.layoutByZone || {};
+  const ZONE_BY_CODE = PAGE_DATA.zoneByCode || {};
   const BOOKED_STALLS = new Set(PAGE_DATA.bookedStalls || []);
 
+  let showLotColors = true; // เปิด/ปิดสีมุมพิเศษบนผัง
+
+  // map สีจริงของล็อคมุมพิเศษ (จาก data/lots.csv) ไปเป็น class สี — ฟ้า กับ ฟ้า-A9 ใช้เฉดเดียวกัน
+  function lotColorClass(color) {
+    if (!showLotColors) return '';
+    if (color === 'ชมพู') return 'lot-pink';
+    if (color === 'ฟ้า' || color === 'ฟ้า-A9') return 'lot-blue';
+    if (color === 'เหลือง') return 'lot-yellow';
+    return '';
+  }
+
+  function toggleLotColors(btn) {
+    showLotColors = !showLotColors;
+    btn.classList.toggle('active', showLotColors);
+    renderGrid(currentZone);
+  }
+  window.toggleLotColors = toggleLotColors;
+
   let currentSelectedStall = String(REQUEST_DATA.assignedStallCode || '').trim().toUpperCase() || null;
-  let currentZone = (REQUEST_DATA.zone || Object.keys(ZONES_LAYOUT)[0] || 'A').toUpperCase();
+  let currentZone = (REQUEST_DATA.zone || Object.keys(ZONE_BY_CODE)[0] || 'A').toUpperCase();
 
   const tooltip = document.getElementById('adminTooltip');
   const confirmOverlay = document.getElementById('confirmOverlay');
   const zoneBtns = document.querySelectorAll('.btn-zone');
+  const overviewBlocks = document.querySelectorAll('.ov-block');
+  const toggleBtns = document.querySelectorAll('.toggle-btn');
+  const zoneButtonsPanel = document.getElementById('zoneButtons');
+  const zoneOverviewPanel = document.getElementById('zoneOverviewCanvas');
 
   function setApplicantData() {
     document.getElementById('app-name').textContent = REQUEST_DATA.sellerName || '-';
@@ -743,10 +905,14 @@
   }
 
   function renderZoneButtons() {
-    const availableZones = Object.keys(ZONES_LAYOUT);
+    const availableZones = Object.keys(ZONE_BY_CODE);
     zoneBtns.forEach((btn) => {
       const zone = (btn.dataset.zone || '').toUpperCase();
       btn.style.display = availableZones.includes(zone) ? 'inline-flex' : 'none';
+    });
+    overviewBlocks.forEach((block) => {
+      const zone = (block.dataset.zone || '').toUpperCase();
+      block.style.display = availableZones.includes(zone) ? 'flex' : 'none';
     });
   }
 
@@ -754,62 +920,151 @@
     zoneBtns.forEach((b) => {
       b.classList.toggle('active', (b.dataset.zone || '').toUpperCase() === zoneCode);
     });
+    overviewBlocks.forEach((b) => {
+      b.classList.toggle('active', (b.dataset.zone || '').toUpperCase() === zoneCode);
+    });
   }
 
-  function formatStallCode(prefix, number) {
-    return `${prefix}${String(number).padStart(3, '0')}`;
+  function setViewMode(mode) {
+    toggleBtns.forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+    zoneButtonsPanel.style.display = mode === 'overview' ? 'none' : 'flex';
+    zoneOverviewPanel.style.display = mode === 'overview' ? 'block' : 'none';
+  }
+
+  function selectZone(selectedZone) {
+    if (!ZONE_BY_CODE[selectedZone]) return;
+    currentZone = selectedZone;
+    setActiveZoneBtn(selectedZone);
+    renderGrid(selectedZone);
+  }
+
+  // โซน D ในผังจริงเป็นรูปตัว L (แถวบน D201-D208 8 ช่อง, ต่อลงมาแนวตั้ง D209 ใต้ D208,
+  // และมีกลุ่ม D211-D212 แยกอยู่ระดับล่างซ้าย) เก็บตำแหน่งจริงไว้ตรงนี้เหมือนหน้าผังตลาด
+  const ZONE_D_LAYOUT = [
+    { code: 'D201', col: 3, row: 1 }, { code: 'D202', col: 4, row: 1 },
+    { code: 'D203', col: 5, row: 1 }, { code: 'D204', col: 6, row: 1 },
+    { code: 'D205', col: 7, row: 1 }, { code: 'D206', col: 8, row: 1 },
+    { code: 'D207', col: 9, row: 1 }, { code: 'D208', col: 10, row: 1 },
+    { code: 'D211', col: 2, row: 2 }, { code: 'D212', col: 3, row: 2 },
+    { code: 'D209', col: 10, row: 2 }
+  ];
+
+  function makeStallCell(code, stall) {
+    const cell = document.createElement('div');
+    cell.className = stall && stall.small ? 'stall-cell stall-cell-small' : 'stall-cell';
+    cell.textContent = code;
+
+    const lotClass = stall ? lotColorClass(stall.lotColor) : '';
+    if (lotClass) cell.classList.add(lotClass);
+
+    const isBooked = BOOKED_STALLS.has(code);
+    if (isBooked) {
+      cell.classList.add('booked');
+      if (stall && stall.expiryState === 'expired') cell.classList.add('expired');
+      else if (stall && stall.expiryState === 'near') cell.classList.add('near-expiry');
+      cell.addEventListener('mouseenter', (e) => showTooltip(e, code));
+      cell.addEventListener('mouseleave', hideTooltip);
+      cell.addEventListener('mousemove', moveTooltip);
+    } else {
+      if (stall && stall.pricePerDay != null) {
+        const colorText = stall.lotColor && stall.lotColor !== 'ไม่มี' ? ` (สี ${stall.lotColor})` : '';
+        cell.title = `${stall.lotType}${colorText} — ${stall.pricePerDay.toLocaleString('th-TH')} บาท/วัน`;
+      }
+      cell.addEventListener('click', () => {
+        document.querySelectorAll('.stall-cell').forEach((c) => c.classList.remove('selected'));
+        cell.classList.add('selected');
+        currentSelectedStall = code;
+      });
+    }
+
+    if (code === currentSelectedStall) {
+      cell.classList.add('selected');
+    }
+
+    return cell;
+  }
+
+  function renderDZoneGrid(gridContainer, stallByCode) {
+    const layout = document.createElement('div');
+    layout.className = 'zone-d-layout';
+
+    const label = document.createElement('div');
+    label.className = 'zone-d-tag';
+    label.style.gridColumn = '1 / 2';
+    label.style.gridRow = '2 / 3';
+    label.textContent = 'D2';
+    layout.appendChild(label);
+
+    ZONE_D_LAYOUT.forEach((pos) => {
+      const stall = stallByCode[pos.code];
+      if (!stall) return;
+
+      const cell = makeStallCell(pos.code, stall);
+      cell.classList.add('zone-d-cell');
+      cell.style.gridColumn = `${pos.col} / ${pos.col + 1}`;
+      cell.style.gridRow = `${pos.row} / ${pos.row + 1}`;
+      layout.appendChild(cell);
+    });
+
+    gridContainer.appendChild(layout);
   }
 
   function renderGrid(zoneKey) {
     const gridContainer = document.getElementById('adminGrid');
     gridContainer.innerHTML = '';
 
-    const layout = ZONES_LAYOUT[zoneKey] || [];
-    if (!layout.length) {
+    const zoneData = ZONE_BY_CODE[zoneKey];
+    if (!zoneData || !zoneData.columns.length) {
       gridContainer.innerHTML = '<div style="padding:24px; color:#666;">ไม่มีข้อมูลแผงสำหรับโซนนี้</div>';
       return;
     }
 
-    layout.forEach((colData) => {
-      const prefix = colData[0];
-      const rowCount = Number(colData[1] || 0);
-      const startNumber = Number(colData[2] || 1);
+    if (zoneKey === 'D') {
+      const stallByCode = {};
+      zoneData.columns.forEach((column) => {
+        column.stalls.forEach((stall) => { stallByCode[stall.code] = stall; });
+      });
+      renderDZoneGrid(gridContainer, stallByCode);
+      return;
+    }
+
+    // โซน E, X, C ในผังจริงมีแถวเดียวเรียงตามแนวนอน (ซ้ายไปขวา) ไม่ใช่เรียงลงมาแนวตั้งแบบโซนอื่น
+    const isHorizontalZone = ['E', 'X', 'C'].includes(zoneKey);
+
+    zoneData.columns.forEach((column) => {
+      const blockClasses = ['col-block'];
+      if (column.groupEnd) blockClasses.push('col-group-end');
 
       const blockDiv = document.createElement('div');
-      blockDiv.className = 'col-block';
+      blockDiv.className = blockClasses.join(' ');
+
+      const lbl = document.createElement('div');
+      lbl.className = 'col-lbl';
+      lbl.textContent = column.rowCode;
+
+      const wrap = document.createElement('div');
+      wrap.className = isHorizontalZone ? 'col-wrap col-wrap-horizontal' : 'col-wrap';
+      wrap.appendChild(lbl);
+
       const colDiv = document.createElement('div');
-      colDiv.className = 'stall-column';
+      colDiv.className = isHorizontalZone ? 'stall-column stall-column-horizontal' : 'stall-column';
 
-      for (let offset = 0; offset < rowCount; offset += 1) {
-        const stallNumber = startNumber + offset;
-        const stallName = formatStallCode(zoneKey, stallNumber);
-
-        const cell = document.createElement('div');
-        cell.className = 'stall-cell';
-        cell.textContent = stallName;
-
-        const isBooked = BOOKED_STALLS.has(stallName);
-        if (isBooked) {
-          cell.classList.add('booked');
-          cell.addEventListener('mouseenter', (e) => showTooltip(e, stallName));
-          cell.addEventListener('mouseleave', hideTooltip);
-          cell.addEventListener('mousemove', moveTooltip);
-        } else {
-          cell.addEventListener('click', () => {
-            document.querySelectorAll('.stall-cell').forEach((c) => c.classList.remove('selected'));
-            cell.classList.add('selected');
-            currentSelectedStall = stallName;
-          });
+      column.stalls.forEach((stall) => {
+        if (stall.status === 'PLACEHOLDER') {
+          const placeholderCell = document.createElement('div');
+          placeholderCell.className = stall.small ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
+          placeholderCell.textContent = 'x';
+          colDiv.appendChild(placeholderCell);
+          return;
         }
 
-        if (stallName === currentSelectedStall) {
-          cell.classList.add('selected');
-        }
+        colDiv.appendChild(makeStallCell(stall.code, stall));
+      });
 
-        colDiv.appendChild(cell);
-      }
-
-      blockDiv.appendChild(colDiv);
+      wrap.appendChild(colDiv);
+      blockDiv.appendChild(wrap);
       gridContainer.appendChild(blockDiv);
     });
   }
@@ -923,16 +1178,23 @@
     renderZoneButtons();
     setActiveZoneBtn(currentZone);
     renderGrid(currentZone);
+    setViewMode('buttons');
 
     zoneBtns.forEach((btn) => {
       btn.addEventListener('click', function () {
-        const selectedZone = String(this.dataset.zone || '').toUpperCase();
-        if (!ZONES_LAYOUT[selectedZone]) {
-          return;
-        }
-        currentZone = selectedZone;
-        setActiveZoneBtn(selectedZone);
-        renderGrid(selectedZone);
+        selectZone(String(this.dataset.zone || '').toUpperCase());
+      });
+    });
+
+    overviewBlocks.forEach((block) => {
+      block.addEventListener('click', function () {
+        selectZone(String(this.dataset.zone || '').toUpperCase());
+      });
+    });
+
+    toggleBtns.forEach((btn) => {
+      btn.addEventListener('click', function () {
+        setViewMode(this.dataset.mode);
       });
     });
   });
