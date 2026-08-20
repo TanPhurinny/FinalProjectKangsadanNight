@@ -768,7 +768,7 @@
                   มุมพิเศษ สีฟ้า (+29 / A9 +20)</div>
                 <div class="legend-item"><div class="color-box color-yellow"></div>
                   มุมพิเศษ สีเหลือง (+89)</div>
-                <button type="button" class="btn-color-toggle active"
+                <button type="button" class="btn-color-toggle"
                   onclick="toggleLotColors(this)"><i class="fa-solid fa-palette"></i> สีมุมพิเศษ</button>
               </div>
             </div>
@@ -866,7 +866,7 @@
   const ZONE_BY_CODE = PAGE_DATA.zoneByCode || {};
   const BOOKED_STALLS = new Set(PAGE_DATA.bookedStalls || []);
 
-  let showLotColors = true; // เปิด/ปิดสีมุมพิเศษบนผัง
+  let showLotColors = false; // เปิด/ปิดสีมุมพิเศษบนผัง
 
   // map สีจริงของล็อคมุมพิเศษ (จาก data/lots.csv) ไปเป็น class สี — ฟ้า กับ ฟ้า-A9 ใช้เฉดเดียวกัน
   function lotColorClass(color) {
