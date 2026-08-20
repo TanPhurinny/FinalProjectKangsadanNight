@@ -16,7 +16,7 @@ const ZONE_DEFINITIONS = [
     productCategory: 'FASHION',
     productTypes: ['FASHION', 'FOOD'],
     size: '2x2',
-    basePrice: 150,
+    basePrice: 209,
     displayOrder: 1,
     rows: [
       { rowCode: 'A1', start: 101, end: 119 },
@@ -37,7 +37,7 @@ const ZONE_DEFINITIONS = [
     productCategory: 'FOOD',
     productTypes: ['FOOD'],
     size: '3x3',
-    basePrice: 180,
+    basePrice: 259,
     displayOrder: 2,
     rows: [
       { rowCode: 'B100', start: 100, end: 100 },
@@ -60,7 +60,7 @@ const ZONE_DEFINITIONS = [
     productCategory: 'FASHION',
     productTypes: ['FASHION'],
     size: '3x3',
-    basePrice: 200,
+    basePrice: 209,
     displayOrder: 3,
     rows: [{ rowCode: 'C1', start: 101, end: 112 }]
   },
@@ -82,7 +82,7 @@ const ZONE_DEFINITIONS = [
     productCategory: 'FASHION',
     productTypes: ['FASHION'],
     size: '2x2',
-    basePrice: 200,
+    basePrice: 209,
     displayOrder: 5,
     rows: [{ rowCode: 'E1', start: 101, end: 104 }]
   },
@@ -93,7 +93,7 @@ const ZONE_DEFINITIONS = [
     productCategory: 'FOOD',
     productTypes: ['FOOD'],
     size: '3x3',
-    basePrice: 180,
+    basePrice: 249,
     displayOrder: 6,
     rows: [
       { rowCode: 'F1', start: 101, end: 117 },

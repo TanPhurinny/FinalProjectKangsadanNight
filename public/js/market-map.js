@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const fallbackDetailsByZone = {
     a: {
       label: 'โซน A',
-      size: 'แผงขายของขนาด 3x3 เมตร',
+      size: 'แผงขายของขนาด 2x2 เมตร',
       price: 'ราคา 209 บาท /วัน',
       description: 'โซน A เหมาะสำหรับร้านแฟชั่นและอาหารที่ต้องการพื้นที่กว้าง'
     },
@@ -34,19 +34,19 @@ document.addEventListener('DOMContentLoaded', () => {
     d: {
       label: 'โซน D',
       size: 'แผงขายของขนาด 4x3 เมตร',
-      price: 'ราคา 230 บาท /วัน',
+      price: 'ราคา 250 บาท /วัน',
       description: 'โซน D เหมาะสำหรับร้านอาหาร'
     },
     e: {
       label: 'โซน E',
-      size: 'แผงขายของขนาด 3x3 เมตร',
+      size: 'แผงขายของขนาด 2x2 เมตร',
       price: 'ราคา 209 บาท /วัน',
       description: 'โซน E เป็นพื้นที่แฟชั่นคีย์ไอเดียสำหรับสินค้ามือสอง'
     },
     f: {
       label: 'โซน F',
-      size: 'แผงขายของขนาด 2x2 เมตร',
-      price: 'ราคา 219 บาท /วัน',
+      size: 'แผงขายของขนาด 3x3 เมตร',
+      price: 'ราคา 249 บาท /วัน',
       description: 'โซน F เหมาะสำหรับร้านอาหารขนาดเล็กและบูธสั้น'
     },
     x: {
