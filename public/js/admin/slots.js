@@ -16,7 +16,7 @@ let activeZone = null;
 let selectedStall = null;
 let currentQuery = '';
 let currentStatusFilter = null; // 'EMPTY' | 'BOOKED' | 'MAINTENANCE' | 'NEAR_EXPIRY' | 'SPECIAL' | null
-let showLotColors = true; // เปิด/ปิดสีมุมพิเศษบนผัง
+let showLotColors = false; // เปิด/ปิดสีมุมพิเศษบนผัง
 
 function stallMatchesFilter(id, stall) {
     if (currentStatusFilter) {
