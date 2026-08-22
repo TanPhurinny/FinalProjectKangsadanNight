@@ -850,9 +850,11 @@ body {
     background: #a06c1f;
 }
 
+/* ล็อค T ขนาดจริง 2x3 (กว้าง 2 ลึก 3 เท่าล็อคปกติที่เป็น 3x3) — ย่อแค่ความกว้าง
+   ความสูงเท่าล็อคปกติเพราะความลึกเท่ากัน (3) ไม่ใช่ย่อทั้งสองด้านเหมือนเดิม */
 .stall-cell-small {
-    width: 44px;
-    height: 22px;
+    width: 41px;
+    height: 32px;
     font-size: 9px;
 }
 
@@ -892,6 +894,20 @@ body {
     border-top-color: #12303a;
     pointer-events: none;
     z-index: 10;
+}
+
+/* แถวเดี่ยวแนวนอน (โซน C/E/X) อยู่ชิดขอบบนของ drawer-grid ทำให้ tooltip ที่โผล่ขึ้นด้านบน
+   โดนตัดขาดด้วย overflow:auto ของ drawer-grid จึงสลับให้โผล่ลงด้านล่างของแผงแทน */
+.stall-cell.tt-below[data-tooltip]:hover::after {
+    bottom: auto;
+    top: calc(100% + 10px);
+}
+
+.stall-cell.tt-below[data-tooltip]:hover::before {
+    bottom: auto;
+    top: calc(100% + 4px);
+    border-top-color: transparent;
+    border-bottom-color: #12303a;
 }
 
 .stall-cell.placeholder {

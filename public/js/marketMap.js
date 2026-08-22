@@ -182,6 +182,7 @@ function renderGrid(z) {
             cell.className = stall.small ? 'stall-cell stall-cell-small' : 'stall-cell';
             cell.textContent = id;
             cell.dataset.stall = id;
+            if (isHorizontalZone) cell.classList.add('tt-below');
 
             const bk = BOOKING_BY_STALL[id];
 

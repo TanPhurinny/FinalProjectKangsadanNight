@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { buildZonesData } = require('./marketController');
 
 const BOOKING_ROUND_LENGTH_DAYS = 14;
 const BOOKING_ROUND_ANCHOR_NUMBER = 44;
@@ -84,49 +85,22 @@ async function buildAdminBookingStallPageData(requestId) {
         return null;
     }
 
-    const zoneRows = await prisma.zoneRow.findMany({
-        include: {
-            zone: {
-                select: {
-                    code: true,
-                    name: true
+    // ใช้ buildZonesData() ชุดเดียวกับหน้าผังตลาด (admin/slots, marketMap) เพื่อให้ตำแหน่งแผง/แถวแนวนอน
+    // (โซน C/E/X), รูปตัว L ของโซน D, และสีมุมพิเศษ ตรงกับผังจริงเหมือนกันทุกหน้า
+    const zonesData = await buildZonesData();
+    const zoneByCode = {};
+    zonesData.forEach((zone) => { zoneByCode[zone.code] = zone; });
+
+    const bookedStalls = [];
+    zonesData.forEach((zone) => {
+        zone.columns.forEach((column) => {
+            column.stalls.forEach((stall) => {
+                if (stall.status !== 'PLACEHOLDER' && stall.status !== 'AVAILABLE') {
+                    bookedStalls.push(stall.code);
                 }
-            },
-            stalls: {
-                select: {
-                    stallCode: true,
-                    isAvailable: true,
-                    status: true
-                },
-                orderBy: { displayOrder: 'asc' }
-            }
-        },
-        orderBy: [{ zoneId: 'asc' }, { displayOrder: 'asc' }]
-    });
-
-    const layoutByZone = {};
-    const allStalls = [];
-    for (const row of zoneRows) {
-        const zoneCode = normalizeZone(row.zone?.code);
-        if (!zoneCode) continue;
-
-        if (!layoutByZone[zoneCode]) {
-            layoutByZone[zoneCode] = [];
-        }
-
-        const minDisplay = row.stallStartNumber || 1;
-        const maxDisplay = row.stallEndNumber || row.stalls.length || 1;
-        const slotCount = Math.max(0, maxDisplay - minDisplay + 1);
-
-        layoutByZone[zoneCode].push([row.rowCode, slotCount, minDisplay]);
-
-        row.stalls.forEach((stall) => {
-            allStalls.push({
-                stallCode: stall.stallCode,
-                isBooked: !stall.isAvailable || String(stall.status || '').toUpperCase() !== 'AVAILABLE'
             });
         });
-    }
+    });
 
     const requestedZone = normalizeZone(bookingRequest.zone);
     const assignedStallCode = String(bookingRequest.assignedStallCode || extractAssignedStallFromDescription(bookingRequest.description) || '').trim().toUpperCase();
@@ -144,9 +118,8 @@ async function buildAdminBookingStallPageData(requestId) {
             status: String(bookingRequest.status || 'PENDING').toUpperCase(),
             assignedStallCode
         },
-        layoutByZone,
-        bookedStalls: allStalls.filter((stall) => stall.isBooked).map((stall) => stall.stallCode),
-        allStallCodes: allStalls.map((stall) => stall.stallCode)
+        zoneByCode,
+        bookedStalls
     };
 }
 

@@ -208,6 +208,18 @@
     color: #fff;
 }
 
+.qtag-special.active {
+    background: #e2b83a;
+    border-color: #b8952b;
+    color: #fff;
+}
+
+.qtag-color-toggle.active {
+    background: #7e57c2;
+    border-color: #5e3f9a;
+    color: #fff;
+}
+
 .page-body {
     padding: 16px 18px 40px;
 }
@@ -862,9 +874,11 @@
     background: #a32b1d;
 }
 
+/* ล็อค T ขนาดจริง 2x3 (กว้าง 2 ลึก 3 เท่าล็อคปกติที่เป็น 3x3) — ย่อแค่ความกว้าง
+   ความสูงเท่าล็อคปกติเพราะความลึกเท่ากัน (3) ไม่ใช่ย่อทั้งสองด้านเหมือนเดิม */
 .stall-cell-small {
-    width: 44px;
-    height: 22px;
+    width: 41px;
+    height: 32px;
     font-size: 9px;
 }
 
@@ -904,6 +918,65 @@
     border-top-color: var(--navy, #12303a);
     pointer-events: none;
     z-index: 10;
+}
+
+/* แถวเดี่ยวแนวนอน (โซน C/E/X) อยู่ชิดขอบบนของ drawer-grid ทำให้ tooltip ที่โผล่ขึ้นด้านบน
+   โดนตัดขาดด้วย overflow:auto ของ drawer-grid จึงสลับให้โผล่ลงด้านล่างของแผงแทน */
+.stall-cell.tt-below[data-tooltip]:hover::after {
+    bottom: auto;
+    top: calc(100% + 10px);
+}
+
+.stall-cell.tt-below[data-tooltip]:hover::before {
+    bottom: auto;
+    top: calc(100% + 4px);
+    border-top-color: transparent;
+    border-bottom-color: var(--navy, #12303a);
+}
+
+/* สีจริงของล็อคมุมพิเศษ (จาก data/lots.csv) — ชมพู/ฟ้า/ฟ้า-A9/เหลือง */
+.stall-cell.lot-pink {
+    background: #ec4899;
+    color: #fff;
+}
+
+.stall-cell.lot-pink:hover {
+    background: #db2777;
+}
+
+.stall-cell.lot-blue {
+    background: #38bdf8;
+    color: #0c2733;
+}
+
+.stall-cell.lot-blue:hover {
+    background: #0ea5e9;
+    color: #fff;
+}
+
+.stall-cell.lot-yellow {
+    background: #facc15;
+    color: #3a2c02;
+}
+
+.stall-cell.lot-yellow:hover {
+    background: #eab308;
+}
+
+/* ล็อคมุมพิเศษที่จองแล้ว/ซ่อมบำรุงอยู่ ยังคงใช้สีสถานะเป็นพื้นหลัง แต่ขอบซ้ายบอกสีมุมพิเศษไว้ */
+.stall-cell.booked.lot-pink, .stall-cell.maintenance.lot-pink,
+.stall-cell.near-expiry.lot-pink, .stall-cell.expired.lot-pink {
+    box-shadow: inset 3px 0 0 #ec4899;
+}
+
+.stall-cell.booked.lot-blue, .stall-cell.maintenance.lot-blue,
+.stall-cell.near-expiry.lot-blue, .stall-cell.expired.lot-blue {
+    box-shadow: inset 3px 0 0 #38bdf8;
+}
+
+.stall-cell.booked.lot-yellow, .stall-cell.maintenance.lot-yellow,
+.stall-cell.near-expiry.lot-yellow, .stall-cell.expired.lot-yellow {
+    box-shadow: inset 3px 0 0 #facc15;
 }
 
 .stall-cell.placeholder {
