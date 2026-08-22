@@ -203,8 +203,8 @@
 }
 
 .qtag-near-expiry.active {
-    background: #7c6fd4;
-    border-color: #5a4fc0;
+    background: var(--danger-color, #c0392b);
+    border-color: #a32b1d;
     color: #fff;
 }
 
@@ -857,21 +857,21 @@
 }
 
 .stall-cell.near-expiry {
-    background: #7c6fd4;
-    color: #fff;
-}
-
-.stall-cell.near-expiry:hover {
-    background: #5a4fc0;
-}
-
-.stall-cell.expired {
     background: var(--danger-color, #c0392b);
     color: #fff;
 }
 
-.stall-cell.expired:hover {
+.stall-cell.near-expiry:hover {
     background: #a32b1d;
+}
+
+.stall-cell.expired {
+    background: #fff;
+    color: var(--text);
+}
+
+.stall-cell.expired:hover {
+    background: #e4f2f5;
 }
 
 /* ล็อค T ขนาดจริง 2x3 (กว้าง 2 ลึก 3 เท่าล็อคปกติที่เป็น 3x3) — ย่อแค่ความกว้าง

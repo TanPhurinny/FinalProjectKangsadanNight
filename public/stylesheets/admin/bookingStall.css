@@ -12,8 +12,8 @@
       --stall-empty: #ffffff;
       --stall-booked: #8a9aa0;
       --stall-selected: #2C93A8;
-      --stall-near-expiry: #7c6fd4;
-      --stall-expired: #c0392b;
+      --stall-near-expiry: #c0392b;
+      --stall-expired: #ffffff;
     }
 
     .booking-stall-page,
@@ -283,8 +283,8 @@
     .color-box { width: 18px; height: 18px; border-radius: 3px; border: 1px solid var(--border); }
     .color-empty { background: var(--stall-empty); }
     .color-booked { background: var(--stall-booked); border-color: #6d7a80;}
-    .color-near-expiry { background: var(--stall-near-expiry); border-color: #5a4fc0; }
-    .color-expired { background: var(--stall-expired); border-color: #a32b1d; }
+    .color-near-expiry { background: var(--stall-near-expiry); border-color: #a32b1d; }
+    .color-expired { background: var(--stall-expired); border-color: var(--border); }
     .color-selected { background: var(--stall-selected); border-color: var(--primary-dark); }
     .color-requested { border: 2px solid var(--primary); background: transparent; }
 
@@ -454,7 +454,7 @@
     }
     .stall-cell.booked.expired {
       background: var(--stall-expired);
-      color: #fff;
+      color: var(--text-main);
     }
     .stall-cell.selected {
       background: var(--stall-selected);
