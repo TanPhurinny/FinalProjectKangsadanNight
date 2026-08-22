@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ต่อล็อค</title>
+  <link rel="icon" type="image/png" href="/img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260724-6">
+  <link rel="stylesheet" href="/stylesheets/seller/bookingStall.css">
+</head>
+<body>
+<script src="/js/common/tabSession.js"></script>
+  <% if (user && user.role === 'SELLER') { %>
+  <%- include('../partials/navbarSeller') %>
+  <% } else { %>
+  <%- include('../partials/navbarCustomer') %>
+  <% } %>
+
+  <header class="site-header">
+    <button class="btn-back" onclick="history.back()" title="ย้อนกลับ">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+    <h1 class="header-title">ต่อล็อค</h1>
+    <div class="header-spacer"></div>
+  </header>
+
+  <main class="main-content">
+    <form class="form-card" method="POST" action="/booking-stall/extend" id="extendForm">
+      <% if (error) { %>
+        <%
+        const errorMsg = {
+            'invalid_extend_date': 'กรุณาเลือกวันที่ให้ถูกต้อง (ต้องอยู่หลังวันสิ้นสุดปัจจุบัน และไม่เกินวันจบรอบ)',
+            'too_early_to_extend': 'ยังไม่ถึงเวลาขอต่อ ถ้าต่อไม่ถึงสุดรอบ ต้องรอให้ถึง 1 วันก่อนวันขายก่อน',
+            'extend_failed': 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง'
+        }[error] || null;
+        %>
+        <% if (errorMsg) { %>
+        <div class="alert-box"><%= errorMsg %></div>
+        <% } %>
+      <% } %>
+
+      <div class="field-group">
+        <label class="field-label">ล็อกปัจจุบัน</label>
+        <input type="text" class="field-input" value="<%= request.zone %> — ล็อก <%= request.assignedStallCode || '-' %>" readonly />
+      </div>
+
+      <div class="grid-two">
+        <div class="field-group">
+          <label class="field-label">ขายถึงวันที่ (ปัจจุบัน)</label>
+          <input type="text" class="field-input" value="<%= new Date(activeLock.rentalEndDate).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>" readonly />
+        </div>
+        <div class="field-group">
+          <label class="field-label">รอบนี้สิ้นสุด</label>
+          <input type="text" class="field-input" value="<%= new Date(roundMeta.cycleEnd).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>" readonly />
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">ต่อขายถึงวันที่</label>
+        <input type="date" class="field-input" id="newEndDate" name="newEndDate" required />
+      </div>
+
+      <button type="button" class="btn-cancel-main" id="extendToRoundEndBtn" style="margin-bottom: 16px;">ต่อจนสุดรอบ (ขอได้ทันที)</button>
+
+      <div class="alert-box info-box">
+        ถ้าต่อไม่ถึงวันสิ้นรอบ ต้องรอให้ถึง 1 วันก่อนวันขายถึงจะขอต่อได้ ถ้าต่อจนสุดรอบขอได้ทันที คำขอนี้จะเข้าสู่ขั้นตอนอนุมัติของแอดมินเหมือนการจองปกติ
+      </div>
+
+      <div class="alert-box info-box">
+        <strong>หมายเหตุ</strong>
+        <ol style="margin: 6px 0 0; padding-left: 20px;">
+          <li>ท่านจะไม่ได้ย้ายล็อคตลอดช่วงที่ท่านจอง</li>
+          <li>หากท่านจองคนละรอบ ท่านมีโอกาสจะได้ย้ายล็อค</li>
+          <li>ตำแหน่งล็อคจะถูกจัดสรรโดยระบบ เพื่อให้การจัดการพื้นที่เป็นไปอย่างมีประสิทธิภาพสูงสุด</li>
+        </ol>
+      </div>
+
+      <div class="bottom-buttons">
+        <button type="button" class="btn-cancel-main" onclick="history.back()">ยกเลิก</button>
+        <button type="submit" class="btn-confirm">ส่งคำขอต่อล็อค</button>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    (function () {
+      var newEndDateInput = document.getElementById('newEndDate');
+      var extendToRoundEndBtn = document.getElementById('extendToRoundEndBtn');
+
+      var toDateInputValue = function (d) {
+        var date = new Date(d);
+        var year = date.getFullYear();
+        var month = String(date.getMonth() + 1).padStart(2, '0');
+        var day = String(date.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+      };
+      var currentEnd = toDateInputValue(<%- JSON.stringify(new Date(activeLock.rentalEndDate)) %>);
+      var roundEnd = toDateInputValue(<%- JSON.stringify(new Date(roundMeta.cycleEnd)) %>);
+
+      var nextDay = new Date(currentEnd);
+      nextDay.setDate(nextDay.getDate() + 1);
+      var minValue = toDateInputValue(nextDay);
+
+      newEndDateInput.min = minValue;
+      newEndDateInput.max = roundEnd;
+
+      extendToRoundEndBtn.addEventListener('click', function () {
+        newEndDateInput.value = roundEnd;
+      });
+    })();
+  </script>
+</body>
+</html>

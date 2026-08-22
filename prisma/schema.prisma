@@ -105,6 +105,7 @@ model SellerApplication {
   productDetail     String?   @db.Text
   sellerName        String?
   idCardNumber      String?
+  bankName          String?
   bankAccountNumber String?
   bankAccountName   String?
   phoneNumber       String?
@@ -113,6 +114,7 @@ model SellerApplication {
   district          String?
   province          String?
   shopCoverImage    String?
+  termsAcceptedAt   DateTime?
   status            Status    @default(PENDING)
   rejectReason      String?   @db.Text
   reviewedAt        DateTime?
@@ -150,6 +152,8 @@ model BookingRequest {
   sellerId     Int?
   status       Status   @default(PENDING)
   createdAt    DateTime @default(now())
+  paymentConfirmedAt DateTime?
+  paymentSlipImage   String?
   seller       Seller?  @relation(fields: [sellerId], references: [id], onDelete: SetNull)
 
   @@index([sellerId], map: "BookingRequest_sellerId_fkey")
@@ -241,6 +245,7 @@ model Announcement {
   updatedAt   DateTime @updatedAt
   image       String?
   targetRoles Json?
+  isImportant Boolean  @default(false)
   author      User     @relation(fields: [authorId], references: [id])
 
   @@index([authorId], map: "Announcement_authorId_fkey")

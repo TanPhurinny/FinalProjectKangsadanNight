@@ -70,26 +70,37 @@ const announcementSchema = z.object({
 const thaiIdRegex = /^\d{13}$/;
 const thaiPhoneRegex = /^0\d{9,10}$/;
 
-const nullableOptionalString = (maxLength) => z
-    .union([
-        z.string().trim().max(maxLength).optional(),
-        z.literal('')
-    ])
-    .transform((value) => (value === '' ? null : value ?? null));
+const THAI_BANK_NAMES = [
+    'ธนาคารกรุงเทพ',
+    'ธนาคารกสิกรไทย',
+    'ธนาคารกรุงไทย',
+    'ธนาคารไทยพาณิชย์',
+    'ธนาคารกรุงศรีอยุธยา',
+    'ธนาคารทหารไทยธนชาต',
+    'ธนาคารเกียรตินาคินภัทร',
+    'ธนาคารซีไอเอ็มบี ไทย',
+    'ธนาคารยูโอบี',
+    'ธนาคารออมสิน',
+    'ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร (ธ.ก.ส.)',
+    'ธนาคารอาคารสงเคราะห์ (ธอส.)',
+    'ธนาคารอิสลามแห่งประเทศไทย'
+];
 
 const sellerApplicationSchema = z.object({
     shopName: z.string().trim().min(1).max(200),
     sellerName: z.string().trim().min(1).max(200),
     idCardNumber: z.string().trim().regex(thaiIdRegex, 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก'),
     phoneNumber: z.string().trim().regex(thaiPhoneRegex, 'เบอร์โทรศัพท์ต้องเป็นตัวเลขไทยที่ถูกต้อง'),
+    bankName: z.enum(THAI_BANK_NAMES, { errorMap: () => ({ message: 'กรุณาเลือกธนาคาร' }) }),
     bankAccountNumber: z.string().trim().min(4).max(30),
     bankAccountName: z.string().trim().min(2).max(200),
     houseNumber: z.string().trim().min(1).max(200),
     subdistrict: z.string().trim().min(1).max(200),
     district: z.string().trim().min(1).max(200),
     province: z.string().trim().min(1).max(200),
-    productType: nullableOptionalString(100),
-    productDetail: nullableOptionalString(2000)
+    productType: z.string().trim().min(1, 'กรุณาเลือกประเภทสินค้า').max(100),
+    productDetail: z.string().trim().min(1, 'กรุณากรอกรายละเอียดสินค้า').max(2000),
+    termsAccepted: z.literal('true', { errorMap: () => ({ message: 'กรุณายอมรับกฎระเบียบร้านค้าก่อนสมัคร' }) })
 });
 
 module.exports = {
@@ -102,5 +113,6 @@ module.exports = {
     repairStatusUpdateSchema,
     announcementSchema,
     bookingStallInputSchema,
-    sellerApplicationSchema
+    sellerApplicationSchema,
+    THAI_BANK_NAMES
 };

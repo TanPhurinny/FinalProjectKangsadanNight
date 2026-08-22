@@ -35,7 +35,9 @@
             missing_slip: 'กรุณาแนบสลิปโอนเงินก่อนยืนยัน',
             not_awaiting_payment: 'ไม่พบรายการที่รอชำระเงินอยู่ในขณะนี้',
             slip_already_uploaded: 'คุณส่งสลิปโอนเงินไปแล้ว กรุณารอแอดมินตรวจสอบ',
-            payment_confirm_failed: 'เกิดข้อผิดพลาดขณะบันทึกการยืนยันชำระเงิน กรุณาลองใหม่'
+            payment_confirm_failed: 'เกิดข้อผิดพลาดขณะบันทึกการยืนยันชำระเงิน กรุณาลองใหม่',
+            no_active_lock_to_extend: 'ไม่พบล็อกที่จัดสรรแล้วในรอบปัจจุบันให้ต่อ',
+            extend_failed: 'เกิดข้อผิดพลาดขณะส่งคำขอต่อล็อค กรุณาลองใหม่'
           };
         %>
         <%= errorMessages[error] || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง' %>
@@ -47,6 +49,9 @@
     <% if (typeof success !== 'undefined' && success === 'payment_confirmed') { %>
       <div class="alert alert-success" role="alert">แอดมินยืนยันการชำระเงินแล้ว ระบบบันทึกล็อกนี้เป็นของคุณเรียบร้อย</div>
     <% } %>
+    <% if (typeof success !== 'undefined' && success === 'extend_requested') { %>
+      <div class="alert alert-success" role="alert">ส่งคำขอต่อล็อคแล้ว กรุณารอแอดมินอนุมัติ</div>
+    <% } %>
     <div class="page-hero card-custom">
       <div>
         <h1 class="page-hero__title">สถานะการจอง</h1>
@@ -54,6 +59,9 @@
       </div>
       <div class="d-flex gap-2 flex-wrap">
         <a href="/select-zone" class="btn btn-custom-primary btn-custom">จองแผงใหม่</a>
+        <% if (typeof canExtendLock !== 'undefined' && canExtendLock) { %>
+        <a href="/booking-stall/extend" class="btn btn-custom-primary btn-custom">ต่อล็อค</a>
+        <% } %>
       </div>
     </div>
 

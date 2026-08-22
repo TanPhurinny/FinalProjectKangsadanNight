@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260724-6">
   <link rel="stylesheet" href="/stylesheets/seller/repair.css">
+  <link rel="stylesheet" href="/stylesheets/seller/shopApplication.css">
     </head>
 
     <body>
@@ -38,13 +39,17 @@
                 <%
                 const errorParam = (typeof error !== 'undefined' && error) ? error : null;
                 const successParam = (typeof success !== 'undefined' && success) ? success : null;
+                const fd = (typeof formData !== 'undefined' && formData) ? formData : {};
+                const termsAlreadyAccepted = fd.termsAccepted === 'true';
                 const successMsg = successParam === 'application_submitted' ? 'ส่งใบสมัครเปิดร้านค้าสำเร็จ กรุณารอแอดมินตรวจสอบ' : null;
                 const errorMsg = {
                     'not_customer': 'บัญชีนี้สมัครเปิดร้านค้าไม่ได้',
                     'missing_fields': 'กรุณากรอกข้อมูลให้ครบถ้วน',
                     'upload_failed': 'อัปโหลดรูปภาพล้มเหลว กรุณาลองใหม่',
                     'already_pending': 'คุณมีใบสมัครที่รอตรวจสอบอยู่แล้ว',
-                    'db_error': 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่'
+                    'db_error': 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่',
+                    'not_applied': 'กรุณาสมัครเปิดร้านค้าให้เสร็จก่อน ถึงจะเลือกโซน/ล็อกได้',
+                    'sellers_only': 'หน้านั้นสำหรับผู้ขายเท่านั้น กรุณาสมัครเปิดร้านค้าก่อน'
                 }[errorParam] || null;
                 %>
 
@@ -77,13 +82,19 @@
                 </div>
                 <% } %>
 
+                <button type="button" class="rules-reopen-link" id="reopenRulesBtn">
+                    <i class="fa-solid fa-file-lines me-1"></i>อ่านกฎระเบียบร้านค้าอีกครั้ง
+                </button>
+
                 <form action="/shop-application" method="POST"
                     enctype="multipart/form-data">
+                    <input type="hidden" name="termsAccepted" id="termsAcceptedInput" value="<%= termsAlreadyAccepted ? 'true' : '' %>">
 
                     <div class="form-grid">
                         <div class="form-group full-width">
                             <label>ชื่อร้านค้า</label>
                             <input type="text" name="shopName" class="input-white"
+                                value="<%= fd.shopName || '' %>"
                                 placeholder="เช่น ร้านส้มตำป้าแดง" required>
                         </div>
 
@@ -96,6 +107,7 @@
                         <div class="form-group">
                             <label>เลขบัตรประชาชน</label>
                             <input type="text" name="idCardNumber" class="input-white"
+                                value="<%= fd.idCardNumber || '' %>"
                                 inputmode="numeric" maxlength="13" pattern="[0-9]{13}"
                                 placeholder="กรอกเลข 13 หลัก" required>
                         </div>
@@ -103,52 +115,70 @@
                         <div class="form-group">
                             <label>เบอร์โทรศัพท์</label>
                             <input type="tel" name="phoneNumber" class="input-white"
-                                value="<%= user && user.phoneNumber ? user.phoneNumber : '' %>" readonly required>
+                                value="<%= fd.phoneNumber || (user && user.phoneNumber ? user.phoneNumber : '') %>"
+                                inputmode="numeric" maxlength="10" pattern="0[0-9]{8,9}"
+                                placeholder="เช่น 0812345678" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>ธนาคาร</label>
+                            <select name="bankName" class="input-white" required>
+                                <option value="" <%= !fd.bankName ? 'selected' : '' %> disabled>เลือกธนาคาร...</option>
+                                <% (typeof bankNames !== 'undefined' ? bankNames : []).forEach((bank) => { %>
+                                <option value="<%= bank %>" <%= fd.bankName === bank ? 'selected' : '' %>><%= bank %></option>
+                                <% }) %>
+                            </select>
                         </div>
 
                         <div class="form-group">
                             <label>เลขบัญชีธนาคาร</label>
                             <input type="text" name="bankAccountNumber" class="input-white"
+                                value="<%= fd.bankAccountNumber || '' %>"
                                 placeholder="เช่น 1234567890" required>
                         </div>
 
                         <div class="form-group">
                             <label>ชื่อบัญชีธนาคาร</label>
                             <input type="text" name="bankAccountName" class="input-white"
+                                value="<%= fd.bankAccountName || '' %>"
                                 placeholder="เช่น นายสมชาย ใจดี" required>
                         </div>
 
                         <div class="form-group">
                             <label>บ้านเลขที่</label>
                             <input type="text" name="houseNumber" class="input-white"
+                                value="<%= fd.houseNumber || '' %>"
                                 placeholder="เช่น 123/45" required>
                         </div>
 
                         <div class="form-group">
                             <label>ตำบล</label>
                             <input type="text" name="subdistrict" class="input-white"
+                                value="<%= fd.subdistrict || '' %>"
                                 placeholder="ตำบล..." required>
                         </div>
 
                         <div class="form-group">
                             <label>อำเภอ</label>
                             <input type="text" name="district" class="input-white"
+                                value="<%= fd.district || '' %>"
                                 placeholder="อำเภอ..." required>
                         </div>
 
                         <div class="form-group">
                             <label>จังหวัด</label>
                             <input type="text" name="province" class="input-white"
+                                value="<%= fd.province || '' %>"
                                 placeholder="จังหวัด..." required>
                         </div>
 
                         <div class="form-group">
                             <label>ประเภทสินค้า</label>
-                            <select name="productType" class="input-white">
-                                <option value="" selected>เลือกประเภท...</option>
-                                <option value="FOOD">อาหาร/เครื่องดื่ม</option>
-                                <option value="FASHION">เสื้อผ้า/แฟชั่น</option>
-                                <option value="อื่นๆ">อื่นๆ</option>
+                            <select name="productType" class="input-white" required>
+                                <option value="" <%= !fd.productType ? 'selected' : '' %>>เลือกประเภท...</option>
+                                <option value="FOOD" <%= fd.productType === 'FOOD' ? 'selected' : '' %>>อาหาร/เครื่องดื่ม</option>
+                                <option value="FASHION" <%= fd.productType === 'FASHION' ? 'selected' : '' %>>เสื้อผ้า/แฟชั่น</option>
+                                <option value="อื่นๆ" <%= fd.productType === 'อื่นๆ' ? 'selected' : '' %>>อื่นๆ</option>
                             </select>
                         </div>
                     </div>
@@ -156,7 +186,7 @@
                     <div class="form-group full-width">
                         <label>รายละเอียดสินค้า</label>
                         <textarea name="productDetail" class="input-white"
-                            placeholder="เพิ่มรายละเอียดสินค้าที่จะขาย..."></textarea>
+                            placeholder="เพิ่มรายละเอียดสินค้าที่จะขาย..." required><%= fd.productDetail || '' %></textarea>
                     </div>
 
                     <div class="form-group full-width">
@@ -169,16 +199,107 @@
                             <input type="file" name="shopCoverImage" id="imageUpload"
                                 class="upload-input" accept="image/*">
                         </div>
+                        <p class="text-muted small mb-0">หมายเหตุ: ต้องแนบรูปใหม่อีกครั้งหากส่งฟอร์มไม่สำเร็จ เนื่องจากเหตุผลด้านความปลอดภัยของเบราว์เซอร์ ไฟล์ที่เลือกไว้จะไม่ถูกเก็บค้างไว้ให้</p>
                     </div>
 
                     <button type="submit"
                         class="submit-btn"
-                        id="submitBtn">ส่งใบสมัคร</button>
+                        id="submitBtn" <%= termsAlreadyAccepted ? '' : 'disabled' %>><%= termsAlreadyAccepted ? 'ส่งใบสมัคร' : 'ส่งใบสมัคร (กรุณายอมรับกฎระเบียบก่อน)' %></button>
 
                 </form>
                 <% } %>
             </div>
         </div>
+
+        <% if (user.role === 'CUSTOMER' && !(latestApplication && (latestApplication.status === 'PENDING' || latestApplication.status === 'APPROVED'))) { %>
+        <div class="rules-overlay" id="rulesOverlay" <%= termsAlreadyAccepted ? 'hidden' : '' %>>
+            <div class="rules-modal">
+                <div class="rules-modal__header">
+                    <h2><i class="fa-solid fa-scroll me-2"></i>กฎระเบียบร้านค้า</h2>
+                    <p>กรุณาอ่านให้ครบก่อนสมัครเปิดร้านค้า</p>
+                </div>
+                <div class="rules-modal__body">
+                    <h3>ทั่วไป</h3>
+                    <ul>
+                        <li><strong>ห้าม</strong>ปล่อยเช่าช่วงต่อในเชิงธุรกิจ หรือปล่อยเช่าเกินราคาเช่าเด็ดขาด</li>
+                        <li>ตลาดเปิดให้บริการตั้งแต่เวลา 16:00 น. จนถึง 00:00 น.</li>
+                        <li>ร้านค้าสามารถเข้าพื้นที่ตั้งแผงได้ตั้งแต่เวลา 10.00 - 18.00 น. นอกเวลานี้ต้องติดต่อเจ้าหน้าที่เป็นกรณีพิเศษ</li>
+                        <li>เปิดกระแสไฟฟ้าให้ใช้ตั้งแต่เวลา 16.00 - 00.30 น. หรือตามความเหมาะสม</li>
+                        <li><strong>ห้าม</strong>รถเข้าพื้นที่ขายตั้งแต่เวลา 16.30 - 23.00 น.</li>
+                        <li>เมื่อสิ้นสุดการเช่าหรือย้ายแผง ต้องจัดเก็บแผงและคืนพื้นที่ให้เรียบร้อยภายในเวลา 00.30 น. ของคืนนั้น มิฉะนั้นถือเป็นการบุกรุกพื้นที่โดยไม่ได้รับอนุญาต ทางตลาดสงวนสิทธิ์เคลื่อนย้ายสิ่งของโดยผู้เช่ารับผิดชอบค่าใช้จ่ายเอง และปรับครั้งที่ 1 = 50% ของค่าล็อค ครั้งที่ 2 = 100% ครั้งที่ 3 = 200% หากมีครั้งที่ 4 ทางตลาดสงวนสิทธิ์ไม่ต่อสิทธิ์ร้านค้า</li>
+                        <li>กรณีย้ายแผง สิทธิ์เช่าล็อคจะโอนไปยังล็อคใหม่ที่แจ้งไว้ ส่วนล็อคเดิมคืนให้ทางตลาด</li>
+                        <li>ทรัพย์สินของร้านค้าเป็นความรับผิดชอบของร้านค้าเอง ทางตลาดมีเจ้าหน้าที่ตรวจตราแต่ไม่รับผิดชอบความเสียหาย/สูญหาย</li>
+                        <li>โต๊ะ เก้าอี้ อุปกรณ์ และเฟอร์นิเจอร์ทั้งหมดเป็นทรัพย์สินของตลาด ห้ามนำไปใช้ส่วนตัวโดยไม่ได้รับอนุญาต</li>
+                        <li>กรณีขอคืนเงินหลังชำระแล้ว ขึ้นอยู่กับดุลพินิจของเจ้าหน้าที่ตลาด</li>
+                        <li>หากฝ่าฝืนกฎระเบียบ ค้างชำระค่าปรับ หรือส่งผลกระทบต่อส่วนรวม ทางตลาดสงวนสิทธิ์เพิกถอนสิทธิ์การเช่า ตัดสิทธิ์ หรือปฏิเสธการเช่า</li>
+                    </ul>
+
+                    <h3>ความสะอาดและการจัดการขยะ</h3>
+                    <ul>
+                        <li>ต้องจัดเก็บและทิ้งขยะในจุดที่กำหนดเท่านั้น ทางตลาดไม่มีนโยบายเข้าไปเก็บขยะในแผงร้านค้า</li>
+                        <li><strong>ห้าม</strong>ทิ้งขยะหรือเศษอาหารลงท่อระบายน้ำหรือบริเวณโดยรอบ ต้องคัดแยกและทิ้งในจุดที่จัดเตรียมไว้เท่านั้น</li>
+                        <li><strong>ห้าม</strong>นำภาชนะหรือสิ่งของไปล้างในห้องน้ำหรือบริเวณทิ้งเศษอาหารโดยเด็ดขาด ร้านค้าต้องรับผิดชอบภาชนะของตนเอง</li>
+                        <li>หากพื้นที่เช่าถูกทิ้งไว้สกปรก ทางตลาดจะเรียกเก็บค่าปรับความสะอาดตามค่าใช้จ่ายจริง</li>
+                        <li><strong>งด</strong>ใช้กล่องโฟม (พื้นที่ปลอดโฟม) และ<strong>งด</strong>ใช้ลูกแม็คสแตปเปิ้ล</li>
+                    </ul>
+
+                    <h3>การจัดวางร้านและทัศนียภาพ</h3>
+                    <ul>
+                        <li><strong>ห้าม</strong>ติดตั้งแผงกั้น/ผ้ากั้นด้านซ้าย-ขวาของร้านสูงเกิน 1.20 เมตรจากพื้นในช่วงเวลาขาย</li>
+                        <li><strong>ห้าม</strong>ติดตั้งหรือวางส่วนใดของร้านสูงเกิน 3.75 เมตรจากพื้นดิน</li>
+                        <li>ต้องใช้พื้นที่ตามขนาดที่ได้รับอนุญาตเท่านั้น ห้ามตั้งแผงเกินพื้นที่เช่าโดยไม่ได้รับอนุญาต</li>
+                        <li>ร้านที่ไม่มาขายหรือปิดร้านก่อน 21.00 น. ต้องจัดเก็บ/ปิดร้านให้เรียบร้อย ไม่บดบังทัศนียภาพ (อยู่ในดุลพินิจของตลาด) เจ้าหน้าที่มีสิทธิ์จัดระเบียบพื้นที่ เปิดไฟ หรือติดตั้งฉากกั้นได้</li>
+                        <li>ปลั๊กพ่วงที่นำมาใช้ต้องได้มาตรฐาน เพื่อป้องกันอุบัติเหตุ</li>
+                        <li>ต้องติดป้ายราคาสินค้าและรายละเอียดสินค้าให้ชัดเจน เพื่อความโปร่งใส</li>
+                        <li>ร้านอาหารต้องจำหน่ายอาหารที่สะอาด ปลอดภัย ถูกสุขลักษณะตามมาตรฐานอนามัย</li>
+                        <li>หลีกเลี่ยงเสียงดังเกินควรหรือก่อความรำคาญต่อผู้อื่น</li>
+                    </ul>
+
+                    <h3>ค่าปรับพื้นที่เกิน</h3>
+                    <ul>
+                        <li>เกินเล็กน้อย (ไม่เกิน 1 ตร.ม.): ปรับ 25-500 บาท</li>
+                        <li>เกินปานกลาง (1-3 ตร.ม.): ปรับ 50-1,000 บาท</li>
+                        <li>เกินมาก (เกิน 3 ตร.ม.): ปรับ 2-10 เท่าของค่าเช่าพื้นที่ปกติ</li>
+                        <li>อัตราค่าปรับเพิ่มตามจำนวนครั้งที่พบ และอาจมีค่าปรับเพิ่มเติมกรณีต้องจัดการความเสียหายที่เกิดขึ้น</li>
+                    </ul>
+
+                    <h3>เครื่องใช้ไฟฟ้าและไฟส่องสว่าง</h3>
+                    <ul>
+                        <li>แจ้งล่วงหน้าในระบบ: เครื่องเล็ก 20 บาท / เครื่องใหญ่ 40 บาท</li>
+                        <li>เก็บหน้างาน (ไม่แจ้งล่วงหน้า): เครื่องเล็ก 40 บาท / เครื่องใหญ่ 60 บาท</li>
+                        <li>เครื่องเล็ก = ไม่เกิน 1,200 วัตต์ และขนาดรวม (กว้าง×ยาว×สูง) ไม่เกิน 250,000 ลบ.ซม. นอกเหนือจากนี้นับเป็นเครื่องใหญ่</li>
+                        <li>ต้องแจ้งรายการเครื่องใช้ไฟฟ้าที่นำมาล่วงหน้าก่อนการขาย ภายใน 16.30 น. ไม่ว่าจะใช้งานจริงหรือไม่ หากนำมาโดยไม่แจ้งจะถูกปรับ 2-10 เท่าของอัตราปกติ (ปรับเพิ่มตามจำนวนครั้งที่พบ)</li>
+                        <li>ค่าปรับไฟส่องสว่างเกิน: คิดจากพลังงานที่เกิน 150 วัตต์ต่อล็อค อัตรา 20 บาทต่อ 100 วัตต์ (เศษเกิน 50 วัตต์ปัดขึ้น) ขั้นต่ำ 20 บาทต่อครั้ง</li>
+                    </ul>
+
+                    <h3>การชดเชยกรณีฝนตก</h3>
+                    <ul>
+                        <li>เข้าเงื่อนไขต้องครบทั้ง 2 ข้อ: (1) ฝนตกช่วงเวลา 17.00-20.00 น. (2) ฝนตกต่อเนื่องจนเป็นอุปสรรคจนไม่สามารถทำการค้าได้ (ฝนตกปรอยๆ แล้วหยุด ไม่เข้าเงื่อนไข)</li>
+                        <li>หากเข้าเงื่อนไข จะได้รับส่วนลดชดเชย 50-100% จากค่าเช่าล็อควันนั้น ประกาศผลเวลา 21.30 น.</li>
+                        <li>ทางตลาดสงวนสิทธิ์ใช้ดุลยพินิจตีความและตัดสินใจโดยเด็ดขาด ผลการพิจารณาถือเป็นที่สุด</li>
+                    </ul>
+
+                    <h3>การใช้งานส่วนลดชดเชย</h3>
+                    <ul>
+                        <li>ใช้เป็นส่วนลดสำหรับการจองล็อคครั้งถัดไปเท่านั้น ต้องใช้ไลน์เดียวกับรอบที่ได้รับชดเชย และแจ้งเจ้าหน้าที่ว่าต้องการใช้</li>
+                        <li>มีระยะเวลาหมดอายุ 45 วัน นับจากวันที่ได้รับชดเชย</li>
+                        <li>ต้องใช้ส่วนลดทั้งหมดที่มีในครั้งเดียว และไม่สามารถแลกคืนเป็นเงินสดได้</li>
+                        <li>หากส่วนลดมากกว่าค่าเช่า ส่วนต่างจะไม่สะสมต่อ</li>
+                        <li>ไม่ครอบคลุมลูกค้าวอล์คอินหรือเช่าช่วงต่อจากผู้อื่น และไม่สามารถโอน/ส่งต่อสิทธิ์ให้ผู้อื่นได้</li>
+                        <li>เศษทศนิยมปัดขึ้นเพื่อประโยชน์ของร้านค้า สะสมได้สูงสุด 5 ครั้ง</li>
+                        <li>เช็คส่วนลดที่มีได้โดยพิมพ์ "@ชดเชย" ตามด้วยไอดี เช่น @ชดเชย123456</li>
+                    </ul>
+                </div>
+                <div class="rules-modal__footer">
+                    <label class="rules-consent">
+                        <input type="checkbox" id="rulesConsentCheckbox">
+                        <span>ข้าพเจ้าได้อ่านและยอมรับกฎระเบียบร้านค้าข้างต้นทั้งหมด</span>
+                    </label>
+                    <button type="button" class="rules-accept-btn" id="rulesAcceptBtn" disabled>ยอมรับเงื่อนไข/กติกาตลาด</button>
+                </div>
+            </div>
+        </div>
+        <% } %>
 
         <script src="/js/seller/shopApplication.js"></script>
     </body>

@@ -178,6 +178,7 @@ function openDetail(payload) {
     document.getElementById('m-id-card').innerText = payload.idCardNumber;
     document.getElementById('m-name').innerText = payload.applicantName;
     document.getElementById('m-phone').innerText = payload.phoneNumber;
+    document.getElementById('m-bank-provider').innerText = payload.bankName;
     document.getElementById('m-bank-account').innerText = payload.bankAccountNumber;
     document.getElementById('m-bank-name').innerText = payload.bankAccountName;
     document.getElementById('m-address').innerText = [payload.houseNumber, payload.subdistrict, payload.district, payload.province].filter(Boolean).join(' ');

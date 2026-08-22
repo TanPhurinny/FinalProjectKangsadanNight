@@ -47,44 +47,104 @@
         <input type="text" class="field-input" value="<%= user ? (user.phoneNumber || '-') : '' %>" readonly />
       </div>
 
-      <div class="grid-two">
-        <div class="field-group">
-          <label class="field-label">วันที่เริ่มเช่า</label>
-          <input type="date" class="field-input" id="dateStart" name="dateStart" required />
-        </div>
-        <div class="field-group">
-          <label class="field-label">วันที่สิ้นสุดเช่า</label>
-          <input type="date" class="field-input" id="dateEnd" name="dateEnd" required />
-        </div>
-      </div>
-
       <div class="field-group">
         <label class="field-label">โซนที่เลือก</label>
         <input type="text" class="field-input" value="<%= zone ? ('โซน ' + zone) : 'ไม่ระบุ' %>" readonly />
       </div>
 
+      <%
+      const toDateInputValue = (d) => {
+        const date = new Date(d);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const formatThaiDate = (d) => new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' });
+      %>
+
+      <%
+      const phaseHint = (phaseInfo) => {
+        if (!phaseInfo) return '';
+        if (phaseInfo.phase === 'not_open_yet') return 'รอบนี้ยังไม่เปิดให้จอง ต้องรอถึงวันจันทร์ก่อนรอบจะเปิดก่อนนะ';
+        if (phaseInfo.phase === 1) return 'วันนี้จองเต็ม 14 วันได้เลย หรือถ้าอยากได้ทำเลพิเศษ (ล็อคเต็ง) ก็ขอได้เฉพาะช่วงนี้เท่านั้น';
+        if (phaseInfo.phase === 2) return 'วันนี้จองได้ตั้งแต่ 3 วันขึ้นไป (ต้องเป็นวันติดกัน) ช่วงนี้ยังขอล็อคเต็งไม่ได้';
+        return 'จองกี่วันก็ได้ (ต้องเป็นวันติดกัน) แต่จองล่วงหน้าได้แค่ 1 วันก่อนวันขายเท่านั้น ช่วงนี้ขอล็อคเต็งไม่ได้แล้ว';
+      };
+      %>
+
       <% if (bookingRoundInfo) { %>
       <div class="field-group">
-        <label class="field-label">รอบการจองปัจจุบัน</label>
-        <div class="field-input readonly-box">
-          รอบที่ <strong><%= bookingRoundInfo.roundNumber %></strong>
-          &nbsp;|&nbsp;
-          <%= new Date(bookingRoundInfo.cycleStart).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>
-          &nbsp;ถึง&nbsp;
-          <%= new Date(bookingRoundInfo.cycleEnd).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>
-          <br />
-          <small><strong>สถานะ:</strong> <%= bookingRoundSummary && bookingRoundSummary.status ? bookingRoundSummary.status : 'เปิดจอง' %> — <%= bookingRoundSummary && bookingRoundSummary.statusText ? bookingRoundSummary.statusText : 'ยังสามารถส่งคำขอได้ตามรอบปัจจุบัน' %></small>
+        <label class="field-label">เลือกรอบการจอง (จองได้เฉพาะรอบปัจจุบันหรือรอบถัดไปเท่านั้น)</label>
+        <div class="round-picker">
+          <label class="round-option <%= currentPhase && currentPhase.phase === 'not_open_yet' ? 'round-option--disabled' : '' %>">
+            <input type="radio" name="roundChoice" value="current"
+              data-cycle-start="<%= toDateInputValue(bookingRoundInfo.cycleStart) %>"
+              data-cycle-end="<%= toDateInputValue(bookingRoundInfo.cycleEnd) %>"
+              data-phase="<%= currentPhase ? currentPhase.phase : 'not_open_yet' %>"
+              data-allow-corner="<%= currentPhase && currentPhase.allowCornerZone ? '1' : '0' %>"
+              data-min-days="<%= currentPhase && currentPhase.minDays ? currentPhase.minDays : 1 %>"
+              data-max-advance-start="<%= currentPhase && currentPhase.maxAdvanceStart ? toDateInputValue(currentPhase.maxAdvanceStart) : '' %>"
+              data-hint="<%= phaseHint(currentPhase) %>"
+              <%= (currentPhase && currentPhase.phase === 'not_open_yet') ? 'disabled' : 'checked required' %>>
+            <div class="round-option__body">
+              <strong>รอบปัจจุบัน — รอบที่ <%= bookingRoundInfo.roundNumber %></strong>
+              <span><%= formatThaiDate(bookingRoundInfo.cycleStart) %> ถึง <%= formatThaiDate(bookingRoundInfo.cycleEnd) %></span>
+              <small><%= phaseHint(currentPhase) %></small>
+            </div>
+          </label>
+          <% if (nextRoundInfo) { %>
+          <label class="round-option <%= nextPhase && nextPhase.phase === 'not_open_yet' ? 'round-option--disabled' : '' %>">
+            <input type="radio" name="roundChoice" value="next"
+              data-cycle-start="<%= toDateInputValue(nextRoundInfo.cycleStart) %>"
+              data-cycle-end="<%= toDateInputValue(nextRoundInfo.cycleEnd) %>"
+              data-phase="<%= nextPhase ? nextPhase.phase : 'not_open_yet' %>"
+              data-allow-corner="<%= nextPhase && nextPhase.allowCornerZone ? '1' : '0' %>"
+              data-min-days="<%= nextPhase && nextPhase.minDays ? nextPhase.minDays : 1 %>"
+              data-max-advance-start="<%= nextPhase && nextPhase.maxAdvanceStart ? toDateInputValue(nextPhase.maxAdvanceStart) : '' %>"
+              data-hint="<%= phaseHint(nextPhase) %>"
+              <%= (!currentPhase || currentPhase.phase === 'not_open_yet') && nextPhase && nextPhase.phase !== 'not_open_yet' ? 'checked' : '' %>
+              <%= (nextPhase && nextPhase.phase === 'not_open_yet') ? 'disabled' : 'required' %>>
+            <div class="round-option__body">
+              <strong>รอบถัดไป — รอบที่ <%= nextRoundInfo.roundNumber %></strong>
+              <span><%= formatThaiDate(nextRoundInfo.cycleStart) %> ถึง <%= formatThaiDate(nextRoundInfo.cycleEnd) %></span>
+              <small><%= phaseHint(nextPhase) %></small>
+            </div>
+          </label>
+          <% } %>
         </div>
       </div>
       <% } %>
 
-      <div class="field-group">
-        <label class="field-label">จำนวนล็อกแผง</label>
-        <input type="number" class="field-input" id="stallCount" name="stallCount" min="1" value="1" required />
+      <div class="grid-two">
+        <div class="field-group">
+          <label class="field-label">วันที่เริ่มขาย</label>
+          <input type="date" class="field-input" id="dateStart" name="dateStart" required />
+        </div>
+        <div class="field-group">
+          <label class="field-label">วันที่สิ้นสุดขาย</label>
+          <input type="date" class="field-input" id="dateEnd" name="dateEnd" required />
+        </div>
+      </div>
+
+      <button type="button" class="btn-cancel-main" id="fullRoundBtn" style="display:none; margin-bottom: 16px;">เลือกเต็มรอบ 14 วัน</button>
+
+      <div class="alert-box info-box" id="phaseHintBox">
+        เลือกรอบการจองด้านบนเพื่อดูเงื่อนไขวันที่
       </div>
 
       <div class="alert-box info-box">
-        ระบบจัดรอบ 14 วันต่อเนื่องอัตโนมัติ และต้องจองขั้นต่ำ 3 วันขึ้นไป ทุกล็อคจะมีการแจ้งเตือนในวันพุธก่อนวันยืนยันและปิดรอบ
+        <strong>หมายเหตุ</strong>
+        <ol style="margin: 6px 0 0; padding-left: 20px;">
+          <li>ท่านจะไม่ได้ย้ายล็อคตลอดช่วงที่ท่านจอง</li>
+          <li>หากท่านจองคนละรอบ ท่านมีโอกาสจะได้ย้ายล็อค</li>
+          <li>ตำแหน่งล็อคจะถูกจัดสรรโดยระบบ เพื่อให้การจัดการพื้นที่เป็นไปอย่างมีประสิทธิภาพสูงสุด</li>
+        </ol>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">จำนวนล็อกแผง</label>
+        <input type="number" class="field-input" id="stallCount" name="stallCount" min="1" value="1" required />
       </div>
 
       <div class="field-group">
@@ -107,8 +167,8 @@
         var currentCornerValue = typeof cornerZoneValue !== 'undefined' ? Number(cornerZoneValue) : 0;
         var cornerOptionsList = typeof pricing.cornerZoneOptions !== 'undefined' ? pricing.cornerZoneOptions : [];
       %>
-      <div class="field-group">
-        <label class="field-label">สนใจแผงหัวมุม/แผงพิเศษไหม? <span class="field-label__note">(แจ้งความสนใจเฉยๆ ยังไม่คิดเงิน จะคิดเพิ่มก็ต่อเมื่อแอดมินจัดแผงพิเศษให้จริงเท่านั้น)</span></label>
+      <div class="field-group" id="cornerZoneSection">
+        <label class="field-label">สนใจแผงหัวมุม/แผงพิเศษ (ล็อคเต็ง) ไหม? <span class="field-label__note">(เลือกได้เฉพาะช่วงจันทร์-อังคารก่อนเปิดรอบเท่านั้น — แจ้งความสนใจเฉยๆ ยังไม่คิดเงิน จะคิดเพิ่มก็ต่อเมื่อแอดมินจัดแผงพิเศษให้จริงเท่านั้น)</span></label>
         <div class="option-list">
           <label class="option-card">
             <input type="radio" name="cornerZone" value="0" <%= currentCornerValue === 0 ? 'checked' : '' %> />

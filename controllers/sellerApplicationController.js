@@ -42,6 +42,7 @@ exports.getSellerApplicationsPage = async (req, res) => {
                 productDetail: application.productDetail || '-',
                 sellerName: application.sellerName || application.user?.name || '-',
                 idCardNumber: application.idCardNumber || '-',
+                bankName: application.bankName || '-',
                 bankAccountNumber: application.bankAccountNumber || '-',
                 bankAccountName: application.bankAccountName || '-',
                 phoneNumber: application.phoneNumber || application.user?.phoneNumber || '-',

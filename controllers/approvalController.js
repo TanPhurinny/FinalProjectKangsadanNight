@@ -2,59 +2,10 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { buildZonesData } = require('./marketController');
 
-const BOOKING_ROUND_LENGTH_DAYS = 14;
-const BOOKING_ROUND_ANCHOR_NUMBER = 44;
-const BOOKING_ROUND_ANCHOR_DATE = new Date('2026-08-01T00:00:00');
+const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable } = require('../utils/bookingRound');
 
 function normalizeZone(zone) {
     return String(zone || '').trim().toUpperCase();
-}
-
-function toStartOfDay(dateValue) {
-    const value = new Date(dateValue);
-    if (Number.isNaN(value.getTime())) {
-        return null;
-    }
-    value.setHours(0, 0, 0, 0);
-    return value;
-}
-
-function addDays(dateValue, days) {
-    const next = new Date(dateValue);
-    next.setDate(next.getDate() + days);
-    return next;
-}
-
-function getBookingRoundMetaForDate(dateValue) {
-    const baseDate = toStartOfDay(dateValue || new Date());
-    if (!baseDate) {
-        return {
-            roundNumber: BOOKING_ROUND_ANCHOR_NUMBER,
-            cycleStart: new Date(BOOKING_ROUND_ANCHOR_DATE),
-            cycleEnd: addDays(new Date(BOOKING_ROUND_ANCHOR_DATE), BOOKING_ROUND_LENGTH_DAYS - 1)
-        };
-    }
-
-    const anchor = toStartOfDay(BOOKING_ROUND_ANCHOR_DATE);
-    const diffDays = Math.floor((baseDate.getTime() - anchor.getTime()) / (1000 * 60 * 60 * 24));
-    const roundNumber = BOOKING_ROUND_ANCHOR_NUMBER + Math.floor(diffDays / BOOKING_ROUND_LENGTH_DAYS);
-    const cycleStart = addDays(anchor, (roundNumber - BOOKING_ROUND_ANCHOR_NUMBER) * BOOKING_ROUND_LENGTH_DAYS);
-    const cycleEnd = addDays(cycleStart, BOOKING_ROUND_LENGTH_DAYS - 1);
-
-    return { roundNumber, cycleStart, cycleEnd };
-}
-
-function getRoundWindow(roundNumber) {
-    const anchor = toStartOfDay(BOOKING_ROUND_ANCHOR_DATE);
-    const offset = (roundNumber - BOOKING_ROUND_ANCHOR_NUMBER) * BOOKING_ROUND_LENGTH_DAYS;
-    const cycleStart = addDays(anchor, offset);
-    const cycleEnd = addDays(cycleStart, BOOKING_ROUND_LENGTH_DAYS - 1);
-    return { cycleStart, cycleEnd };
-}
-
-function isRoundEditable(roundNumber) {
-    const currentRoundNumber = getBookingRoundMetaForDate(new Date()).roundNumber;
-    return roundNumber >= currentRoundNumber;
 }
 
 function toThaiDate(value) {
