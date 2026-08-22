@@ -396,6 +396,77 @@ exports.confirmPayment = async (req, res) => {
             }
         });
 
+        // Booking ที่ผูกกับคำขอนี้ต้องตามสถานะไปเป็น SUCCESS ด้วย ไม่งั้นหน้า seller
+        // dashboard/booking-status/booking-history จะยังค้างแสดงว่า "รอดำเนินการ" ทั้งที่จ่ายเงินจบแล้ว
+        const successRequestTag = buildBookingRequestTag(requestId);
+        if (successRequestTag) {
+            await prisma.booking.updateMany({
+                where: { storeDetailSnapshot: { startsWith: successRequestTag } },
+                data: { status: 'SUCCESS' }
+            });
+        }
+
+        // จ่ายเงินสำเร็จ = ได้ล็อกจริงแล้ว เลื่อนสถานะลูกค้าทั่วไปเป็นผู้ขาย (ไม่แตะ ADMIN/STAFF/SELLER เดิม)
+        const paidRequestTag = buildBookingRequestTag(requestId);
+        if (paidRequestTag) {
+            const paidBooking = await prisma.booking.findFirst({
+                where: { storeDetailSnapshot: { startsWith: paidRequestTag } },
+                select: { userId: true, zoneCode: true, selectedZoneLabel: true }
+            });
+            const paidZoneLabel = paidBooking?.selectedZoneLabel || (paidBooking?.zoneCode ? `โซน ${paidBooking.zoneCode}` : null);
+            if (paidBooking?.userId) {
+                await prisma.user.updateMany({
+                    where: { id: paidBooking.userId, role: 'CUSTOMER' },
+                    data: { role: 'SELLER' }
+                });
+
+                // ซิงก์ข้อมูลร้านค้าเข้า ShopDetail จากใบสมัคร (SellerApplication) ตัวล่าสุดของผู้ใช้นี้
+                // เส้นทางนี้ (จองแผงเอง -> แอดมินยืนยันสลิป) ผู้ใช้อาจยังไม่ผ่าน /admin/seller-applications
+                // มาก่อน (isSellerOrApplicant อนุญาตให้จองได้ตั้งแต่ใบสมัครยังรอตรวจสอบ) การยืนยันจ่ายเงินสำเร็จ
+                // ของแอดมินในเส้นทางนี้จึงถือเป็นการอนุมัติโดยพฤตินัย — ไม่ปล่อยให้ผู้ขายกรอกชื่อร้าน/
+                // ประเภทสินค้าเองใหม่ใน /shop-profile จนไม่ตรงกับที่สมัครมา
+                const latestApplication = await prisma.sellerApplication.findFirst({
+                    where: { userId: paidBooking.userId },
+                    orderBy: { createdAt: 'desc' }
+                });
+                if (latestApplication) {
+                    if (String(latestApplication.status || '').toUpperCase() === 'PENDING') {
+                        await prisma.sellerApplication.update({
+                            where: { id: latestApplication.id },
+                            data: { status: 'APPROVED', reviewedAt: new Date() }
+                        });
+                    }
+                    await prisma.shopDetail.upsert({
+                        where: { userId: paidBooking.userId },
+                        update: {
+                            shopName: latestApplication.shopName,
+                            productType: latestApplication.productType,
+                            productDetail: latestApplication.productDetail,
+                            shopCoverImage: latestApplication.shopCoverImage,
+                            isVerified: true,
+                            ...(paidZoneLabel ? { shopZoneLabel: paidZoneLabel } : {})
+                        },
+                        create: {
+                            userId: paidBooking.userId,
+                            shopName: latestApplication.shopName,
+                            productType: latestApplication.productType,
+                            productDetail: latestApplication.productDetail,
+                            shopCoverImage: latestApplication.shopCoverImage,
+                            isVerified: true,
+                            shopZoneLabel: paidZoneLabel || null
+                        }
+                    });
+                } else if (paidZoneLabel) {
+                    // ไม่มีใบสมัครใหม่ (เช่น ผู้ขายเดิมต่อ/จองล็อกใหม่ในรอบถัดไป) แต่มี ShopDetail อยู่แล้ว
+                    // ก็ยังต้องอัปเดตโซนให้ตรงกับล็อกล่าสุดที่จ่ายเงินจริง
+                    await prisma.shopDetail.updateMany({
+                        where: { userId: paidBooking.userId },
+                        data: { shopZoneLabel: paidZoneLabel }
+                    });
+                }
+            }
+        }
+
         return res.redirect('/admin/approvals?success=payment_confirmed');
     } catch (err) {
         return res.redirect('/admin/approvals?error=confirm_payment_failed');
@@ -518,6 +589,20 @@ exports.confirmBookingStall = async (req, res) => {
                     where: { storeDetailSnapshot: { startsWith: requestTag } }
                 });
 
+                // Booking (ตัวที่หน้า seller dashboard/booking-status/booking-history อ่าน) ต้อง
+                // ตามสถานะจริงของ BookingRequest ไปด้วย — เดิมโค้ดจุดนี้อัปเดตแค่ราคา ทำให้ Booking.status
+                // ค้างที่ PENDING ตลอดแม้แอดมินจะจัดล็อกและยืนยันจ่ายเงินแล้วจริงๆ ก็ตาม
+                const assignedSlot = await tx.slot.upsert({
+                    where: { slotNumber: selectedStall },
+                    update: { isAvailable: false },
+                    create: {
+                        slotNumber: selectedStall,
+                        zone: selectedStall.replace(/[0-9].*$/, '') || 'A',
+                        price: realDailyStallPrice,
+                        isAvailable: false
+                    }
+                });
+
                 for (const booking of linkedBookings) {
                     const rentTotal = realDailyStallPrice * booking.stallCount * booking.rentalDays;
                     const lightTotal = booking.lightEnabled ? realDailyLightPrice * booking.stallCount * booking.rentalDays : 0;
@@ -530,7 +615,9 @@ exports.confirmBookingStall = async (req, res) => {
                             lightUnitPrice: realDailyLightPrice,
                             rentTotal,
                             lightTotal,
-                            grandTotal
+                            grandTotal,
+                            status: 'IN_PROGRESS',
+                            slotId: assignedSlot.id
                         }
                     });
                 }
@@ -570,6 +657,14 @@ exports.rejectBookingStall = async (req, res) => {
                 assignedStallCode: null
             }
         });
+
+        const rejectedRequestTag = buildBookingRequestTag(requestId);
+        if (rejectedRequestTag) {
+            await prisma.booking.updateMany({
+                where: { storeDetailSnapshot: { startsWith: rejectedRequestTag } },
+                data: { status: 'REJECTED' }
+            });
+        }
 
         return res.redirect('/admin/approvals?success=request_rejected');
     } catch (err) {
