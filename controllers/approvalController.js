@@ -3,6 +3,7 @@ const prisma = new PrismaClient();
 const { buildZonesData } = require('./marketController');
 
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable } = require('../utils/bookingRound');
+const { verifySlip } = require('../utils/slipVerification');
 
 function normalizeZone(zone) {
     return String(zone || '').trim().toUpperCase();
@@ -34,6 +35,28 @@ function extractAssignedStallFromDescription(descriptionText) {
     const text = String(descriptionText || '');
     const match = text.match(/\[ASSIGNED_STALL:([^\]]+)\]/i);
     return match ? String(match[1] || '').trim().toUpperCase() : '';
+}
+
+// คำขอ "ต่อล็อค" (routes/sellerRoute.js POST /booking-stall/extend) ใส่ tag นี้ไว้หน้า description
+function extractExtendOfRequestId(descriptionText) {
+    const match = String(descriptionText || '').match(/\[EXTEND_OF:(\d+)\]/i);
+    return match ? Number.parseInt(match[1], 10) : null;
+}
+
+// ความสนใจล็อคเต็ง (แผงหัวมุม/แผงพิเศษ) ที่ฝังไว้ในข้อความตอนจอง (routes/sellerRoute.js POST /booking-stall)
+function extractCornerZoneNote(descriptionText) {
+    const match = String(descriptionText || '').match(/\[สนใจแผงพิเศษ:\s*([^\]]+)\]/);
+    return match ? String(match[1] || '').trim() : null;
+}
+
+// ตัด tag ภายในทั้งหมดออกจาก description ก่อนโชว์เป็นโน้ตจริงให้แอดมินอ่าน
+function stripInternalTags(descriptionText) {
+    return String(descriptionText || '')
+        .replace(/\[BOOKING_REQUEST_ID:\d+\]\s*/gi, '')
+        .replace(/\[EXTEND_OF:\d+\]\s*/gi, '')
+        .replace(/\[ASSIGNED_STALL:[^\]]+\]\s*/gi, '')
+        .replace(/\[สนใจแผงพิเศษ:[^\]]+\]\s*/g, '')
+        .trim();
 }
 
 async function buildAdminBookingStallPageData(requestId) {
@@ -138,7 +161,36 @@ exports.getApprovalsPage = async (req, res) => {
         });
 
         const zoneCounts = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
-        const statusCounts = { PENDING: 0, APPROVED: 0, REJECTED: 0 };
+        const statusCounts = { PENDING: 0, IN_PROGRESS: 0, SUCCESS: 0, APPROVED: 0, REJECTED: 0 };
+
+        // Join ข้อมูลการจองจริง (วันที่/จำนวนวัน/ราคา ฯลฯ) เข้ากับคำขอ — ผูกด้วย tag เดียวกับที่
+        // confirmBookingStall ใช้คำนวณราคาจริง และที่ extend-lock ใช้หา "ล็อกที่กำลังใช้อยู่"
+        // ดึงเป็นก้อนเดียวแทนการ query ทีละคำขอ (N+1) โดยจำกัดช่วงเวลาตามรอบที่กำลังดูอยู่
+        const bookingsInRound = await prisma.booking.findMany({
+            where: {
+                storeDetailSnapshot: { startsWith: BOOKING_REQUEST_TAG_PREFIX },
+                createdAt: { gte: selectedRoundWindow.cycleStart, lte: addDays(selectedRoundWindow.cycleEnd, 1) }
+            },
+            select: {
+                storeDetailSnapshot: true,
+                rentalStartDate: true,
+                rentalEndDate: true,
+                rentalDays: true,
+                stallCount: true,
+                dailyStallPrice: true,
+                grandTotal: true,
+                smallApplianceCount: true,
+                largeApplianceCount: true
+            }
+        });
+
+        const bookingByRequestId = new Map();
+        bookingsInRound.forEach((booking) => {
+            const match = String(booking.storeDetailSnapshot || '').match(/^\[BOOKING_REQUEST_ID:(\d+)\]/);
+            if (match) {
+                bookingByRequestId.set(Number.parseInt(match[1], 10), booking);
+            }
+        });
 
         const bookingRows = bookingRequests.map((request) => {
             const zoneCode = String(request.zone || '').trim().toUpperCase();
@@ -149,6 +201,9 @@ exports.getApprovalsPage = async (req, res) => {
                 month: 'short',
                 year: '2-digit'
             });
+            const linkedBooking = bookingByRequestId.get(request.id) || null;
+            const extendOfRequestId = extractExtendOfRequestId(request.description);
+            const cornerZoneNote = extractCornerZoneNote(request.description);
 
             if (zoneCode && zoneCounts[zoneCode] !== undefined) {
                 zoneCounts[zoneCode] += 1;
@@ -161,7 +216,7 @@ exports.getApprovalsPage = async (req, res) => {
             return {
                 id: request.id,
                 productName: request.productName,
-                description: request.description,
+                description: stripInternalTags(request.description),
                 sellerName: request.sellerName,
                 phone: request.phone,
                 zone: zoneCode,
@@ -182,7 +237,25 @@ exports.getApprovalsPage = async (req, res) => {
                 assignedStallCode,
                 paymentSlipImage: request.paymentSlipImage || null,
                 paymentConfirmedAt: request.paymentConfirmedAt || null,
-                productImage: request.productImage || sellerImageMap.get(String(request.sellerName || '').trim()) || null
+                slipVerified: typeof request.slipVerified === 'boolean' ? request.slipVerified : null,
+                slipVerifyReason: request.slipVerifyReason || null,
+                productImage: request.productImage || sellerImageMap.get(String(request.sellerName || '').trim()) || null,
+                isExtension: Boolean(extendOfRequestId),
+                extendOfRequestId,
+                cornerZoneNote,
+                isFinalPrice: Boolean(assignedStallCode),
+                booking: linkedBooking
+                    ? {
+                        rentalStartDateText: toThaiDate(linkedBooking.rentalStartDate),
+                        rentalEndDateText: toThaiDate(linkedBooking.rentalEndDate),
+                        rentalDays: linkedBooking.rentalDays,
+                        stallCount: linkedBooking.stallCount,
+                        dailyStallPrice: Number(linkedBooking.dailyStallPrice || 0),
+                        grandTotal: Number(linkedBooking.grandTotal || 0),
+                        smallApplianceCount: linkedBooking.smallApplianceCount || 0,
+                        largeApplianceCount: linkedBooking.largeApplianceCount || 0
+                    }
+                    : null
             };
         });
 
@@ -208,6 +281,8 @@ exports.getApprovalsPage = async (req, res) => {
                 all: bookingRows.length,
                 pending: statusCounts.PENDING,
                 approved: statusCounts.APPROVED,
+                inProgress: statusCounts.IN_PROGRESS,
+                success: statusCounts.SUCCESS,
                 rejected: statusCounts.REJECTED,
                 zones: zoneCounts
             },
@@ -219,6 +294,8 @@ exports.getApprovalsPage = async (req, res) => {
             isCurrentRound,
             isEditable,
             error: req.query.error || null,
+            errorReason: req.query.reason || null,
+            errorRequestId: req.query.requestId || null,
             success: req.query.success || null
         });
     } catch (err) {
@@ -284,6 +361,31 @@ exports.confirmPayment = async (req, res) => {
 
         if (String(requestRecord.status || '').toUpperCase() !== 'IN_PROGRESS' || !requestRecord.paymentSlipImage) {
             return res.redirect('/admin/approvals?error=no_slip_to_confirm');
+        }
+
+        // ตรวจสลิปอัตโนมัติผ่าน SlipOK ก่อนยืนยัน (ถ้าตั้งค่า SLIPOK_API_KEY ไว้) — เทียบยอดในสลิป
+        // กับราคาจริงของการจอง (Booking ที่ผูกด้วย tag เดียวกับที่ confirmBookingStall ใช้คำนวณราคา)
+        // ปกติผลตรวจถูกเก็บไว้แล้วตั้งแต่ตอน /booking-payment/confirm อัปโหลดสลิป (กันยิง API ซ้ำ) —
+        // ยิงใหม่เฉพาะกรณีไม่มีผลเก็บไว้เลย (slipVerified === null เช่นตอนอัปโหลด SlipOK ยังไม่ได้ตั้งค่า)
+        const force = String(req.body.force || '') === '1';
+        if (!force) {
+            let verifyResult = requestRecord.slipVerified === null
+                ? null
+                : { ok: requestRecord.slipVerified, reason: requestRecord.slipVerifyReason, amount: requestRecord.slipVerifiedAmount };
+
+            if (verifyResult === null) {
+                const requestTag = buildBookingRequestTag(requestId);
+                const linkedBooking = requestTag
+                    ? await prisma.booking.findFirst({ where: { storeDetailSnapshot: { startsWith: requestTag } } })
+                    : null;
+                const expectedAmount = linkedBooking ? Number(linkedBooking.grandTotal || 0) : null;
+                verifyResult = await verifySlip(requestRecord.paymentSlipImage, expectedAmount);
+            }
+
+            if (verifyResult && verifyResult.ok === false) {
+                const reason = encodeURIComponent(verifyResult.reason || 'ตรวจสลิปไม่ผ่าน');
+                return res.redirect(`/admin/approvals?error=slip_verification_failed&reason=${reason}&requestId=${requestId}`);
+            }
         }
 
         await prisma.bookingRequest.update({

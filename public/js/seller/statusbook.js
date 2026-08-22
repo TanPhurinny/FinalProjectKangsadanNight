@@ -141,9 +141,16 @@
 
     let paymentSection = '';
     if (booking.status === 'IN_PROGRESS' && booking.awaitingPaymentVerification) {
+      let slipVerifyBadge = '';
+      if (booking.slipVerified === true) {
+        slipVerifyBadge = `<div class="alert alert-success py-2 px-3 mb-3 d-flex align-items-center gap-2"><i class="bi bi-patch-check-fill"></i><span>ระบบตรวจสอบสลิปอัตโนมัติแล้ว: <strong>สลิปจริง ยอดถูกต้อง</strong> รอแอดมินยืนยันขั้นสุดท้าย</span></div>`;
+      } else if (booking.slipVerified === false) {
+        slipVerifyBadge = `<div class="alert alert-danger py-2 px-3 mb-3 d-flex align-items-center gap-2"><i class="bi bi-exclamation-triangle-fill"></i><span>ระบบตรวจสอบสลิปอัตโนมัติแล้วพบปัญหา: <strong>${booking.slipVerifyReason || 'ตรวจสอบไม่ผ่าน'}</strong> — ถ้ามั่นใจว่าโอนถูกต้องแล้ว กรุณาติดต่อแอดมิน</span></div>`;
+      }
       paymentSection = `
         <div class="payment-upload-box mt-4 p-3 border rounded-3 bg-light">
           <button type="button" class="btn btn-warning btn-custom disabled mb-2" disabled><i class="bi bi-hourglass-split me-1"></i>ชำระเงินแล้ว รอตรวจ</button>
+          ${slipVerifyBadge}
           <p class="text-muted small mb-3">แอดมินกำลังตรวจสอบสลิปโอนเงินของคุณสำหรับ<strong>${lockMention(booking.slotLabel)}</strong> เมื่อยืนยันแล้ว ระบบจะแจ้งเลขล็อกและยืนยันว่าเป็นของคุณอย่างเป็นทางการ</p>
           <img src="${booking.paymentSlipImage}" alt="สลิปโอนเงินที่ส่งไปแล้ว" class="img-fluid rounded" style="max-width:260px;" />
         </div>
@@ -153,21 +160,17 @@
         <div class="payment-upload-box mt-4 p-3 border rounded-3 bg-light">
           <h6 class="fw-bold mb-2 text-dark-custom"><i class="bi bi-wallet2 me-2"></i>อัปโหลดสลิปโอนเงินเพื่อยืนยันการชำระเงิน</h6>
           <p class="text-muted small mb-3">แอดมินจัดล็อกให้คุณแล้ว กรุณาชำระเงินและแนบสลิปโอนเงินเพื่อยืนยัน แอดมินจะตรวจสอบสลิปก่อนยืนยันล็อกให้เป็นของคุณ (เลขล็อกจะแจ้งให้ทราบหลังยืนยันการชำระเงิน)</p>
-          <div class="bank-transfer-box mb-3 p-3 border rounded-3 bg-white">
-            <h6 class="fw-bold mb-2 text-dark-custom"><i class="bi bi-bank me-2"></i>บัญชีสำหรับโอนเงิน</h6>
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
-              <span class="text-muted small">ธนาคาร</span>
-              <span class="fw-semibold">กสิกรไทย (KBank)</span>
+          <div class="bank-transfer-box mb-3 p-3 border rounded-3 bg-white text-center">
+            <h6 class="fw-bold mb-2 text-dark-custom"><i class="bi bi-qr-code me-2"></i>สแกนจ่ายด้วยพร้อมเพย์</h6>
+            ${booking.promptPayQr ? `<img src="${booking.promptPayQr}" alt="PromptPay QR" class="img-fluid" style="max-width:220px;" />` : ''}
+            <div class="mt-2">
+              <span class="text-muted small">พร้อมเพย์</span>
+              <div class="fw-semibold">${booking.promptPayId || '-'}</div>
             </div>
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
-              <span class="text-muted small">ชื่อบัญชี</span>
-              <span class="fw-semibold">ตลาดนัดกังสดาลไนท์</span>
+            <div class="mt-1">
+              <span class="text-muted small">ยอดที่ต้องชำระ</span>
+              <div class="fw-bold fs-5 text-success-custom">${formatMoney(booking.grandTotal)}</div>
             </div>
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
-              <span class="text-muted small">เลขที่บัญชี</span>
-              <span class="fw-semibold">123-4-56789-0</span>
-            </div>
-            <p class="text-muted small mb-0 mt-2"><i class="bi bi-info-circle me-1"></i>เลขบัญชีนี้เป็นข้อมูลจำลองสำหรับสาธิตระบบเท่านั้น</p>
           </div>
           <form action="/booking-payment/confirm" method="POST" enctype="multipart/form-data" class="d-flex flex-column flex-sm-row gap-2">
             <input type="file" name="paymentSlip" accept="image/*" class="form-control" required />

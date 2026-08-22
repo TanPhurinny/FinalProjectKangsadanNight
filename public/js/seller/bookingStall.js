@@ -143,13 +143,13 @@ bookingForm.addEventListener('submit', (event) => {
 
     if (!selected || selected.disabled) {
         event.preventDefault();
-        window.alert('กรุณาเลือกรอบการจองที่เปิดให้จองอยู่');
+        window.showAlertDialog({ title: 'เลือกรอบการจองก่อน', message: 'กรุณาเลือกรอบการจองที่เปิดให้จองอยู่', tone: 'warning' });
         return;
     }
 
     if (!dateStartInput.value || !dateEndInput.value) {
         event.preventDefault();
-        window.alert('กรุณาเลือกวันที่ขายให้ครบถ้วน');
+        window.showAlertDialog({ title: 'กรอกวันที่ไม่ครบ', message: 'กรุณาเลือกวันที่ขายให้ครบถ้วน', tone: 'warning' });
         return;
     }
 
@@ -157,7 +157,7 @@ bookingForm.addEventListener('submit', (event) => {
     const endDate = new Date(dateEndInput.value);
     if (endDate < startDate) {
         event.preventDefault();
-        window.alert('วันที่สิ้นสุดต้องมากกว่าหรือเท่ากับวันที่เริ่มขาย');
+        window.showAlertDialog({ title: 'วันที่ไม่ถูกต้อง', message: 'วันที่สิ้นสุดต้องมากกว่าหรือเท่ากับวันที่เริ่มขาย', tone: 'warning' });
         return;
     }
 
@@ -169,7 +169,7 @@ bookingForm.addEventListener('submit', (event) => {
 
     if (cornerZoneValue > 0 && selected.dataset.allowCorner !== '1') {
         event.preventDefault();
-        window.alert('เลือกล็อคเต็ง (แผงพิเศษ) ได้เฉพาะช่วงจันทร์-อังคารก่อนเปิดรอบเท่านั้น');
+        window.showAlertDialog({ title: 'เลือกล็อคเต็งไม่ได้', message: 'เลือกล็อคเต็ง (แผงพิเศษ) ได้เฉพาะช่วงจันทร์-อังคารก่อนเปิดรอบเท่านั้น', tone: 'warning' });
         return;
     }
 
@@ -177,14 +177,14 @@ bookingForm.addEventListener('submit', (event) => {
         const isFullRound = dateStartInput.value === selected.dataset.cycleStart && dateEndInput.value === selected.dataset.cycleEnd;
         if (!isFullRound) {
             event.preventDefault();
-            window.alert('ช่วงจันทร์-อังคารก่อนเปิดรอบ จองได้เฉพาะเต็มรอบ 14 วัน หรือเลือกล็อคเต็งเท่านั้น');
+            window.showAlertDialog({ title: 'จองได้แค่เต็มรอบ', message: 'ช่วงจันทร์-อังคารก่อนเปิดรอบ จองได้เฉพาะเต็มรอบ 14 วัน หรือเลือกล็อคเต็งเท่านั้น', tone: 'warning' });
             return;
         }
     }
 
     if (diffDays < minDays) {
         event.preventDefault();
-        window.alert(`ช่วงนี้ต้องจองต่อเนื่องอย่างน้อย ${minDays} วัน`);
+        window.showAlertDialog({ title: 'จองวันน้อยเกินไป', message: `ช่วงนี้ต้องจองต่อเนื่องอย่างน้อย ${minDays} วัน`, tone: 'warning' });
         return;
     }
 
@@ -192,7 +192,7 @@ bookingForm.addEventListener('submit', (event) => {
         const maxAdvance = new Date(selected.dataset.maxAdvanceStart);
         if (startDate > maxAdvance) {
             event.preventDefault();
-            window.alert('จองล่วงหน้าได้แค่ 1 วันก่อนวันขายเท่านั้น');
+            window.showAlertDialog({ title: 'จองล่วงหน้าเกินกำหนด', message: 'จองล่วงหน้าได้แค่ 1 วันก่อนวันขายเท่านั้น', tone: 'warning' });
             return;
         }
     }

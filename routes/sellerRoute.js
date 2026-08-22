@@ -7,6 +7,8 @@ const fs = require('fs');
 const { getAnnouncementsForUser } = require('../controllers/announcementController');
 const { getMarketMapPage } = require('../controllers/marketController');
 const { repairReportSchema, bookingStallInputSchema, sellerApplicationSchema, THAI_BANK_NAMES } = require('../utils/validationSchemas');
+const { buildPromptPayQrDataUrl, PROMPTPAY_ID } = require('../utils/promptpayQr');
+const { verifySlip } = require('../utils/slipVerification');
 const {
     toStartOfDay,
     addDays,
@@ -1512,9 +1514,19 @@ async function loadSellerBookingStatus(userId) {
         bookingView.slotLabel = latestRequest.paymentConfirmedAt ? (latestRequest.assignedStallCode || null) : null;
         bookingView.paymentSlipImage = latestRequest.paymentSlipImage || null;
         bookingView.awaitingPaymentVerification = awaitingPaymentVerification;
+        // ผลตรวจสลิปอัตโนมัติ (SlipOK) ที่เก็บไว้ตอนอัปโหลด — null = ยังไม่ตรวจ/ไม่ได้ตั้งค่า SlipOK
+        bookingView.slipVerified = typeof latestRequest.slipVerified === 'boolean' ? latestRequest.slipVerified : null;
+        bookingView.slipVerifyReason = latestRequest.slipVerifyReason || null;
         // ราคาที่แสดงระหว่างรอตรวจสอบ/รอจัดล็อก เป็นแค่ราคาประมาณการ (ราคาต่ำสุดของโซน) —
         // ราคาจริงต้องรอแอดมินจัดล็อกก่อน (ดู confirmBookingStall ที่คำนวณราคาจริงใหม่)
         bookingView.isFinalPrice = Boolean(latestRequest.assignedStallCode);
+
+        // สร้าง QR พร้อมเพย์ให้จ่ายได้เลย เฉพาะตอนที่รู้ราคาจริงแล้วและยังไม่ได้ส่งสลิป
+        // (จัดล็อกแล้ว รอชำระเงิน — ตรงกับตอนที่หน้า booking_status โชว์ช่องอัปโหลดสลิป)
+        if (normalizedRequestStatus === 'IN_PROGRESS' && bookingView.isFinalPrice && !awaitingPaymentVerification) {
+            bookingView.promptPayId = PROMPTPAY_ID;
+            bookingView.promptPayQr = await buildPromptPayQrDataUrl(bookingView.grandTotal);
+        }
     }
 
     const notificationBooking = latestRequest
@@ -1594,12 +1606,23 @@ router.post('/booking-payment/confirm', isSellerOrApplicant, (req, res) => {
 
             const slipPath = `/uploads/payment-slips/${req.file.filename}`;
 
-            // เก็บสลิปไว้รอแอดมินตรวจสอบก่อน ไม่เปลี่ยนสถานะเป็น SUCCESS ทันที
+            // ตรวจสลิปอัตโนมัติทันทีตอนอัปโหลด (ถ้าตั้งค่า SlipOK ไว้) แล้วเก็บผลไว้ในฐานข้อมูล
+            // เพื่อโชว์ให้ทั้งผู้ขายและแอดมินเห็นทันที และแอดมินจะได้ไม่ต้องยิง API ซ้ำตอนกดยืนยัน
+            const requestTag = buildBookingRequestTag(latestRequest.id);
+            const linkedBooking = requestTag
+                ? await prisma.booking.findFirst({ where: { storeDetailSnapshot: { startsWith: requestTag } } })
+                : null;
+            const verifyResult = await verifySlip(slipPath, linkedBooking ? Number(linkedBooking.grandTotal || 0) : null);
+
+            // เก็บสลิปไว้รอแอดมินตรวจสอบขั้นสุดท้ายก่อน ไม่เปลี่ยนสถานะเป็น SUCCESS ทันที
             // (แอดมินต้องกดยืนยันที่หน้า /admin/approvals ก่อน ระบบถึงจะแจ้งผู้ขายว่าล็อกเป็นของตนแล้ว)
             await prisma.bookingRequest.update({
                 where: { id: latestRequest.id },
                 data: {
-                    paymentSlipImage: slipPath
+                    paymentSlipImage: slipPath,
+                    slipVerified: verifyResult ? verifyResult.ok : null,
+                    slipVerifyReason: verifyResult ? (verifyResult.reason || null) : null,
+                    slipVerifiedAmount: verifyResult && Number.isFinite(verifyResult.amount) ? verifyResult.amount : null
                 }
             });
 

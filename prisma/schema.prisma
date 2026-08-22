@@ -154,6 +154,9 @@ model BookingRequest {
   createdAt    DateTime @default(now())
   paymentConfirmedAt DateTime?
   paymentSlipImage   String?
+  slipVerified       Boolean?
+  slipVerifyReason   String?  @db.Text
+  slipVerifiedAmount Float?
   seller       Seller?  @relation(fields: [sellerId], references: [id], onDelete: SetNull)
 
   @@index([sellerId], map: "BookingRequest_sellerId_fkey")
