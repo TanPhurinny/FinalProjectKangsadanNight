@@ -347,14 +347,20 @@ function buildBookingView(latestBooking) {
     if (!latestBooking) return null;
 
     const zoneLabel = latestBooking.selectedZoneLabel || (latestBooking.zoneCode ? `โซน ${latestBooking.zoneCode}` : '-');
+    const roundNumber = latestBooking.rentalStartDate
+        ? getBookingRoundMetaForDate(latestBooking.rentalStartDate).roundNumber
+        : null;
 
     return {
         id: latestBooking.id,
         status: latestBooking.status,
         statusText: getBookingStatusText(latestBooking.status),
         stage: getBookingStep(latestBooking.status),
+        roundNumber,
         zoneLabel,
-        slotLabel: latestBooking.slot?.slotNumber || '-',
+        // ไม่เปิดเผยเลขล็อก (ทั้งเลขจริงและ placeholder ภายใน) จนกว่าจะยืนยันสลิปโอนเงินเสร็จ
+        // ป้องกันลูกค้าเห็นตำแหน่งล็อกโดยยังไม่ต้องจ่ายเงิน — ดูการ merge สถานะจริงที่ loadSellerBookingStatus
+        slotLabel: null,
         rentalStartDate: formatDateThai(latestBooking.rentalStartDate),
         rentalEndDate: formatDateThai(latestBooking.rentalEndDate),
         rentalDays: latestBooking.rentalDays || 1,
@@ -369,7 +375,8 @@ function buildBookingView(latestBooking) {
         largeApplianceCount: latestBooking.largeApplianceCount || 0,
         createdAt: formatDateThai(latestBooking.createdAt),
         createdTime: formatTimeThai(latestBooking.createdAt),
-        storeDetailSnapshot: stripBookingRequestTag(latestBooking.storeDetailSnapshot) || '-'
+        storeDetailSnapshot: stripBookingRequestTag(latestBooking.storeDetailSnapshot) || '-',
+        isFinalPrice: false
     };
 }
 
@@ -390,7 +397,9 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification) {
 
     const status = String(latestBooking.status || 'PENDING').toUpperCase();
     const statusText = getBookingStatusText(status, awaitingPaymentVerification);
-    const stallLabel = latestBooking.slot?.slotNumber || '-';
+    // ไม่เปิดเผยเลขล็อกจนกว่าจะยืนยันสลิปโอนเงินเสร็จ (ดู loadSellerBookingStatus)
+    const stallLabel = latestBooking.slot?.slotNumber || null;
+    const lockMention = stallLabel ? `ล็อก ${stallLabel}` : 'ล็อกของคุณ';
     const zoneLabel = latestBooking.zoneCode ? `โซน ${latestBooking.zoneCode}` : 'ที่แจ้งไว้';
 
     const reminderEntry = isWednesdayReminderDay(latestBooking.createdAt || new Date())
@@ -439,13 +448,13 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification) {
             id: 2,
             type: 'pending-payment',
             title: awaitingPaymentVerification
-                ? `ส่งสลิปโอนเงินสำหรับล็อก ${stallLabel} แล้ว`
-                : (status === 'IN_PROGRESS' ? `ได้รับล็อก ${stallLabel} แล้ว` : 'ชำระเงินค่าจอง'),
+                ? 'ส่งสลิปโอนเงินแล้ว รอแอดมินตรวจสอบ'
+                : (status === 'IN_PROGRESS' ? 'แอดมินจัดล็อกให้แล้ว รอชำระเงิน' : 'ชำระเงินค่าจอง'),
             desc: awaitingPaymentVerification
-                ? `แอดมินกำลังตรวจสอบสลิปโอนเงินของคุณ เมื่อยืนยันแล้วระบบจะแจ้งเตือนว่าล็อก ${stallLabel} เป็นของคุณอย่างเป็นทางการ`
+                ? 'แอดมินกำลังตรวจสอบสลิปโอนเงินของคุณ เมื่อยืนยันแล้วระบบจะแจ้งเลขล็อกและยืนยันว่าเป็นของคุณอย่างเป็นทางการ'
                 : (status === 'IN_PROGRESS'
-                    ? `คุณได้รับล็อก ${stallLabel} กรุณาอัปโหลดสลิปโอนเงินที่หน้าสถานะการจองเพื่อยืนยัน`
-                    : `สถานะล่าสุด: ${statusText} | ล็อกที่จัด: ${stallLabel}`),
+                    ? 'แอดมินจัดล็อกให้คุณแล้ว กรุณาชำระเงินและอัปโหลดสลิปโอนเงินที่หน้าสถานะการจองเพื่อยืนยัน (เลขล็อกจะแจ้งให้ทราบหลังยืนยันการชำระเงิน)'
+                    : `สถานะล่าสุด: ${statusText}`),
             date: formatDateThai(latestBooking.createdAt),
             time: formatTimeThai(latestBooking.createdAt),
             status: 'IN_PROGRESS'
@@ -454,7 +463,7 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification) {
             id: 3,
             type: 'success-payment',
             title: 'เสร็จสิ้นการจอง',
-            desc: `ยืนยันการชำระเงินเรียบร้อย ล็อก ${stallLabel} เป็นของร้านคุณอย่างเป็นทางการ`,
+            desc: `ยืนยันการชำระเงินเรียบร้อย ${lockMention} เป็นของร้านคุณอย่างเป็นทางการ`,
             date: formatDateThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             time: formatTimeThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             status: 'SUCCESS'
@@ -1469,8 +1478,10 @@ async function loadSellerBookingStatus(userId) {
             status: String(latestRequest.status || 'PENDING').toUpperCase(),
             statusText: getBookingStatusText(String(latestRequest.status || 'PENDING').toUpperCase(), awaitingPaymentVerification),
             stage: getBookingStep(String(latestRequest.status || 'PENDING').toUpperCase()),
-            zoneLabel: latestRequest.zone ? `โซน ${latestRequest.zone}` : '-',
-            slotLabel: latestRequest.assignedStallCode || '-',
+            roundNumber: getBookingRoundMetaForDate(latestRequest.createdAt).roundNumber,
+            // ไม่เปิดเผยโซน/เลขล็อกจนกว่าจะยืนยันสลิปโอนเงินเสร็จ (ดูจุด merge ด้านล่างด้วย)
+            zoneLabel: latestRequest.paymentConfirmedAt ? (latestRequest.zone ? `โซน ${latestRequest.zone}` : '-') : null,
+            slotLabel: latestRequest.paymentConfirmedAt ? (latestRequest.assignedStallCode || null) : null,
             rentalStartDate: '-',
             rentalEndDate: '-',
             rentalDays: 1,
@@ -1485,7 +1496,8 @@ async function loadSellerBookingStatus(userId) {
             largeApplianceCount: 0,
             createdAt: formatDateThai(latestRequest.createdAt),
             createdTime: formatTimeThai(latestRequest.createdAt),
-            storeDetailSnapshot: stripBookingRequestTag(latestRequest.description) || '-'
+            storeDetailSnapshot: stripBookingRequestTag(latestRequest.description) || '-',
+            isFinalPrice: false
         };
     }
 
@@ -1494,10 +1506,15 @@ async function loadSellerBookingStatus(userId) {
         bookingView.status = normalizedRequestStatus;
         bookingView.statusText = getBookingStatusText(normalizedRequestStatus, awaitingPaymentVerification);
         bookingView.stage = getBookingStep(normalizedRequestStatus);
-        bookingView.zoneLabel = latestRequest.zone ? `โซน ${latestRequest.zone}` : bookingView.zoneLabel;
-        bookingView.slotLabel = latestRequest.assignedStallCode || bookingView.slotLabel || '-';
+        // ไม่เปิดเผยโซน/เลขล็อกจนกว่าจะยืนยันสลิปโอนเงินเสร็จ (paymentConfirmedAt) —
+        // ป้องกันไม่ให้ลูกค้าเห็นตำแหน่งล็อกก่อนจ่ายเงินจริง
+        bookingView.zoneLabel = latestRequest.paymentConfirmedAt ? (latestRequest.zone ? `โซน ${latestRequest.zone}` : bookingView.zoneLabel) : null;
+        bookingView.slotLabel = latestRequest.paymentConfirmedAt ? (latestRequest.assignedStallCode || null) : null;
         bookingView.paymentSlipImage = latestRequest.paymentSlipImage || null;
         bookingView.awaitingPaymentVerification = awaitingPaymentVerification;
+        // ราคาที่แสดงระหว่างรอตรวจสอบ/รอจัดล็อก เป็นแค่ราคาประมาณการ (ราคาต่ำสุดของโซน) —
+        // ราคาจริงต้องรอแอดมินจัดล็อกก่อน (ดู confirmBookingStall ที่คำนวณราคาจริงใหม่)
+        bookingView.isFinalPrice = Boolean(latestRequest.assignedStallCode);
     }
 
     const notificationBooking = latestRequest
@@ -1507,7 +1524,7 @@ async function loadSellerBookingStatus(userId) {
             zoneCode: latestRequest.zone || latestBooking?.zoneCode || '',
             createdAt: latestRequest.createdAt || latestBooking?.createdAt,
             paymentConfirmedAt: latestRequest.paymentConfirmedAt || null,
-            slot: { slotNumber: latestRequest.assignedStallCode || latestBooking?.slot?.slotNumber || '-' }
+            slot: { slotNumber: latestRequest.paymentConfirmedAt ? (latestRequest.assignedStallCode || null) : null }
         }
         : latestBooking;
 

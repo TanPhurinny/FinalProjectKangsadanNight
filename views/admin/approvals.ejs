@@ -155,7 +155,7 @@
                     <% } %>
 
                     <% bookingRequestsList.forEach(function(request) { %>
-                        <div class="booking-card" data-request-id="<%= request.id %>" data-status="<%= request.status %>" data-zone="<%= request.zone || '' %>" data-shop="<%= request.productName || '' %>" onclick='openDetail(<%- JSON.stringify(request.productName || "-") %>, <%- JSON.stringify(request.zoneLabel || "-") %>, <%- JSON.stringify(request.sellerName || "-") %>, <%- JSON.stringify(request.phone || "-") %>, <%- JSON.stringify(request.statusLabel || "-") %>, <%- JSON.stringify(request.description || "-") %>, <%= request.id %>, <%- JSON.stringify(request.createdAtText || "-") %>, <%- JSON.stringify(request.status || "pending") %>, <%- JSON.stringify(request.productImage || "") %>, <%- JSON.stringify(request.assignedStallCode || "") %>)'>
+                        <div class="booking-card" data-request-id="<%= request.id %>" data-status="<%= request.status %>" data-zone="<%= request.zone || '' %>" data-shop="<%= request.productName || '' %>" onclick='openDetail(<%- JSON.stringify(request.productName || "-") %>, <%- JSON.stringify(request.zoneLabel || "-") %>, <%- JSON.stringify(request.sellerName || "-") %>, <%- JSON.stringify(request.phone || "-") %>, <%- JSON.stringify(request.statusLabel || "-") %>, <%- JSON.stringify(request.description || "-") %>, <%= request.id %>, <%- JSON.stringify(request.createdAtText || "-") %>, <%- JSON.stringify(request.status || "pending") %>, <%- JSON.stringify(request.productImage || "") %>, <%- JSON.stringify(request.assignedStallCode || "") %>, <%- JSON.stringify(request.paymentSlipImage || "") %>, <%- JSON.stringify(Boolean(request.paymentConfirmedAt)) %>)'>
                             <div class="card-header">
                                 <h3 class="shop-name"><%= request.productName %></h3>
                                 <span class="badge <%= request.status %>"><%= request.statusLabel %></span>
@@ -168,7 +168,7 @@
                                 <p><i class="fa-solid fa-hashtag"></i> แผงที่จัด: <%= request.assignedStallCode || '-' %></p>
                             </div>
                             <div class="card-actions">
-                                <button type="button" class="btn-action btn-approve" onclick="event.stopPropagation(); openDetail(<%- JSON.stringify(request.productName || "-") %>, <%- JSON.stringify(request.zoneLabel || "-") %>, <%- JSON.stringify(request.sellerName || "-") %>, <%- JSON.stringify(request.phone || "-") %>, <%- JSON.stringify(request.statusLabel || "-") %>, <%- JSON.stringify(request.description || "-") %>, <%= request.id %>, <%- JSON.stringify(request.createdAtText || "-") %>, <%- JSON.stringify(request.status || "pending") %>, <%- JSON.stringify(request.productImage || "") %>, <%- JSON.stringify(request.assignedStallCode || "") %>)">ดูรายละเอียด</button>
+                                <button type="button" class="btn-action btn-approve" onclick="event.stopPropagation(); openDetail(<%- JSON.stringify(request.productName || "-") %>, <%- JSON.stringify(request.zoneLabel || "-") %>, <%- JSON.stringify(request.sellerName || "-") %>, <%- JSON.stringify(request.phone || "-") %>, <%- JSON.stringify(request.statusLabel || "-") %>, <%- JSON.stringify(request.description || "-") %>, <%= request.id %>, <%- JSON.stringify(request.createdAtText || "-") %>, <%- JSON.stringify(request.status || "pending") %>, <%- JSON.stringify(request.productImage || "") %>, <%- JSON.stringify(request.assignedStallCode || "") %>, <%- JSON.stringify(request.paymentSlipImage || "") %>, <%- JSON.stringify(Boolean(request.paymentConfirmedAt)) %>)">ดูรายละเอียด</button>
                             </div>
                         </div>
                     <% }) %>
@@ -221,9 +221,15 @@
                             <span id="m-note"></span>
                         </div>
 
+                        <div class="note-box d-none" id="m-payment-slip-box">
+                            <strong>สลิปโอนเงิน:</strong><br>
+                            <img id="m-payment-slip" class="img-fluid rounded mt-2" style="max-width:260px;" src="" alt="สลิปโอนเงิน">
+                        </div>
+
                         <div class="modal-footer" id="m-footer-actions">
                             <button type="button" class="btn-action btn-reject" id="m-reject-btn">ปฏิเสธการจอง</button>
                             <button type="button" class="btn-action btn-approve" id="m-approve-btn">อนุมัติการจอง</button>
+                            <button type="button" class="btn-action btn-approve d-none" id="m-confirm-payment-btn">ยืนยันการชำระเงิน</button>
                         </div>
                     </div>
                 </div>

@@ -8,6 +8,15 @@ function normalizeZone(zone) {
     return String(zone || '').trim().toUpperCase();
 }
 
+// เดียวกับ BOOKING_REQUEST_TAG_PREFIX/buildBookingRequestTag ใน routes/sellerRoute.js
+// (คัดลอกมาเพราะไฟล์นั้น export แค่ router ดึงฟังก์ชันเดี่ยวออกมาใช้ตรงๆ ไม่ได้)
+const BOOKING_REQUEST_TAG_PREFIX = '[BOOKING_REQUEST_ID:';
+function buildBookingRequestTag(requestId) {
+    const parsed = Number.parseInt(requestId, 10);
+    if (!Number.isInteger(parsed) || parsed <= 0) return '';
+    return `${BOOKING_REQUEST_TAG_PREFIX}${parsed}]`;
+}
+
 function toThaiDate(value) {
     if (!value) return '-';
     try {
@@ -163,10 +172,16 @@ exports.getApprovalsPage = async (req, res) => {
                         ? 'อนุมัติแล้ว'
                         : statusCode === 'REJECTED'
                             ? 'ปฏิเสธ'
-                            : 'รออนุมัติ',
+                            : statusCode === 'IN_PROGRESS'
+                                ? 'จัดล็อกแล้ว รอชำระเงิน'
+                                : statusCode === 'SUCCESS'
+                                    ? 'ชำระเงินแล้ว'
+                                    : 'รออนุมัติ',
                 createdAtText,
                 createdAtRaw: request.createdAt,
                 assignedStallCode,
+                paymentSlipImage: request.paymentSlipImage || null,
+                paymentConfirmedAt: request.paymentConfirmedAt || null,
                 productImage: request.productImage || sellerImageMap.get(String(request.sellerName || '').trim()) || null
             };
         });
@@ -235,13 +250,53 @@ exports.confirmApproval = async (req, res) => {
             return res.redirect('/admin/approvals?error=history_round_locked');
         }
 
-        await prisma.bookingRequest.update({ 
-            where: { id: parseInt(requestId) }, 
-            data: { status: normalizedStatus } 
+        await prisma.bookingRequest.update({
+            where: { id: parseInt(requestId) },
+            data: { status: normalizedStatus }
         });
         res.redirect('/admin/approvals?success=status_updated');
     } catch (err) {
         res.redirect('/admin/approvals?error=update_failed');
+    }
+};
+
+// แอดมินตรวจสลิปโอนเงินที่ผู้ขายส่งมาแล้วกดยืนยัน — จุดเดียวที่ทำให้ status เป็น SUCCESS
+// และตั้ง paymentConfirmedAt ซึ่งเป็นเงื่อนไขที่ระบบใช้เปิดเผยเลขล็อกให้ลูกค้าเห็น
+// (ก่อนหน้านี้ไม่มีปุ่มนี้เลย ทำให้สถานะค้างที่ IN_PROGRESS และเลขล็อกไม่ถูกเปิดเผยตลอดไป)
+exports.confirmPayment = async (req, res) => {
+    try {
+        const requestId = Number.parseInt(req.body.requestId, 10);
+        if (!requestId) {
+            return res.redirect('/admin/approvals?error=missing_request_id');
+        }
+
+        const requestRecord = await prisma.bookingRequest.findUnique({
+            where: { id: requestId }
+        });
+
+        if (!requestRecord) {
+            return res.redirect('/admin/approvals?error=request_not_found');
+        }
+
+        if (!isRoundEditable(getBookingRoundMetaForDate(requestRecord.createdAt).roundNumber)) {
+            return res.redirect('/admin/approvals?error=history_round_locked');
+        }
+
+        if (String(requestRecord.status || '').toUpperCase() !== 'IN_PROGRESS' || !requestRecord.paymentSlipImage) {
+            return res.redirect('/admin/approvals?error=no_slip_to_confirm');
+        }
+
+        await prisma.bookingRequest.update({
+            where: { id: requestId },
+            data: {
+                status: 'SUCCESS',
+                paymentConfirmedAt: new Date()
+            }
+        });
+
+        return res.redirect('/admin/approvals?success=payment_confirmed');
+    } catch (err) {
+        return res.redirect('/admin/approvals?error=confirm_payment_failed');
     }
 };
 
@@ -289,7 +344,7 @@ exports.confirmBookingStall = async (req, res) => {
 
         const stall = await prisma.stall.findUnique({
             where: { stallCode: selectedStall },
-            select: { id: true, isAvailable: true, status: true }
+            select: { id: true, isAvailable: true, status: true, basePrice: true, extraPrice: true, electricFeePerDay: true, extraElectricityCost: true }
         });
 
         if (!stall) {
@@ -318,11 +373,21 @@ exports.confirmBookingStall = async (req, res) => {
 
         const cleanedDescription = String(requestPayload.description || '').replace(/^\[ASSIGNED_STALL:[^\]]+\]\s*/i, '').trim();
 
+        // ราคาที่เห็นตอนแจ้งความสนใจเป็นแค่ราคาต่ำสุดของทั้งโซน (ประมาณการ) ไม่ใช่ราคาจริง
+        // ของล็อกที่จะได้ — ราคาจริงขึ้นกับตำแหน่งล็อกที่แอดมินเลือกให้ (Stall.basePrice + extraPrice)
+        // เมื่อแอดมินจัดล็อกจริงแล้ว คำนวณราคาใหม่แล้วอัปเดตกลับเข้า Booking ที่ผูกกับคำขอนี้
+        const realDailyStallPrice = Number(stall.basePrice || 0) + Number(stall.extraPrice || 0);
+        const realDailyLightPrice = Number(stall.electricFeePerDay || 0) + Number(stall.extraElectricityCost || 0);
+        const requestTag = buildBookingRequestTag(requestId);
+
         await prisma.$transaction(async (tx) => {
             await tx.bookingRequest.update({
                 where: { id: requestId },
                 data: {
-                    status: 'APPROVED',
+                    // IN_PROGRESS = จัดล็อกให้แล้ว รอผู้ขายอัปโหลดสลิปโอนเงิน (ดู getBookingStep/getBookingStatusText)
+                    // เดิม field นี้ตั้งเป็น 'APPROVED' ทำให้ /booking-payment/confirm ที่เช็คว่าต้องเป็น
+                    // IN_PROGRESS ก่อนถึงจะอัปโหลดสลิปได้ ไม่มีทางถูกเข้าถึงเลย
+                    status: 'IN_PROGRESS',
                     assignedStallCode: selectedStall,
                     description: cleanedDescription
                 }
@@ -344,6 +409,29 @@ exports.confirmBookingStall = async (req, res) => {
                         status: 'AVAILABLE'
                     }
                 });
+            }
+
+            if (requestTag) {
+                const linkedBookings = await tx.booking.findMany({
+                    where: { storeDetailSnapshot: { startsWith: requestTag } }
+                });
+
+                for (const booking of linkedBookings) {
+                    const rentTotal = realDailyStallPrice * booking.stallCount * booking.rentalDays;
+                    const lightTotal = booking.lightEnabled ? realDailyLightPrice * booking.stallCount * booking.rentalDays : 0;
+                    const grandTotal = rentTotal + lightTotal + booking.applianceTotal;
+
+                    await tx.booking.update({
+                        where: { id: booking.id },
+                        data: {
+                            dailyStallPrice: realDailyStallPrice,
+                            lightUnitPrice: realDailyLightPrice,
+                            rentTotal,
+                            lightTotal,
+                            grandTotal
+                        }
+                    });
+                }
             }
         });
 

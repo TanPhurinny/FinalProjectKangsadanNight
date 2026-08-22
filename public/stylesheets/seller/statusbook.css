@@ -358,6 +358,36 @@ body[data-page="notifications"] {
     border-bottom: none;
 }
 
+.details-row--note {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+}
+.details-row--note strong {
+    font-family: inherit;
+    font-weight: 500;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.price-status-note {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.7rem;
+    margin-bottom: 0.6rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+.price-status-note--estimate {
+    background: rgba(201, 138, 46, 0.1);
+    color: var(--warning);
+}
+.price-status-note--final {
+    background: rgba(39, 174, 96, 0.1);
+    color: var(--success);
+}
+
 .empty-state {
     text-align: center;
     padding: 2rem 1.25rem;

@@ -3,6 +3,11 @@
     return `${Number(value || 0).toLocaleString('th-TH')} บาท`;
   }
 
+  // ไม่เปิดเผยเลขล็อกจนกว่าจะยืนยันสลิปโอนเงินเสร็จ (backend ส่ง slotLabel เป็น null ไว้แล้ว)
+  function lockMention(slotLabel) {
+    return slotLabel ? `ล็อก ${slotLabel}` : 'ล็อกของคุณ';
+  }
+
   function formatDate(value) {
     if (!value) return '-';
     const date = new Date(value);
@@ -139,7 +144,7 @@
       paymentSection = `
         <div class="payment-upload-box mt-4 p-3 border rounded-3 bg-light">
           <button type="button" class="btn btn-warning btn-custom disabled mb-2" disabled><i class="bi bi-hourglass-split me-1"></i>ชำระเงินแล้ว รอตรวจ</button>
-          <p class="text-muted small mb-3">แอดมินกำลังตรวจสอบสลิปโอนเงินของคุณสำหรับล็อก <strong>${booking.slotLabel}</strong> เมื่อยืนยันแล้ว ระบบจะแจ้งเตือนว่าล็อกนี้เป็นของคุณอย่างเป็นทางการ</p>
+          <p class="text-muted small mb-3">แอดมินกำลังตรวจสอบสลิปโอนเงินของคุณสำหรับ<strong>${lockMention(booking.slotLabel)}</strong> เมื่อยืนยันแล้ว ระบบจะแจ้งเลขล็อกและยืนยันว่าเป็นของคุณอย่างเป็นทางการ</p>
           <img src="${booking.paymentSlipImage}" alt="สลิปโอนเงินที่ส่งไปแล้ว" class="img-fluid rounded" style="max-width:260px;" />
         </div>
       `;
@@ -147,7 +152,7 @@
       paymentSection = `
         <div class="payment-upload-box mt-4 p-3 border rounded-3 bg-light">
           <h6 class="fw-bold mb-2 text-dark-custom"><i class="bi bi-wallet2 me-2"></i>อัปโหลดสลิปโอนเงินเพื่อยืนยันการชำระเงิน</h6>
-          <p class="text-muted small mb-3">คุณได้รับล็อก <strong>${booking.slotLabel}</strong> แล้ว กรุณาชำระเงินและแนบสลิปโอนเงินเพื่อยืนยัน แอดมินจะตรวจสอบสลิปก่อนยืนยันล็อกให้เป็นของคุณ</p>
+          <p class="text-muted small mb-3">แอดมินจัดล็อกให้คุณแล้ว กรุณาชำระเงินและแนบสลิปโอนเงินเพื่อยืนยัน แอดมินจะตรวจสอบสลิปก่อนยืนยันล็อกให้เป็นของคุณ (เลขล็อกจะแจ้งให้ทราบหลังยืนยันการชำระเงิน)</p>
           <div class="bank-transfer-box mb-3 p-3 border rounded-3 bg-white">
             <h6 class="fw-bold mb-2 text-dark-custom"><i class="bi bi-bank me-2"></i>บัญชีสำหรับโอนเงิน</h6>
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
@@ -173,7 +178,7 @@
     } else if (booking.status === 'SUCCESS' && booking.paymentSlipImage) {
       paymentSection = `
         <div class="payment-upload-box mt-4 p-3 border rounded-3 bg-light">
-          <h6 class="fw-bold mb-2 text-success-custom"><i class="bi bi-check-circle-fill me-2"></i>ชำระเงินแล้ว ล็อก ${booking.slotLabel} เป็นของคุณเรียบร้อย</h6>
+          <h6 class="fw-bold mb-2 text-success-custom"><i class="bi bi-check-circle-fill me-2"></i>ชำระเงินแล้ว ${lockMention(booking.slotLabel)} เป็นของคุณเรียบร้อย</h6>
           <img src="${booking.paymentSlipImage}" alt="สลิปโอนเงิน" class="img-fluid rounded" style="max-width:260px;" />
         </div>
       `;
@@ -187,23 +192,36 @@
         </div>
         <div class="summary-pill">
           <small>โซน / แผง</small>
-          <strong>${booking.zoneLabel} / ${booking.slotLabel}</strong>
+          <strong>${booking.slotLabel ? `${booking.zoneLabel} / ${booking.slotLabel}` : 'รอยืนยันการชำระเงิน'}</strong>
         </div>
         <div class="summary-pill">
           <small>วันที่เช่า</small>
           <strong>${booking.rentalStartDate} - ${booking.rentalEndDate}</strong>
         </div>
         <div class="summary-pill">
+          <small>จำนวนวันเช่า</small>
+          <strong>${booking.rentalDays} วัน</strong>
+        </div>
+        <div class="summary-pill">
           <small>จำนวนล็อก</small>
           <strong>${booking.stallCount} ล็อก</strong>
+        </div>
+        <div class="summary-pill">
+          <small>รอบการจอง</small>
+          <strong>${booking.roundNumber ? `รอบที่ ${booking.roundNumber}` : '-'}</strong>
         </div>
       </div>
 
       <div class="details-box">
+        ${booking.isFinalPrice
+          ? `<div class="price-status-note price-status-note--final"><i class="bi bi-check-circle-fill me-1"></i>ราคาจริงหลังแอดมินจัดล็อกให้แล้ว</div>`
+          : `<div class="price-status-note price-status-note--estimate"><i class="bi bi-info-circle-fill me-1"></i>ราคาประเมิน (ราคาต่ำสุดของโซน) ราคาจริงขึ้นกับตำแหน่งล็อกที่แอดมินจัดให้ อาจสูงกว่านี้</div>`}
         <div class="details-row"><span>ค่าเช่าแผง</span><strong>${formatMoney(booking.rentTotal)}</strong></div>
         <div class="details-row"><span>ค่าไฟสว่าง</span><strong>${formatMoney(booking.lightTotal)}</strong></div>
+        <div class="details-row"><span>เครื่องใช้ไฟฟ้าที่แจ้ง</span><strong>${booking.smallApplianceCount} เครื่องเล็ก / ${booking.largeApplianceCount} เครื่องใหญ่</strong></div>
         <div class="details-row"><span>ค่าเครื่องใช้ไฟฟ้า</span><strong>${formatMoney(booking.applianceTotal)}</strong></div>
-        <div class="details-row"><span>รวมทั้งสิ้น</span><strong>${formatMoney(booking.grandTotal)}</strong></div>
+        <div class="details-row"><span>${booking.isFinalPrice ? 'รวมทั้งสิ้น (ราคาจริง)' : 'รวมทั้งสิ้น (ประเมิน)'}</span><strong>${formatMoney(booking.grandTotal)}</strong></div>
+        <div class="details-row details-row--note"><span>รายละเอียดร้านค้าที่แจ้งไว้</span><strong>${booking.storeDetailSnapshot || '-'}</strong></div>
       </div>
 
       ${paymentSection}
@@ -223,8 +241,8 @@
       { title: 'รอการตรวจสอบร้านค้า', desc: 'ระบบได้รับคำขอจองและแอดมินกำลังตรวจสอบร้านค้า', stage: 1 },
       { title: 'ได้รับล็อก / ชำระเงิน', desc: booking && booking.status === 'IN_PROGRESS'
         ? (booking.awaitingPaymentVerification
-          ? `ส่งสลิปโอนเงินสำหรับล็อก ${booking.slotLabel} แล้ว รอแอดมินตรวจสอบและยืนยัน`
-          : `ได้รับล็อก ${booking.slotLabel} แล้ว กรุณาอัปโหลดสลิปโอนเงิน`)
+          ? 'ส่งสลิปโอนเงินแล้ว รอแอดมินตรวจสอบและยืนยัน'
+          : 'แอดมินจัดล็อกให้แล้ว กรุณาอัปโหลดสลิปโอนเงิน (เลขล็อกจะแจ้งให้ทราบหลังยืนยันการชำระเงิน)')
         : 'แอดมินจัดสรรล็อกให้ และผู้จองชำระเงินยืนยันสิทธิ์พื้นที่ขาย', stage: 2 },
       { title: 'เสร็จสิ้นการจอง', desc: 'ล็อกถูกบันทึกเป็นของผู้จองเรียบร้อยในระบบ', stage: 3 }
     ];

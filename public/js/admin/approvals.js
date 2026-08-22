@@ -52,6 +52,26 @@ function submitApproval(requestId, status) {
     form.submit();
 }
 
+function submitConfirmPayment(requestId) {
+    const confirmed = window.confirm('ยืนยันว่าตรวจสลิปโอนเงินแล้วถูกต้อง? เลขล็อกจะถูกเปิดเผยให้ลูกค้าเห็นทันทีหลังกดยืนยัน');
+    if (!confirmed) {
+        return;
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/admin/approvals/confirm-payment';
+
+    const requestField = document.createElement('input');
+    requestField.type = 'hidden';
+    requestField.name = 'requestId';
+    requestField.value = String(requestId);
+
+    form.appendChild(requestField);
+    document.body.appendChild(form);
+    form.submit();
+}
+
 function confirmArrangeStall(stall) {
     navigateToBookingStall(stall);
 }
@@ -238,7 +258,7 @@ if (searchInput) {
     });
 }
 
-function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, createdAtText, rawStatus, shopImage, assignedStallCode) {
+function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, createdAtText, rawStatus, shopImage, assignedStallCode, paymentSlipImage, paymentConfirmed) {
     const pageState = window.APPROVAL_PAGE_STATE || { isEditable: true };
     currentBooking = {
         shop,
@@ -248,6 +268,8 @@ function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, c
         rawStatus,
         shopImage,
         assignedStallCode,
+        paymentSlipImage,
+        paymentConfirmed: Boolean(paymentConfirmed),
         isEditable: pageState.isEditable !== false
     };
 
@@ -275,19 +297,44 @@ function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, c
         }
     }
 
+    const slipBox = document.getElementById('m-payment-slip-box');
+    const slipImgEl = document.getElementById('m-payment-slip');
+    const slipUrl = String(paymentSlipImage || '').trim();
+    if (slipBox && slipImgEl) {
+        if (slipUrl) {
+            slipImgEl.src = slipUrl;
+            slipBox.classList.remove('d-none');
+        } else {
+            slipImgEl.src = '';
+            slipBox.classList.add('d-none');
+        }
+    }
+
     const approveBtn = document.getElementById('m-approve-btn');
     const rejectBtn = document.getElementById('m-reject-btn');
+    const confirmPaymentBtn = document.getElementById('m-confirm-payment-btn');
     if (approveBtn) {
         approveBtn.onclick = () => navigateToBookingRequest(currentBooking.requestId);
     }
     if (rejectBtn) {
         rejectBtn.onclick = () => submitApproval(currentBooking.requestId, 'REJECTED');
     }
+    if (confirmPaymentBtn) {
+        confirmPaymentBtn.onclick = () => submitConfirmPayment(currentBooking.requestId);
+    }
+
+    // ปุ่ม "อนุมัติ/ปฏิเสธ" ใช้ตอนสถานะยังเป็น pending เท่านั้น
+    // ปุ่ม "ยืนยันการชำระเงิน" ใช้ตอนแอดมินจัดล็อกให้แล้ว (in_progress) และผู้ขายส่งสลิปมาแล้ว แต่ยังไม่ยืนยัน
+    const canApproveReject = pageState.isEditable !== false && rawStatus === 'pending';
+    const canConfirmPayment = pageState.isEditable !== false && rawStatus === 'in_progress' && Boolean(slipUrl) && !currentBooking.paymentConfirmed;
+
+    if (approveBtn) approveBtn.classList.toggle('d-none', !canApproveReject);
+    if (rejectBtn) rejectBtn.classList.toggle('d-none', !canApproveReject);
+    if (confirmPaymentBtn) confirmPaymentBtn.classList.toggle('d-none', !canConfirmPayment);
 
     const footer = document.getElementById('m-footer-actions');
     if (footer) {
-        const isActionAllowed = pageState.isEditable !== false && rawStatus === 'pending';
-        footer.style.display = isActionAllowed ? 'flex' : 'none';
+        footer.style.display = (canApproveReject || canConfirmPayment) ? 'flex' : 'none';
     }
 
     modal.classList.add('active');

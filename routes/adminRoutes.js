@@ -70,6 +70,7 @@ router.get('/users/delete/:id', isAdminOnly, userCtrl.deleteUser);
 // --- 7. Approvals & Requests ---
 router.get('/approvals', approvalCtrl.getApprovalsPage);
 router.post('/approvals/confirm', approvalCtrl.confirmApproval);
+router.post('/approvals/confirm-payment', approvalCtrl.confirmPayment);
 router.get('/requests', requestCtrl.getRequestsPage);
 router.post('/requests/update-status', requestCtrl.updateStatus);
 
