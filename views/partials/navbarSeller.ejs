@@ -19,14 +19,14 @@
         </button>
 
         <div class="nav-links" id="navMenu">
+            <%
+            const isMoreActive = ['announcements', 'shop-profile', 'repair', 'booking-history'].some((p) => currentPath.includes(p));
+            %>
             <a href="/seller" class="nav-item <%= currentPath === '/seller' ? 'active' : '' %>">
                 <i class="fas fa-home"></i> หน้าหลัก
             </a>
             <a href="/market-map" class="nav-item <%= currentPath.includes('market-map') ? 'active' : '' %>">
                 <i class="fas fa-map"></i> ผังตลาด
-            </a>
-            <a href="/announcements" class="nav-item <%= currentPath.includes('announcements') ? 'active' : '' %>">
-                <i class="fas fa-bullhorn"></i> ประกาศ
             </a>
             <a href="/community" class="nav-item <%= (currentPath.includes('community') || currentPath.includes('comunity')) ? 'active' : '' %>">
                 <i class="fas fa-users"></i> คอมมูนิตี้
@@ -37,11 +37,29 @@
             <a href="/booking-status" class="nav-item <%= currentPath.includes('booking-status') ? 'active' : '' %>">
                 <i class="fas fa-clipboard-list"></i> สถานะการจอง
             </a>
-            <a href="/repair" class="nav-item <%= currentPath.includes('repair') ? 'active' : '' %>">
-                <i class="fas fa-tools"></i> แจ้งซ่อม
-            </a>
-            <a href="/notifications" class="nav-item nav-notification <%= currentPath.includes('notifications') ? 'active' : '' %>">
-                <i class="fas fa-bell"></i> แจ้งเตือน
+
+            <details class="nav-dropdown">
+                <summary class="nav-item <%= isMoreActive ? 'active' : '' %>">
+                    <i class="fas fa-ellipsis"></i> เพิ่มเติม
+                </summary>
+                <div class="nav-dropdown__panel">
+                    <a href="/shop-profile" class="<%= currentPath.includes('shop-profile') ? 'active' : '' %>">
+                        <i class="fas fa-store"></i> ร้านค้าของฉัน
+                    </a>
+                    <a href="/booking-history" class="<%= currentPath.includes('booking-history') ? 'active' : '' %>">
+                        <i class="fas fa-clock-rotate-left"></i> ประวัติการจอง
+                    </a>
+                    <a href="/announcements" class="<%= currentPath.includes('announcements') ? 'active' : '' %>">
+                        <i class="fas fa-bullhorn"></i> ประกาศ
+                    </a>
+                    <a href="/repair" class="<%= currentPath.includes('repair') ? 'active' : '' %>">
+                        <i class="fas fa-tools"></i> แจ้งซ่อม
+                    </a>
+                </div>
+            </details>
+
+            <a href="/notifications" class="nav-item nav-notification nav-notification--icon-only <%= currentPath.includes('notifications') ? 'active' : '' %>" title="แจ้งเตือน" aria-label="แจ้งเตือน">
+                <i class="fas fa-bell"></i>
                 <% if (unreadNotifications > 0) { %>
                     <span class="nav-notification-badge"><%= unreadNotifications %></span>
                 <% } %>

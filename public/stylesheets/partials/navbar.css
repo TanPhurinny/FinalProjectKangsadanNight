@@ -116,6 +116,95 @@
     padding-right: 28px;
 }
 
+/* เมนู "แจ้งเตือน" แบบไอคอนล้วน (ไม่มีข้อความ) ใช้ตอนเมนูหลักมีลิงก์เยอะ เพื่อประหยัดที่ในแถวเดียว
+   ยังคงคลิกได้/มี badge เหมือนเดิม แค่ซ่อนข้อความกำกับ */
+.nav-notification--icon-only {
+    padding: 0 14px 0 16px;
+    gap: 0;
+}
+
+/* เมนู "เพิ่มเติม" (ประกาศ/ร้านค้าของฉัน/แจ้งซ่อม) รวมเป็น dropdown เดียว กัน nav ตกบรรทัด
+   เมื่อลิงก์เมนูมีจำนวนมาก ใช้ <details>/<summary> ล้วน ไม่ต้องพึ่ง JS เพิ่ม */
+.nav-dropdown {
+    position: relative;
+    list-style: none;
+}
+
+.nav-dropdown > summary {
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+}
+
+.nav-dropdown > summary::-webkit-details-marker {
+    display: none;
+}
+
+.nav-dropdown > summary::after {
+    content: '';
+    width: 0;
+    height: 0;
+    margin-left: 6px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid currentColor;
+    opacity: 0.6;
+    transition: transform 0.15s ease;
+}
+
+.nav-dropdown[open] > summary::after {
+    transform: rotate(180deg);
+}
+
+.nav-dropdown[open] > summary {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-dropdown__panel {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    min-width: 190px;
+    background: #fff;
+    border: 1px solid var(--line, #d7e3e6);
+    box-shadow: 0 8px 20px rgba(18, 48, 58, 0.16);
+    z-index: 1003;
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+}
+
+.nav-dropdown__panel a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    color: var(--ink, #16333c);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    border-radius: 2px;
+}
+
+.nav-dropdown__panel a:hover,
+.nav-dropdown__panel a.active {
+    background: var(--soft-bg, #f6f8f8);
+    color: var(--primary, #2C93A8);
+}
+
+.nav-dropdown__panel a i {
+    width: 16px;
+    text-align: center;
+    color: var(--ink-soft, #5b7a84);
+}
+
+.nav-dropdown__panel a:hover i,
+.nav-dropdown__panel a.active i {
+    color: var(--primary, #2C93A8);
+}
+
 .nav-notification-badge {
     position: absolute;
     top: 50%;
@@ -311,5 +400,47 @@
         margin: 0;
         width: 100%;
         text-align: center;
+    }
+
+    /* มือถือ: nav-links เป็นคอลัมน์เดียวอยู่แล้ว ให้ dropdown "เพิ่มเติม" กางแบบ inline
+       (ไม่ต้อง absolute ลอย) แทรกอยู่ในลำดับเมนูปกติ */
+    .nav-dropdown > summary {
+        width: 100%;
+        padding: 15px 20px;
+        min-height: 0;
+        border-left: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-dropdown__panel {
+        position: static;
+        min-width: 0;
+        background: rgba(0, 0, 0, 0.15);
+        border: none;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    .nav-dropdown__panel a {
+        color: rgba(255, 255, 255, 0.75);
+        padding: 13px 20px 13px 40px;
+        border-radius: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-dropdown__panel a:hover,
+    .nav-dropdown__panel a.active {
+        background: rgba(255, 255, 255, 0.06);
+        color: #fff;
+    }
+
+    .nav-dropdown__panel a i {
+        color: inherit;
+    }
+
+    .nav-notification--icon-only {
+        width: 100%;
+        justify-content: center;
+        padding: 15px 20px;
     }
 }
