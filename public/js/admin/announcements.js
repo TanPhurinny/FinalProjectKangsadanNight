@@ -157,17 +157,13 @@ function prepareEdit(dataString) {
 
 // ฟังก์ชันลบ (ใช้ SweetAlert2)
 function confirmDelete(id, title) {
-    Swal.fire({
+    window.showConfirmDialog({
         title: 'ยืนยันการลบ?',
-        html: `คุณกำลังจะลบประกาศ <b>"${title}"</b>`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#fa5252',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'ใช่, ลบเลย',
-        cancelButtonText: 'ยกเลิก'
-    }).then((result) => {
-        if (result.isConfirmed) {
+        message: `คุณกำลังจะลบประกาศ "${title}"`,
+        tone: 'danger',
+        confirmText: 'ใช่, ลบเลย',
+        cancelText: 'ยกเลิก',
+        onConfirm: () => {
             // สร้างฟอร์มชั่วคราวเพื่อส่ง POST ไปที่ลบ (หรือใช้ GET ตาม Route ที่คุณตั้ง)
             const form = document.createElement('form');
             form.method = 'POST';

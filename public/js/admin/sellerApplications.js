@@ -36,36 +36,25 @@ function submitReview(applicationId, action, reason) {
 }
 
 function submitApprove(applicationId, shopName) {
-    Swal.fire({
+    window.showConfirmDialog({
         title: 'อนุมัติร้านค้านี้?',
-        text: `ยืนยันอนุมัติใบสมัครร้าน "${shopName}" — บัญชีนี้จะเปลี่ยนเป็นผู้ขายทันที`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#3BB8D4',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'อนุมัติ',
-        cancelButtonText: 'ยกเลิก'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            submitReview(applicationId, 'approve');
-        }
+        message: `ยืนยันอนุมัติใบสมัครร้าน "${shopName}" — บัญชีนี้จะเปลี่ยนเป็นผู้ขายทันที`,
+        tone: 'neutral',
+        confirmText: 'อนุมัติ',
+        cancelText: 'ยกเลิก',
+        onConfirm: () => submitReview(applicationId, 'approve')
     });
 }
 
 function submitReject(applicationId) {
-    Swal.fire({
+    window.showConfirmDialog({
         title: 'ปฏิเสธใบสมัครนี้?',
-        input: 'text',
+        message: '',
+        tone: 'danger',
+        confirmText: 'ปฏิเสธ',
+        cancelText: 'ยกเลิก',
         inputPlaceholder: 'ระบุเหตุผล (ไม่บังคับ)',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'ปฏิเสธ',
-        cancelButtonText: 'ยกเลิก'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            submitReview(applicationId, 'reject', result.value || '');
-        }
+        onConfirm: (reason) => submitReview(applicationId, 'reject', reason || '')
     });
 }
 

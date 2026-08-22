@@ -387,29 +387,33 @@ async function handleEditPostSubmit(event) {
   bootstrap.Modal.getOrCreateInstance(document.getElementById('editPostModal')).hide();
 }
 
-async function handleDeletePost(postId) {
-  if (!window.confirm('ยืนยันการลบโพสต์นี้ใช่หรือไม่?')) {
-    return;
-  }
+function handleDeletePost(postId) {
+  window.showConfirmDialog({
+    title: 'ลบโพสต์',
+    message: 'ยืนยันการลบโพสต์นี้ใช่หรือไม่? ลบแล้วกู้คืนไม่ได้',
+    tone: 'danger',
+    confirmText: 'ลบโพสต์',
+    onConfirm: async () => {
+      const response = await fetch(`/community/posts/${postId}`, {
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json'
+        }
+      });
 
-  const response = await fetch(`/community/posts/${postId}`, {
-    method: 'DELETE',
-    headers: {
-      Accept: 'application/json'
+      const result = await parseJsonSafe(response);
+      if (!response.ok || !result.success) {
+        showToast(result.message || 'ลบโพสต์ไม่สำเร็จ');
+        return;
+      }
+
+      const card = getPostCard(postId);
+      if (card) {
+        card.remove();
+      }
+      showToast('ลบโพสต์สำเร็จ');
     }
   });
-
-  const result = await parseJsonSafe(response);
-  if (!response.ok || !result.success) {
-    showToast(result.message || 'ลบโพสต์ไม่สำเร็จ');
-    return;
-  }
-
-  const card = getPostCard(postId);
-  if (card) {
-    card.remove();
-  }
-  showToast('ลบโพสต์สำเร็จ');
 }
 
 async function handleLike(postId, button) {
@@ -666,7 +670,7 @@ function bindEvents() {
     if (deleteButton) {
       const postId = Number.parseInt(deleteButton.dataset.postId, 10);
       if (Number.isInteger(postId)) {
-        await handleDeletePost(postId);
+        handleDeletePost(postId);
       }
       return;
     }

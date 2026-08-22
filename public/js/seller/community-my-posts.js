@@ -225,23 +225,29 @@ async function fetchMyPosts() {
     renderPosts();
 }
 
-async function handleDelete(postId) {
-    if (!window.confirm('ยืนยันการลบโพสต์นี้ใช่หรือไม่?')) return;
+function handleDelete(postId) {
+    window.showConfirmDialog({
+        title: 'ลบโพสต์',
+        message: 'ยืนยันการลบโพสต์นี้ใช่หรือไม่? ลบแล้วกู้คืนไม่ได้',
+        tone: 'danger',
+        confirmText: 'ลบโพสต์',
+        onConfirm: async () => {
+            const response = await fetch(`/community/posts/${postId}`, {
+                method: 'DELETE',
+                headers: { Accept: 'application/json' }
+            });
 
-    const response = await fetch(`/community/posts/${postId}`, {
-        method: 'DELETE',
-        headers: { Accept: 'application/json' }
+            const result = await parseJsonSafe(response);
+            if (!response.ok || !result.success) {
+                showToast(result.message || 'ลบโพสต์ไม่สำเร็จ');
+                return;
+            }
+
+            state.posts = state.posts.filter((post) => Number(post.id) !== Number(postId));
+            renderPosts();
+            showToast('ลบโพสต์สำเร็จ');
+        }
     });
-
-    const result = await parseJsonSafe(response);
-    if (!response.ok || !result.success) {
-        showToast(result.message || 'ลบโพสต์ไม่สำเร็จ');
-        return;
-    }
-
-    state.posts = state.posts.filter((post) => Number(post.id) !== Number(postId));
-    renderPosts();
-    showToast('ลบโพสต์สำเร็จ');
 }
 
 async function handleEditSubmit(event) {

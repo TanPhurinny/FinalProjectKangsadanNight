@@ -14,8 +14,6 @@
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css">
     <link rel="stylesheet" href="/stylesheets/admin/theme.css">
     <link rel="stylesheet" href="/stylesheets/responsive.css">
-    <link rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="/stylesheets/admin/bookingStall.css">
 
     <style>
@@ -860,6 +858,7 @@
 
     </div>
 
+    <script src="/js/common/dialogs.js"></script>
     <script>
   const PAGE_DATA = <%- JSON.stringify(pageData || {}) %>;
   const REQUEST_DATA = PAGE_DATA.bookingRequest || {};
@@ -1103,17 +1102,11 @@
 
   function confirmStall() {
     if (!currentSelectedStall) {
-      if (window.Swal && typeof window.Swal.fire === 'function') {
-        Swal.fire({
-          icon: 'warning',
-          title: 'ยังไม่ได้เลือกแผงค้า',
-          text: 'กรุณาคลิกเลือกแผงค้า 1 ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้า',
-          confirmButtonText: 'ตกลง',
-          confirmButtonColor: '#3BB8D4'
-        });
-      } else {
-        alert('กรุณาคลิกเลือกแผงค้า 1 ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้า');
-      }
+      window.showAlertDialog({
+        title: 'ยังไม่ได้เลือกแผงค้า',
+        message: 'กรุณาคลิกเลือกแผงค้า 1 ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้า',
+        tone: 'warning'
+      });
       return;
     }
     openConfirmSummary();
@@ -1165,11 +1158,14 @@
   }
 
   function rejectStall() {
-    const ok = window.confirm('คุณแน่ใจหรือไม่ที่จะปฏิเสธคำขอนี้?');
-    if (!ok) return;
-
-    postForm('/admin/booking-stall/reject', {
-      requestId: REQUEST_DATA.id || ''
+    window.showConfirmDialog({
+      title: 'ปฏิเสธคำขอนี้?',
+      message: 'คุณแน่ใจหรือไม่ที่จะปฏิเสธคำขอนี้',
+      tone: 'danger',
+      confirmText: 'ปฏิเสธคำขอ',
+      onConfirm: () => postForm('/admin/booking-stall/reject', {
+        requestId: REQUEST_DATA.id || ''
+      })
     });
   }
 
@@ -1206,6 +1202,5 @@
   window.rejectStall = rejectStall;
 
 </script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   </body>
 </html>

@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // gentle notification for disabled zone
         e.preventDefault();
         // small unobtrusive feedback
-        window.alert('โซนนี้ไม่สามารถจองได้สำหรับประเภทสินค้าของคุณ');
+        window.showAlertDialog({ title: 'จองโซนนี้ไม่ได้', message: 'โซนนี้ไม่สามารถจองได้สำหรับประเภทสินค้าของคุณ', tone: 'warning' });
         return;
       }
       zones.forEach((item) => item.classList.remove('is-active', 'is-faded'));
@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   bookBtn.addEventListener('click', () => {
     if (!selectedZoneKey) {
-      window.alert('กรุณาเลือกโซนที่ต้องการก่อนทำรายการจอง');
+      window.showAlertDialog({ title: 'ยังไม่ได้เลือกโซน', message: 'กรุณาเลือกโซนที่ต้องการก่อนทำรายการจอง', tone: 'warning' });
       return;
     }
 

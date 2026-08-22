@@ -4,11 +4,10 @@ if ('scrollRestoration' in history) {
 
 const flashSuccess = document.body.dataset.flashSuccess;
 const flashError = document.body.dataset.flashError;
-if ((flashSuccess || flashError) && window.Swal && typeof Swal.fire === 'function') {
-    Swal.fire({
-        icon: flashSuccess ? 'success' : 'error',
+if (flashSuccess || flashError) {
+    window.showAlertDialog({
         title: flashSuccess || flashError,
-        confirmButtonColor: '#3BB8D4'
+        tone: flashSuccess ? 'success' : 'danger'
     });
     const url = new URL(window.location.href);
     url.searchParams.delete('success');
