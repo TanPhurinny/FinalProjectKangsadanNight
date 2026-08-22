@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const { getAnnouncementsForUser } = require('../controllers/announcementController');
 const { getMarketMapPage } = require('../controllers/marketController');
-const { repairReportSchema, bookingStallInputSchema, sellerApplicationSchema, THAI_BANK_NAMES } = require('../utils/validationSchemas');
+const { repairReportSchema, bookingStallInputSchema, sellerApplicationSchema, shopProfileSchema, THAI_BANK_NAMES } = require('../utils/validationSchemas');
 const { buildPromptPayQrDataUrl, PROMPTPAY_ID } = require('../utils/promptpayQr');
 const { verifySlip } = require('../utils/slipVerification');
 const {
@@ -94,6 +94,35 @@ const shopApplicationStorage = multer.diskStorage({
 
 const uploadShopApplication = multer({
     storage: shopApplicationStorage,
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('ประเภทไฟล์ไม่ถูกต้อง'), false);
+        }
+    },
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+});
+
+// โฟลเดอร์เก็บรูปโปรไฟล์ร้านค้า (ผู้ขายแก้ไขเองหลังได้รับอนุมัติเป็น SELLER แล้ว)
+const shopProfileDir = path.join(__dirname, '../public/uploads/shop-profile');
+if (!fs.existsSync(shopProfileDir)) {
+    fs.mkdirSync(shopProfileDir, { recursive: true });
+}
+
+const shopProfileStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, shopProfileDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const uploadShopProfile = multer({
+    storage: shopProfileStorage,
     fileFilter: (req, file, cb) => {
         const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         if (allowedTypes.includes(file.mimetype)) {
@@ -510,6 +539,9 @@ function buildSellerDashboard(userRecord, activeBookingCount, latestBooking, lat
     const latestBookingView = latestBooking
         ? {
             ...latestBooking,
+            // ไม่เปิดเผยเลขล็อกจนกว่าจะยืนยันสลิปโอนเงินเสร็จ (SUCCESS) ให้สอดคล้องกับกติกา
+            // เดียวกับที่ใช้ในหน้า booking-status ทั้งระบบ — ก่อนหน้านี้หน้านี้หลุดโชว์เลขล็อกก่อนจ่ายเงิน
+            slot: latestBooking.status === 'SUCCESS' ? latestBooking.slot : null,
             statusText: getBookingStatusText(latestBooking.status),
             statusClass: getBookingStatusClass(latestBooking.status),
             rentalStartDate: formatDateThai(latestBooking.rentalStartDate),
@@ -631,9 +663,145 @@ router.get('/seller', isSellerOnly, async (req, res) => {
     const sellerAnnouncements = await getAnnouncementsForUser('SELLER');
     const latestAnnouncement = sellerAnnouncements[0] || null;
 
+    const bookingRoundSummary = getBookingRoundStatusDetails(new Date());
+    const nextRoundMeta = getBookingRoundMetaForDate(addDays(bookingRoundSummary.cycleEnd, 1));
+    const bookingRoundView = {
+        roundNumber: bookingRoundSummary.roundNumber,
+        cycleStart: formatDateThai(bookingRoundSummary.cycleStart),
+        cycleEnd: formatDateThai(bookingRoundSummary.cycleEnd),
+        status: bookingRoundSummary.status,
+        statusText: bookingRoundSummary.statusText,
+        nextRoundNumber: nextRoundMeta.roundNumber,
+        nextOpenAt: formatDateThai(addDays(nextRoundMeta.cycleStart, 1))
+    };
+
     return res.render('seller/indexseller', {
         user,
-        dashboard: buildSellerDashboard(user, activeBookingCount, latestBooking, latestRepairReport, latestAnnouncement)
+        dashboard: buildSellerDashboard(user, activeBookingCount, latestBooking, latestRepairReport, latestAnnouncement),
+        bookingRound: bookingRoundView
+    });
+});
+
+// --- หน้าประวัติการจองย้อนหลังทั้งหมดของผู้ขาย (ทุกรอบ ไม่ใช่แค่รายการล่าสุด) ---
+router.get('/booking-history', isAuthenticated, async (req, res) => {
+    const bookings = await prisma.booking.findMany({
+        where: { userId: req.user.id },
+        include: { slot: true },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    const bookingHistoryView = bookings.map((booking) => ({
+        id: booking.id,
+        status: booking.status,
+        statusText: getBookingStatusText(booking.status),
+        statusClass: getBookingStatusClass(booking.status),
+        roundNumber: booking.rentalStartDate ? getBookingRoundMetaForDate(booking.rentalStartDate).roundNumber : null,
+        zoneLabel: booking.selectedZoneLabel || (booking.zoneCode ? `โซน ${booking.zoneCode}` : '-'),
+        slotLabel: booking.status === 'SUCCESS' ? (booking.slot?.slotNumber || '-') : null,
+        rentalStartDate: formatDateThai(booking.rentalStartDate),
+        rentalEndDate: formatDateThai(booking.rentalEndDate),
+        stallCount: booking.stallCount || 1,
+        grandTotal: Number(booking.grandTotal || 0),
+        createdAt: formatDateThai(booking.createdAt)
+    }));
+
+    res.render('seller/bookingHistory', {
+        user: req.user,
+        bookings: bookingHistoryView
+    });
+});
+
+// --- หน้าแก้ไขโปรไฟล์ร้านค้า (เฉพาะผู้ขายที่ได้รับอนุมัติเป็น SELLER แล้ว) ---
+router.get('/shop-profile', isSellerOnly, async (req, res) => {
+    const userRecord = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: { shop: true }
+    });
+
+    res.render('seller/shopProfile', {
+        user: req.user,
+        shop: userRecord?.shop || null,
+        error: req.query.error || null,
+        success: req.query.success || null
+    });
+});
+
+router.post('/shop-profile', isSellerOnly, (req, res) => {
+    async function renderWithError(errorCode) {
+        const userRecord = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            include: { shop: true }
+        });
+        return res.render('seller/shopProfile', {
+            user: req.user,
+            shop: userRecord?.shop || null,
+            error: errorCode,
+            success: null,
+            formData: req.body
+        });
+    }
+
+    uploadShopProfile.fields([
+        { name: 'productImage', maxCount: 1 },
+        { name: 'shopCoverImage', maxCount: 1 }
+    ])(req, res, async (err) => {
+        if (err) {
+            return renderWithError('upload_failed');
+        }
+
+        try {
+            const parsed = shopProfileSchema.safeParse(req.body);
+            if (!parsed.success) {
+                return renderWithError('missing_fields');
+            }
+
+            const { productDetail, shopSummary, shopTags } = parsed.data;
+            const productImage = req.files?.productImage?.[0]
+                ? `/uploads/shop-profile/${req.files.productImage[0].filename}`
+                : undefined;
+            const shopCoverImage = req.files?.shopCoverImage?.[0]
+                ? `/uploads/shop-profile/${req.files.shopCoverImage[0].filename}`
+                : undefined;
+
+            // ชื่อร้าน/ประเภทสินค้าไม่รับจากฟอร์มนี้ (ดูเหตุผลใน utils/validationSchemas.js) — ถ้ายังไม่มี
+            // ShopDetail มาก่อนเลย (กรณีข้อมูลเก่าก่อนมีการซิงก์อัตโนมัติ) ค่อย fallback ไปเอาจากใบสมัครล่าสุด
+            const existingShop = await prisma.shopDetail.findUnique({ where: { userId: req.user.id } });
+            let fallbackShopName = existingShop?.shopName;
+            let fallbackProductType = existingShop?.productType;
+            if (!fallbackShopName || !fallbackProductType) {
+                const latestApplication = await prisma.sellerApplication.findFirst({
+                    where: { userId: req.user.id },
+                    orderBy: { createdAt: 'desc' }
+                });
+                fallbackShopName = fallbackShopName || latestApplication?.shopName || 'ยังไม่ได้ตั้งชื่อร้าน';
+                fallbackProductType = fallbackProductType || latestApplication?.productType || null;
+            }
+
+            await prisma.shopDetail.upsert({
+                where: { userId: req.user.id },
+                update: {
+                    productDetail: productDetail || null,
+                    shopSummary: shopSummary || null,
+                    shopTags: shopTags || null,
+                    ...(productImage ? { productImage } : {}),
+                    ...(shopCoverImage ? { shopCoverImage } : {})
+                },
+                create: {
+                    userId: req.user.id,
+                    shopName: fallbackShopName,
+                    productType: fallbackProductType,
+                    productDetail: productDetail || null,
+                    shopSummary: shopSummary || null,
+                    shopTags: shopTags || null,
+                    productImage: productImage || null,
+                    shopCoverImage: shopCoverImage || null
+                }
+            });
+
+            return res.redirect('/shop-profile?success=profile_updated');
+        } catch (dbErr) {
+            return renderWithError('db_error');
+        }
     });
 });
 

@@ -103,6 +103,15 @@ const sellerApplicationSchema = z.object({
     termsAccepted: z.literal('true', { errorMap: () => ({ message: 'กรุณายอมรับกฎระเบียบร้านค้าก่อนสมัคร' }) })
 });
 
+// ชื่อร้าน/ประเภทสินค้า "ไม่" อยู่ในฟอร์มนี้โดยตั้งใจ — สองฟิลด์นี้มาจากใบสมัครที่แอดมินอนุมัติแล้วเท่านั้น
+// (ซิงก์อัตโนมัติตอนอนุมัติ ดู controllers/sellerApplicationController.js และ approvalController.js)
+// ผู้ขายแก้เองไม่ได้ กันร้านที่โชว์จริงไม่ตรงกับที่สมัคร/ผ่านการตรวจสอบมา
+const shopProfileSchema = z.object({
+    productDetail: z.string().trim().max(2000).optional(),
+    shopSummary: z.string().trim().max(500).optional(),
+    shopTags: z.string().trim().max(300).optional()
+});
+
 module.exports = {
     USER_ROLE_VALUES,
     REPAIR_STATUS_VALUES,
@@ -114,5 +123,6 @@ module.exports = {
     announcementSchema,
     bookingStallInputSchema,
     sellerApplicationSchema,
+    shopProfileSchema,
     THAI_BANK_NAMES
 };

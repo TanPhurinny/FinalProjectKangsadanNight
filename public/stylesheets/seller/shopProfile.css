@@ -1,0 +1,87 @@
+/* ── หน้าแก้ไขโปรไฟล์ร้านค้า ── */
+.container {
+    max-width: 720px;
+}
+.form-card {
+    padding: 28px 32px;
+}
+
+/* ── ป้ายระดับร้าน/โซน (อ่านอย่างเดียว กำหนดโดยแอดมิน) ── */
+.shop-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+.tier-badge,
+.zone-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--soft-bg);
+    color: var(--ink-soft);
+}
+.tier-badge--primary {
+    color: var(--warning);
+    border-color: var(--warning);
+    background: rgba(201, 138, 46, 0.08);
+}
+.tier-badge--neutral {
+    color: var(--ink-soft);
+}
+.zone-badge {
+    color: var(--primary-dark);
+    border-color: var(--primary);
+    background: rgba(44, 147, 168, 0.08);
+}
+
+/* ── ชื่อร้าน/ประเภทสินค้า: อ่านอย่างเดียว มาจากใบสมัครที่อนุมัติแล้ว แก้ที่นี่ไม่ได้ ── */
+.locked-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 16px 0 6px;
+}
+.locked-field {
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--soft-bg);
+}
+.locked-field label {
+    display: block;
+    margin: 0 0 4px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.locked-field p {
+    margin: 0;
+    font-weight: 600;
+    color: var(--ink);
+}
+@media (max-width: 640px) {
+    .locked-field-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── รูปโปรไฟล์ร้าน/หน้าปก: ใหญ่กว่ากล่องอัปโหลดทั่วไป ── */
+.form-grid .upload-box {
+    width: 100%;
+    max-width: 220px;
+    height: 140px;
+}
+
+@media (max-width: 640px) {
+    .form-grid .upload-box {
+        max-width: 100%;
+    }
+}

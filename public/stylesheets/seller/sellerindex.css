@@ -92,9 +92,7 @@ body {
 	border-color: var(--primary);
 }
 
-.shop-hero,
 .info-card,
-.stat-card,
 .booking-card,
 .repair-card {
 	background: #fff;
@@ -103,144 +101,9 @@ body {
 	box-shadow: none;
 }
 
-.shop-hero {
-	overflow: hidden;
-}
-
-.shop-cover {
-	position: relative;
-	min-height: 210px;
-	overflow: hidden;
-	background: var(--soft-bg);
-}
-
-/* ชั้นพื้นหลังสำรอง แสดงตลอดเวลาไม่พึ่งพาการโหลดรูปจากภายนอก
-   ถ้ารูปปกจริงโหลดไม่สำเร็จ (onerror ลบ <img> ออก) ชั้นนี้จะปรากฏแทน */
-.shop-cover__placeholder {
-	position: absolute;
-	inset: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: var(--soft-bg);
-	color: var(--primary);
-	font-size: 2.6rem;
-}
-
-.shop-cover__img {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-}
-
-.shop-cover__overlay {
-	position: absolute;
-	inset: 0;
-	background: linear-gradient(100deg, rgba(18, 48, 58, .55), rgba(18, 48, 58, .1));
-}
-
-.cover-badge {
-	position: absolute;
-	right: 18px;
-	top: 18px;
-	z-index: 1;
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	padding: 6px 12px;
-	border-radius: var(--radius-sm);
-	color: #fff;
-	background: rgba(18, 48, 58, 0.6);
-	font-family: var(--mono);
-	font-size: 0.8rem;
-	font-weight: 600;
-	border: 1px solid rgba(255, 255, 255, 0.25);
-}
-
-.shop-hero-body {
-	padding: 20px 24px 24px;
-}
-
-.shop-logo {
-	position: relative;
-	width: 96px;
-	height: 96px;
-	margin-top: 0;
-	border-radius: var(--radius);
-	border: 3px solid #fff;
-	outline: 1px solid var(--line);
-	background: var(--soft-bg);
-	color: var(--primary-hover);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 2rem;
-	font-weight: 700;
-	overflow: hidden;
-	box-shadow: none;
-}
-
-/* ตัวอักษรย่อชื่อร้าน แสดงตลอดเวลาเป็นชั้นล่างสุด
-   ถ้ารูปสินค้าโหลดไม่สำเร็จ (onerror ลบ <img> ออก) จะเห็นตัวอักษรนี้แทนทันที */
-.shop-logo__fallback {
-	position: relative;
-	z-index: 0;
-}
-
-.shop-logo__img {
-	position: absolute;
-	inset: 0;
-	z-index: 1;
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-}
-
-.shop-hero-row {
-	margin-top: 16px;
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-end;
-	gap: 20px;
-	flex-wrap: wrap;
-}
-
-.shop-title-block {
-	flex: 1;
-	min-width: 280px;
-}
-
-.shop-title-block h2 {
-	margin: 0;
-	font-size: 1.8rem;
-	font-weight: 700;
-	color: var(--navy);
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 10px;
-}
-
 .verify-tick {
 	color: var(--primary);
 	font-size: 1rem;
-}
-
-.shop-desc {
-	margin-top: 10px;
-	color: var(--ink-soft);
-	font-size: 0.97rem;
-	max-width: 760px;
-}
-
-.shop-tags,
-.tag-group {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	margin-top: 14px;
 }
 
 .tier-badge,
@@ -298,70 +161,11 @@ body {
 	border-color: var(--line);
 }
 
-.shop-hero-actions {
-	display: flex;
-	gap: 10px;
-	flex-wrap: wrap;
-}
-
-.stat-card,
 .info-card,
 .booking-card,
 .repair-card {
 	padding: 22px;
 	height: 100%;
-}
-
-.stat-card {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-}
-
-.stat-icon {
-	width: 40px;
-	height: 40px;
-	border-radius: var(--radius-sm);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 1.2rem;
-	color: #fff;
-}
-
-.stat-icon--primary {
-	background: var(--primary);
-}
-
-.stat-icon--success {
-	background: var(--success);
-}
-
-.stat-icon--warning {
-	background: var(--warning);
-}
-
-.stat-icon--danger {
-	background: var(--danger);
-}
-
-.stat-value {
-	margin: 0;
-	font-family: var(--mono);
-	font-size: 1.9rem;
-	font-weight: 600;
-	color: var(--navy);
-}
-
-.stat-value--text {
-	font-size: 1.15rem;
-	line-height: 1.35;
-}
-
-.stat-label {
-	color: var(--ink-soft);
-	margin: 0;
-	font-size: 0.88rem;
 }
 
 .info-card__head {
@@ -382,37 +186,201 @@ body {
 	color: var(--navy);
 }
 
-.info-list {
-	margin: 0;
+/* แถบสถานะสำคัญที่สุดบนหน้าแดชบอร์ด — บอกทันทีว่าต้องทำอะไรต่อกับการจองล่าสุด */
+.status-alert {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 18px 22px;
+	border: 1px solid var(--line);
+	border-left: 4px solid var(--ink-soft);
+	border-radius: var(--radius);
+	background: #fff;
 }
 
-.info-list__row {
-	display: grid;
-	grid-template-columns: 180px 1fr;
-	gap: 14px;
-	padding: 12px 0;
-	border-top: 1px solid var(--line);
+.status-alert--warning {
+	border-left-color: var(--warning);
+	background: rgba(201, 138, 46, 0.06);
 }
 
-.info-list__row:first-child {
-	border-top: 0;
-	padding-top: 0;
+.status-alert--success {
+	border-left-color: var(--success);
+	background: rgba(39, 174, 96, 0.06);
 }
 
-.info-list__row dt {
+.status-alert--danger {
+	border-left-color: var(--danger);
+	background: rgba(192, 57, 43, 0.06);
+}
+
+.status-alert--neutral {
+	border-left-color: var(--primary);
+}
+
+.status-alert__icon {
+	flex-shrink: 0;
+	width: 40px;
+	height: 40px;
+	border-radius: var(--radius-sm);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.15rem;
+	background: var(--soft-bg);
 	color: var(--ink-soft);
-	font-weight: 500;
-	font-size: 0.9rem;
 }
 
-.info-list__row dd {
+.status-alert--warning .status-alert__icon { color: var(--warning); }
+.status-alert--success .status-alert__icon { color: var(--success); }
+.status-alert--danger .status-alert__icon { color: var(--danger); }
+.status-alert--neutral .status-alert__icon { color: var(--primary); }
+
+.status-alert__body {
+	flex: 1;
+	min-width: 0;
+}
+
+.status-alert__body h3 {
+	margin: 0 0 3px;
+	font-size: 1.02rem;
+	font-weight: 700;
+	color: var(--navy);
+}
+
+.status-alert__body p {
 	margin: 0;
-	font-weight: 500;
+	font-size: 0.86rem;
+	color: var(--ink-soft);
+}
+
+.status-alert__cta {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 9px 16px;
+	border-radius: var(--radius-sm);
+	background: var(--navy);
+	color: #fff;
+	font-size: 0.86rem;
+	font-weight: 600;
+	transition: var(--transition);
+}
+
+.status-alert__cta:hover {
+	background: var(--primary-hover);
+	color: #fff;
+}
+
+/* แถบบางบอกรอบการจองปัจจุบัน/รอบถัดไป — ข้อมูลอ้างอิง ไม่ใช่จุดที่ต้อง action ทันที */
+.round-strip {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	padding: 10px 16px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-sm);
+	background: var(--soft-bg);
+	font-size: 0.82rem;
+	color: var(--ink-soft);
+}
+
+.round-strip i {
+	color: var(--primary);
+}
+
+.round-strip b {
+	color: var(--navy);
+}
+
+.round-strip__sep {
+	width: 1px;
+	height: 14px;
+	background: var(--line);
+}
+
+/* แถบชื่อร้าน — กระชับ ไม่ใช้ภาพปกใหญ่ที่ไม่มีข้อมูลจริง */
+.identity-bar {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+	padding: 18px 22px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	background: #fff;
+}
+
+.identity-bar__logo {
+	position: relative;
+	flex-shrink: 0;
+	width: 56px;
+	height: 56px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--line);
+	background: var(--soft-bg);
+	color: var(--primary-hover);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.3rem;
+	font-weight: 700;
+	overflow: hidden;
+}
+
+.identity-bar__logo img {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.identity-bar__body {
+	flex: 1;
+	min-width: 0;
+}
+
+.identity-bar__body h2 {
+	margin: 0 0 8px;
+	font-size: 1.25rem;
+	font-weight: 700;
+	color: var(--navy);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.identity-bar__tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.identity-bar__stat {
+	flex-shrink: 0;
+	text-align: right;
+	padding-left: 18px;
+	border-left: 1px solid var(--line);
+}
+
+.identity-bar__stat strong {
+	display: block;
+	font-family: var(--mono);
+	font-size: 1.6rem;
+	font-weight: 600;
+	color: var(--navy);
+	line-height: 1.1;
+}
+
+.identity-bar__stat span {
+	font-size: 0.76rem;
+	color: var(--ink-soft);
 }
 
 .quick-action-grid {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: repeat(4, minmax(0, 1fr));
 	gap: 0;
 	border: 1px solid var(--line);
 	border-radius: var(--radius-sm);
@@ -661,9 +629,17 @@ body {
 		padding-top: 20px;
 	}
 
-	.info-list__row {
-		grid-template-columns: 1fr;
-		gap: 6px;
+	.identity-bar {
+		flex-wrap: wrap;
+	}
+
+	.identity-bar__stat {
+		border-left: none;
+		padding-left: 0;
+		text-align: left;
+		width: 100%;
+		padding-top: 12px;
+		border-top: 1px solid var(--line);
 	}
 }
 
@@ -672,26 +648,21 @@ body {
 		padding: 0 14px;
 	}
 
-	.shop-cover {
-		min-height: 140px;
+	.identity-bar {
+		padding: 14px 16px;
 	}
 
-	.shop-logo {
-		width: 72px;
-		height: 72px;
-		margin-top: 0;
+	.identity-bar__body h2 {
+		font-size: 1.05rem;
 	}
 
-	.shop-hero-body {
-		padding: 14px 16px 18px;
+	.status-alert {
+		flex-wrap: wrap;
 	}
 
-	.shop-title-block h2 {
-		font-size: 1.3rem;
-	}
-
-	.shop-desc {
-		font-size: 0.9rem;
+	.status-alert__cta {
+		width: 100%;
+		justify-content: center;
 	}
 
 	.quick-action-grid {
@@ -708,7 +679,6 @@ body {
 	}
 
 	.info-card,
-	.stat-card,
 	.booking-card,
 	.repair-card {
 		padding: 16px;
@@ -742,11 +712,7 @@ body {
 		width: 100%;
 	}
 
-	.shop-hero-row {
-		align-items: flex-start;
-	}
-
-	.shop-tags {
+	.identity-bar__tags {
 		gap: 6px;
 	}
 
@@ -757,13 +723,6 @@ body {
 		padding: 5px 8px;
 	}
 
-	.cover-badge {
-		font-size: 0.76rem;
-		padding: 5px 9px;
-		right: 12px;
-		top: 12px;
-	}
-
 	.announcement-banner {
 		flex-direction: column;
 		padding: 14px;
@@ -772,35 +731,6 @@ body {
 
 	.announcement-banner__title {
 		font-size: 1rem;
-	}
-
-	/* สถิติ 4 ช่องยุบเหลือ 2 คอลัมน์ให้อ่านง่ายบนจอมือถือ แทนที่จะเรียงเป็นแถวเดียวยาว */
-	.row.g-4.mb-4 {
-		--bs-gutter-x: 10px;
-		--bs-gutter-y: 10px;
-	}
-
-	.stat-card {
-		padding: 14px;
-		gap: 8px;
-	}
-
-	.stat-icon {
-		width: 36px;
-		height: 36px;
-		font-size: 1rem;
-	}
-
-	.stat-value {
-		font-size: 1.3rem;
-	}
-
-	.stat-value--text {
-		font-size: 0.95rem;
-	}
-
-	.stat-label {
-		font-size: 0.78rem;
 	}
 
 	.info-card__head h2 {

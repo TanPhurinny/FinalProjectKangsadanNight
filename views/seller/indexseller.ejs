@@ -11,11 +11,52 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260724-6">
-  <link rel="stylesheet" href="/stylesheets/seller/sellerindex.css">
+  <link rel="stylesheet" href="/stylesheets/seller/sellerindex.css?v=20260823-2">
 </head>
 <body>
 <script src="/js/common/tabSession.js"></script>
   <%- include('../partials/navbarSeller') %>
+
+  <%
+    // เลือกโทนสี/ข้อความ/ปุ่ม CTA ของแถบสถานะบนสุดตามสถานะการจองล่าสุด
+    // (จุดที่สำคัญที่สุดของแดชบอร์ด — ผู้ขายต้องรู้ทันทีว่าต้องทำอะไรต่อ)
+    let statusTone = 'neutral';
+    let statusIcon = 'bi-info-circle-fill';
+    let statusTitle = 'ยังไม่มีการจองแผงในระบบ';
+    let statusDesc = 'เลือกโซนและแผงที่ต้องการ เพื่อเริ่มขายในตลาดกังสดาลไนท์';
+    let statusCtaHref = '/select-zone';
+    let statusCtaLabel = 'เลือกโซน';
+
+    if (dashboard.latestBooking) {
+      const lb = dashboard.latestBooking;
+      if (lb.status === 'PENDING') {
+        statusTone = 'neutral'; statusIcon = 'bi-hourglass-split';
+        statusTitle = 'รอการตรวจสอบร้านค้า';
+        statusDesc = 'แอดมินกำลังตรวจสอบคำขอจองของคุณ ระบบจะแจ้งผลเมื่อดำเนินการเสร็จ';
+        statusCtaHref = '/booking-status'; statusCtaLabel = 'ดูสถานะการจอง';
+      } else if (lb.status === 'APPROVED') {
+        statusTone = 'neutral'; statusIcon = 'bi-check-circle';
+        statusTitle = 'ร้านผ่านการตรวจสอบแล้ว';
+        statusDesc = 'รอแอดมินจัดสรรล็อกให้ ระบบจะแจ้งเตือนเมื่อได้รับล็อก';
+        statusCtaHref = '/booking-status'; statusCtaLabel = 'ดูสถานะการจอง';
+      } else if (lb.status === 'IN_PROGRESS') {
+        statusTone = 'warning'; statusIcon = 'bi-exclamation-triangle-fill';
+        statusTitle = 'ได้รับล็อกแล้ว กรุณาชำระเงิน';
+        statusDesc = 'อัปโหลดสลิปโอนเงินเพื่อยืนยันการจอง มิฉะนั้นล็อกอาจถูกปล่อยให้ผู้ขายรายอื่น';
+        statusCtaHref = '/booking-status'; statusCtaLabel = 'ชำระเงินตอนนี้';
+      } else if (lb.status === 'SUCCESS') {
+        statusTone = 'success'; statusIcon = 'bi-patch-check-fill';
+        statusTitle = lb.slot ? `ชำระเงินสำเร็จ · ล็อก ${lb.slot.slotNumber} เป็นของร้านคุณ` : 'ชำระเงินสำเร็จ เสร็จสิ้นการจอง';
+        statusDesc = 'ยืนยันเรียบร้อยแล้ว พร้อมขายได้ตามวันที่จองไว้';
+        statusCtaHref = '/booking-status'; statusCtaLabel = 'ดูรายละเอียดการจอง';
+      } else if (lb.status === 'REJECTED') {
+        statusTone = 'danger'; statusIcon = 'bi-x-circle-fill';
+        statusTitle = 'คำขอจองไม่ผ่านการตรวจสอบ';
+        statusDesc = 'ติดต่อแอดมินเพื่อสอบถามรายละเอียด หรือส่งคำขอจองใหม่อีกครั้ง';
+        statusCtaHref = '/select-zone'; statusCtaLabel = 'ส่งคำขอใหม่';
+      }
+    }
+  %>
 
   <main class="seller-dashboard-page">
     <div class="seller-dashboard-shell container-xxl">
@@ -23,75 +64,58 @@
         <div>
           <p class="seller-dashboard-header__eyebrow">Seller Center</p>
           <h1 class="seller-dashboard-header__title">แดชบอร์ดผู้ขาย</h1>
-          <p class="seller-dashboard-header__subtitle">ภาพรวมร้านค้าและข้อมูลสำคัญของผู้ขายที่กำลังเข้าสู่ระบบ</p>
         </div>
         <div class="seller-dashboard-header__actions">
-          <a href="/profile" class="btn btn-outline-primary"><i class="bi bi-person-lines-fill me-2"></i>แก้ไขโปรไฟล์</a>
+          <a href="/shop-profile" class="btn btn-outline-primary"><i class="bi bi-person-lines-fill me-2"></i>แก้ไขโปรไฟล์</a>
         </div>
       </header>
 
-      <section class="shop-hero mb-4">
-        <div class="shop-cover">
-          <div class="shop-cover__placeholder">
-            <i class="bi bi-shop"></i>
-          </div>
-          <% if (dashboard.coverImage) { %>
-            <img
-              src="<%= dashboard.coverImage %>"
-              alt=""
-              class="shop-cover__img"
-              onerror="this.remove()"
-            >
-          <% } %>
-          <div class="shop-cover__overlay"></div>
-          <div class="cover-badge"><i class="bi bi-geo-alt-fill"></i> <%= dashboard.zoneLabel %></div>
+      <section class="status-alert status-alert--<%= statusTone %> mb-3">
+        <div class="status-alert__icon"><i class="bi <%= statusIcon %>"></i></div>
+        <div class="status-alert__body">
+          <h3><%= statusTitle %></h3>
+          <p><%= statusDesc %></p>
         </div>
-        <div class="shop-hero-body">
-          <div class="shop-logo">
-            <span class="shop-logo__fallback"><%= dashboard.displayLetter %></span>
-            <% if (dashboard.productImage) { %>
-              <img
-                src="<%= dashboard.productImage %>"
-                alt="<%= dashboard.shopName %>"
-                class="shop-logo__img"
-                onerror="this.remove()"
-              >
-            <% } %>
-          </div>
-
-          <div class="shop-hero-row">
-            <div class="shop-title-block">
-              <h2>
-                <%= dashboard.shopName %>
-                <% if (dashboard.isVerified) { %>
-                  <i class="bi bi-patch-check-fill verify-tick" title="ร้านค้ายืนยันตัวตนแล้ว"></i>
-                <% } %>
-              </h2>
-              <p class="shop-desc"><%= dashboard.shopDescription %></p>
-              <div class="shop-tags">
-                <span class="tier-badge tier-badge--primary"><i class="bi bi-award-fill"></i> <%= dashboard.sellerTier %></span>
-                <span class="tier-badge tier-badge--info"><i class="bi bi-grid-1x2-fill"></i> <%= dashboard.productType %></span>
-                <% dashboard.tags.forEach(function(tag) { %>
-                  <span class="badge-soft"><i class="bi bi-tag"></i> <%= tag %></span>
-                <% }) %>
-              </div>
-            </div>
-          </div>
-        </div>
+        <a href="<%= statusCtaHref %>" class="status-alert__cta"><%= statusCtaLabel %> <i class="bi bi-arrow-right"></i></a>
       </section>
 
-      <% if (dashboard.latestAnnouncement) { %>
-        <section class="announcement-banner mb-4">
-          <div class="announcement-banner__icon"><i class="bi bi-megaphone-fill"></i></div>
-          <div class="announcement-banner__body">
-            <p class="announcement-banner__eyebrow">
-              ประกาศล่าสุดสำหรับผู้ขาย · <%= dashboard.latestAnnouncement.category %> · <%= dashboard.latestAnnouncement.createdAt %>
-            </p>
-            <h3 class="announcement-banner__title"><%= dashboard.latestAnnouncement.title %></h3>
-            <p class="announcement-banner__content"><%= dashboard.latestAnnouncement.content %></p>
-          </div>
+      <% if (typeof bookingRound !== 'undefined' && bookingRound) { %>
+        <section class="round-strip mb-4">
+          <i class="bi bi-calendar-range"></i>
+          <span>รอบที่ <%= bookingRound.roundNumber %> · <%= bookingRound.cycleStart %> - <%= bookingRound.cycleEnd %> · <b><%= bookingRound.status %></b></span>
+          <span class="round-strip__sep"></span>
+          <span>รอบถัดไป: รอบที่ <%= bookingRound.nextRoundNumber %> เปิดจอง <%= bookingRound.nextOpenAt %></span>
         </section>
       <% } %>
+
+      <section class="identity-bar mb-4">
+        <div class="identity-bar__logo">
+          <span class="identity-bar__fallback"><%= dashboard.displayLetter %></span>
+          <% if (dashboard.productImage) { %>
+            <img src="<%= dashboard.productImage %>" alt="<%= dashboard.shopName %>" onerror="this.remove()">
+          <% } %>
+        </div>
+        <div class="identity-bar__body">
+          <h2>
+            <%= dashboard.shopName %>
+            <% if (dashboard.isVerified) { %>
+              <i class="bi bi-patch-check-fill verify-tick" title="ร้านค้ายืนยันตัวตนแล้ว"></i>
+            <% } %>
+          </h2>
+          <div class="identity-bar__tags">
+            <span class="tier-badge tier-badge--info"><i class="bi bi-grid-1x2-fill"></i> <%= dashboard.productType %></span>
+            <span class="tier-badge tier-badge--primary"><i class="bi bi-geo-alt-fill"></i> <%= dashboard.zoneLabel %></span>
+            <span class="status-pill <%= dashboard.isVerified ? 'status-pill--success' : 'status-pill--neutral' %>">
+              <i class="bi <%= dashboard.isVerified ? 'bi-patch-check-fill' : 'bi-hourglass-split' %>"></i>
+              <%= dashboard.isVerified ? 'ยืนยันตัวตนแล้ว' : 'รอตรวจสอบตัวตน' %>
+            </span>
+          </div>
+        </div>
+        <div class="identity-bar__stat">
+          <strong><%= dashboard.activeBookingCount %></strong>
+          <span>การจองที่กำลังดำเนินการ</span>
+        </div>
+      </section>
 
       <section class="mb-4">
         <article class="info-card">
@@ -108,6 +132,10 @@
               <i class="bi bi-journal-check"></i>
               <span>สถานะการจอง</span>
             </a>
+            <a href="/booking-history" class="quick-action-card">
+              <i class="bi bi-clock-history"></i>
+              <span>ประวัติการจอง</span>
+            </a>
             <a href="/repair" class="quick-action-card">
               <i class="bi bi-wrench-adjustable-circle"></i>
               <span>แจ้งซ่อม</span>
@@ -115,7 +143,7 @@
           </div>
 
           <div class="quick-action-footer">
-            <a href="/logout" class="logout-link-subtle" onclick="return confirm('ยืนยันออกจากระบบใช่หรือไม่?');">
+            <a href="/logout" class="logout-link-subtle" data-confirm-logout>
               <i class="bi bi-box-arrow-right"></i>
               <span>ออกจากระบบ</span>
             </a>
@@ -123,112 +151,11 @@
         </article>
       </section>
 
-      <section class="row g-3 g-md-4 mb-4">
-        <div class="col-6 col-xl-4">
-          <article class="stat-card">
-            <div class="stat-icon stat-icon--primary"><i class="bi bi-shop"></i></div>
-            <h3 class="stat-value"><%= dashboard.activeBookingCount %></h3>
-            <p class="stat-label">การจองที่กำลังดำเนินการ</p>
-          </article>
-        </div>
-        <div class="col-6 col-xl-4">
-          <article class="stat-card">
-            <div class="stat-icon stat-icon--success"><i class="bi bi-cash-coin"></i></div>
-            <h3 class="stat-value stat-value--text">
-              <%= dashboard.latestBooking ? Number(dashboard.latestBooking.grandTotal || 0).toLocaleString('th-TH') + ' บาท' : '-' %>
-            </h3>
-            <p class="stat-label">ยอดชำระการจองล่าสุด</p>
-          </article>
-        </div>
-        <div class="col-12 col-xl-4">
-          <article class="stat-card">
-            <div class="stat-icon <%= dashboard.isVerified ? 'stat-icon--success' : 'stat-icon--warning' %>">
-              <i class="bi <%= dashboard.isVerified ? 'bi-patch-check-fill' : 'bi-hourglass-split' %>"></i>
-            </div>
-            <h3 class="stat-value stat-value--text"><%= dashboard.isVerified ? 'ยืนยันแล้ว' : 'รอตรวจสอบ' %></h3>
-            <p class="stat-label">สถานะยืนยันตัวตนร้านค้า</p>
-          </article>
-        </div>
-      </section>
-
       <section class="row g-4">
-        <div class="col-lg-7">
-          <article class="info-card h-100">
-            <div class="info-card__head">
-              <h2>ข้อมูลร้านค้าที่เชื่อมกับบัญชีปัจจุบัน</h2>
-              <span class="status-pill <%= dashboard.isVerified ? 'status-pill--success' : 'status-pill--neutral' %>">
-                <i class="bi <%= dashboard.isVerified ? 'bi-patch-check-fill' : 'bi-hourglass-split' %>"></i>
-                <%= dashboard.isVerified ? 'ยืนยันแล้ว' : 'รอตรวจสอบ' %>
-              </span>
-            </div>
-
-            <dl class="info-list">
-              <div class="info-list__row">
-                <dt>ชื่อร้าน</dt>
-                <dd><%= dashboard.shopName %></dd>
-              </div>
-              <div class="info-list__row">
-                <dt>รายละเอียดร้าน</dt>
-                <dd><%= dashboard.shopDescription %></dd>
-              </div>
-              <div class="info-list__row">
-                <dt>ประเภทสินค้า</dt>
-                <dd><%= dashboard.productType %></dd>
-              </div>
-              <div class="info-list__row">
-                <dt>โซนร้าน</dt>
-                <dd><%= dashboard.zoneLabel %></dd>
-              </div>
-              <div class="info-list__row">
-                <dt>แท็กของร้าน</dt>
-                <dd>
-                  <div class="tag-group">
-                    <% if (dashboard.tags.length === 0) { %>
-                      <span class="badge-soft">ยังไม่มีแท็ก</span>
-                    <% } %>
-                    <% dashboard.tags.forEach(function(tag) { %>
-                      <span class="badge-soft"><i class="bi bi-tag"></i> <%= tag %></span>
-                    <% }) %>
-                  </div>
-                </dd>
-              </div>
-            </dl>
-          </article>
-        </div>
-
-        <div class="col-lg-5">
-          <article class="info-card">
-            <div class="info-card__head">
-              <h2>ข้อมูลบัญชีผู้ขาย</h2>
-            </div>
-
-            <dl class="info-list info-list--compact">
-              <div class="info-list__row">
-                <dt>ชื่อผู้ใช้งาน</dt>
-                <dd><%= user.username %></dd>
-              </div>
-              <div class="info-list__row">
-                <dt>ชื่อผู้ขาย</dt>
-                <dd><%= user.name %></dd>
-              </div>
-              <div class="info-list__row">
-                <dt>อีเมล</dt>
-                <dd><%= dashboard.email %></dd>
-              </div>
-              <div class="info-list__row">
-                <dt>สมัครเมื่อ</dt>
-                <dd><%= dashboard.memberSince ? new Date(dashboard.memberSince).toLocaleDateString('th-TH') : '-' %></dd>
-              </div>
-            </dl>
-          </article>
-        </div>
-      </section>
-
-      <section class="row g-4 mt-1">
         <div class="col-lg-8">
           <article class="booking-card">
             <div class="info-card__head">
-              <h2>การจองล่าสุด</h2>
+              <h2>รายละเอียดการจองล่าสุด</h2>
               <% if (dashboard.latestBooking) { %>
                 <span class="status-pill <%= dashboard.latestBooking.statusClass %>">
                   <i class="bi bi-record-circle-fill"></i> <%= dashboard.latestBooking.statusText %>
@@ -236,40 +163,41 @@
               <% } %>
             </div>
 
-            <% if (dashboard.latestBooking && dashboard.latestBooking.slot) { %>
+            <% if (dashboard.latestBooking) { %>
+              <% const lb = dashboard.latestBooking; %>
               <div class="booking-card__content">
                 <div>
-                  <p class="booking-card__eyebrow">แผงล่าสุด</p>
-                  <h3 class="booking-card__title"><%= dashboard.latestBooking.slot.slotNumber %></h3>
-                  <p class="booking-card__sub">จองเมื่อ <%= dashboard.latestBooking.createdAt %></p>
+                  <p class="booking-card__eyebrow"><%= lb.slot ? 'แผงของคุณ' : 'โซนที่จอง' %></p>
+                  <h3 class="booking-card__title"><%= lb.slot ? lb.slot.slotNumber : (lb.selectedZoneLabel || (lb.zoneCode ? `โซน ${lb.zoneCode}` : '-')) %></h3>
+                  <p class="booking-card__sub">จองเมื่อ <%= lb.createdAt %></p>
                 </div>
                 <div class="booking-card__meta">
                   <div>
                     <span class="booking-card__label">โซน</span>
-                    <strong><%= dashboard.latestBooking.selectedZoneLabel || dashboard.latestBooking.slot.zone %></strong>
+                    <strong><%= lb.selectedZoneLabel || (lb.zoneCode ? `โซน ${lb.zoneCode}` : '-') %></strong>
                   </div>
                   <div>
                     <span class="booking-card__label">จำนวนแผง</span>
-                    <strong><%= dashboard.latestBooking.stallCount %> แผง</strong>
+                    <strong><%= lb.stallCount %> แผง</strong>
                   </div>
-                  <% if (dashboard.latestBooking.rentalStartDate) { %>
+                  <% if (lb.rentalStartDate) { %>
                     <div>
                       <span class="booking-card__label">ระยะเวลาเช่า</span>
-                      <strong><%= dashboard.latestBooking.rentalStartDate %> - <%= dashboard.latestBooking.rentalEndDate %></strong>
+                      <strong><%= lb.rentalStartDate %> - <%= lb.rentalEndDate %></strong>
                     </div>
                   <% } %>
                   <div>
                     <span class="booking-card__label">ไฟฟ้า/เครื่องใช้ไฟฟ้า</span>
                     <strong>
-                      <%= dashboard.latestBooking.lightEnabled ? 'มีไฟส่องสว่าง' : 'ไม่มีไฟส่องสว่าง' %>
-                      <% if ((dashboard.latestBooking.smallApplianceCount || 0) + (dashboard.latestBooking.largeApplianceCount || 0) > 0) { %>
-                        · เครื่องใช้ไฟฟ้า <%= (dashboard.latestBooking.smallApplianceCount || 0) + (dashboard.latestBooking.largeApplianceCount || 0) %> ชิ้น
+                      <%= lb.lightEnabled ? 'มีไฟส่องสว่าง' : 'ไม่มีไฟส่องสว่าง' %>
+                      <% if ((lb.smallApplianceCount || 0) + (lb.largeApplianceCount || 0) > 0) { %>
+                        · เครื่องใช้ไฟฟ้า <%= (lb.smallApplianceCount || 0) + (lb.largeApplianceCount || 0) %> ชิ้น
                       <% } %>
                     </strong>
                   </div>
                   <div>
                     <span class="booking-card__label">ยอดชำระรวม</span>
-                    <strong><%= Number(dashboard.latestBooking.grandTotal || dashboard.latestBooking.slot.price || 0).toLocaleString('th-TH') %> บาท</strong>
+                    <strong><%= Number(lb.grandTotal || 0).toLocaleString('th-TH') %> บาท</strong>
                   </div>
                 </div>
               </div>
@@ -283,8 +211,21 @@
           </article>
         </div>
 
-        <div class="col-lg-4">
-          <article class="repair-card h-100">
+        <div class="col-lg-4 d-flex flex-column gap-4">
+          <% if (dashboard.latestAnnouncement) { %>
+            <article class="announcement-banner">
+              <div class="announcement-banner__icon"><i class="bi bi-megaphone-fill"></i></div>
+              <div class="announcement-banner__body">
+                <p class="announcement-banner__eyebrow">
+                  ประกาศล่าสุด · <%= dashboard.latestAnnouncement.category %> · <%= dashboard.latestAnnouncement.createdAt %>
+                </p>
+                <h3 class="announcement-banner__title"><%= dashboard.latestAnnouncement.title %></h3>
+                <p class="announcement-banner__content"><%= dashboard.latestAnnouncement.content %></p>
+              </div>
+            </article>
+          <% } %>
+
+          <article class="repair-card flex-fill">
             <div class="info-card__head">
               <h2>แจ้งซ่อมล่าสุด</h2>
               <% if (dashboard.latestRepairReport) { %>
@@ -314,5 +255,20 @@
       </section>
     </div>
   </main>
+  <script src="/js/common/dialogs.js"></script>
+  <script>
+    document.querySelectorAll('[data-confirm-logout]').forEach(function (link) {
+      link.addEventListener('click', function (event) {
+        event.preventDefault();
+        window.showConfirmDialog({
+          title: 'ยืนยันออกจากระบบ',
+          message: 'ต้องการออกจากระบบใช่หรือไม่?',
+          tone: 'danger',
+          confirmText: 'ออกจากระบบ',
+          onConfirm: function () { window.location.href = link.href; }
+        });
+      });
+    });
+  </script>
 </body>
 </html>
