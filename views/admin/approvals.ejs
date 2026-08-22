@@ -38,6 +38,43 @@
 
             <div class="container">
 
+                <%
+                const flashError = (typeof error !== 'undefined' && error) ? error : null;
+                const flashReason = (typeof errorReason !== 'undefined' && errorReason) ? errorReason : null;
+                const flashRequestId = (typeof errorRequestId !== 'undefined' && errorRequestId) ? errorRequestId : null;
+                const flashSuccess = (typeof success !== 'undefined' && success) ? success : null;
+                const flashErrorMessages = {
+                    missing_request_id: 'ไม่พบรหัสคำขอ',
+                    request_not_found: 'ไม่พบคำขอนี้',
+                    history_round_locked: 'รอบนี้เป็นประวัติแล้ว แก้ไขไม่ได้',
+                    no_slip_to_confirm: 'คำขอนี้ยังไม่มีสลิปให้ตรวจ หรือสถานะไม่ตรง',
+                    confirm_payment_failed: 'เกิดข้อผิดพลาดขณะยืนยันการชำระเงิน',
+                    slip_verification_failed: `ตรวจสลิปอัตโนมัติไม่ผ่าน: ${flashReason || 'ไม่ทราบสาเหตุ'}`
+                };
+                const flashSuccessMessages = {
+                    payment_confirmed: 'ยืนยันการชำระเงินเรียบร้อย เปิดเผยเลขล็อกให้ลูกค้าแล้ว',
+                    status_updated: 'อัปเดตสถานะเรียบร้อย',
+                    stall_assigned: 'จัดล็อกเรียบร้อย'
+                };
+                %>
+                <% if (flashError) { %>
+                <div class="flash-banner flash-banner--error">
+                    <span><%= flashErrorMessages[flashError] || 'เกิดข้อผิดพลาด' %></span>
+                    <% if (flashError === 'slip_verification_failed' && flashRequestId) { %>
+                    <form method="POST" action="/admin/approvals/confirm-payment" class="flash-banner__force-form">
+                        <input type="hidden" name="requestId" value="<%= flashRequestId %>">
+                        <input type="hidden" name="force" value="1">
+                        <button type="submit" onclick="return confirm('ยืนยันการชำระเงินโดยไม่ใช้ผลตรวจสลิปอัตโนมัติ (ตรวจสอบด้วยตาเองแล้ว) ใช่ไหม?')">ยืนยันต่อโดยไม่ตรวจสลิป</button>
+                    </form>
+                    <% } %>
+                </div>
+                <% } %>
+                <% if (flashSuccess) { %>
+                <div class="flash-banner flash-banner--success">
+                    <span><%= flashSuccessMessages[flashSuccess] || 'สำเร็จ' %></span>
+                </div>
+                <% } %>
+
                 <div class="round-navigation compact">
                     <div class="round-nav-tools">
                         <a class="round-nav-icon <%= selectedRoundNumber === previousRoundNumber ? 'active' : '' %>"
@@ -89,6 +126,16 @@
                                 id="count-approved"><%= summaryCounts.approved %></span>
                         </div>
                         <div class="summary-card">
+                            <span class="summary-label">จัดล็อกแล้ว/รอจ่าย</span>
+                            <span class="summary-value"
+                                id="count-in_progress"><%= summaryCounts.inProgress || 0 %></span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-label">จ่ายเงินแล้ว</span>
+                            <span class="summary-value"
+                                id="count-success"><%= summaryCounts.success || 0 %></span>
+                        </div>
+                        <div class="summary-card">
                             <span class="summary-label">ปฏิเสธ</span>
                             <span class="summary-value"
                                 id="count-rejected"><%= summaryCounts.rejected %></span>
@@ -109,6 +156,10 @@
                             data-status="pending">รออนุมัติ</button>
                         <button class="btn-filter"
                             data-status="approved">อนุมัติแล้ว</button>
+                        <button class="btn-filter"
+                            data-status="in_progress">จัดล็อกแล้ว/รอจ่าย</button>
+                        <button class="btn-filter"
+                            data-status="success">จ่ายเงินแล้ว</button>
                         <button class="btn-filter"
                             data-status="rejected">ปฏิเสธ</button>
                     </div>
@@ -155,20 +206,44 @@
                     <% } %>
 
                     <% bookingRequestsList.forEach(function(request) { %>
-                        <div class="booking-card" data-request-id="<%= request.id %>" data-status="<%= request.status %>" data-zone="<%= request.zone || '' %>" data-shop="<%= request.productName || '' %>" onclick='openDetail(<%- JSON.stringify(request.productName || "-") %>, <%- JSON.stringify(request.zoneLabel || "-") %>, <%- JSON.stringify(request.sellerName || "-") %>, <%- JSON.stringify(request.phone || "-") %>, <%- JSON.stringify(request.statusLabel || "-") %>, <%- JSON.stringify(request.description || "-") %>, <%= request.id %>, <%- JSON.stringify(request.createdAtText || "-") %>, <%- JSON.stringify(request.status || "pending") %>, <%- JSON.stringify(request.productImage || "") %>, <%- JSON.stringify(request.assignedStallCode || "") %>, <%- JSON.stringify(request.paymentSlipImage || "") %>, <%- JSON.stringify(Boolean(request.paymentConfirmedAt)) %>)'>
+                        <%
+                        const openDetailArgs = `${JSON.stringify(request.productName || "-")}, ${JSON.stringify(request.zoneLabel || "-")}, ${JSON.stringify(request.sellerName || "-")}, ${JSON.stringify(request.phone || "-")}, ${JSON.stringify(request.statusLabel || "-")}, ${JSON.stringify(request.description || "-")}, ${request.id}, ${JSON.stringify(request.createdAtText || "-")}, ${JSON.stringify(request.status || "pending")}, ${JSON.stringify(request.productImage || "")}, ${JSON.stringify(request.assignedStallCode || "")}, ${JSON.stringify(request.paymentSlipImage || "")}, ${JSON.stringify(Boolean(request.paymentConfirmedAt))}, ${JSON.stringify(Boolean(request.isExtension))}, ${JSON.stringify(request.extendOfRequestId || "")}, ${JSON.stringify(request.cornerZoneNote || "")}, ${JSON.stringify(Boolean(request.isFinalPrice))}, ${JSON.stringify(request.booking || null)}, ${JSON.stringify(request.slipVerified)}, ${JSON.stringify(request.slipVerifyReason || "")}`;
+                        %>
+                        <div class="booking-card" data-request-id="<%= request.id %>" data-status="<%= request.status %>" data-zone="<%= request.zone || '' %>" data-shop="<%= request.productName || '' %>" onclick='openDetail(<%- openDetailArgs %>)'>
                             <div class="card-header">
                                 <h3 class="shop-name"><%= request.productName %></h3>
                                 <span class="badge <%= request.status %>"><%= request.statusLabel %></span>
                             </div>
+                            <% if (request.isExtension || request.cornerZoneNote || request.paymentSlipImage) { %>
+                            <div class="card-tags">
+                                <% if (request.isExtension) { %>
+                                <span class="tag tag--extend"><i class="fa-solid fa-rotate"></i> ต่อล็อคจากคำขอ #<%= request.extendOfRequestId %></span>
+                                <% } %>
+                                <% if (request.cornerZoneNote) { %>
+                                <span class="tag tag--corner"><i class="fa-solid fa-star"></i> สนใจล็อคเต็ง: <%= request.cornerZoneNote %></span>
+                                <% } %>
+                                <% if (request.paymentSlipImage && request.slipVerified === true) { %>
+                                <span class="tag tag--slip-ok"><i class="fa-solid fa-circle-check"></i> สลิปจริง ยอดตรง</span>
+                                <% } else if (request.paymentSlipImage && request.slipVerified === false) { %>
+                                <span class="tag tag--slip-bad"><i class="fa-solid fa-triangle-exclamation"></i> สลิปมีปัญหา: <%= request.slipVerifyReason || 'ตรวจไม่ผ่าน' %></span>
+                                <% } else if (request.paymentSlipImage) { %>
+                                <span class="tag tag--slip-pending"><i class="fa-solid fa-hourglass-half"></i> ยังไม่ตรวจสลิปอัตโนมัติ</span>
+                                <% } %>
+                            </div>
+                            <% } %>
                             <div class="card-body">
                                 <p><i class="fa-solid fa-map-location-dot"></i> โซน: <%= request.zoneLabel %></p>
                                 <p><i class="fa-solid fa-store"></i> ผู้จอง: <%= request.sellerName %></p>
                                 <p><i class="fa-solid fa-phone"></i> เบอร์: <%= request.phone %></p>
                                 <p><i class="fa-solid fa-calendar-check"></i> ยื่นคำขอ: <%= request.createdAtText %></p>
                                 <p><i class="fa-solid fa-hashtag"></i> แผงที่จัด: <%= request.assignedStallCode || '-' %></p>
+                                <% if (request.booking) { %>
+                                <p><i class="fa-solid fa-calendar-days"></i> วันเช่า: <%= request.booking.rentalStartDateText %> - <%= request.booking.rentalEndDateText %> (<%= request.booking.rentalDays %> วัน)</p>
+                                <p><i class="fa-solid fa-coins"></i> ราคา<%= request.isFinalPrice ? 'จริง' : 'ประเมิน' %>: <%= Number(request.booking.grandTotal).toLocaleString('th-TH') %> บาท</p>
+                                <% } %>
                             </div>
                             <div class="card-actions">
-                                <button type="button" class="btn-action btn-approve" onclick="event.stopPropagation(); openDetail(<%- JSON.stringify(request.productName || "-") %>, <%- JSON.stringify(request.zoneLabel || "-") %>, <%- JSON.stringify(request.sellerName || "-") %>, <%- JSON.stringify(request.phone || "-") %>, <%- JSON.stringify(request.statusLabel || "-") %>, <%- JSON.stringify(request.description || "-") %>, <%= request.id %>, <%- JSON.stringify(request.createdAtText || "-") %>, <%- JSON.stringify(request.status || "pending") %>, <%- JSON.stringify(request.productImage || "") %>, <%- JSON.stringify(request.assignedStallCode || "") %>, <%- JSON.stringify(request.paymentSlipImage || "") %>, <%- JSON.stringify(Boolean(request.paymentConfirmedAt)) %>)">ดูรายละเอียด</button>
+                                <button type="button" class="btn-action btn-approve" onclick='event.stopPropagation(); openDetail(<%- openDetailArgs %>)'>ดูรายละเอียด</button>
                             </div>
                         </div>
                     <% }) %>
@@ -214,7 +289,18 @@
 
                             <span class="detail-label">แผงที่จัด:</span>
                             <span class="detail-value" id="m-assigned-stall"></span>
+
+                            <span class="detail-label">วันที่เช่า:</span>
+                            <span class="detail-value" id="m-rental-dates"></span>
+
+                            <span class="detail-label">จำนวนล็อก/เครื่องใช้ไฟฟ้า:</span>
+                            <span class="detail-value" id="m-stall-appliance"></span>
+
+                            <span class="detail-label" id="m-price-label">ราคา:</span>
+                            <span class="detail-value" id="m-price"></span>
                         </div>
+
+                        <div class="card-tags d-none" id="m-tags"></div>
 
                         <div class="note-box">
                             <strong>หมายเหตุจากผู้เช่า:</strong><br>
@@ -241,6 +327,7 @@
                 isEditable: <%= Boolean(isEditable) %>
             };
         </script>
+        <script src="/js/common/dialogs.js"></script>
         <script src="/js/admin/approvals.js"></script>
 
     </body>

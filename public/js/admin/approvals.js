@@ -7,6 +7,8 @@ const searchInput = document.getElementById('shopSearch');
 const countAllEl = document.getElementById('count-all');
 const countPendingEl = document.getElementById('count-pending');
 const countApprovedEl = document.getElementById('count-approved');
+const countInProgressEl = document.getElementById('count-in_progress');
+const countSuccessEl = document.getElementById('count-success');
 const countRejectedEl = document.getElementById('count-rejected');
 const countAEl = document.getElementById('count-A');
 const countBEl = document.getElementById('count-B');
@@ -52,90 +54,33 @@ function submitApproval(requestId, status) {
     form.submit();
 }
 
+// กล่องยืนยัน/แจ้งเตือนทั้งหมดในหน้านี้ใช้ window.showConfirmDialog()/showAlertDialog()
+// กลางจาก public/js/common/dialogs.js (โหลดไว้ก่อนไฟล์นี้ใน views/admin/approvals.ejs)
 function submitConfirmPayment(requestId) {
-    const confirmed = window.confirm('ยืนยันว่าตรวจสลิปโอนเงินแล้วถูกต้อง? เลขล็อกจะถูกเปิดเผยให้ลูกค้าเห็นทันทีหลังกดยืนยัน');
-    if (!confirmed) {
-        return;
-    }
+    window.showConfirmDialog({
+        title: 'ยืนยันการชำระเงิน',
+        message: 'ตรวจสลิปโอนเงินแล้วถูกต้องใช่ไหม? เลขล็อกจะถูกเปิดเผยให้ลูกค้าเห็นทันทีหลังกดยืนยัน',
+        tone: 'success',
+        confirmText: 'ยืนยันการชำระเงิน',
+        onConfirm: () => {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/admin/approvals/confirm-payment';
 
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/admin/approvals/confirm-payment';
+            const requestField = document.createElement('input');
+            requestField.type = 'hidden';
+            requestField.name = 'requestId';
+            requestField.value = String(requestId);
 
-    const requestField = document.createElement('input');
-    requestField.type = 'hidden';
-    requestField.name = 'requestId';
-    requestField.value = String(requestId);
-
-    form.appendChild(requestField);
-    document.body.appendChild(form);
-    form.submit();
+            form.appendChild(requestField);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
 }
 
 function confirmArrangeStall(stall) {
     navigateToBookingStall(stall);
-}
-
-function getStatusClass(status) {
-    if (status === 'approved' || status === 'rejected') {
-        return status;
-    }
-    return 'pending';
-}
-
-function getStatusText(status) {
-    if (status === 'approved') {
-        return 'อนุมัติแล้ว';
-    }
-    if (status === 'rejected') {
-        return 'ปฏิเสธ';
-    }
-    return 'รออนุมัติ';
-}
-
-function updateCardStatus(stall, nextStatus) {
-    const card = document.querySelector(`.booking-card[data-stall="${stall}"]`);
-    if (!card) {
-        return;
-    }
-
-    card.dataset.status = nextStatus;
-
-    const badge = card.querySelector('.badge');
-    if (badge) {
-        badge.className = `badge ${getStatusClass(nextStatus)}`;
-        badge.textContent = getStatusText(nextStatus);
-    }
-
-    const actions = card.querySelector('.card-actions');
-    if (actions) {
-        actions.style.display = nextStatus === 'pending' ? 'flex' : 'none';
-    }
-}
-
-function rejectBooking(stall, shopName) {
-    const confirmed = window.confirm(`ยืนยันปฏิเสธการจองร้าน ${shopName} ?`);
-    if (!confirmed) {
-        return;
-    }
-
-    updateCardStatus(stall, 'rejected');
-    updateSummaryCounters();
-    applyFilters();
-
-    if (currentBooking && currentBooking.stall === stall) {
-        currentBooking.status = 'rejected';
-        closePopup();
-    }
-}
-
-function rejectCurrentBooking() {
-    if (!currentBooking) {
-        closePopup();
-        return;
-    }
-
-    rejectBooking(currentBooking.stall, currentBooking.shop);
 }
 
 function applyFilters() {
@@ -168,6 +113,8 @@ function updateSummaryCounters() {
         all: 0,
         pending: 0,
         approved: 0,
+        in_progress: 0,
+        success: 0,
         rejected: 0,
         A: 0,
         B: 0,
@@ -202,6 +149,14 @@ function updateSummaryCounters() {
 
     if (countApprovedEl) {
         countApprovedEl.textContent = counters.approved;
+    }
+
+    if (countInProgressEl) {
+        countInProgressEl.textContent = counters.in_progress;
+    }
+
+    if (countSuccessEl) {
+        countSuccessEl.textContent = counters.success;
     }
 
     if (countRejectedEl) {
@@ -258,7 +213,7 @@ if (searchInput) {
     });
 }
 
-function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, createdAtText, rawStatus, shopImage, assignedStallCode, paymentSlipImage, paymentConfirmed) {
+function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, createdAtText, rawStatus, shopImage, assignedStallCode, paymentSlipImage, paymentConfirmed, isExtension, extendOfRequestId, cornerZoneNote, isFinalPrice, booking, slipVerified, slipVerifyReason) {
     const pageState = window.APPROVAL_PAGE_STATE || { isEditable: true };
     currentBooking = {
         shop,
@@ -281,6 +236,42 @@ function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, c
     document.getElementById('m-status').innerText = statusLabel;
     document.getElementById('m-note').innerText = note;
     document.getElementById('m-assigned-stall').innerText = assignedStallCode || '-';
+
+    const tagsEl = document.getElementById('m-tags');
+    if (tagsEl) {
+        const tagsHtml = [];
+        if (isExtension) {
+            tagsHtml.push(`<span class="tag tag--extend"><i class="fa-solid fa-rotate"></i> ต่อล็อคจากคำขอ #${extendOfRequestId}</span>`);
+        }
+        if (cornerZoneNote) {
+            tagsHtml.push(`<span class="tag tag--corner"><i class="fa-solid fa-star"></i> สนใจล็อคเต็ง: ${cornerZoneNote}</span>`);
+        }
+        if (paymentSlipImage && slipVerified === true) {
+            tagsHtml.push('<span class="tag tag--slip-ok"><i class="fa-solid fa-circle-check"></i> สลิปจริง ยอดตรง</span>');
+        } else if (paymentSlipImage && slipVerified === false) {
+            tagsHtml.push(`<span class="tag tag--slip-bad"><i class="fa-solid fa-triangle-exclamation"></i> สลิปมีปัญหา: ${slipVerifyReason || 'ตรวจไม่ผ่าน'}</span>`);
+        } else if (paymentSlipImage) {
+            tagsHtml.push('<span class="tag tag--slip-pending"><i class="fa-solid fa-hourglass-half"></i> ยังไม่ตรวจสลิปอัตโนมัติ</span>');
+        }
+        tagsEl.innerHTML = tagsHtml.join('');
+        tagsEl.classList.toggle('d-none', tagsHtml.length === 0);
+    }
+
+    const rentalDatesEl = document.getElementById('m-rental-dates');
+    const stallApplianceEl = document.getElementById('m-stall-appliance');
+    const priceLabelEl = document.getElementById('m-price-label');
+    const priceEl = document.getElementById('m-price');
+    if (booking) {
+        if (rentalDatesEl) rentalDatesEl.innerText = `${booking.rentalStartDateText} - ${booking.rentalEndDateText} (${booking.rentalDays} วัน)`;
+        if (stallApplianceEl) stallApplianceEl.innerText = `${booking.stallCount} ล็อก / เครื่องเล็ก ${booking.smallApplianceCount} + เครื่องใหญ่ ${booking.largeApplianceCount}`;
+        if (priceLabelEl) priceLabelEl.innerText = isFinalPrice ? 'ราคาจริง:' : 'ราคาประเมิน:';
+        if (priceEl) priceEl.innerText = `${Number(booking.grandTotal).toLocaleString('th-TH')} บาท`;
+    } else {
+        if (rentalDatesEl) rentalDatesEl.innerText = '-';
+        if (stallApplianceEl) stallApplianceEl.innerText = '-';
+        if (priceLabelEl) priceLabelEl.innerText = 'ราคา:';
+        if (priceEl) priceEl.innerText = '-';
+    }
 
     const shopImageEl = document.getElementById('m-shop-image');
     const shopImageEmptyEl = document.getElementById('m-shop-image-empty');
@@ -317,7 +308,13 @@ function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, c
         approveBtn.onclick = () => navigateToBookingRequest(currentBooking.requestId);
     }
     if (rejectBtn) {
-        rejectBtn.onclick = () => submitApproval(currentBooking.requestId, 'REJECTED');
+        rejectBtn.onclick = () => window.showConfirmDialog({
+            title: 'ปฏิเสธการจอง',
+            message: `ยืนยันปฏิเสธการจองร้าน "${currentBooking.shop}" ใช่ไหม?`,
+            tone: 'danger',
+            confirmText: 'ปฏิเสธการจอง',
+            onConfirm: () => submitApproval(currentBooking.requestId, 'REJECTED')
+        });
     }
     if (confirmPaymentBtn) {
         confirmPaymentBtn.onclick = () => submitConfirmPayment(currentBooking.requestId);
@@ -358,13 +355,12 @@ window.openDetail = openDetail;
 window.closePopup = closePopup;
 window.closeModalOnOverlay = closeModalOnOverlay;
 window.confirmArrangeStall = confirmArrangeStall;
-window.rejectBooking = rejectBooking;
-window.rejectCurrentBooking = rejectCurrentBooking;
 window.submitApproval = submitApproval;
 
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
         closePopup();
+        closeConfirmDialog();
     }
 });
 
