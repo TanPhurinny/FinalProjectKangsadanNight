@@ -38,6 +38,40 @@
 
             <div class="container">
 
+                <div class="round-navigation compact">
+                    <div class="round-nav-tools">
+                        <a class="round-nav-icon <%= selectedRoundNumber === previousRoundNumber ? 'active' : '' %>"
+                            href="/admin/approvals?round=<%= previousRoundNumber %>"
+                            title="รอบก่อนหน้า"
+                            aria-label="ไปที่รอบก่อนหน้า">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </a>
+
+                        <a class="round-nav-current <%= isCurrentRound ? 'active' : '' %>"
+                            href="/admin/approvals?round=<%= currentRoundNumber %>"
+                            title="รอบปัจจุบัน">
+                            <span class="round-current-label">รอบปัจจุบัน</span>
+                            <span class="round-current-number">#<%= currentRoundNumber %></span>
+                        </a>
+
+                        <a class="round-nav-icon <%= selectedRoundNumber === nextRoundNumber ? 'active' : '' %>"
+                            href="/admin/approvals?round=<%= nextRoundNumber %>"
+                            title="รอบถัดไป"
+                            aria-label="ไปที่รอบถัดไป">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </a>
+                    </div>
+
+                    <div class="round-nav-detail">
+                        <span class="round-detail-label">รอบที่เลือก:</span>
+                        <strong>#<%= selectedRoundNumber %></strong>
+                        <span class="round-detail-separator">•</span>
+                        <span><%= new Date(roundMeta.cycleStart).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %></span>
+                        <span class="round-detail-separator">-</span>
+                        <span><%= new Date(roundMeta.cycleEnd).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %></span>
+                    </div>
+                </div>
+
                 <div class="filter-section">
                     <div class="summary-strip">
                         <div class="summary-card">
@@ -102,8 +136,14 @@
                     </div>
                 </div>
 
-                <div class="list-meta">พบ <span id="visibleCount">0</span>
-                    ร้าน</div>
+                <div class="list-meta">
+                    พบ <span id="visibleCount">0</span> ร้าน
+                    <% if (!isEditable) { %>
+                        <span class="readonly-hint">• เป็นประวัติการจอง รอบนี้ไม่สามารถแก้ไขได้</span>
+                    <% } else { %>
+                        <span class="readonly-hint">• กำลังเปิดรอบปัจจุบัน สามารถอนุมัติได้</span>
+                    <% } %>
+                </div>
 
                 <div class="card-list" id="bookingList">
                     <% if (bookingRequestsList.length === 0) { %>
@@ -190,6 +230,11 @@
             </div>
 
         </div>
+        <script>
+            window.APPROVAL_PAGE_STATE = {
+                isEditable: <%= Boolean(isEditable) %>
+            };
+        </script>
         <script src="/js/admin/approvals.js"></script>
 
     </body>

@@ -2,8 +2,59 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { buildZonesData } = require('./marketController');
 
+const BOOKING_ROUND_LENGTH_DAYS = 14;
+const BOOKING_ROUND_ANCHOR_NUMBER = 44;
+const BOOKING_ROUND_ANCHOR_DATE = new Date('2026-08-01T00:00:00');
+
 function normalizeZone(zone) {
     return String(zone || '').trim().toUpperCase();
+}
+
+function toStartOfDay(dateValue) {
+    const value = new Date(dateValue);
+    if (Number.isNaN(value.getTime())) {
+        return null;
+    }
+    value.setHours(0, 0, 0, 0);
+    return value;
+}
+
+function addDays(dateValue, days) {
+    const next = new Date(dateValue);
+    next.setDate(next.getDate() + days);
+    return next;
+}
+
+function getBookingRoundMetaForDate(dateValue) {
+    const baseDate = toStartOfDay(dateValue || new Date());
+    if (!baseDate) {
+        return {
+            roundNumber: BOOKING_ROUND_ANCHOR_NUMBER,
+            cycleStart: new Date(BOOKING_ROUND_ANCHOR_DATE),
+            cycleEnd: addDays(new Date(BOOKING_ROUND_ANCHOR_DATE), BOOKING_ROUND_LENGTH_DAYS - 1)
+        };
+    }
+
+    const anchor = toStartOfDay(BOOKING_ROUND_ANCHOR_DATE);
+    const diffDays = Math.floor((baseDate.getTime() - anchor.getTime()) / (1000 * 60 * 60 * 24));
+    const roundNumber = BOOKING_ROUND_ANCHOR_NUMBER + Math.floor(diffDays / BOOKING_ROUND_LENGTH_DAYS);
+    const cycleStart = addDays(anchor, (roundNumber - BOOKING_ROUND_ANCHOR_NUMBER) * BOOKING_ROUND_LENGTH_DAYS);
+    const cycleEnd = addDays(cycleStart, BOOKING_ROUND_LENGTH_DAYS - 1);
+
+    return { roundNumber, cycleStart, cycleEnd };
+}
+
+function getRoundWindow(roundNumber) {
+    const anchor = toStartOfDay(BOOKING_ROUND_ANCHOR_DATE);
+    const offset = (roundNumber - BOOKING_ROUND_ANCHOR_NUMBER) * BOOKING_ROUND_LENGTH_DAYS;
+    const cycleStart = addDays(anchor, offset);
+    const cycleEnd = addDays(cycleStart, BOOKING_ROUND_LENGTH_DAYS - 1);
+    return { cycleStart, cycleEnd };
+}
+
+function isRoundEditable(roundNumber) {
+    const currentRoundNumber = getBookingRoundMetaForDate(new Date()).roundNumber;
+    return roundNumber >= currentRoundNumber;
 }
 
 function toThaiDate(value) {
@@ -74,8 +125,21 @@ async function buildAdminBookingStallPageData(requestId) {
 
 exports.getApprovalsPage = async (req, res) => {
     try {
-        const bookingRequests = await prisma.bookingRequest.findMany({
+        const currentRoundMeta = getBookingRoundMetaForDate(new Date());
+        const requestedRound = req.query.round ? Number(req.query.round) : currentRoundMeta.roundNumber;
+        const selectedRoundNumber = Number.isInteger(requestedRound) && requestedRound > 0 ? requestedRound : currentRoundMeta.roundNumber;
+        const selectedRoundWindow = getRoundWindow(selectedRoundNumber);
+
+        const allRequests = await prisma.bookingRequest.findMany({
             orderBy: { createdAt: 'desc' }
+        });
+
+        const bookingRequests = allRequests.filter((request) => {
+            const createdAt = new Date(request.createdAt);
+            if (Number.isNaN(createdAt.getTime())) {
+                return false;
+            }
+            return createdAt >= selectedRoundWindow.cycleStart && createdAt <= selectedRoundWindow.cycleEnd;
         });
 
         const sellerNames = Array.from(
@@ -156,8 +220,23 @@ exports.getApprovalsPage = async (req, res) => {
             };
         });
 
-        res.render('admin/approvals', { 
-            user: req.user, 
+        const previousRoundNumber = selectedRoundNumber - 1;
+        const nextRoundNumber = selectedRoundNumber + 1;
+        const isCurrentRound = selectedRoundNumber === currentRoundMeta.roundNumber;
+        const isEditable = isCurrentRound;
+        const roundSummary = {
+            selectedRoundNumber,
+            currentRoundNumber: currentRoundMeta.roundNumber,
+            previousRoundNumber,
+            nextRoundNumber,
+            isCurrentRound,
+            isEditable,
+            selectedRoundWindow: selectedRoundWindow,
+            currentRoundWindow: getRoundWindow(currentRoundMeta.roundNumber)
+        };
+
+        res.render('admin/approvals', {
+            user: req.user,
             bookingRequests: bookingRows,
             counts: {
                 all: bookingRows.length,
@@ -166,13 +245,20 @@ exports.getApprovalsPage = async (req, res) => {
                 rejected: statusCounts.REJECTED,
                 zones: zoneCounts
             },
+            selectedRoundNumber,
+            previousRoundNumber,
+            nextRoundNumber,
+            currentRoundNumber: currentRoundMeta.roundNumber,
+            roundMeta: selectedRoundWindow,
+            isCurrentRound,
+            isEditable,
             error: req.query.error || null,
             success: req.query.success || null
         });
     } catch (err) {
-        res.render('admin/dashboard', { 
-            user: req.user, 
-            error: "ไม่สามารถดึงข้อมูลรายการอนุมัติได้" 
+        res.render('admin/dashboard', {
+            user: req.user,
+            error: "ไม่สามารถดึงข้อมูลรายการอนุมัติได้"
         });
     }
 };
@@ -183,6 +269,19 @@ exports.confirmApproval = async (req, res) => {
         const normalizedStatus = String(status || '').toUpperCase();
         if (!['PENDING', 'APPROVED', 'REJECTED'].includes(normalizedStatus)) {
             return res.redirect('/admin/approvals?error=invalid_status');
+        }
+
+        const requestRecord = await prisma.bookingRequest.findUnique({
+            where: { id: parseInt(requestId) }
+        });
+
+        if (!requestRecord) {
+            return res.redirect('/admin/approvals?error=request_not_found');
+        }
+
+        const requestRoundNumber = getBookingRoundMetaForDate(requestRecord.createdAt).roundNumber;
+        if (!isRoundEditable(requestRoundNumber)) {
+            return res.redirect('/admin/approvals?error=history_round_locked');
         }
 
         await prisma.bookingRequest.update({ 
@@ -224,6 +323,19 @@ exports.confirmBookingStall = async (req, res) => {
             return res.redirect('/admin/approvals?error=missing_confirm_payload');
         }
 
+        const requestRecord = await prisma.bookingRequest.findUnique({
+            where: { id: requestId },
+            select: { id: true, createdAt: true }
+        });
+
+        if (!requestRecord) {
+            return res.redirect('/admin/approvals?error=request_not_found');
+        }
+
+        if (!isRoundEditable(getBookingRoundMetaForDate(requestRecord.createdAt).roundNumber)) {
+            return res.redirect('/admin/approvals?error=history_round_locked');
+        }
+
         const stall = await prisma.stall.findUnique({
             where: { stallCode: selectedStall },
             select: { id: true, isAvailable: true, status: true }
@@ -238,22 +350,22 @@ exports.confirmBookingStall = async (req, res) => {
             return res.redirect('/admin/approvals?error=stall_unavailable');
         }
 
-        const requestRecord = await prisma.bookingRequest.findUnique({
+        const requestPayload = await prisma.bookingRequest.findUnique({
             where: { id: requestId },
             select: { id: true, description: true, assignedStallCode: true }
         });
-        if (!requestRecord) {
+        if (!requestPayload) {
             return res.redirect('/admin/approvals?error=request_not_found');
         }
 
-        const previousAssigned = String(requestRecord.assignedStallCode || extractAssignedStallFromDescription(requestRecord.description) || '').trim().toUpperCase();
+        const previousAssigned = String(requestPayload.assignedStallCode || extractAssignedStallFromDescription(requestPayload.description) || '').trim().toUpperCase();
         const isReassign = Boolean(previousAssigned) && previousAssigned !== selectedStall;
 
         const previousStall = isReassign
             ? await prisma.stall.findUnique({ where: { stallCode: previousAssigned }, select: { id: true } })
             : null;
 
-        const cleanedDescription = String(requestRecord.description || '').replace(/^\[ASSIGNED_STALL:[^\]]+\]\s*/i, '').trim();
+        const cleanedDescription = String(requestPayload.description || '').replace(/^\[ASSIGNED_STALL:[^\]]+\]\s*/i, '').trim();
 
         await prisma.$transaction(async (tx) => {
             await tx.bookingRequest.update({
@@ -295,6 +407,19 @@ exports.rejectBookingStall = async (req, res) => {
         const requestId = Number.parseInt(req.body.requestId, 10);
         if (!requestId) {
             return res.redirect('/admin/approvals?error=missing_request_id');
+        }
+
+        const requestRecord = await prisma.bookingRequest.findUnique({
+            where: { id: requestId },
+            select: { id: true, createdAt: true }
+        });
+
+        if (!requestRecord) {
+            return res.redirect('/admin/approvals?error=request_not_found');
+        }
+
+        if (!isRoundEditable(getBookingRoundMetaForDate(requestRecord.createdAt).roundNumber)) {
+            return res.redirect('/admin/approvals?error=history_round_locked');
         }
 
         await prisma.bookingRequest.update({

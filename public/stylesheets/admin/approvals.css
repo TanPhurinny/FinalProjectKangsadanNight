@@ -66,6 +66,114 @@
     padding: 0 16px;
 }
 
+.approvals-page .round-navigation {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--primary-color);
+    border-radius: 4px;
+    padding: 12px 14px 10px;
+    margin-bottom: 18px;
+}
+
+.approvals-page .compact {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.approvals-page .round-nav-tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.approvals-page .round-nav-icon,
+.approvals-page .round-nav-current {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--navy);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.approvals-page .round-nav-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+}
+
+.approvals-page .round-nav-icon:hover,
+.approvals-page .round-nav-current:hover {
+    border-color: var(--primary-color);
+    background: var(--soft-bg);
+    text-decoration: none;
+    color: var(--navy);
+}
+
+.approvals-page .round-nav-current {
+    padding: 5px 10px 5px 8px;
+    gap: 6px;
+    background: rgba(25, 54, 92, 0.05);
+}
+
+.approvals-page .round-nav-current.active {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
+}
+
+.approvals-page .round-current-label {
+    font-size: 0.64rem;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
+
+.approvals-page .round-current-number {
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-family: var(--mono);
+}
+
+.approvals-page .round-nav-detail {
+    flex-basis: 100%;
+    text-align: right;
+    color: var(--ink-soft);
+    font-size: 0.72rem;
+    margin-top: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.approvals-page .round-detail-label {
+    font-weight: 600;
+}
+
+.approvals-page .round-detail-separator {
+    margin: 0 4px;
+    opacity: 0.65;
+}
+
+.approvals-page .round-nav-icon.active {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
+}
+
+.approvals-page .readonly-hint {
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
 .approvals-page .filter-section {
     background: #fff;
     padding: 20px 20px 18px;

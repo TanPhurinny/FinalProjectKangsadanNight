@@ -139,6 +139,85 @@ function getRentalDays(startDate, endDate) {
     return Math.max(1, diffDays + 1);
 }
 
+const BOOKING_ROUND_LENGTH_DAYS = 14;
+const BOOKING_ROUND_ANCHOR_NUMBER = 44;
+const BOOKING_ROUND_ANCHOR_DATE = new Date('2026-08-01T00:00:00');
+
+function addDays(date, days) {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+}
+
+function getBookingRoundMetaForDate(dateValue) {
+    const baseDate = toStartOfDay(dateValue || new Date());
+    if (!baseDate) {
+        return { roundNumber: BOOKING_ROUND_ANCHOR_NUMBER, cycleStart: new Date(BOOKING_ROUND_ANCHOR_DATE), cycleEnd: addDays(new Date(BOOKING_ROUND_ANCHOR_DATE), BOOKING_ROUND_LENGTH_DAYS - 1) };
+    }
+
+    const anchor = toStartOfDay(BOOKING_ROUND_ANCHOR_DATE);
+    const diffDays = Math.floor((baseDate.getTime() - anchor.getTime()) / (1000 * 60 * 60 * 24));
+    const roundNumber = BOOKING_ROUND_ANCHOR_NUMBER + Math.floor(diffDays / BOOKING_ROUND_LENGTH_DAYS);
+    const cycleStart = addDays(anchor, (roundNumber - BOOKING_ROUND_ANCHOR_NUMBER) * BOOKING_ROUND_LENGTH_DAYS);
+    const cycleEnd = addDays(cycleStart, BOOKING_ROUND_LENGTH_DAYS - 1);
+
+    return { roundNumber, cycleStart, cycleEnd };
+}
+
+async function ensureBookingRoundForDate(dateValue) {
+    const meta = getBookingRoundMetaForDate(dateValue);
+    const reminderDate = addDays(meta.cycleEnd, -5);
+    const openAt = addDays(meta.cycleStart, 1);
+
+    const record = await prisma.bookingRound.upsert({
+        where: { roundNumber: meta.roundNumber },
+        update: {
+            cycleStartDate: meta.cycleStart,
+            cycleEndDate: meta.cycleEnd,
+            reminderDate,
+            openAt
+        },
+        create: {
+            roundNumber: meta.roundNumber,
+            cycleStartDate: meta.cycleStart,
+            cycleEndDate: meta.cycleEnd,
+            reminderDate: reminderDate,
+            openAt: openAt
+        }
+    });
+
+    return { ...meta, reminderDate, openAt, record };
+}
+
+function getBookingRoundStatusDetails(dateValue) {
+    const meta = getBookingRoundMetaForDate(dateValue);
+    const reminderDate = addDays(meta.cycleEnd, -5);
+    const openAt = addDays(meta.cycleStart, 1);
+    const today = toStartOfDay(dateValue || new Date());
+
+    let status = 'เปิดจอง';
+    let statusText = 'ยังสามารถส่งคำขอและเลือกวันที่ได้ตามรอบปัจจุบัน';
+
+    if (today.getDay() === 3) {
+        status = 'แจ้งเตือนวันพุธ';
+        statusText = 'ทุกล็อคในรอบนี้ได้รับการแจ้งเตือนในวันพุธเพื่อเตรียมยืนยันการจองและจัดการข้อมูลให้ครบถ้วน';
+    } else if (today < openAt) {
+        status = 'รอเปิดรอบ';
+        statusText = `รอบนี้จะเปิดให้จองได้ในวันที่ ${openAt.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+    } else if (today <= reminderDate) {
+        status = 'แจ้งเตือนก่อนปิดรอบ';
+        statusText = `กรุณาจองให้เสร็จก่อน ${reminderDate.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' })} เพื่อให้ระบบคงความต่อเนื่องของรอบ 14 วัน`;
+    }
+
+    return {
+        ...meta,
+        reminderDate,
+        openAt,
+        status,
+        statusText
+    };
+}
+
 function safeInt(value, fallback = 0) {
     const parsed = Number.parseInt(value, 10);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -237,6 +316,15 @@ function formatTimeThai(dateValue) {
 
 function formatMoney(value) {
     return `${Number(value || 0).toLocaleString('th-TH')} บาท`;
+}
+
+function isWednesdayReminderDay(dateValue = new Date()) {
+    const parsed = new Date(dateValue);
+    return !Number.isNaN(parsed.getTime()) && parsed.getDay() === 3;
+}
+
+function buildWednesdayReminderMessage() {
+    return 'ทุกล็อคในรอบนี้ได้รับการแจ้งเตือนในวันพุธเพื่อเตรียมยืนยันการจองและตรวจสอบข้อมูลให้ครบถ้วนก่อนปิดรอบ';
 }
 
 // PENDING = ยื่นคำขอแล้ว รอแอดมินตรวจสอบร้าน
@@ -359,6 +447,20 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification) {
     const stallLabel = latestBooking.slot?.slotNumber || '-';
     const zoneLabel = latestBooking.zoneCode ? `โซน ${latestBooking.zoneCode}` : 'ที่แจ้งไว้';
 
+    const reminderEntry = isWednesdayReminderDay(latestBooking.createdAt || new Date())
+        ? [{
+            id: `wednesday-reminder-${latestBooking.id || 'current'}`,
+            type: 'pending-review',
+            title: 'แจ้งเตือนวันพุธ',
+            desc: buildWednesdayReminderMessage(),
+            date: formatDateThai(latestBooking.createdAt || new Date()),
+            time: formatTimeThai(latestBooking.createdAt || new Date()),
+            status,
+            isRead: false,
+            isNew: true
+        }]
+        : [];
+
     // สถานะปฏิเสธไม่ได้เดินตาม timeline ปกติ (รอตรวจสอบ -> จัดล็อก -> เสร็จสิ้น) จึงต้องแยก
     // แสดงเป็นการ์ดแจ้งเตือนของตัวเอง ไม่งั้นผู้ขายจะเห็นข้อความ "รอการตรวจสอบ" ค้างอยู่ทั้งที่คำขอถูกปฏิเสธไปแล้ว
     if (status === 'REJECTED') {
@@ -414,10 +516,10 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification) {
     ];
 
     const stage = getBookingStep(status);
-    return timeline.map((item, index) => ({
+    return [...reminderEntry, ...timeline].map((item, index) => ({
         ...item,
-        isRead: index < stage,
-        isNew: index + 1 === stage
+        isRead: typeof item.isRead === 'boolean' ? item.isRead : index < stage,
+        isNew: typeof item.isNew === 'boolean' ? item.isNew : index + 1 === stage
     }));
 }
 
@@ -753,6 +855,8 @@ router.get("/booking-stall", isAuthenticated, async (req, res) => {
     const zoneCode = String(zone || '').toUpperCase();
     const normalizedZone = zoneCode.toLowerCase();
     const cornerZoneValue = resolveCornerZonePrice(corner);
+    const bookingRoundInfo = await ensureBookingRoundForDate(new Date());
+    const bookingRoundSummary = getBookingRoundStatusDetails(new Date());
 
     const defaultStoreDetail = userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '';
 
@@ -763,6 +867,8 @@ router.get("/booking-stall", isAuthenticated, async (req, res) => {
             zonePrice: 0,
             error: 'กรุณาเลือกโซนจากหน้าเลือกโซนก่อนทำรายการจอง',
             defaultStoreDetail,
+            bookingRoundInfo,
+            bookingRoundSummary,
             pricing: {
                 lightUnitPrice: LIGHT_UNIT_PRICE,
                 smallAppliancePrice: SMALL_APPLIANCE_PRICE,
@@ -780,6 +886,8 @@ router.get("/booking-stall", isAuthenticated, async (req, res) => {
             zonePrice: 0,
             error: 'คุณไม่มีสิทธิ์จองโซนนี้ตามประเภทสินค้าของคุณ',
             defaultStoreDetail,
+            bookingRoundInfo,
+            bookingRoundSummary,
             pricing: {
                 lightUnitPrice: LIGHT_UNIT_PRICE,
                 smallAppliancePrice: SMALL_APPLIANCE_PRICE,
@@ -798,6 +906,8 @@ router.get("/booking-stall", isAuthenticated, async (req, res) => {
             zonePrice: 0,
             error: 'ไม่พบราคาของโซนนี้ในฐานข้อมูล',
             defaultStoreDetail,
+            bookingRoundInfo,
+            bookingRoundSummary,
             pricing: {
                 lightUnitPrice: LIGHT_UNIT_PRICE,
                 smallAppliancePrice: SMALL_APPLIANCE_PRICE,
@@ -813,6 +923,8 @@ router.get("/booking-stall", isAuthenticated, async (req, res) => {
         zonePrice,
         error: null,
         defaultStoreDetail,
+        bookingRoundInfo,
+        bookingRoundSummary,
         cornerZoneValue,
         pricing: {
             lightUnitPrice: LIGHT_UNIT_PRICE,
@@ -831,6 +943,8 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
 
         const zoneCode = String(req.body.zone || '').trim().toUpperCase();
         const normalizedZone = zoneCode.toLowerCase();
+        const bookingRoundInfo = await ensureBookingRoundForDate(new Date());
+        const bookingRoundSummary = getBookingRoundStatusDetails(new Date());
 
         if (!zoneCode) {
             return res.status(400).render('seller/booking_stall', {
@@ -839,6 +953,8 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
                 zonePrice: 0,
                 error: 'ไม่พบโซนที่ต้องการจอง',
                 defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
+                bookingRoundInfo,
+                bookingRoundSummary,
                 cornerZoneValue: resolveCornerZonePrice(req.body.cornerZone),
                 pricing: {
                     lightUnitPrice: LIGHT_UNIT_PRICE,
@@ -856,6 +972,8 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
                 zonePrice: 0,
                 error: 'คุณไม่มีสิทธิ์จองโซนนี้ตามประเภทสินค้าของคุณ',
                 defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
+                bookingRoundInfo,
+                bookingRoundSummary,
                 cornerZoneValue: resolveCornerZonePrice(req.body.cornerZone),
                 pricing: {
                     lightUnitPrice: LIGHT_UNIT_PRICE,
@@ -874,6 +992,8 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
                 zonePrice: 0,
                 error: 'ไม่พบราคาโซนจากฐานข้อมูล',
                 defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
+                bookingRoundInfo,
+                bookingRoundSummary,
                 cornerZoneValue: resolveCornerZonePrice(req.body.cornerZone),
                 pricing: {
                     lightUnitPrice: LIGHT_UNIT_PRICE,
@@ -892,6 +1012,8 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
                 zonePrice,
                 error: 'ข้อมูลจำนวนแผง/เครื่องใช้ไฟฟ้าหรือวันที่ที่กรอกไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง',
                 defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
+                bookingRoundInfo,
+                bookingRoundSummary,
                 cornerZoneValue: resolveCornerZonePrice(req.body.cornerZone),
                 pricing: {
                     lightUnitPrice: LIGHT_UNIT_PRICE,
@@ -919,6 +1041,8 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
                 zonePrice,
                 error: 'กรุณาเลือกวันที่เช่าให้ถูกต้อง',
                 defaultStoreDetail: storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
+                bookingRoundInfo,
+                bookingRoundSummary,
                 cornerZoneValue,
                 pricing: {
                     lightUnitPrice: LIGHT_UNIT_PRICE,
@@ -930,6 +1054,24 @@ router.post('/booking-stall', isSellerOnly, async (req, res) => {
         }
 
         const rentalDays = getRentalDays(startDate, endDate);
+        if (rentalDays < 3) {
+            return res.status(400).render('seller/booking_stall', {
+                user: userRecord,
+                zone: zoneCode,
+                zonePrice,
+                error: 'รอบการจองต้องมีระยะเวลาตั้งแต่ 3 วันขึ้นไป เพื่อให้ระบบคำนวณรอบการจองที่ชัดเจนและยืดหยุ่นได้',
+                defaultStoreDetail: storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || '',
+                bookingRoundInfo,
+                bookingRoundSummary,
+                cornerZoneValue,
+                pricing: {
+                    lightUnitPrice: LIGHT_UNIT_PRICE,
+                    smallAppliancePrice: SMALL_APPLIANCE_PRICE,
+                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                    cornerZoneOptions: CORNER_ZONE_OPTIONS
+                }
+            });
+        }
         const rentTotal = zonePrice * stallCount * rentalDays;
         const applianceTotal = (smallApplianceCount * SMALL_APPLIANCE_PRICE + largeApplianceCount * LARGE_APPLIANCE_PRICE) * rentalDays;
         const lightTotal = LIGHT_UNIT_PRICE * stallCount * rentalDays;

@@ -83,6 +83,19 @@ model BookingRequest {
   @@index([sellerId], map: "BookingRequest_sellerId_fkey")
 }
 
+model BookingRound {
+  id             Int      @id @default(autoincrement())
+  roundNumber    Int      @unique
+  cycleStartDate DateTime
+  cycleEndDate   DateTime
+  reminderDate   DateTime?
+  openAt         DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([cycleStartDate], map: "BookingRound_cycleStartDate_idx")
+}
+
 model Slot {
   id          Int       @id @default(autoincrement())
   slotNumber  String    @unique
