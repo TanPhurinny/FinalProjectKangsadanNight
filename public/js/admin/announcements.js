@@ -119,6 +119,8 @@ function prepareCreate() {
     document.getElementById('modalTitle').innerText = 'สร้างประกาศใหม่';
     form.action = '/admin/announcements'; // Path สำหรับสร้าง (POST)
     form.reset();
+    document.getElementById('formExistingImage').value = '';
+    document.getElementById('formExistingImageHint').classList.add('d-none');
 
     const customerCheckbox = document.getElementById('audienceCustomer');
     if (customerCheckbox) {
@@ -142,7 +144,9 @@ function prepareEdit(dataString) {
     document.getElementById('modalTitle').innerText = 'แก้ไขประกาศ';
     // เปลี่ยน Path ให้ส่งไปที่ Update Route (POST /admin/announcements/:id/update)
     form.action = `/admin/announcements/${data.id}/update`;
-    
+    document.getElementById('formExistingImage').value = '';
+    document.getElementById('formExistingImageHint').classList.add('d-none');
+
     document.getElementById('formTitle').value = data.title;
     document.getElementById('formCategory').value = data.category;
     document.getElementById('formContent').value = data.content;
@@ -152,6 +156,29 @@ function prepareEdit(dataString) {
         checkbox.checked = selectedRoles.includes(checkbox.value);
     });
     
+    new bootstrap.Modal(document.getElementById('announcementModal')).show();
+}
+
+// เตรียม Modal สร้างประกาศ โดยเติมหัวข้อ/เนื้อหาพรีเซตของรอบใหม่ให้อัตโนมัติ
+// (เปิดผ่าน modal เดิมแทน dialog ข้อความยาว กันบัคล้น + แก้ไขก่อนบันทึกได้)
+function prepareRoundPreset(previewTitle, previewContent, previewImage) {
+    const form = document.getElementById('announcementForm');
+    document.getElementById('modalTitle').innerText = 'ประกาศเปิดจองรอบใหม่ (พรีเซต — แก้ไขได้ก่อนบันทึก)';
+    form.action = '/admin/announcements';
+    form.reset();
+
+    document.getElementById('formTitle').value = previewTitle;
+    document.getElementById('formContent').value = previewContent;
+    document.getElementById('formCategory').value = 'ระบบจองล็อค';
+    document.getElementById('formIsImportant').checked = true;
+
+    document.getElementById('formExistingImage').value = previewImage || '';
+    document.getElementById('formExistingImageHint').classList.toggle('d-none', !previewImage);
+
+    document.querySelectorAll('input[name="targetRoles"]').forEach((checkbox) => {
+        checkbox.checked = checkbox.value === 'SELLER';
+    });
+
     new bootstrap.Modal(document.getElementById('announcementModal')).show();
 }
 

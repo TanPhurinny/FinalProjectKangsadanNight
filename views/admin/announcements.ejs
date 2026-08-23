@@ -40,11 +40,21 @@
                 <div>
                     <p class="text-muted mb-0 small" id="live-date"></p>
                 </div>
-                <button class="btn-primary-custom" data-bs-toggle="modal"
-                    data-bs-target="#announcementModal"
-                    onclick="prepareCreate()">
-                    <i class="fas fa-plus-circle me-1"></i> สร้างประกาศใหม่
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn-primary-custom" type="button"
+                        id="roundPresetBtn"
+                        data-preset-title="<%= roundPreset.title %>"
+                        data-preset-content="<%= roundPreset.content %>"
+                        data-preset-image="<%= roundPreset.image %>"
+                        onclick="prepareRoundPreset(this.dataset.presetTitle, this.dataset.presetContent, this.dataset.presetImage)">
+                        <i class="fas fa-bolt me-1"></i> ประกาศเปิดจองรอบใหม่ (อัตโนมัติ)
+                    </button>
+                    <button class="btn-primary-custom" data-bs-toggle="modal"
+                        data-bs-target="#announcementModal"
+                        onclick="prepareCreate()">
+                        <i class="fas fa-plus-circle me-1"></i> สร้างประกาศใหม่
+                    </button>
+                </div>
             </div>
 
             <div class="card border shadow-custom mb-4">
@@ -92,12 +102,14 @@
                     data-roles="<%= (post.targetRoles || [post.targetRole]).join(',') %>"
                     data-created-at="<%= post.createdAt %>">
                     <div
-                        class="card h-100 border shadow-custom overflow-hidden bg-white hover-up">
+                        class="card h-100 border shadow-custom overflow-hidden bg-white hover-up"
+                        style="cursor: pointer;"
+                        onclick="viewAnnouncementDetail(decodeURIComponent('<%= encodeURIComponent(JSON.stringify(post)) %>'))">
                         <div class="card-img-container">
                             <% if (post.image) { %>
                             <img src="/uploads/announcements/<%= post.image %>"
                                 class="announcement-card-image"
-                                onclick="openAnnouncementImage('/uploads/announcements/<%= encodeURIComponent(post.image) %>', '<%= encodeURIComponent(post.title) %>')"
+                                onclick="event.stopPropagation(); openAnnouncementImage('/uploads/announcements/<%= encodeURIComponent(post.image) %>', '<%= encodeURIComponent(post.title) %>')"
                                 alt="news">
                             <% } else { %>
                             <div class="img-placeholder"><i
@@ -142,15 +154,15 @@
                                 class="d-flex justify-content-end gap-2 pt-3 border-top mt-auto">
                                 <button class="btn-action-view"
                                     title="ดูรายละเอียด"
-                                    onclick="viewAnnouncementDetail(decodeURIComponent('<%= encodeURIComponent(JSON.stringify(post)) %>'))">
+                                    onclick="event.stopPropagation(); viewAnnouncementDetail(decodeURIComponent('<%= encodeURIComponent(JSON.stringify(post)) %>'))">
                                     <i class="fas fa-eye"></i>
                                 </button>
                                 <button class="btn-action-edit" title="แก้ไข"
-                                    onclick="prepareEdit(decodeURIComponent('<%= encodeURIComponent(JSON.stringify(post)) %>'))">
+                                    onclick="event.stopPropagation(); prepareEdit(decodeURIComponent('<%= encodeURIComponent(JSON.stringify(post)) %>'))">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <button class="btn-action-delete" title="ลบ"
-                                    onclick="confirmDelete('<%= post.id %>', '<%= post.title %>')">
+                                    onclick="event.stopPropagation(); confirmDelete('<%= post.id %>', '<%= post.title %>')">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
                             </div>
@@ -198,6 +210,7 @@
                                         <option value="กฎเกณฑ์">กฎเกณฑ์</option>
                                         <option
                                             value="เหตุฉุกเฉิน">เหตุฉุกเฉิน</option>
+                                        <option value="ระบบจองล็อค">ระบบจองล็อค</option>
                                     </select>
                                     <div class="form-check mt-2">
                                         <input type="checkbox" class="form-check-input"
@@ -249,6 +262,10 @@
                                     <input type="file" name="image"
                                         id="formImage" class="form-control"
                                         accept="image/*">
+                                    <input type="hidden" name="existingImage" id="formExistingImage">
+                                    <small class="text-muted d-none" id="formExistingImageHint">
+                                        ใช้รูปเดิม/พรีเซตอยู่ — เลือกไฟล์ใหม่ถ้าต้องการเปลี่ยน
+                                    </small>
                                 </div>
                             </div>
                         </div>

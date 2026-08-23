@@ -10,6 +10,7 @@ const { getCurrentUser } = require('./middlewares/jwtAuth');
 const { isProduction } = require('./config/authSecrets');
 const { generalLimiter } = require('./middlewares/authRateLimit');
 const logger = require('./config/logger');
+const { ensureWeeklyRoundAnnouncement } = require('./utils/autoRoundAnnouncement');
 
 const app = express();
 
@@ -181,11 +182,29 @@ function startServer() {
   });
 }
 
+// ประกาศเปิดจองรอบใหม่แบบอัตโนมัติทุกวันอาทิตย์ (utils/autoRoundAnnouncement.js) —
+// เช็คตอนสตาร์ทแอปเผื่อ deploy/restart ตรงกับวันอาทิตย์พอดี แล้วเช็คซ้ำทุกชั่วโมงหลังจากนั้น
+// (ฟังก์ชันกันซ้ำเองถ้าประกาศของรอบ/วันนั้นถูกสร้างไปแล้ว)
+function scheduleAutoRoundAnnouncement() {
+  ensureWeeklyRoundAnnouncement(prisma).catch((error) => {
+    logger.error({ error: error.message }, 'ensureWeeklyRoundAnnouncement failed');
+  });
+  setInterval(() => {
+    ensureWeeklyRoundAnnouncement(prisma).catch((error) => {
+      logger.error({ error: error.message }, 'ensureWeeklyRoundAnnouncement failed');
+    });
+  }, 60 * 60 * 1000);
+}
+
 // เชื่อมต่อฐานข้อมูลให้พร้อมก่อนเปิดรับ request จริง กัน request แรกของผู้ใช้
 // (เช่นตอน login) ต้องรอ TLS/connection handshake ไปกับฐานข้อมูล remote เอง
 prisma.$connect()
-  .then(startServer)
+  .then(() => {
+    startServer();
+    scheduleAutoRoundAnnouncement();
+  })
   .catch((error) => {
     console.error('Prisma connection failed, starting server anyway:', error.message);
     startServer();
+    scheduleAutoRoundAnnouncement();
   });
