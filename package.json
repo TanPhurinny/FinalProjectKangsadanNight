@@ -145,7 +145,10 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "seed:market": "node prisma/seed-market-structure.js"
+    "seed:market": "node prisma/seed-market-structure.js",
+    "postinstall": "prisma generate",
+    "prestart": "prisma migrate deploy && prisma generate",
+    "predev": "prisma migrate deploy && prisma generate"
   },
   "repository": {
     "type": "git",
