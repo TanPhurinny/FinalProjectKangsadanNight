@@ -689,6 +689,11 @@
               <label>ช่วงเวลาที่จอง</label>
               <span id="app-date">-</span>
             </div>
+            <div class="info-group">
+              <label>จำนวนล็อกที่ขอ</label>
+              <span id="app-stall-count"
+                style="color: var(--primary-dark); font-weight: 700;">-</span>
+            </div>
             <div class="info-group"></div> <div
               class="info-group note-full-width">
               <label
@@ -883,7 +888,9 @@
   }
   window.toggleLotColors = toggleLotColors;
 
-  let currentSelectedStall = String(REQUEST_DATA.assignedStallCode || '').trim().toUpperCase() || null;
+  const REQUESTED_STALL_COUNT = Math.max(1, Number.parseInt(REQUEST_DATA.requestedStallCount, 10) || 1);
+  // เก็บล็อกที่เลือกไว้เป็น array เพราะ 1 คำขออาจขอมากกว่า 1 ล็อก (REQUESTED_STALL_COUNT > 1)
+  let currentSelectedStalls = Array.isArray(REQUEST_DATA.assignedStallCodes) ? [...REQUEST_DATA.assignedStallCodes] : [];
   let currentZone = (REQUEST_DATA.zone || Object.keys(ZONE_BY_CODE)[0] || 'A').toUpperCase();
 
   const tooltip = document.getElementById('adminTooltip');
@@ -901,6 +908,10 @@
     document.getElementById('app-zone').textContent = REQUEST_DATA.zoneText || '-';
     document.getElementById('app-date').textContent = REQUEST_DATA.dateText || '-';
     document.getElementById('app-note').textContent = REQUEST_DATA.note || '-';
+    const stallCountEl = document.getElementById('app-stall-count');
+    if (stallCountEl) {
+      stallCountEl.textContent = REQUESTED_STALL_COUNT > 1 ? `${REQUESTED_STALL_COUNT} ล็อก (ขอมากกว่า 1 ล็อก กรุณาเลือกให้ครบ)` : '1 ล็อก';
+    }
   }
 
   function renderZoneButtons() {
@@ -950,6 +961,28 @@
     { code: 'D209', col: 10, row: 2 }
   ];
 
+  // สลับเลือก/ยกเลิกล็อก — เลือกได้ไม่เกินจำนวนล็อกที่คำขอนี้ขอมา (REQUESTED_STALL_COUNT)
+  function toggleStallSelection(code, cell) {
+    const alreadySelected = currentSelectedStalls.includes(code);
+    if (alreadySelected) {
+      currentSelectedStalls = currentSelectedStalls.filter((c) => c !== code);
+      cell.classList.remove('selected');
+      return;
+    }
+
+    if (currentSelectedStalls.length >= REQUESTED_STALL_COUNT) {
+      window.showAlertDialog({
+        title: 'เลือกครบจำนวนแล้ว',
+        message: `คำขอนี้ขอมา ${REQUESTED_STALL_COUNT} ล็อก กรุณายกเลิกล็อกที่เลือกไว้ก่อนหากต้องการเปลี่ยน`,
+        tone: 'warning'
+      });
+      return;
+    }
+
+    currentSelectedStalls.push(code);
+    cell.classList.add('selected');
+  }
+
   function makeStallCell(code, stall) {
     const cell = document.createElement('div');
     cell.className = stall && stall.small ? 'stall-cell stall-cell-small' : 'stall-cell';
@@ -972,13 +1005,11 @@
         cell.title = `${stall.lotType}${colorText} — ${stall.pricePerDay.toLocaleString('th-TH')} บาท/วัน`;
       }
       cell.addEventListener('click', () => {
-        document.querySelectorAll('.stall-cell').forEach((c) => c.classList.remove('selected'));
-        cell.classList.add('selected');
-        currentSelectedStall = code;
+        toggleStallSelection(code, cell);
       });
     }
 
-    if (code === currentSelectedStall) {
+    if (currentSelectedStalls.includes(code)) {
       cell.classList.add('selected');
     }
 
@@ -1101,10 +1132,18 @@
   }
 
   function confirmStall() {
-    if (!currentSelectedStall) {
+    if (!currentSelectedStalls.length) {
       window.showAlertDialog({
         title: 'ยังไม่ได้เลือกแผงค้า',
-        message: 'กรุณาคลิกเลือกแผงค้า 1 ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้า',
+        message: `กรุณาคลิกเลือกแผงค้า ${REQUESTED_STALL_COUNT} ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้า`,
+        tone: 'warning'
+      });
+      return;
+    }
+    if (currentSelectedStalls.length < REQUESTED_STALL_COUNT) {
+      window.showAlertDialog({
+        title: 'เลือกล็อกยังไม่ครบ',
+        message: `คำขอนี้ขอมา ${REQUESTED_STALL_COUNT} ล็อก แต่เลือกไว้แค่ ${currentSelectedStalls.length} ล็อก กรุณาเลือกให้ครบก่อนยืนยัน`,
         tone: 'warning'
       });
       return;
@@ -1113,7 +1152,7 @@
   }
 
   function openConfirmSummary() {
-    document.getElementById('c-stall').textContent = currentSelectedStall;
+    document.getElementById('c-stall').textContent = currentSelectedStalls.join(', ');
     document.getElementById('c-shop').textContent = document.getElementById('app-shop').textContent || '-';
     document.getElementById('c-name').textContent = document.getElementById('app-name').textContent || '-';
     document.getElementById('c-phone').textContent = document.getElementById('app-phone').textContent || '-';
@@ -1153,7 +1192,7 @@
   function submitConfirmStall() {
     postForm('/admin/booking-stall/confirm', {
       requestId: REQUEST_DATA.id || '',
-      selectedStall: currentSelectedStall || ''
+      selectedStalls: currentSelectedStalls.join(',')
     });
   }
 

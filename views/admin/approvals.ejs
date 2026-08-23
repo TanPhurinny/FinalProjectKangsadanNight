@@ -49,7 +49,12 @@
                     history_round_locked: 'รอบนี้เป็นประวัติแล้ว แก้ไขไม่ได้',
                     no_slip_to_confirm: 'คำขอนี้ยังไม่มีสลิปให้ตรวจ หรือสถานะไม่ตรง',
                     confirm_payment_failed: 'เกิดข้อผิดพลาดขณะยืนยันการชำระเงิน',
-                    slip_verification_failed: `ตรวจสลิปอัตโนมัติไม่ผ่าน: ${flashReason || 'ไม่ทราบสาเหตุ'}`
+                    slip_verification_failed: `ตรวจสลิปอัตโนมัติไม่ผ่าน: ${flashReason || 'ไม่ทราบสาเหตุ'}`,
+                    missing_confirm_payload: 'กรุณาเลือกแผงค้าก่อนยืนยัน',
+                    duplicate_stall_selected: 'เลือกแผงค้าซ้ำกัน กรุณาเลือกล็อกที่ต่างกัน',
+                    stall_count_mismatch: 'จำนวนล็อกที่เลือกไม่ตรงกับจำนวนที่ผู้ขายขอมา กรุณาเลือกให้ครบ',
+                    stall_not_found: 'ไม่พบแผงค้าที่เลือก',
+                    stall_unavailable: 'แผงค้าที่เลือกบางล็อกถูกจองไปแล้ว กรุณาเลือกล็อกอื่น'
                 };
                 const flashSuccessMessages = {
                     payment_confirmed: 'ยืนยันการชำระเงินเรียบร้อย เปิดเผยเลขล็อกให้ลูกค้าแล้ว',
@@ -214,8 +219,11 @@
                                 <h3 class="shop-name"><%= request.productName %></h3>
                                 <span class="badge <%= request.status %>"><%= request.statusLabel %></span>
                             </div>
-                            <% if (request.isExtension || request.cornerZoneNote || request.paymentSlipImage) { %>
+                            <% if (request.isExtension || request.cornerZoneNote || request.paymentSlipImage || request.requestedStallCount > 1) { %>
                             <div class="card-tags">
+                                <% if (request.requestedStallCount > 1) { %>
+                                <span class="tag tag--multi-stall"><i class="fa-solid fa-layer-group"></i> ขอ <%= request.requestedStallCount %> ล็อก</span>
+                                <% } %>
                                 <% if (request.isExtension) { %>
                                 <span class="tag tag--extend"><i class="fa-solid fa-rotate"></i> ต่อล็อคจากคำขอ #<%= request.extendOfRequestId %></span>
                                 <% } %>

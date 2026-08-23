@@ -580,6 +580,12 @@
     border: 1px solid transparent;
 }
 
+.approvals-page .tag--multi-stall {
+    background: rgba(126, 87, 194, 0.1);
+    color: #7e57c2;
+    border-color: rgba(126, 87, 194, 0.3);
+}
+
 .approvals-page .tag--extend {
     background: rgba(59, 130, 246, 0.1);
     color: #2563eb;
