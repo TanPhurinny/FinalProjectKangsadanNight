@@ -29,4 +29,15 @@ async function isAdminOnly(req, res, next) {
     return res.status(403).send('สิทธิ์การเข้าถึงสำหรับผู้ดูแลระบบเท่านั้น');
 }
 
-module.exports = { isStaffOrAdmin, isAdminOnly };
+async function isStaffOnly(req, res, next) {
+    const user = await getCurrentUser(req);
+
+    if (user && user.role === 'STAFF') {
+        req.user = user;
+        return next();
+    }
+
+    return res.status(403).send('สิทธิ์การเข้าถึงสำหรับพนักงานเท่านั้น');
+}
+
+module.exports = { isStaffOrAdmin, isAdminOnly, isStaffOnly };

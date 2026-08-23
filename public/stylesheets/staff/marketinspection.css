@@ -1,0 +1,396 @@
+:root {
+    --inspection-cyan: #2fb0cb;
+    --inspection-cyan-weak: #d7f1f7;
+    --inspection-ink: #1d232b;
+    --inspection-grid: #d3d8de;
+}
+
+body {
+    background: linear-gradient(180deg, #f9fcfe 0%, #ffffff 42%);
+}
+
+.inspection-page {
+    max-width: 1600px;
+}
+
+.inspection-header {
+    padding: 16px 8px 8px;
+}
+
+.inspection-title {
+    margin: 0;
+    font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+    font-weight: 600;
+    color: var(--inspection-ink);
+}
+
+.inspection-subtitle {
+    margin: 8px 0 0;
+    font-size: 1.2rem;
+    color: #212529;
+}
+
+.inspection-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.inspection-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.stats-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #b9ced8;
+    background: #f4fbfe;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    color: #365868;
+    padding: 4px 10px;
+}
+
+.inspection-flow-hint {
+    position: sticky;
+    top: 64px;
+    z-index: 610;
+    margin-top: 10px;
+    border: 1px solid #9ecfe0;
+    background: #eef9ff;
+    color: #2d586a;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 8px 12px;
+}
+
+.search-box-wrapper {
+    position: relative;
+}
+
+.search-box-wrapper i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #5a6a74;
+}
+
+.search-box-wrapper input {
+    width: 100%;
+    border: 1px solid #b9ced8;
+    background: #cceef8;
+    height: 40px;
+    border-radius: 8px;
+    padding: 0 14px 0 38px;
+    font-size: 0.95rem;
+}
+
+.filter-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.filter-label {
+    font-size: 0.88rem;
+    color: #4f5e68;
+}
+
+.filter-select {
+    border: 1px solid #b9ced8;
+    background: #cceef8;
+    color: #23414d;
+    border-radius: 6px;
+    height: 34px;
+    min-width: 140px;
+    padding: 0 10px;
+    font-size: 0.85rem;
+}
+
+.inspection-table-wrap {
+    border: 1px solid var(--inspection-grid);
+    background: #fff;
+    overflow: auto;
+    max-height: calc(100vh - 260px);
+    position: relative;
+}
+
+.inspection-table {
+    width: 100%;
+    min-width: 1180px;
+    border-collapse: collapse;
+}
+
+.inspection-table thead th {
+    background: var(--inspection-cyan);
+    color: #4f2d1e;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: center;
+    border-right: 1px solid #2b9eb6;
+    border-bottom: 1px solid #2b9eb6;
+    padding: 11px 8px;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 550;
+}
+
+.inspection-table thead th:first-child {
+    text-align: left;
+    left: 0;
+    z-index: 501;
+}
+
+.inspection-table td {
+    border-right: 1px solid var(--inspection-grid);
+    border-bottom: 1px solid var(--inspection-grid);
+    padding: 10px 10px;
+    font-size: 0.9rem;
+    vertical-align: top;
+    text-align: center;
+}
+
+.inspection-table td[data-issue] {
+    transition: background-color 0.16s ease;
+}
+
+.inspection-table[data-active-issue='no-show'] th[data-issue='no-show'],
+.inspection-table[data-active-issue='no-show'] td[data-issue='no-show'],
+.inspection-table[data-active-issue='sublease'] th[data-issue='sublease'],
+.inspection-table[data-active-issue='sublease'] td[data-issue='sublease'],
+.inspection-table[data-active-issue='other-market'] th[data-issue='other-market'],
+.inspection-table[data-active-issue='other-market'] td[data-issue='other-market'],
+.inspection-table[data-active-issue='wrong-seller'] th[data-issue='wrong-seller'],
+.inspection-table[data-active-issue='wrong-seller'] td[data-issue='wrong-seller'],
+.inspection-table[data-active-issue='electric-overuse'] th[data-issue='electric-overuse'],
+.inspection-table[data-active-issue='electric-overuse'] td[data-issue='electric-overuse'],
+.inspection-table[data-active-issue='other-issue'] th[data-issue='other-issue'],
+.inspection-table[data-active-issue='other-issue'] td[data-issue='other-issue'] {
+    background: #fff2cc;
+}
+
+.inspection-table td:first-child {
+    width: 370px;
+    text-align: left;
+    color: #8b3d1d;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff;
+}
+
+.inspection-row.is-vacant td:first-child {
+    background: #f2f4f6;
+}
+
+.inspection-row.is-vacant td {
+    background: #f2f4f6;
+    color: #7a848d;
+}
+
+.inspection-row.is-vacant .stall-main,
+.inspection-row.is-vacant .stall-meta {
+    color: #7a848d;
+}
+
+.inspection-row.is-vacant input[type='checkbox'] {
+    cursor: not-allowed;
+}
+
+.stall-main {
+    font-weight: 600;
+    color: #22303a;
+}
+
+.stall-meta {
+    font-size: 0.82rem;
+    color: #6b3b26;
+    margin-top: 3px;
+}
+
+.issue-placeholder {
+    color: #6f7d88;
+}
+
+.status-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 100px;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid #d0d8df;
+    background: #f3f6f8;
+    color: #40515c;
+}
+
+.status-booked {
+    background: #ffe5c7;
+    border-color: #f5be84;
+    color: #8f4c18;
+}
+
+.status-available {
+    background: #ddf6e8;
+    border-color: #9dd9ba;
+    color: #216a49;
+}
+
+.status-maintenance {
+    background: #f7dce0;
+    border-color: #e2acb4;
+    color: #813543;
+}
+
+.status-vacant {
+    background: #e6eaee;
+    border-color: #c6cdd4;
+    color: #5c6670;
+}
+
+.no-results {
+    border-top: 1px solid var(--inspection-grid);
+    padding: 14px;
+    text-align: center;
+    color: #56646f;
+    background: #fcfdff;
+}
+
+@media (max-width: 991px) {
+    .inspection-subtitle {
+        font-size: 1rem;
+    }
+
+    .filter-select {
+        min-width: 120px;
+    }
+
+    .inspection-table-wrap {
+        max-height: calc(100vh - 290px);
+    }
+}
+
+@media (max-width: 767px) {
+    .inspection-flow-hint {
+        top: 56px;
+        font-size: 0.8rem;
+    }
+
+    .inspection-header {
+        position: sticky;
+        top: 56px;
+        z-index: 620;
+        background: linear-gradient(180deg, #f9fcfe 0%, #ffffff 100%);
+        padding-bottom: 10px;
+    }
+
+    .search-box-wrapper input {
+        height: 42px;
+        font-size: 0.95rem;
+    }
+
+    .filter-row {
+        gap: 6px;
+    }
+
+    .filter-label {
+        width: 100%;
+    }
+
+    .filter-select {
+        flex: 1 1 calc(50% - 6px);
+        min-width: 0;
+    }
+
+    .inspection-stats {
+        gap: 6px;
+    }
+
+    .stats-chip {
+        font-size: 0.72rem;
+        padding: 3px 8px;
+    }
+
+    .inspection-table-wrap {
+        overflow: visible;
+        max-height: none;
+    }
+
+    .inspection-table {
+        min-width: 0;
+        width: 100%;
+        display: block;
+    }
+
+    .inspection-table thead {
+        position: absolute;
+        left: -9999px;
+        top: -9999px;
+    }
+
+    .inspection-table tbody {
+        display: block;
+    }
+
+    .inspection-table tr.inspection-row {
+        display: block;
+        border-bottom: 4px solid var(--inspection-grid);
+    }
+
+    .inspection-table tr.inspection-row:last-child {
+        border-bottom: none;
+    }
+
+    .inspection-table td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        width: auto;
+        text-align: right;
+        border-right: none;
+        position: static;
+    }
+
+    .inspection-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        text-align: left;
+        color: #4f5e68;
+    }
+
+    .inspection-table td:first-child {
+        display: block;
+        width: auto;
+        background: var(--inspection-cyan-weak);
+    }
+
+    .inspection-table td:first-child::before {
+        content: none;
+    }
+
+    .inspection-row.is-vacant td:first-child {
+        background: #e6e9ec;
+    }
+
+    .inspection-table td[data-issue] {
+        border-left: 3px solid transparent;
+    }
+
+    .inspection-table[data-active-issue='no-show'] td[data-issue='no-show'],
+    .inspection-table[data-active-issue='sublease'] td[data-issue='sublease'],
+    .inspection-table[data-active-issue='other-market'] td[data-issue='other-market'],
+    .inspection-table[data-active-issue='wrong-seller'] td[data-issue='wrong-seller'],
+    .inspection-table[data-active-issue='electric-overuse'] td[data-issue='electric-overuse'],
+    .inspection-table[data-active-issue='other-issue'] td[data-issue='other-issue'] {
+        border-left-color: #d9a300;
+    }
+}

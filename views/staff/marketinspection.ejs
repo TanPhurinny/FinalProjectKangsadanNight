@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>งานตรวจตลาด | Kangsadan Staff</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260724-6">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/staff/marketinspection.css">
+    </head>
+    <body>
+        <script src="/js/common/tabSession.js"></script>
+        <%- include('./partials/navbar') %>
+
+        <section class="inspection-page container-fluid px-2 px-md-3 py-4">
+            <div class="inspection-header row g-3 align-items-end">
+                <div class="col-12 col-lg-6">
+                    <h1 class="inspection-title"><%= inspectionRoundLabel %></h1>
+                    <p class="inspection-subtitle">วันที่: <%= inspectionDateLabel %></p>
+                </div>
+                <div class="col-12 col-lg-6">
+                    <div class="inspection-toolbar">
+                        <div class="search-box-wrapper">
+                            <i class="fas fa-search"></i>
+                            <input
+                                type="text"
+                                id="inspectionSearch"
+                                placeholder="ค้นหาชื่อล็อค/เลขล็อค"
+                                value="<%= query %>"
+                            >
+                        </div>
+                        <div class="filter-row">
+                            <span class="filter-label">กรองข้อมูล</span>
+                            <select id="zoneFilter" class="filter-select">
+                                <option value="ALL" <%= selectedZone === 'ALL' ? 'selected' : '' %>>โซนทั้งหมด</option>
+                                <% zones.forEach((zone) => { %>
+                                <option value="<%= zone %>" <%= selectedZone === zone ? 'selected' : '' %>>โซน <%= zone %></option>
+                                <% }) %>
+                            </select>
+                            <select id="issueFilter" class="filter-select">
+                                <option value="ALL" selected>ทุกประเภท</option>
+                                <option value="no-show">ไม่มาขาย</option>
+                                <option value="sublease">ปล่อยเช่าช่วง</option>
+                                <option value="other-market">ไปเปิดท้ายหรือขายอื่น</option>
+                                <option value="wrong-seller">ขายไม่ตรง(แจ้งเจ้าของล็อค)</option>
+                                <option value="electric-overuse">เครื่องใช้ไฟฟ้าเกิน</option>
+                                <option value="other-issue">ปัญหาอื่นๆ</option>
+                            </select>
+                        </div>
+                        <div class="inspection-stats" id="inspectionStats">
+                            <span class="stats-chip">ทั้งหมด <b id="totalCount">0</b></span>
+                            <span class="stats-chip">ที่แสดง <b id="visibleCount">0</b></span>
+                            <span class="stats-chip">ล็อคว่าง <b id="vacantCount">0</b></span>
+                            <span class="stats-chip">มีประเด็น <b id="flaggedCount">0</b></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-danger mt-3"><%= error %></div>
+            <% } %>
+
+            <div class="inspection-flow-hint" id="inspectionFlowHint">โหมดตรวจ: ทุกหัวข้อ</div>
+
+            <div class="inspection-table-wrap mt-3" id="inspectionTableWrap">
+                <table class="inspection-table" id="inspectionTable" data-active-issue="ALL">
+                    <thead>
+                        <tr>
+                            <th data-issue="stall">ร้านค้า</th>
+                            <th data-issue="no-show">ไม่มาขาย</th>
+                            <th data-issue="sublease">ปล่อยเช่าช่วง</th>
+                            <th data-issue="other-market">ไปเปิดท้ายหรือขายอื่น</th>
+                            <th data-issue="wrong-seller">ขายไม่ตรง(แจ้งเจ้าของล็อค)</th>
+                            <th data-issue="electric-overuse">เครื่องใช้ไฟฟ้าเกิน</th>
+                            <th data-issue="other-issue">ปัญหาอื่นๆ</th>
+                            <th data-issue="status">สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% stalls.forEach((stall, index) => { %>
+                        <tr
+                            class="inspection-row <%= stall.isVacant ? 'is-vacant' : '' %>"
+                            data-zone="<%= stall.zoneCode %>"
+                            data-search="<%= String(`${stall.stallCode} ${stall.shopName} ${stall.sellerName}`).toLowerCase() %>"
+                        >
+                            <td>
+                                <div class="stall-main">#<%= index + 1 %> <%= stall.stallCode %> (โซน <%= stall.zoneCode %>)</div>
+                                <div class="stall-meta">แถว <%= stall.rowCode %> | ร้าน <%= stall.shopName %></div>
+                                <div class="stall-meta">ชื่อผู้ขาย <%= stall.sellerName %> | โทร <%= stall.sellerPhone %></div>
+                                <div class="stall-meta">สินค้าหลัก <%= stall.productDetail %></div>
+                            </td>
+                            <td data-label="ไม่มาขาย" data-issue="no-show"><input type="checkbox" data-issue="no-show" <%= stall.inspectionEnabled ? '' : 'disabled' %>></td>
+                            <td data-label="ปล่อยเช่าช่วง" data-issue="sublease"><input type="checkbox" data-issue="sublease" <%= stall.inspectionEnabled ? '' : 'disabled' %>></td>
+                            <td data-label="ไปเปิดท้ายหรือขายอื่น" data-issue="other-market"><input type="checkbox" data-issue="other-market" <%= stall.inspectionEnabled ? '' : 'disabled' %>></td>
+                            <td data-label="ขายไม่ตรง(แจ้งเจ้าของล็อค)" data-issue="wrong-seller"><input type="checkbox" data-issue="wrong-seller" <%= stall.inspectionEnabled ? '' : 'disabled' %>></td>
+                            <td data-label="เครื่องใช้ไฟฟ้าเกิน" data-issue="electric-overuse"><input type="checkbox" data-issue="electric-overuse" <%= stall.inspectionEnabled ? '' : 'disabled' %>></td>
+                            <td class="text-start issue-placeholder" data-label="ปัญหาอื่นๆ" data-issue="other-issue"><%= stall.inspectionEnabled ? '-' : 'ล็อคว่าง (ไม่ต้องให้คะแนน)' %></td>
+                            <td data-label="สถานะ">
+                                <span class="status-chip <%= stall.isVacant ? 'status-vacant' : `status-${String(stall.stallStatus || '').toLowerCase()}` %>">
+                                    <%= stall.isVacant ? 'ว่าง' : stall.stallStatus %>
+                                </span>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+                <div id="noResults" class="no-results d-none">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
+            </div>
+        </section>
+
+        <script src="/js/staff/marketinspection.js"></script>
+    </body>
+</html>
