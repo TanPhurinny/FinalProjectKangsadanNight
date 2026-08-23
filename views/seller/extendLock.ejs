@@ -35,7 +35,8 @@
         <%
         const errorMsg = {
             'invalid_extend_date': 'กรุณาเลือกวันที่ให้ถูกต้อง (ต้องอยู่หลังวันสิ้นสุดปัจจุบัน และไม่เกินวันจบรอบ)',
-            'too_early_to_extend': 'ยังไม่ถึงเวลาขอต่อ ถ้าต่อไม่ถึงสุดรอบ ต้องรอให้ถึง 1 วันก่อนวันขายก่อน',
+            'too_early_to_extend': 'วันพฤหัสบดีเป็นต้นไป ขอต่อล็อกล่วงหน้าได้แค่ 1 วันก่อนวันขายเท่านั้น',
+            'extend_min_days': 'วันพุธ ต้องขอต่อล็อกอย่างน้อย 3 วันติดกัน',
             'extend_failed': 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง'
         }[error] || null;
         %>
@@ -62,13 +63,22 @@
 
       <div class="field-group">
         <label class="field-label">ต่อขายถึงวันที่</label>
-        <input type="date" class="field-input" id="newEndDate" name="newEndDate" required />
+        <input type="date" class="field-input" id="newEndDate" name="newEndDate" <%= extendAllowedToday ? 'required' : 'disabled' %> />
       </div>
 
-      <button type="button" class="btn-cancel-main" id="extendToRoundEndBtn" style="margin-bottom: 16px;">ต่อจนสุดรอบ (ขอได้ทันที)</button>
+      <button type="button" class="btn-cancel-main" id="extendToRoundEndBtn" style="margin-bottom: 16px;" <%= extendAllowedToday ? '' : 'disabled' %>>ต่อจนสุดรอบ</button>
 
       <div class="alert-box info-box">
-        ถ้าต่อไม่ถึงวันสิ้นรอบ ต้องรอให้ถึง 1 วันก่อนวันขายถึงจะขอต่อได้ ถ้าต่อจนสุดรอบขอได้ทันที คำขอนี้จะเข้าสู่ขั้นตอนอนุมัติของแอดมินเหมือนการจองปกติ
+        <% if (extendPhase.phase === 1) { %>
+          วันนี้ (จันทร์-อังคาร) ต่อล็อกกี่วันก็ได้ทันที — รวมถึงต่อจนสุดรอบ
+        <% } else if (extendPhase.phase === 2) { %>
+          วันนี้ (พุธ) ต่อล็อกได้ต้องอย่างน้อย 3 วันติดกัน จะเว้นวันไม่ได้
+        <% } else if (extendAllowedToday) { %>
+          วันนี้ (พฤหัสบดีเป็นต้นไป) ต่อล็อกกี่วันก็ได้ แต่ขอล่วงหน้าได้แค่ 1 วันก่อนวันขายเท่านั้น
+        <% } else { %>
+          วันนี้ (พฤหัสบดีเป็นต้นไป) ขอต่อล็อกล่วงหน้าได้แค่ 1 วันก่อนวันขาย — กลับมาขอใหม่วันที่ <%= new Date(new Date(activeLock.rentalEndDate).getTime()).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>
+        <% } %>
+        คำขอนี้จะเข้าสู่ขั้นตอนอนุมัติของแอดมินเหมือนการจองปกติ
       </div>
 
       <div class="alert-box info-box">
@@ -82,7 +92,7 @@
 
       <div class="bottom-buttons">
         <button type="button" class="btn-cancel-main" onclick="history.back()">ยกเลิก</button>
-        <button type="submit" class="btn-confirm">ส่งคำขอต่อล็อค</button>
+        <button type="submit" class="btn-confirm" <%= extendAllowedToday ? '' : 'disabled' %>>ส่งคำขอต่อล็อค</button>
       </div>
     </form>
   </main>
@@ -101,10 +111,15 @@
       };
       var currentEnd = toDateInputValue(<%- JSON.stringify(new Date(activeLock.rentalEndDate)) %>);
       var roundEnd = toDateInputValue(<%- JSON.stringify(new Date(roundMeta.cycleEnd)) %>);
+      var minDays = <%- extendPhase.minDays %>;
 
-      var nextDay = new Date(currentEnd);
-      nextDay.setDate(nextDay.getDate() + 1);
-      var minValue = toDateInputValue(nextDay);
+      var extendStart = new Date(currentEnd);
+      extendStart.setDate(extendStart.getDate() + 1);
+
+      // วันพุธต้องต่ออย่างน้อย 3 วันติดกัน เลยดัน min ของช่องวันที่ให้ไกลกว่าปกติ
+      var minEndDate = new Date(extendStart);
+      minEndDate.setDate(minEndDate.getDate() + (minDays - 1));
+      var minValue = toDateInputValue(minEndDate);
 
       newEndDateInput.min = minValue;
       newEndDateInput.max = roundEnd;

@@ -327,6 +327,42 @@ function buildWednesdayReminderMessage() {
     return 'ทุกล็อคในรอบนี้ได้รับการแจ้งเตือนในวันพุธเพื่อเตรียมยืนยันการจองและตรวจสอบข้อมูลให้ครบถ้วนก่อนปิดรอบ';
 }
 
+// แจ้งเตือนกลุ่มจองครบ 14 วัน/ล็อกเต้ง (ช่วงที่ 1 จันทร์-อังคาร) ล่วงหน้าในวันพฤหัสบดี เวลา 15:00
+// (พฤหัสบดี = วันสุดท้ายของรอบก่อนหน้า ตรงกับ phase3Start ใน getBookingPhaseForRound)
+function isThursdayReminderDay(dateValue = new Date()) {
+    const parsed = new Date(dateValue);
+    return !Number.isNaN(parsed.getTime()) && parsed.getDay() === 4;
+}
+
+function buildThursdayReminderMessage() {
+    return 'แจ้งเตือนเวลา 15:00 น. — ร้านที่จองครบ 14 วันหรือขอล็อกเต็ง มีสิทธิ์จองล่วงหน้าในรอบถัดไปได้ตั้งแต่วันจันทร์-อังคารนี้';
+}
+
+// การ์ดย้ำเตือนต่อล็อก ผูกกับล็อกจริงที่แม่ค้าจองไว้ (assignedStallCode) ไม่ใช่แค่เดาจากวันในสัปดาห์
+// โชว์เฉพาะตอนที่ยังมีวันให้ต่อได้ (rentalEndDate ยังไม่ถึง cycleEnd ของรอบปัจจุบัน)
+function buildExtendLockReminderEntry(extendInfo) {
+    if (!extendInfo?.currentBooking?.rentalEndDate) return [];
+
+    const { currentBooking, latestRequest, roundMeta } = extendInfo;
+    const currentEndDate = toStartOfDay(currentBooking.rentalEndDate);
+    const cycleEnd = toStartOfDay(roundMeta.cycleEnd);
+    if (!currentEndDate || !cycleEnd || currentEndDate.getTime() >= cycleEnd.getTime()) return [];
+
+    const stallLabel = latestRequest?.assignedStallCode ? `ล็อก ${latestRequest.assignedStallCode}` : 'ล็อกของคุณ';
+
+    return [{
+        id: `extend-reminder-${latestRequest.id}`,
+        type: 'pending-review',
+        title: 'ต่อล็อกไหม?',
+        desc: `${stallLabel} จะหมดสิทธิ์ขายวันที่ ${formatDateThai(currentBooking.rentalEndDate)} หากต้องการขายต่อในรอบนี้ (ถึงได้สูงสุดวันที่ ${formatDateThai(roundMeta.cycleEnd)}) กดต่อล็อกได้ที่หน้าสถานะการจอง`,
+        date: formatDateThai(currentBooking.rentalEndDate),
+        time: formatTimeThai(currentBooking.rentalEndDate),
+        status: 'IN_PROGRESS',
+        isRead: false,
+        isNew: true
+    }];
+}
+
 // PENDING = ยื่นคำขอแล้ว รอแอดมินตรวจสอบร้าน
 // APPROVED = ร้านผ่านการตรวจสอบแล้ว รอแอดมินจัดล็อกให้
 // IN_PROGRESS = แอดมินจัดล็อกให้แล้ว รอผู้ขายอัปโหลดสลิปยืนยันการชำระเงิน
@@ -434,9 +470,12 @@ function buildBookingView(latestBooking) {
     };
 }
 
-function buildBookingNotifications(latestBooking, awaitingPaymentVerification) {
+function buildBookingNotifications(latestBooking, awaitingPaymentVerification, extendInfo) {
+    const extendReminderEntry = buildExtendLockReminderEntry(extendInfo);
+
     if (!latestBooking) {
         return [
+            ...extendReminderEntry,
             {
                 id: 1,
                 type: 'info',
@@ -470,10 +509,25 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification) {
         }]
         : [];
 
+    const thursdayReminderEntry = isThursdayReminderDay(latestBooking.createdAt || new Date())
+        ? [{
+            id: `thursday-reminder-${latestBooking.id || 'current'}`,
+            type: 'pending-review',
+            title: 'แจ้งเตือนวันพฤหัสบดี',
+            desc: buildThursdayReminderMessage(),
+            date: formatDateThai(latestBooking.createdAt || new Date()),
+            time: formatTimeThai(latestBooking.createdAt || new Date()),
+            status,
+            isRead: false,
+            isNew: true
+        }]
+        : [];
+
     // สถานะปฏิเสธไม่ได้เดินตาม timeline ปกติ (รอตรวจสอบ -> จัดล็อก -> เสร็จสิ้น) จึงต้องแยก
     // แสดงเป็นการ์ดแจ้งเตือนของตัวเอง ไม่งั้นผู้ขายจะเห็นข้อความ "รอการตรวจสอบ" ค้างอยู่ทั้งที่คำขอถูกปฏิเสธไปแล้ว
     if (status === 'REJECTED') {
         return [
+            ...extendReminderEntry,
             {
                 id: 1,
                 type: 'cancelled',
@@ -525,7 +579,7 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification) {
     ];
 
     const stage = getBookingStep(status);
-    return [...reminderEntry, ...timeline].map((item, index) => ({
+    return [...extendReminderEntry, ...thursdayReminderEntry, ...reminderEntry, ...timeline].map((item, index) => ({
         ...item,
         isRead: typeof item.isRead === 'boolean' ? item.isRead : index < stage,
         isNew: typeof item.isNew === 'boolean' ? item.isNew : index + 1 === stage
@@ -1476,6 +1530,27 @@ async function findActiveLockForExtension(userRecord) {
     return { latestRequest, currentBooking, roundMeta };
 }
 
+// กติกา "ต่อล็อก" ใช้ 3 ช่วงเดียวกับกติกาจองรอบใหม่ (จันทร์-อังคาร / พุธ / พฤหัสฯ เป็นต้นไป)
+// ต่างจาก getBookingPhaseForRound ตรงที่นี่เทียบจากวันในสัปดาห์ของ "วันนี้" ตรงๆ ไม่ใช่ระยะห่างจาก
+// วันเปิดรอบถัดไป เพราะการต่อล็อกเกิดขึ้นกลางรอบที่กำลังขายอยู่ ไม่ใช่ก่อนรอบเปิด
+function getExtendPhase(dateValue = new Date()) {
+    const today = toStartOfDay(dateValue);
+    const day = today.getDay();
+
+    if (day === 1 || day === 2) {
+        // ช่วงที่ 1: จันทร์-อังคาร — ต่อกี่วันก็ได้ทันที (รวมถึงต่อจนสุดรอบ)
+        return { phase: 1, minDays: 1, maxAdvanceStart: null };
+    }
+
+    if (day === 3) {
+        // ช่วงที่ 2: พุธ — ต่อต้องอย่างน้อย 3 วันติดกัน
+        return { phase: 2, minDays: 3, maxAdvanceStart: null };
+    }
+
+    // ช่วงที่ 3: พฤหัสบดีเป็นต้นไป — ต่อกี่วันก็ได้ แต่ขอล่วงหน้าได้แค่ 1 วันก่อนวันขาย
+    return { phase: 3, minDays: 1, maxAdvanceStart: addDays(today, 1) };
+}
+
 router.get('/booking-stall/extend', isAuthenticated, async (req, res) => {
     const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { sellerProfile: true } });
     const active = await findActiveLockForExtension(userRecord);
@@ -1484,11 +1559,17 @@ router.get('/booking-stall/extend', isAuthenticated, async (req, res) => {
         return res.redirect('/booking-status?error=no_active_lock_to_extend');
     }
 
+    const extendPhase = getExtendPhase(new Date());
+    const extendStartDate = addDays(toStartOfDay(active.currentBooking.rentalEndDate), 1);
+    const extendAllowedToday = !extendPhase.maxAdvanceStart || extendStartDate.getTime() <= extendPhase.maxAdvanceStart.getTime();
+
     res.render('seller/extendLock', {
         user: userRecord,
         activeLock: active.currentBooking,
         request: active.latestRequest,
         roundMeta: active.roundMeta,
+        extendPhase,
+        extendAllowedToday,
         error: req.query.error || null
     });
 });
@@ -1511,15 +1592,18 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
             return res.redirect('/booking-stall/extend?error=invalid_extend_date');
         }
 
-        // ต่อจนสุดรอบ = ขอได้ทันที / ต่อไม่ถึงสุดรอบ = เริ่มขอได้แค่ 1 วันก่อนวันขาย (เหมือนช่วงที่ 3)
-        const isFullExtendToRoundEnd = newEndDate.getTime() === cycleEnd.getTime();
-        const today = toStartOfDay(new Date());
-        if (!isFullExtendToRoundEnd && today < currentEndDate) {
-            return res.redirect('/booking-stall/extend?error=too_early_to_extend');
-        }
-
         const extendStartDate = addDays(currentEndDate, 1);
         const rentalDays = getRentalDays(extendStartDate, newEndDate);
+
+        const today = toStartOfDay(new Date());
+        const extendPhase = getExtendPhase(today);
+
+        if (rentalDays < extendPhase.minDays) {
+            return res.redirect('/booking-stall/extend?error=extend_min_days');
+        }
+        if (extendPhase.maxAdvanceStart && extendStartDate.getTime() > extendPhase.maxAdvanceStart.getTime()) {
+            return res.redirect('/booking-stall/extend?error=too_early_to_extend');
+        }
         const rentTotal = currentBooking.dailyStallPrice * currentBooking.stallCount * rentalDays;
         const applianceTotal = (currentBooking.smallApplianceCount * currentBooking.smallAppliancePrice
             + currentBooking.largeApplianceCount * currentBooking.largeAppliancePrice) * rentalDays;
@@ -1731,10 +1815,12 @@ async function loadSellerBookingStatus(userId) {
         }
         : latestBooking;
 
+    const extendInfo = await findActiveLockForExtension(userRecord);
+
     return {
         userRecord,
         bookingView,
-        notifications: buildBookingNotifications(notificationBooking, awaitingPaymentVerification)
+        notifications: buildBookingNotifications(notificationBooking, awaitingPaymentVerification, extendInfo)
     };
 }
 
