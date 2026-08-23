@@ -183,23 +183,20 @@ async function buildZonesData() {
         });
     }
 
-    // โซน T เป็นแผงล็อกเล็กที่วางแทรกอยู่ในคอลัมน์เดียวกับ B2/B2b จริงในผังจริง (คอลัมน์เดียว
-    // ต่อเนื่องกัน: B200, B201, T102...T131, B222, B223) จึงรวมเป็นคอลัมน์เดียวกันทั้งหมด
+    // โซน T เป็นแผงล็อกเล็กที่วางแทรกอยู่ในคอลัมน์เดียวกับ B2 จริงในผังจริง ต่อจาก B201 ทันที
+    // (ลำดับจริง: B200, B201, T102...T131, B202, B203...B223)
     // (ทำเครื่องหมาย small ไว้ที่แต่ละแผงของโซน T เพราะเป็นล็อกเล็กกว่าแผง B ปกติ)
     // ข้อมูลจริงในฐานข้อมูลยังคงแยกเป็น Zone T ต่างหาก (จำเป็นสำหรับระบบจัดแผงที่หน้า /admin/booking-stall)
     const zoneBEntry = zonesData.find((zone) => zone.code === 'B');
     const zoneTEntry = zonesData.find((zone) => zone.code === 'T');
     if (zoneBEntry && zoneTEntry) {
         const b2Column = zoneBEntry.columns.find((column) => column.rowCode === 'B2');
-        const b2bIndex = zoneBEntry.columns.findIndex((column) => column.rowCode === 'B2b');
         const tStalls = zoneTEntry.columns.flatMap((column) => column.stalls.map((stall) => ({ ...stall, small: true })));
 
         if (b2Column) {
-            b2Column.stalls.push(...tStalls);
-            if (b2bIndex !== -1) {
-                const [b2bColumn] = zoneBEntry.columns.splice(b2bIndex, 1);
-                b2Column.stalls.push(...b2bColumn.stalls);
-            }
+            const b201Index = b2Column.stalls.findIndex((stall) => stall.code === 'B201');
+            const insertAt = b201Index === -1 ? b2Column.stalls.length : b201Index + 1;
+            b2Column.stalls.splice(insertAt, 0, ...tStalls);
         }
         zonesData = zonesData.filter((zone) => zone.code !== 'T');
     }
