@@ -1,7 +1,5 @@
 <%
-// ตรวจสอบหน้าปัจจุบันจาก URL path
 const currentPath = locals.path || '';
-const isStaff = user && user.role === 'STAFF';
 %>
 
 <nav class="management-nav">
@@ -17,36 +15,21 @@ const isStaff = user && user.role === 'STAFF';
 
         <div class="nav-links" id="navMenu">
             <a href="/admin/dashboard"
-                class="nav-item <%= currentPath.includes('dashboard') ? 'active' : '' %>">
+                class="nav-item <%= currentPath.includes('/admin/dashboard') ? 'active' : '' %>">
                 <i class="fas fa-th-large"></i> แดชบอร์ด
             </a>
             <a href="/admin/slots"
-                class="nav-item <%= currentPath.includes('slots') ? 'active' : '' %>">
+                class="nav-item <%= currentPath.includes('/admin/slots') ? 'active' : '' %>">
                 <i class="fas fa-map-marked-alt"></i> ผังตลาด
             </a>
             <a href="/admin/requests"
-                class="nav-item <%= currentPath.includes('requests') ? 'active' : '' %>">
+                class="nav-item <%= currentPath.includes('/admin/requests') ? 'active' : '' %>">
                 <i class="fas fa-tools"></i> การแจ้งคำร้อง
             </a>
-            <% if (isStaff) { %>
             <a href="/staff/marketinspection"
                 class="nav-item <%= currentPath.includes('/staff/marketinspection') ? 'active' : '' %>">
                 <i class="fas fa-clipboard-check"></i> งานตรวจตลาด
             </a>
-            <% } else { %>
-            <a href="/admin/approvals"
-                class="nav-item <%= currentPath.includes('approvals') ? 'active' : '' %>">
-                <i class="fas fa-check-circle"></i> รายการอนุมัติ
-            </a>
-            <a href="/admin/announcements"
-                class="nav-item <%= currentPath.includes('announcements') ? 'active' : '' %>">
-                <i class="fas fa-bullhorn"></i> จัดการประกาศ
-            </a>
-            <a href="/admin/users"
-                class="nav-item <%= currentPath.includes('users') ? 'active' : '' %>">
-                <i class="fas fa-users"></i> จัดการผู้ใช้
-            </a>
-            <% } %>
 
             <div class="nav-actions d-flex align-items-center">
                 <a href="/profile"

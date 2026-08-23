@@ -100,6 +100,7 @@ app.use((req, res, next) => {
 // --- 4. นำเข้า Route แยกไฟล์ ---
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const staffRoutes = require('./routes/staffRoutes');
 const marketRoutes = require('./routes/marketRoutes');
 const communityRoutes = require('./routes/communityRoutes');
 const sellerRoute = require('./routes/sellerRoute');
@@ -144,6 +145,7 @@ app.get('/', async (req, res) => {
 // ใช้งาน Route
 app.use('/', authRoutes); // Login, Register, Logout
 app.use('/admin', adminRoutes); // Dashboard, Users, Requests
+app.use('/staff', staffRoutes); // Staff pages
 app.use('/market', marketRoutes); // Slots, Products
 app.use('/', communityRoutes); // Community Feed APIs + Pages
 app.use('/', sellerRoute); // เลือกโซน, แจ้งซ่อม, จองแผง
