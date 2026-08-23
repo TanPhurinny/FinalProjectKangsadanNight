@@ -123,7 +123,7 @@ function renderDZoneGrid(z, stallByCode) {
         if (!stall) return;
 
         const cell = document.createElement('div');
-        cell.className = 'stall-cell zone-d-cell';
+        cell.className = 'stall-cell zone-d-cell tt-below';
         cell.style.gridColumn = `${pos.col} / ${pos.col + 1}`;
         cell.style.gridRow = `${pos.row} / ${pos.row + 1}`;
         cell.textContent = pos.code;
@@ -206,7 +206,7 @@ function renderGrid(z) {
         const col = document.createElement('div');
         col.className = isHorizontalZone ? 'stall-col stall-col-horizontal' : 'stall-col';
 
-        column.stalls.forEach((stall) => {
+        column.stalls.forEach((stall, stallIndex) => {
             const id = stall.code;
 
             if (stall.status === 'PLACEHOLDER') {
@@ -222,7 +222,8 @@ function renderGrid(z) {
             cell.className = stall.small ? 'stall-cell stall-cell-small' : 'stall-cell';
             cell.textContent = id;
             cell.dataset.stall = id;
-            if (isHorizontalZone) cell.classList.add('tt-below');
+            // แถวบนสุดของแต่ละคอลัมน์ชิดขอบบน drawer-grid เหมือนกัน ทำให้ tooltip ที่โผล่ขึ้นด้านบนโดนตัดขาด
+            if (isHorizontalZone || stallIndex === 0) cell.classList.add('tt-below');
             const lotClass = lotColorClass(stall.lotColor);
             if (lotClass) cell.classList.add(lotClass);
 

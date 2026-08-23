@@ -1117,14 +1117,19 @@
   }
 
   function moveTooltip(e) {
-    let x = e.clientX + 15;
-    let y = e.clientY + 15;
+    // ให้ tooltip โผล่ด้านข้างเมาส์ (แนวนอน) แทนบน/ล่าง กันไม่ให้ทับแถวล็อกที่อยู่ติดกัน
+    // (แถวในผังสูงแค่ ~28px ตัว tooltip สูงกว่านั้นมาก ถ้าวางบน/ล่างจะทับแถวข้างเคียงเสมอ เช่นโซน D ที่มีแค่ 2 แถว)
+    let x = e.clientX + 20;
+    let y = e.clientY - (tooltip.offsetHeight / 2);
 
     if (x + tooltip.offsetWidth > window.innerWidth) {
-      x = e.clientX - tooltip.offsetWidth - 10;
+      x = e.clientX - tooltip.offsetWidth - 20;
     }
+    if (x < 0) x = 4;
+
+    if (y < 0) y = 4;
     if (y + tooltip.offsetHeight > window.innerHeight) {
-      y = e.clientY - tooltip.offsetHeight - 10;
+      y = window.innerHeight - tooltip.offsetHeight - 4;
     }
 
     tooltip.style.left = `${x}px`;

@@ -15,7 +15,7 @@ const ZONE_DEFINITIONS = [
     description: 'Fashion + Food',
     productCategory: 'FASHION',
     productTypes: ['FASHION', 'FOOD'],
-    size: '2x2',
+    size: '3x3',
     basePrice: 209,
     displayOrder: 1,
     rows: [
@@ -33,9 +33,9 @@ const ZONE_DEFINITIONS = [
   {
     code: 'B',
     name: 'Zone B',
-    description: 'Food',
+    description: 'Food + Fashion',
     productCategory: 'FOOD',
-    productTypes: ['FOOD'],
+    productTypes: ['FOOD', 'FASHION'],
     size: '3x3',
     basePrice: 259,
     displayOrder: 2,
@@ -49,7 +49,7 @@ const ZONE_DEFINITIONS = [
       { rowCode: 'B3', start: 301, end: 323 },
       { rowCode: 'B4', start: 401, end: 423 },
       { rowCode: 'B5', start: 501, end: 523 },
-      { rowCode: 'B6', start: 601, end: 623 }
+      { rowCode: 'B6', start: 601, end: 623, price: 209 }
     ]
   },
   {
@@ -66,11 +66,11 @@ const ZONE_DEFINITIONS = [
   {
     code: 'D',
     name: 'Zone D',
-    description: 'Food',
+    description: 'Food Truck',
     productCategory: 'FOOD',
     productTypes: ['FOOD'],
     size: '4x3',
-    basePrice: 250,
+    basePrice: 230,
     displayOrder: 4,
     rows: [{ rowCode: 'D2', start: 201, end: 212 }]
   },
@@ -80,7 +80,7 @@ const ZONE_DEFINITIONS = [
     description: 'Fashion',
     productCategory: 'FASHION',
     productTypes: ['FASHION'],
-    size: '2x2',
+    size: '3x3',
     basePrice: 209,
     displayOrder: 5,
     rows: [{ rowCode: 'E1', start: 101, end: 104 }]
@@ -91,8 +91,8 @@ const ZONE_DEFINITIONS = [
     description: 'Food',
     productCategory: 'FOOD',
     productTypes: ['FOOD'],
-    size: '3x3',
-    basePrice: 249,
+    size: '2x2',
+    basePrice: 219,
     displayOrder: 6,
     rows: [
       { rowCode: 'F1', start: 101, end: 117 },
@@ -106,13 +106,24 @@ const ZONE_DEFINITIONS = [
   {
     code: 'X',
     name: 'Zone X',
-    description: 'Event Booth',
-    productCategory: 'EVENT_BOOTH',
-    productTypes: ['EVENT_BOOTH'],
-    size: '4x4',
-    basePrice: 300,
+    description: 'Food',
+    productCategory: 'FOOD',
+    productTypes: ['FOOD'],
+    size: '3x3',
+    basePrice: 259,
     displayOrder: 7,
     rows: [{ rowCode: 'X1', start: 101, end: 106 }]
+  },
+  {
+    code: 'T',
+    name: 'Zone T',
+    description: 'Food',
+    productCategory: 'FOOD',
+    productTypes: ['FOOD'],
+    size: '2x3',
+    basePrice: 219,
+    displayOrder: 8,
+    rows: [{ rowCode: 'T1', start: 102, end: 131 }]
   }
 ];
 
@@ -251,8 +262,8 @@ async function seedZonesAndRows(productTypeMap) {
           zoneId: zone.id,
           rowCode: rowDef.rowCode,
           label: `Row ${rowDef.rowCode}`,
-          price: zoneDef.basePrice,
-          size: zoneDef.size,
+          price: rowDef.price !== undefined ? rowDef.price : zoneDef.basePrice,
+          size: rowDef.size !== undefined ? rowDef.size : zoneDef.size,
           displayOrder: rowIndex + 1,
           stallStartNumber: rowDef.start,
           stallEndNumber: rowDef.end
