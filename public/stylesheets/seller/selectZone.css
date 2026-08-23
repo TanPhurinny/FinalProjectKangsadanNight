@@ -506,7 +506,7 @@ button { font-family: inherit; }
 
 .map-legend__badge {
   background: #fff;
-  color: var(--danger, #c0392b);
+  color: var(--primary-dark);
   border: 1px solid var(--line);
   font-weight: 700;
   padding: 1px 8px;
