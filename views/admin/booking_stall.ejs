@@ -556,9 +556,14 @@
     return 'lot-alt-type';
   }
 
+  // groupSize 2 = ล็อก T คู่ที่วางซ้อนกันแบ่งครึ่งล็อคปกติ 1 ล็อก, groupSize 1 = อยู่เดี่ยวเต็มล็อคปกติ (ตามผังจริง)
+  function isPairedStall(stall) {
+    return !!(stall && stall.small && stall.groupSize === 2);
+  }
+
   function makeStallCell(code, stall, zoneCategoryLabel) {
     const cell = document.createElement('div');
-    cell.className = stall && stall.small ? 'stall-cell stall-cell-small' : 'stall-cell';
+    cell.className = isPairedStall(stall) ? 'stall-cell stall-cell-small' : 'stall-cell';
     cell.textContent = code;
 
     const lotClass = stall ? lotColorClass(stall.lotColor) : '';
@@ -659,16 +664,31 @@
       const colDiv = document.createElement('div');
       colDiv.className = isHorizontalZone ? 'stall-column stall-column-horizontal' : 'stall-column';
 
+      // ล็อกเล็ก (โซน T ที่แทรกอยู่ในคอลัมน์ B2) บางคู่วางซ้อนกันแบ่งครึ่งบน-ล่างของล็อคปกติ 1 ล็อกตามผังจริง
+      // (groupSize 2 = จับคู่ซ้อน, groupSize 1 = อยู่เดี่ยวเต็มล็อคปกติ — ดู T_GROUP_SIZES ใน marketController.js)
+      let smallWrap = null;
+      let currentGroupId = null;
+      const getSmallWrap = (groupId) => {
+        if (!smallWrap || groupId !== currentGroupId) {
+          currentGroupId = groupId;
+          smallWrap = document.createElement('div');
+          smallWrap.className = 'small-lot-pair';
+          colDiv.appendChild(smallWrap);
+        }
+        return smallWrap;
+      };
+
       column.stalls.forEach((stall) => {
         if (stall.status === 'PLACEHOLDER') {
           const placeholderCell = document.createElement('div');
-          placeholderCell.className = stall.small ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
+          placeholderCell.className = isPairedStall(stall) ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
           placeholderCell.textContent = 'x';
-          colDiv.appendChild(placeholderCell);
+          (isPairedStall(stall) ? getSmallWrap(stall.groupId) : colDiv).appendChild(placeholderCell);
           return;
         }
 
-        colDiv.appendChild(makeStallCell(stall.code, stall, zoneData.description));
+        const cell = makeStallCell(stall.code, stall, zoneData.description);
+        (isPairedStall(stall) ? getSmallWrap(stall.groupId) : colDiv).appendChild(cell);
       });
 
       wrap.appendChild(colDiv);

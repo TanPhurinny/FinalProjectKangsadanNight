@@ -43,7 +43,10 @@ const ZONE_DEFINITIONS = [
       { rowCode: 'B100', start: 100, end: 100 },
       { rowCode: 'B1', start: 101, end: 123 },
       { rowCode: 'B200', start: 200, end: 200 },
-      { rowCode: 'B2', start: 201, end: 223 },
+      // B202-B221 ไม่มีอยู่จริงในผังจริง (ตรงนั้นเป็นที่ตั้งของโซน T แทน) คอลัมน์ B2 จึงมีแค่ B201
+      // แล้วต่อด้วย B222-B223 (แถว B2b) หลังบล็อกโซน T — ดูการรวมคอลัมน์ที่ buildZonesData() ใน marketController.js
+      { rowCode: 'B2', start: 201, end: 201 },
+      { rowCode: 'B2b', start: 222, end: 223 },
       { rowCode: 'B299', start: 299, end: 299 },
       { rowCode: 'B300', start: 300, end: 300 },
       { rowCode: 'B3', start: 301, end: 323 },
@@ -112,7 +115,8 @@ const ZONE_DEFINITIONS = [
     size: '3x3',
     basePrice: 259,
     displayOrder: 7,
-    rows: [{ rowCode: 'X1', start: 101, end: 106 }]
+    // X103-X106 ไม่มีอยู่จริงในผังจริง โซน X มีแค่ X101-X102 (ยืนยันจาก prisma/fixes/2026-08-21-reapply-b2-x-layout-fix.js)
+    rows: [{ rowCode: 'X1', start: 101, end: 102 }]
   },
   {
     code: 'T',

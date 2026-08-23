@@ -495,11 +495,24 @@
       z-index: 5;
     }
 
-    /* ล็อค T เล็กกว่าล็อคปกติ — ย่อขนาดให้เห็นชัดเหมือนหน้าผังหลัก (admin/slots, market-map) */
+    /* ล็อค T บางคู่ในผังจริงวางซ้อนกันแบ่งครึ่งบน-ล่างของล็อคปกติ 1 ล็อก (.small-lot-pair)
+       ตามผังจริง — ไม่ใช่ทุกคู่ บางล็อก T ก็อยู่เดี่ยวเต็มล็อคปกติ (ดู T_GROUP_SIZES ใน marketController.js) */
+    .small-lot-pair {
+      display: flex;
+      flex-direction: column;
+      width: 55px;
+      height: 42px;
+      margin-top: -1px;
+      margin-left: -1px;
+    }
+
     .stall-cell-small {
-      width: 30px;
-      height: 22px;
-      font-size: 8px;
+      flex: 1 1 0;
+      width: 100%;
+      height: auto;
+      font-size: 9px;
+      box-sizing: border-box;
+      margin: 0 !important;
     }
 
     .stall-cell.placeholder {
