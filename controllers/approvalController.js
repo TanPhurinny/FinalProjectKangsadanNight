@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { buildZonesData } = require('./marketController');
+const zoneAccess = require('../utils/zoneAccess');
 
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable } = require('../utils/bookingRound');
 const { verifySlip } = require('../utils/slipVerification');
@@ -37,6 +38,19 @@ function extractAssignedStallFromDescription(descriptionText) {
     return match ? String(match[1] || '').trim().toUpperCase() : '';
 }
 
+// assignedStallCode เก็บได้ทั้งล็อกเดียว ("A901") หรือหลายล็อกคั่นด้วย comma ("A901,A902")
+// เผื่อคำขอเดียวขอมากกว่า 1 ล็อก (stallCount ใน Booking ที่ผูกกับคำขอนี้ > 1)
+function parseStallCodes(assignedStallCodeText) {
+    return String(assignedStallCodeText || '')
+        .split(',')
+        .map((code) => code.trim().toUpperCase())
+        .filter(Boolean);
+}
+
+function joinStallCodes(stallCodes) {
+    return Array.from(new Set(stallCodes.filter(Boolean))).join(',');
+}
+
 // คำขอ "ต่อล็อค" (routes/sellerRoute.js POST /booking-stall/extend) ใส่ tag นี้ไว้หน้า description
 function extractExtendOfRequestId(descriptionText) {
     const match = String(descriptionText || '').match(/\[EXTEND_OF:(\d+)\]/i);
@@ -58,6 +72,12 @@ function stripInternalTags(descriptionText) {
         .replace(/\[สนใจแผงพิเศษ:[^\]]+\]\s*/g, '')
         .trim();
 }
+
+const PRODUCT_TYPE_LABEL = {
+    FASHION: 'แฟชั่น',
+    FOOD: 'อาหาร',
+    EVENT_BOOTH: 'กิจกรรม/บูธพิเศษ'
+};
 
 async function buildAdminBookingStallPageData(requestId) {
     const bookingRequest = await prisma.bookingRequest.findUnique({
@@ -87,6 +107,40 @@ async function buildAdminBookingStallPageData(requestId) {
 
     const requestedZone = normalizeZone(bookingRequest.zone);
     const assignedStallCode = String(bookingRequest.assignedStallCode || extractAssignedStallFromDescription(bookingRequest.description) || '').trim().toUpperCase();
+    const assignedStallCodes = parseStallCodes(assignedStallCode);
+
+    // จำกัดตัวเลือกโซนบนหน้านี้ให้ตรงกับประเภทสินค้าที่ผู้ขายลงทะเบียนไว้ (กันแอดมินจัดผิดโซน เช่น ร้านอาหารไปได้โซนแฟชั่น)
+    // BookingRequest ไม่มี userId ผูกไว้ตรงๆ (sellerId ชี้โมเดล Seller ซึ่งระบบสมัครจริงไม่ได้ใช้ ปล่อยเป็น null เสมอ)
+    // ข้อมูลประเภทสินค้าจริงอยู่ที่ ShopDetail.productType ของ User จึงต้องเทียบจากเบอร์โทรที่บันทึกไว้ตอนส่งคำขอแทน
+    const applicantUser = bookingRequest.phone
+        ? await prisma.user.findFirst({ where: { phoneNumber: bookingRequest.phone }, include: { shop: true } })
+        : null;
+    const applicantProductType = applicantUser?.shop?.productType || null;
+    // ถ้าไม่มีข้อมูลประเภทสินค้า (คำขอเก่า/หาผู้ใช้ที่ตรงเบอร์ไม่เจอ) ไม่จำกัด ให้เลือกได้ทุกโซนเหมือนเดิมเพื่อไม่บล็อกแอดมินผิดที่
+    let allowedZones = applicantProductType
+        ? zoneAccess.allowedZonesFor(applicantProductType).map((z) => String(z).toUpperCase())
+        : [];
+    // เผื่อกรณีโซนที่ขอมาจริง หรือล็อกที่เคยจัดไว้แล้ว ไม่ตรงกับประเภทสินค้า (ข้อมูลเก่า/ผิดพลาดตั้งแต่ตอนสมัคร)
+    // ยังต้องเลือก/ยืนยันล็อกเดิมได้เสมอ ไม่ถูกบล็อกโดยตัวกรองนี้
+    if (allowedZones.length) {
+        const mustIncludeZones = [requestedZone, ...assignedStallCodes.map((code) => (code.match(/^[A-Z]+/) || [])[0])].filter(Boolean);
+        allowedZones = Array.from(new Set([...allowedZones, ...mustIncludeZones]));
+    }
+
+    // Booking ที่ผูกกับคำขอนี้มี 1 แถวต่อ 1 ล็อกที่ขอ (ดู POST /booking-stall ใน sellerRoute.js)
+    // ดึงมาทั้งแถว (ไม่ใช่แค่นับ) เพื่อโชว์ระยะเวลาเช่า/ค่าไฟ/เครื่องใช้ไฟฟ้า/ยอดรวมให้แอดมินเห็นก่อนจัดแผงจริง
+    // ทุกแถวของคำขอเดียวกันมีระยะเวลา/ราคาต่อวันเท่ากันหมด ต่างกันแค่ล็อก จึงอ่านค่าจากแถวแรกพอ
+    const requestTag = buildBookingRequestTag(bookingRequest.id);
+    const linkedBookings = requestTag
+        ? await prisma.booking.findMany({ where: { storeDetailSnapshot: { startsWith: requestTag } } })
+        : [];
+    const linkedBookingCount = linkedBookings.length;
+    const requestedStallCount = Math.max(1, linkedBookingCount, assignedStallCodes.length);
+    const bookingDetail = linkedBookings[0] || null;
+    const grandTotalAllStalls = linkedBookings.reduce((sum, b) => sum + Number(b.grandTotal || 0), 0);
+
+    // ล็อกที่เคยจัดให้คำขอนี้แล้วไม่ถือว่า "จองแล้ว" ในสายตาแอดมินคนนี้ (จะได้เลือกซ้ำ/ยืนยันใหม่ได้)
+    const bookedStallsExcludingOwn = bookedStalls.filter((code) => !assignedStallCodes.includes(code));
 
     return {
         bookingRequest: {
@@ -96,13 +150,28 @@ async function buildAdminBookingStallPageData(requestId) {
             phone: bookingRequest.phone,
             zone: requestedZone,
             zoneText: requestedZone ? `โซน ${requestedZone}` : '-',
-            note: bookingRequest.description || '-',
+            note: stripInternalTags(bookingRequest.description) || '-',
+            cornerZoneNote: extractCornerZoneNote(bookingRequest.description),
+            productImage: bookingRequest.productImage || null,
+            productTypeText: PRODUCT_TYPE_LABEL[applicantProductType] || '-',
             dateText: toThaiDate(bookingRequest.createdAt),
             status: String(bookingRequest.status || 'PENDING').toUpperCase(),
-            assignedStallCode
+            rentalDays: bookingDetail?.rentalDays ?? null,
+            rentalPeriodText: bookingDetail?.rentalStartDate && bookingDetail?.rentalEndDate
+                ? `${toThaiDate(bookingDetail.rentalStartDate)} - ${toThaiDate(bookingDetail.rentalEndDate)}`
+                : '-',
+            dailyStallPrice: bookingDetail?.dailyStallPrice ?? null,
+            lightEnabled: !!bookingDetail?.lightEnabled,
+            smallApplianceCount: bookingDetail?.smallApplianceCount ?? 0,
+            largeApplianceCount: bookingDetail?.largeApplianceCount ?? 0,
+            grandTotalAllStalls,
+            assignedStallCode,
+            assignedStallCodes,
+            requestedStallCount,
+            allowedZones
         },
         zoneByCode,
-        bookedStalls
+        bookedStalls: bookedStallsExcludingOwn
     };
 }
 
@@ -243,6 +312,7 @@ exports.getApprovalsPage = async (req, res) => {
                 isExtension: Boolean(extendOfRequestId),
                 extendOfRequestId,
                 cornerZoneNote,
+                requestedStallCount: linkedBooking ? (linkedBooking.stallCount || 1) : 1,
                 isFinalPrice: Boolean(assignedStallCode),
                 booking: linkedBooking
                     ? {
@@ -497,14 +567,19 @@ exports.getBookingStallPage = async (req, res) => {
 exports.confirmBookingStall = async (req, res) => {
     try {
         const requestId = Number.parseInt(req.body.requestId, 10);
-        const selectedStall = String(req.body.selectedStall || '').trim().toUpperCase();
-        if (!requestId || !selectedStall) {
+        // selectedStalls: comma-separated stall codes จากหน้า booking_stall.ejs (รองรับคำขอที่ขอมากกว่า 1 ล็อก)
+        // ยังรับ selectedStall เดิมไว้เผื่อ form เก่า/ค้าง cache
+        const selectedStalls = parseStallCodes(req.body.selectedStalls || req.body.selectedStall);
+        if (!requestId || !selectedStalls.length) {
             return res.redirect('/admin/approvals?error=missing_confirm_payload');
+        }
+        if (new Set(selectedStalls).size !== selectedStalls.length) {
+            return res.redirect('/admin/approvals?error=duplicate_stall_selected');
         }
 
         const requestRecord = await prisma.bookingRequest.findUnique({
             where: { id: requestId },
-            select: { id: true, createdAt: true }
+            select: { id: true, createdAt: true, description: true, assignedStallCode: true }
         });
 
         if (!requestRecord) {
@@ -515,43 +590,57 @@ exports.confirmBookingStall = async (req, res) => {
             return res.redirect('/admin/approvals?error=history_round_locked');
         }
 
-        const stall = await prisma.stall.findUnique({
-            where: { stallCode: selectedStall },
-            select: { id: true, isAvailable: true, status: true, basePrice: true, extraPrice: true, electricFeePerDay: true, extraElectricityCost: true }
+        const requestTag = buildBookingRequestTag(requestId);
+        // มี Booking 1 แถวต่อ 1 ล็อกที่ขอ (ดู POST /booking-stall ใน sellerRoute.js ที่สร้าง Booking
+        // วนตามจำนวน stallCount) จำนวนแถวที่ผูกกับคำขอนี้จึงบอกว่าต้องเลือกกี่ล็อกจริงบนแผนที่
+        const linkedBookings = requestTag
+            ? await prisma.booking.findMany({ where: { storeDetailSnapshot: { startsWith: requestTag } }, orderBy: { id: 'asc' } })
+            : [];
+        const requestedStallCount = Math.max(1, linkedBookings.length);
+
+        if (selectedStalls.length !== requestedStallCount) {
+            return res.redirect('/admin/approvals?error=stall_count_mismatch');
+        }
+
+        const previousAssigned = parseStallCodes(requestRecord.assignedStallCode || extractAssignedStallFromDescription(requestRecord.description));
+
+        const stalls = await prisma.stall.findMany({
+            where: { stallCode: { in: selectedStalls } },
+            select: { id: true, stallCode: true, isAvailable: true, status: true, basePrice: true, extraPrice: true, electricFeePerDay: true, extraElectricityCost: true }
         });
+        const stallByCode = new Map(stalls.map((s) => [s.stallCode, s]));
 
-        if (!stall) {
-            return res.redirect('/admin/approvals?error=stall_not_found');
+        for (const code of selectedStalls) {
+            const stall = stallByCode.get(code);
+            if (!stall) {
+                return res.redirect('/admin/approvals?error=stall_not_found');
+            }
+            const isAlreadyBooked = !stall.isAvailable || String(stall.status || '').toUpperCase() !== 'AVAILABLE';
+            // ล็อกที่คำขอนี้ถืออยู่แล้วจากการจัดครั้งก่อน ไม่ถือว่า "ไม่ว่าง" สำหรับคำขอนี้เอง (จัดใหม่/ยืนยันซ้ำได้)
+            if (isAlreadyBooked && !previousAssigned.includes(code)) {
+                return res.redirect('/admin/approvals?error=stall_unavailable');
+            }
         }
 
-        const isAlreadyBooked = !stall.isAvailable || String(stall.status || '').toUpperCase() !== 'AVAILABLE';
-        if (isAlreadyBooked) {
-            return res.redirect('/admin/approvals?error=stall_unavailable');
-        }
-
-        const requestPayload = await prisma.bookingRequest.findUnique({
-            where: { id: requestId },
-            select: { id: true, description: true, assignedStallCode: true }
-        });
-        if (!requestPayload) {
-            return res.redirect('/admin/approvals?error=request_not_found');
-        }
-
-        const previousAssigned = String(requestPayload.assignedStallCode || extractAssignedStallFromDescription(requestPayload.description) || '').trim().toUpperCase();
-        const isReassign = Boolean(previousAssigned) && previousAssigned !== selectedStall;
-
-        const previousStall = isReassign
-            ? await prisma.stall.findUnique({ where: { stallCode: previousAssigned }, select: { id: true } })
-            : null;
-
-        const cleanedDescription = String(requestPayload.description || '').replace(/^\[ASSIGNED_STALL:[^\]]+\]\s*/i, '').trim();
+        const stallsToRelease = previousAssigned.filter((code) => !selectedStalls.includes(code));
+        const cleanedDescription = String(requestRecord.description || '').replace(/^\[ASSIGNED_STALL:[^\]]+\]\s*/i, '').trim();
 
         // ราคาที่เห็นตอนแจ้งความสนใจเป็นแค่ราคาต่ำสุดของทั้งโซน (ประมาณการ) ไม่ใช่ราคาจริง
         // ของล็อกที่จะได้ — ราคาจริงขึ้นกับตำแหน่งล็อกที่แอดมินเลือกให้ (Stall.basePrice + extraPrice)
-        // เมื่อแอดมินจัดล็อกจริงแล้ว คำนวณราคาใหม่แล้วอัปเดตกลับเข้า Booking ที่ผูกกับคำขอนี้
-        const realDailyStallPrice = Number(stall.basePrice || 0) + Number(stall.extraPrice || 0);
-        const realDailyLightPrice = Number(stall.electricFeePerDay || 0) + Number(stall.extraElectricityCost || 0);
-        const requestTag = buildBookingRequestTag(requestId);
+        // ขอมากกว่า 1 ล็อก แต่ละล็อกอาจราคาไม่เท่ากัน จึงเฉลี่ยราคาต่อล็อกจากผลรวมของทุกล็อกที่เลือกจริง
+        // (Booking แต่ละแถวเก็บราคา/ยอดรวมชุดเดียวกันซ้ำกันทุกแถว ตามดีไซน์เดิมที่หน้า seller
+        // อ่านแค่แถวเดียว (findFirst) มาแสดงเป็นยอดรวมทั้งคำขอ)
+        const totalDailyStallPrice = selectedStalls.reduce((sum, code) => {
+            const stall = stallByCode.get(code);
+            return sum + Number(stall.basePrice || 0) + Number(stall.extraPrice || 0);
+        }, 0);
+        const totalDailyLightPrice = selectedStalls.reduce((sum, code) => {
+            const stall = stallByCode.get(code);
+            return sum + Number(stall.electricFeePerDay || 0) + Number(stall.extraElectricityCost || 0);
+        }, 0);
+        const averageDailyStallPrice = totalDailyStallPrice / selectedStalls.length;
+        const averageDailyLightPrice = totalDailyLightPrice / selectedStalls.length;
+        const joinedAssignedStallCode = joinStallCodes(selectedStalls);
 
         await prisma.$transaction(async (tx) => {
             await tx.bookingRequest.update({
@@ -561,66 +650,60 @@ exports.confirmBookingStall = async (req, res) => {
                     // เดิม field นี้ตั้งเป็น 'APPROVED' ทำให้ /booking-payment/confirm ที่เช็คว่าต้องเป็น
                     // IN_PROGRESS ก่อนถึงจะอัปโหลดสลิปได้ ไม่มีทางถูกเข้าถึงเลย
                     status: 'IN_PROGRESS',
-                    assignedStallCode: selectedStall,
+                    assignedStallCode: joinedAssignedStallCode,
                     description: cleanedDescription
                 }
             });
 
-            await tx.stall.update({
-                where: { id: stall.id },
-                data: {
-                    isAvailable: false,
-                    status: 'BOOKED'
-                }
-            });
-
-            if (previousStall?.id) {
+            for (const code of selectedStalls) {
+                const stall = stallByCode.get(code);
                 await tx.stall.update({
-                    where: { id: previousStall.id },
-                    data: {
-                        isAvailable: true,
-                        status: 'AVAILABLE'
-                    }
+                    where: { id: stall.id },
+                    data: { isAvailable: false, status: 'BOOKED' }
                 });
             }
 
-            if (requestTag) {
-                const linkedBookings = await tx.booking.findMany({
-                    where: { storeDetailSnapshot: { startsWith: requestTag } }
+            if (stallsToRelease.length) {
+                await tx.stall.updateMany({
+                    where: { stallCode: { in: stallsToRelease } },
+                    data: { isAvailable: true, status: 'AVAILABLE' }
                 });
+            }
 
-                // Booking (ตัวที่หน้า seller dashboard/booking-status/booking-history อ่าน) ต้อง
-                // ตามสถานะจริงของ BookingRequest ไปด้วย — เดิมโค้ดจุดนี้อัปเดตแค่ราคา ทำให้ Booking.status
-                // ค้างที่ PENDING ตลอดแม้แอดมินจะจัดล็อกและยืนยันจ่ายเงินแล้วจริงๆ ก็ตาม
+            // Booking (ตัวที่หน้า seller dashboard/booking-status/booking-history อ่าน) ต้อง
+            // ตามสถานะจริงของ BookingRequest ไปด้วย — เดิมโค้ดจุดนี้อัปเดตแค่ราคา ทำให้ Booking.status
+            // ค้างที่ PENDING ตลอดแม้แอดมินจะจัดล็อกและยืนยันจ่ายเงินแล้วจริงๆ ก็ตาม
+            for (let i = 0; i < linkedBookings.length; i += 1) {
+                const booking = linkedBookings[i];
+                const code = selectedStalls[i % selectedStalls.length];
+
                 const assignedSlot = await tx.slot.upsert({
-                    where: { slotNumber: selectedStall },
+                    where: { slotNumber: code },
                     update: { isAvailable: false },
                     create: {
-                        slotNumber: selectedStall,
-                        zone: selectedStall.replace(/[0-9].*$/, '') || 'A',
-                        price: realDailyStallPrice,
+                        slotNumber: code,
+                        zone: code.replace(/[0-9].*$/, '') || 'A',
+                        price: averageDailyStallPrice,
                         isAvailable: false
                     }
                 });
 
-                for (const booking of linkedBookings) {
-                    const rentTotal = realDailyStallPrice * booking.stallCount * booking.rentalDays;
-                    const lightTotal = booking.lightEnabled ? realDailyLightPrice * booking.stallCount * booking.rentalDays : 0;
-                    const grandTotal = rentTotal + lightTotal + booking.applianceTotal;
+                const rentTotal = averageDailyStallPrice * booking.stallCount * booking.rentalDays;
+                const lightTotal = booking.lightEnabled ? averageDailyLightPrice * booking.stallCount * booking.rentalDays : 0;
+                const grandTotal = rentTotal + lightTotal + booking.applianceTotal;
 
-                    await tx.booking.update({
-                        where: { id: booking.id },
-                        data: {
-                            dailyStallPrice: realDailyStallPrice,
-                            lightUnitPrice: realDailyLightPrice,
-                            rentTotal,
-                            lightTotal,
-                            grandTotal,
-                            status: 'IN_PROGRESS',
-                            slotId: assignedSlot.id
-                        }
-                    });
-                }
+                await tx.booking.update({
+                    where: { id: booking.id },
+                    data: {
+                        dailyStallPrice: averageDailyStallPrice,
+                        lightUnitPrice: averageDailyLightPrice,
+                        rentTotal,
+                        lightTotal,
+                        grandTotal,
+                        status: 'IN_PROGRESS',
+                        slotId: assignedSlot.id
+                    }
+                });
             }
         });
 
@@ -639,7 +722,7 @@ exports.rejectBookingStall = async (req, res) => {
 
         const requestRecord = await prisma.bookingRequest.findUnique({
             where: { id: requestId },
-            select: { id: true, createdAt: true }
+            select: { id: true, createdAt: true, description: true, assignedStallCode: true }
         });
 
         if (!requestRecord) {
@@ -650,6 +733,10 @@ exports.rejectBookingStall = async (req, res) => {
             return res.redirect('/admin/approvals?error=history_round_locked');
         }
 
+        // ถ้าแอดมินเคยจัดล็อกให้แล้ว (สถานะ IN_PROGRESS) แล้วมาปฏิเสธทีหลัง ต้องปล่อยล็อกจริงทุกล็อก
+        // ที่จัดไว้กลับเป็นว่างด้วย ไม่งั้นล็อกจะค้างสถานะ BOOKED ตลอดไปโดยไม่มีเจ้าของ
+        const stallCodesToRelease = parseStallCodes(requestRecord.assignedStallCode || extractAssignedStallFromDescription(requestRecord.description));
+
         await prisma.bookingRequest.update({
             where: { id: requestId },
             data: {
@@ -657,6 +744,13 @@ exports.rejectBookingStall = async (req, res) => {
                 assignedStallCode: null
             }
         });
+
+        if (stallCodesToRelease.length) {
+            await prisma.stall.updateMany({
+                where: { stallCode: { in: stallCodesToRelease } },
+                data: { isAvailable: true, status: 'AVAILABLE' }
+            });
+        }
 
         const rejectedRequestTag = buildBookingRequestTag(requestId);
         if (rejectedRequestTag) {

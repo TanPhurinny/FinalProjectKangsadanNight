@@ -99,7 +99,7 @@ function renderDZoneGrid(z, stallByCode) {
         if (!stall) return;
 
         const cell = document.createElement('div');
-        cell.className = 'stall-cell zone-d-cell';
+        cell.className = 'stall-cell zone-d-cell tt-below';
         cell.style.gridColumn = `${pos.col} / ${pos.col + 1}`;
         cell.style.gridRow = `${pos.row} / ${pos.row + 1}`;
         cell.textContent = pos.code;
@@ -166,20 +166,35 @@ function renderGrid(z) {
         const col = document.createElement('div');
         col.className = isHorizontalZone ? 'stall-col stall-col-horizontal' : 'stall-col';
 
+        // ล็อกเล็ก (โซน T ที่แทรกอยู่ในคอลัมน์ B2) บางคู่วางซ้อนกันแบ่งครึ่งบน-ล่างของล็อคปกติ 1 ล็อกตามผังจริง
+        // (groupSize 2 = จับคู่ซ้อน, groupSize 1 = อยู่เดี่ยวเต็มล็อคปกติ — ดู T_GROUP_SIZES ใน marketController.js)
+        const isPaired = (s) => s.small && s.groupSize === 2;
+        let smallWrap = null;
+        let currentGroupId = null;
+        const getSmallWrap = (groupId) => {
+            if (!smallWrap || groupId !== currentGroupId) {
+                currentGroupId = groupId;
+                smallWrap = document.createElement('div');
+                smallWrap.className = 'small-lot-pair';
+                col.appendChild(smallWrap);
+            }
+            return smallWrap;
+        };
+
         column.stalls.forEach((stall) => {
             const id = stall.code;
 
             if (stall.status === 'PLACEHOLDER') {
                 const placeholderCell = document.createElement('div');
-                placeholderCell.className = stall.small ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
+                placeholderCell.className = isPaired(stall) ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
                 placeholderCell.textContent = 'x';
-                col.appendChild(placeholderCell);
+                (isPaired(stall) ? getSmallWrap(stall.groupId) : col).appendChild(placeholderCell);
                 return;
             }
 
             total += 1;
             const cell = document.createElement('div');
-            cell.className = stall.small ? 'stall-cell stall-cell-small' : 'stall-cell';
+            cell.className = isPaired(stall) ? 'stall-cell stall-cell-small' : 'stall-cell';
             cell.textContent = id;
             cell.dataset.stall = id;
             if (isHorizontalZone) cell.classList.add('tt-below');
@@ -203,7 +218,7 @@ function renderGrid(z) {
             }
 
             if ((currentQuery || currentStatusFilter) && stallMatchesFilter(id, stall)) cell.classList.add('s-match');
-            col.appendChild(cell);
+            (isPaired(stall) ? getSmallWrap(stall.groupId) : col).appendChild(cell);
         });
 
         wrap.appendChild(col);

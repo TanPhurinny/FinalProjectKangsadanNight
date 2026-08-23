@@ -200,13 +200,43 @@ function safeInt(value, fallback = 0) {
     return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+// หาราคาที่ "เป็นตัวแทนของโซน" จากแถวทั้งหมด โดยถ่วงน้ำหนักตามจำนวนล็อกในแต่ละแถว
+// (ไม่ใช้ min ตรง ๆ เพราะบางโซน เช่น B มีแถวส่วนน้อยราคาต่างจากส่วนใหญ่ เช่น B6 แฟชั่น 209 ท่ามกลางอาหาร 259)
+function dominantRowPrice(rows) {
+    const stallCountByPrice = new Map();
+
+    for (const row of rows) {
+        const price = Number(row.price || 0);
+        if (!Number.isFinite(price) || price < 0) continue;
+
+        const start = Number(row.stallStartNumber);
+        const end = Number(row.stallEndNumber);
+        const stallCount = (Number.isFinite(start) && Number.isFinite(end) && end >= start) ? (end - start + 1) : 1;
+
+        stallCountByPrice.set(price, (stallCountByPrice.get(price) || 0) + stallCount);
+    }
+
+    let bestPrice = 0;
+    let bestCount = -1;
+    for (const [price, count] of stallCountByPrice) {
+        if (count > bestCount) {
+            bestPrice = price;
+            bestCount = count;
+        }
+    }
+
+    return bestPrice;
+}
+
 async function loadZoneDetailsMap() {
     const zones = await prisma.zone.findMany({
         include: {
             rows: {
                 select: {
                     price: true,
-                    size: true
+                    size: true,
+                    stallStartNumber: true,
+                    stallEndNumber: true
                 }
             }
         }
@@ -217,15 +247,13 @@ async function loadZoneDetailsMap() {
         const zoneCode = String(zone.code || '').toLowerCase();
         if (!zoneCode) continue;
 
-        const rowPrices = zone.rows.map((row) => Number(row.price || 0)).filter((price) => Number.isFinite(price));
-        const minPrice = rowPrices.length ? Math.min(...rowPrices) : 0;
         const size = zone.rows.find((row) => row.size)?.size || zone.size || '-';
 
         map[zoneCode] = {
             label: `โซน ${zone.code}`,
             description: zone.description || `พื้นที่ขายสำหรับโซน ${zone.code}`,
             size,
-            dailyPrice: minPrice,
+            dailyPrice: dominantRowPrice(zone.rows),
             electricityFee: Number(zone.electricityFee || LIGHT_UNIT_PRICE)
         };
     }
@@ -241,19 +269,14 @@ async function getDailyPriceByZoneCode(zoneCode) {
         where: { code: normalized },
         include: {
             rows: {
-                select: { price: true }
+                select: { price: true, stallStartNumber: true, stallEndNumber: true }
             }
         }
     });
 
     if (zone && zone.rows.length) {
-        const rowPrices = zone.rows
-            .map((row) => Number(row.price || 0))
-            .filter((price) => Number.isFinite(price) && price >= 0);
-
-        if (rowPrices.length) {
-            return Math.min(...rowPrices);
-        }
+        const price = dominantRowPrice(zone.rows);
+        if (price > 0) return price;
     }
 
     const slot = await prisma.slot.findFirst({

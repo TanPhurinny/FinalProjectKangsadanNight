@@ -363,3 +363,11 @@ body {
 .cursor-pointer {
     cursor: pointer;
 }
+
+/* กันรูปประกาศ (มักเป็นภาพแนวตั้งจากมือถือ) ล้นจอตอนเปิดดูภาพเต็มบนคอม — มือถือหน้าจอเล็กพอดีอยู่แล้วไม่กระทบ */
+.swal2-image {
+    max-height: 80vh !important;
+    width: auto !important;
+    max-width: 100% !important;
+    object-fit: contain;
+}

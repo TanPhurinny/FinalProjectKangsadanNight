@@ -874,12 +874,24 @@
     background: #e4f2f5;
 }
 
-/* ล็อค T ขนาดจริง 2x3 (กว้าง 2 ลึก 3 เท่าล็อคปกติที่เป็น 3x3) — ย่อแค่ความกว้าง
-   ความสูงเท่าล็อคปกติเพราะความลึกเท่ากัน (3) ไม่ใช่ย่อทั้งสองด้านเหมือนเดิม */
+/* ล็อค T บางคู่ในผังจริงวางซ้อนกันแบ่งครึ่งบน-ล่างของล็อคปกติ 1 ล็อก (.small-lot-pair)
+   ตามผังจริง — ไม่ใช่ทุกคู่ บางล็อก T ก็อยู่เดี่ยวเต็มล็อคปกติ (ดู T_GROUP_SIZES ใน marketController.js) */
+.small-lot-pair {
+    display: flex;
+    flex-direction: column;
+    width: 62px;
+    height: 48px;
+    margin-top: -1px;
+    margin-left: -1px;
+}
+
 .stall-cell-small {
-    width: 41px;
-    height: 32px;
-    font-size: 9px;
+    flex: 1 1 0;
+    width: 100%;
+    height: auto;
+    font-size: 10px;
+    box-sizing: border-box;
+    margin: 0 !important;
 }
 
 .col-group-end {

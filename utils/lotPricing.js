@@ -9,8 +9,9 @@ const CSV_PATH = path.join(__dirname, '..', 'data', 'lots.csv');
 const BASE_PRICES = {
     'แฟชั่น 3x3': 209,
     'อาหาร 3x3': 259,
-    'อาหาร 2x2': 249,
-    'อาหาร 2x3': 120
+    'อาหาร 2x2': 219,
+    'อาหาร 2x3': 219,
+    'ฟู้ดทรัค': 230
 };
 
 const COLOR_SURCHARGE = {
@@ -22,14 +23,15 @@ const COLOR_SURCHARGE = {
 };
 
 // ประเภทเริ่มต้นของแต่ละโซนสำหรับล็อคที่ไม่มีข้อมูลใน CSV (อิงจากประเภทส่วนใหญ่ของล็อคในโซนนั้นตาม CSV)
-// โซน D และ X ไม่มีข้อมูลใน CSV และไม่มีกติการาคาที่ระบุมา จึงไม่กำหนดค่าเริ่มต้นให้ (ไม่คำนวณราคา)
 const ZONE_DEFAULT_TYPE = {
     A: 'แฟชั่น 3x3',
     B: 'อาหาร 3x3',
     C: 'แฟชั่น 3x3',
+    D: 'ฟู้ดทรัค',
     E: 'แฟชั่น 3x3',
     F: 'อาหาร 2x2',
-    T: 'อาหาร 2x3'
+    T: 'อาหาร 2x3',
+    X: 'อาหาร 3x3'
 };
 
 function parseCsv(text) {
@@ -70,7 +72,12 @@ function getLotPricing(stallCode) {
     }
 
     const zoneCode = (code.match(/^[A-Z]+/) || [])[0];
-    const defaultType = ZONE_DEFAULT_TYPE[zoneCode];
+    const stallNumber = Number.parseInt(code.slice(zoneCode.length), 10);
+
+    // แถว B601-B623 เป็นแฟชั่น ส่วนที่เหลือของโซน B เป็นอาหาร 3x3
+    const defaultType = (zoneCode === 'B' && stallNumber >= 601 && stallNumber <= 623)
+        ? 'แฟชั่น 3x3'
+        : ZONE_DEFAULT_TYPE[zoneCode];
     if (!defaultType) return { type: null, color: null, pricePerDay: null };
 
     return { type: defaultType, color: 'ไม่มี', pricePerDay: computePrice(defaultType, 'ไม่มี') };

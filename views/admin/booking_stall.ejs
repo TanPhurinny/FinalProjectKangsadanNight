@@ -7,7 +7,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap"
       rel="stylesheet" />
     <link rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -15,603 +15,6 @@
     <link rel="stylesheet" href="/stylesheets/admin/theme.css">
     <link rel="stylesheet" href="/stylesheets/responsive.css">
     <link rel="stylesheet" href="/stylesheets/admin/bookingStall.css">
-
-    <style>
-    :root {
-      --primary: #3BB8D4;
-      --primary-dark: #2a9ab5;
-      --bg: #f4f5f7;
-      --card-bg: #ffffff;
-      --text-main: #1a2b2b;
-      --text-sub: #6b8a8a;
-      --border: #d4d4d4;
-      --radius: 12px;
-      
-      /* Colors for Map Legend */
-      --stall-empty: #ffffff;
-      --stall-booked: #9ca3af;
-      --stall-selected: #3BB8D4;
-    }
-
-    .booking-stall-page,
-    .booking-stall-page * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-    }
-
-    .booking-stall-page {
-      font-family: 'Kanit', sans-serif;
-      background: #f4f7fb;
-      color: var(--dark-color);
-      min-height: 100vh;
-    }
-
-    /* ── HEADER ── */
-    .site-header {
-      background: #fff;
-      border-bottom: 1px solid #e8eef2;
-      padding: 14px 24px;
-      display: flex;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      box-shadow: 0 2px 10px rgba(44,62,80,0.05);
-    }
-    .btn-back {
-      width: 40px; height: 40px;
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--dark-color); text-decoration: none; font-size: 18px;
-      background: #f5f9fc;
-      border: 1px solid #e2edf3;
-      transition: 0.2s;
-    }
-    .btn-back:hover {
-      background: #ebf5fb;
-      border-color: #cfe6f3;
-    }
-    .header-title {
-      flex: 1; text-align: center; font-family: 'Prompt', sans-serif;
-      font-size: 20px; font-weight: 600; margin: 0;
-    }
-    .header-spacer { width: 40px; }
-
-    .container {
-      max-width: 1200px;
-      margin: 20px auto 60px;
-      padding: 0 16px;
-    }
-
-    /* ── APPLICANT INFO CARD (ข้อมูลผู้ขอเช่า) ── */
-    .applicant-card {
-      background: var(--card-bg);
-      border-radius: var(--radius);
-      padding: 24px;
-      margin-bottom: 24px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.04);
-      border: 1px solid #eaeaea;
-      border-left: 5px solid var(--primary);
-    }
-    .applicant-header {
-      font-family: 'Prompt', sans-serif;
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--primary-dark);
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      border-bottom: 1px dashed var(--border);
-      padding-bottom: 12px;
-    }
-    .applicant-body {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 16px 20px;
-    }
-    .info-group {
-      display: flex;
-      flex-direction: column;
-    }
-    .info-group label {
-      font-size: 13px;
-      color: var(--text-sub);
-      font-weight: 600;
-      margin-bottom: 2px;
-    }
-    .info-group span {
-      font-size: 15px;
-      color: var(--text-main);
-      font-weight: 500;
-    }
-    .note-full-width {
-      grid-column: 1 / -1;
-      background: #fdfae8;
-      padding: 10px 14px;
-      border-radius: 6px;
-      border-left: 3px solid #FF9F1C;
-    }
-
-    /* ── MAP CONTROLS (Top Bar) ── */
-    .map-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-      gap: 16px;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      border: 1px solid #eaeaea;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-    .zone-select-wrapper {
-      flex: 1;
-    }
-    .zone-select-wrapper label {
-      display: block; font-weight: 600; font-size: 18px; font-family: 'Prompt', sans-serif;
-    }
-    .zone-select-wrapper span {
-      font-size: 13px; color: #666; display: block; margin-bottom: 12px;
-    }
-    
-    /* ปุ่มเลือกโซน */
-    .zone-btn-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .btn-zone {
-      padding: 8px 20px;
-      border-radius: 20px;
-      border: 1px solid #ccc;
-      background: #fff;
-      color: #555;
-      font-family: inherit;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .btn-zone:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-    .btn-zone.active {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-    .btn-zone small {
-      font-size: 11px;
-      opacity: 0.8;
-    }
-
-    /* สลับปุ่มเลือกโซน / ดูแบบผัง */
-    .view-toggle-group {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    .toggle-btn {
-      padding: 6px 14px;
-      border-radius: 20px;
-      border: 1px solid #ccc;
-      background: #fff;
-      color: #555;
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .toggle-btn:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-    .toggle-btn.active {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-
-    /* ผังย่อคลิกเลือกโซน (แทนรายการปุ่ม) — ตำแหน่งอิงผังจริงเหมือนหน้า /admin/slots */
-    .ov-canvas {
-      position: relative;
-      width: 100%;
-      max-width: 420px;
-      min-height: 260px;
-      background: #eef3f5;
-      border-radius: 8px;
-      border: 1px solid #eaeaea;
-    }
-    .ov-block {
-      position: absolute;
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      cursor: pointer;
-      font-family: 'Prompt', sans-serif;
-      font-weight: 600;
-      font-size: 12px;
-      line-height: 1.25;
-      padding: 4px;
-      box-sizing: border-box;
-      border: 2px solid transparent;
-      transition: all 0.15s;
-    }
-    .ov-title {
-      max-width: 100%;
-      overflow-wrap: break-word;
-    }
-    .ov-block:hover {
-      transform: scale(1.03);
-      z-index: 2;
-    }
-    .ov-block.active {
-      border-color: var(--primary-dark);
-      box-shadow: 0 0 0 2px var(--primary);
-    }
-    #ov-zone-A { top: 8%; left: 2%; width: 23%; height: 84%; background: #E5D9F2; color: #441752; }
-    #ov-zone-E { top: 8%; left: 27%; width: 17%; height: 14%; background: #FFB5DA; color: #c0006e; }
-    #ov-zone-F { top: 24%; left: 27%; width: 18%; height: 68%; background: #FDBF60; color: #a84800; }
-    #ov-zone-D { top: 8%; left: 47%; width: 17%; height: 14%; background: #C8FFE0; color: #0a7a5a; }
-    #ov-zone-X { top: 8%; left: 66%; width: 15%; height: 14%; background: #FDBF60; color: #a84800; }
-    #ov-zone-B { top: 24%; left: 47%; width: 51%; height: 68%; background: #FDBF60; color: #a84800; }
-    #ov-zone-C { bottom: 4%; left: 2%; width: 23%; height: 12%; background: #FFB5DA; color: #c0006e; }
-    #ov-zone-E .ov-title, #ov-zone-D .ov-title, #ov-zone-X .ov-title, #ov-zone-C .ov-title {
-      font-size: 11px;
-    }
-
-    /* Legend */
-    .legend-box {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      background: #fff;
-      padding: 16px 24px;
-      border-radius: 16px;
-      border: 1px solid #eaeaea;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-      margin-top: 20px;
-    }
-    .legend-row {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      align-items: center;
-      gap: 20px;
-    }
-    .legend-divider {
-      width: 100%;
-      max-width: 480px;
-      height: 1px;
-      background: #eaeaea;
-    }
-    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
-    .color-box { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #bbb; }
-    .color-empty { background: var(--stall-empty); }
-    .color-booked { background: var(--stall-booked); border-color: #777;}
-    .color-selected { background: var(--stall-selected); border-color: var(--primary-dark); }
-    .color-requested { border: 2px solid var(--primary); background: transparent; }
-    .color-pink { background: #ec4899; border-color: #db2777; }
-    .color-blue { background: #38bdf8; border-color: #0ea5e9; }
-    .color-yellow { background: #facc15; border-color: #eab308; }
-
-    .btn-color-toggle {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 8px 16px; border-radius: 30px; font-size: 13px; font-weight: 700;
-      border: 1px solid #eaeaea; background: #fff; color: var(--text-main);
-      cursor: pointer; transition: 0.15s;
-    }
-    .btn-color-toggle.active {
-      background: #7e57c2; border-color: #5e3f9a; color: #fff;
-    }
-
-    /* ── MAP OUTER & INNER ── */
-    .map-outer {
-      display: flex;
-      background: #e5e5e5;
-      border: 2px solid #bbb;
-      border-radius: 8px;
-      overflow-x: auto;
-    }
-    .map-inner {
-      flex: 1;
-      background: #fff;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      min-width: 800px; 
-    }
-
-    /* Roads */
-    .road-left {
-      width: 50px; min-width: 50px; background: #e5e5e5;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      border-right: 2px solid #bbb; position: relative; gap: 10px;
-    }
-    .road-left-stripe {
-      position: absolute; top: 0; left: 0; bottom: 0; width: 12px; left: 8px;
-      background: repeating-linear-gradient(180deg, #f5c200 0px, #f5c200 20px, #222 20px, #222 40px);
-    }
-    .road-left-text {
-      writing-mode: vertical-rl; transform: rotate(180deg);
-      font-size: 14px; font-weight: 700; position: relative; z-index: 2; margin-left: 10px;
-    }
-    .road-right {
-      width: 50px; min-width: 50px; background: #e5e5e5;
-      display: flex; align-items: center; justify-content: center;
-      border-left: 2px solid #bbb;
-    }
-    .road-right-text {
-      writing-mode: vertical-rl; font-size: 14px; font-weight: 700;
-    }
-
-    .road-top {
-      height: 50px; background: #e5e5e5; border-bottom: 2px solid #bbb;
-      display: flex; align-items: center; justify-content: flex-end; padding: 0 20px;
-    }
-    .road-top-sign {
-      background: #f5c200; font-weight: 700; font-size: 14px; padding: 6px 16px; border-radius: 4px;
-    }
-    .road-bottom {
-      height: 50px; background: #e5e5e5; border-top: 2px solid #bbb;
-      display: flex; align-items: center; justify-content: flex-end; padding: 0 20px;
-    }
-    .road-bottom-stripe {
-      flex: 1; height: 12px; margin-right: 20px;
-      background: repeating-linear-gradient(90deg, #f5c200 0px, #f5c200 24px, #222 24px, #222 48px);
-    }
-
-    /* ── STALL GRID ── */
-    .admin-zone-canvas {
-      padding: 30px;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      gap: 30px; 
-      min-height: 400px;
-    }
-
-    .col-block {
-      display: flex;
-      gap: 0px; 
-    }
-
-    .stall-column {
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* โซนแนวนอน (C/E/X) — ต้อง specificity สูงกว่า .stall-column เฉยๆ ด้านบน
-       เพื่อไม่ให้ flex-direction:column ทับ flex-direction:row ของ bookingStall.css */
-    .stall-column.stall-column-horizontal {
-      flex-direction: row;
-    }
-
-    .stall-cell {
-      width: 55px;
-      height: 28px;
-      border: 1px solid #555;
-      background: var(--stall-empty);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
-      color: #111;
-      cursor: pointer;
-      margin-top: -1px; 
-      margin-left: -1px;
-      transition: background 0.15s;
-    }
-
-    .stall-cell:hover:not(.booked) { background: #e0f6fb; }
-    
-    .stall-cell.booked { 
-      background: var(--stall-booked); 
-      color: #333; 
-      cursor: help; 
-    }
-    .stall-cell.selected { 
-      background: var(--stall-selected); 
-      color: #fff; 
-      border-color: #2a9ab5; 
-      z-index: 2; 
-    }
-    
-    /* คลาสสำหรับไฮไลต์ "แถวที่รีเควสมา" */
-    .stall-cell.requested-range {
-      border: 2px solid var(--primary) !important;
-      z-index: 1; /* ให้อยู่เหนือขอบสีดำปกติ */
-    }
-
-
-    /* ── ACTION FOOTER ── */
-    .action-footer {
-      margin-top: 24px;
-      display: flex;
-      justify-content: flex-end;
-      gap: 16px;
-    }
-    .btn-save {
-      background: var(--primary); color: #fff; border: none; padding: 12px 30px;
-      font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 600;
-      border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(59,184,212,0.3);
-      min-width: 210px;
-      text-align: center;
-    }
-    .btn-reject-main {
-      background: var(--stall-booked); color: #ffffff; border: none; padding: 12px 30px;
-      font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 600;
-      border-radius: 8px; cursor: pointer;
-      min-width: 210px;
-      text-align: center;
-    }
-    .btn-reject-main:hover {
-      background: var(--stall-booked);
-    }
-
-
-    /* ==========================================
-       📍 TOOLTIP (สำหรับแผงสีเทาที่ถูกจองแล้ว)
-       ========================================== */
-    .admin-tooltip {
-      position: fixed;
-      z-index: 9999;
-      background: #fff;
-      width: 320px;
-      border-radius: 4px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      border: 1px solid #ccc;
-      display: none;
-      pointer-events: none;
-      overflow: hidden;
-    }
-    .tt-header {
-      background: var(--primary);
-      color: #fff;
-      padding: 12px 16px;
-      font-family: 'Prompt', sans-serif;
-      font-size: 18px;
-      font-weight: 600;
-    }
-    .tt-body { padding: 16px; }
-    .tt-row { display: flex; gap: 16px; margin-bottom: 14px; }
-    .tt-group { flex: 1; margin-bottom: 14px; }
-    .tt-group:last-child { margin-bottom: 0; }
-    .tt-label { display: block; font-size: 13px; color: #222; font-weight: 700; margin-bottom: 2px; }
-    .tt-value { display: block; font-size: 14px; color: #555; }
-
-    /* ── CONFIRM SUMMARY ── */
-    .confirm-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.5);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1200;
-      padding: 16px;
-    }
-    .confirm-overlay.active { display: flex; }
-
-    .confirm-card {
-      width: 100%;
-      max-width: 560px;
-      background: #fff;
-      border-radius: 14px;
-      overflow: hidden;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.22);
-      border: 1px solid #e5e7eb;
-    }
-    .confirm-head {
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      color: #fff;
-      padding: 14px 18px;
-      font-family: 'Prompt', sans-serif;
-      font-size: 18px;
-      font-weight: 600;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .confirm-close {
-      border: none;
-      background: transparent;
-      color: #fff;
-      font-size: 18px;
-      cursor: pointer;
-    }
-    .confirm-body {
-      padding: 18px;
-    }
-    .confirm-grid {
-      display: grid;
-      grid-template-columns: 160px 1fr;
-      gap: 10px 12px;
-      margin-bottom: 14px;
-    }
-    .confirm-label {
-      color: #64748b;
-      font-size: 14px;
-      font-weight: 600;
-    }
-    .confirm-value {
-      color: #1f2937;
-      font-size: 14px;
-      font-weight: 600;
-    }
-    .confirm-value.highlight {
-      color: var(--primary-dark);
-      font-weight: 700;
-    }
-    .confirm-note {
-      background: #fff8e1;
-      border-left: 4px solid #f59e0b;
-      border-radius: 6px;
-      padding: 10px 12px;
-      margin-bottom: 16px;
-      font-size: 13px;
-      color: #5b4a1a;
-    }
-    .confirm-actions {
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-    }
-    .btn-cancel-confirm,
-    .btn-final-confirm {
-      border: none;
-      border-radius: 8px;
-      padding: 10px 18px;
-      font-family: 'Prompt', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .btn-cancel-confirm {
-      background: #9ca3af;
-      color: #fff;
-    }
-    .btn-final-confirm {
-      background: var(--primary);
-      color: #fff;
-    }
-
-    @media (max-width: 768px) {
-      .applicant-body { grid-template-columns: 1fr 1fr; }
-    }
-
-    @media (max-width: 600px) {
-      .confirm-grid {
-        grid-template-columns: 1fr;
-        gap: 6px;
-      }
-      .confirm-actions {
-        flex-direction: column;
-      }
-    }
-
-    @media (max-width: 500px) {
-      .applicant-body { grid-template-columns: 1fr; }
-    }
-  </style>
   </head>
   <body>
 
@@ -620,34 +23,34 @@
     <div class="booking-stall-page">
 
       <div id="adminTooltip" class="admin-tooltip">
-        <div class="tt-header">แผง <span id="tt-stall-id"></span></div>
+        <div class="tt-header" id="tt-header">แผง <span id="tt-stall-id"></span></div>
         <div class="tt-body">
           <div class="tt-group">
-            <span class="tt-label">ชื่อร้านค้า</span>
+            <span class="tt-label" id="tt-label-shop">ชื่อร้านค้า</span>
             <span class="tt-value" id="tt-shop"></span>
           </div>
 
           <div class="tt-row" style="margin-bottom:0;">
             <div class="tt-group">
-              <span class="tt-label">หมายเลขล็อก</span>
+              <span class="tt-label" id="tt-label-lock">หมายเลขล็อก</span>
               <span class="tt-value" id="tt-lock"></span>
             </div>
             <div class="tt-group">
-              <span class="tt-label">วันที่จอง</span>
+              <span class="tt-label" id="tt-label-date">วันที่จอง</span>
               <span class="tt-value" id="tt-date"></span>
             </div>
           </div>
 
           <div class="tt-group" style="margin-top: 14px;">
-            <span class="tt-label">ผู้จอง</span>
+            <span class="tt-label" id="tt-label-name">ผู้จอง</span>
             <span class="tt-value" id="tt-name"></span>
           </div>
-          <div class="tt-group">
-            <span class="tt-label">เบอร์โทรศัพท์</span>
+          <div class="tt-group" id="tt-phone-group">
+            <span class="tt-label" id="tt-label-phone">เบอร์โทรศัพท์</span>
             <span class="tt-value" id="tt-phone"></span>
           </div>
           <div class="tt-group" style="margin-top: 14px;">
-            <span class="tt-label">หมายเหตุ</span>
+            <span class="tt-label" id="tt-label-note">หมายเหตุ</span>
             <span class="tt-value" id="tt-note" style="font-size: 13px;"></span>
           </div>
         </div>
@@ -668,6 +71,10 @@
             ข้อมูลผู้ที่ส่งคำขอเช่าแผงเข้ามา
           </div>
           <div class="applicant-body">
+            <div class="info-group applicant-image-group" id="app-image-group" style="display:none;">
+              <label>รูปสินค้า</label>
+              <img id="app-image" class="applicant-product-image" alt="รูปสินค้าที่ยื่นขอจอง" />
+            </div>
             <div class="info-group">
               <label>ชื่อผู้จอง</label>
               <span id="app-name">-</span>
@@ -675,6 +82,10 @@
             <div class="info-group">
               <label>ชื่อร้านค้า</label>
               <span id="app-shop">-</span>
+            </div>
+            <div class="info-group">
+              <label>ประเภทสินค้า</label>
+              <span id="app-product-type">-</span>
             </div>
             <div class="info-group">
               <label>เบอร์โทรศัพท์</label>
@@ -686,13 +97,31 @@
                 style="color: var(--primary-dark); font-weight: 700;">-</span>
             </div>
             <div class="info-group">
-              <label>ช่วงเวลาที่จอง</label>
+              <label>จำนวนล็อกที่ขอ</label>
+              <span id="app-stall-count"
+                style="color: var(--primary-dark); font-weight: 700;">-</span>
+            </div>
+            <div class="info-group">
+              <label>ระยะเวลาเช่า</label>
+              <span id="app-rental-period" style="color: var(--primary-dark); font-weight: 700;">-</span>
+            </div>
+            <div class="info-group">
+              <label>วันที่ส่งคำขอ</label>
               <span id="app-date">-</span>
             </div>
-            <div class="info-group"></div> <div
-              class="info-group note-full-width">
+            <div class="info-group" id="app-grand-total-group" style="display:none;">
+              <label>ยอดรวมทั้งหมด (ทุกล็อก)</label>
+              <span id="app-grand-total" style="color: var(--primary-dark); font-weight: 700;">-</span>
+            </div>
+            <div class="info-group note-full-width" id="app-corner-note-group" style="display:none;">
               <label
-                style="color: #d97706; font-size: 12px;">หมายเหตุเพิ่มเติมจากผู้จอง</label>
+                style="color: #d97706; font-size: 12px;">สนใจแผงพิเศษ (มุมสี)</label>
+              <span id="app-corner-note"
+                style="color: #333; font-size: 13px; margin-top: 4px;">-</span>
+            </div>
+            <div class="info-group note-full-width">
+              <label
+                style="color: #d97706; font-size: 12px;">รายละเอียดร้านค้า/สินค้าที่ขาย (จากผู้จอง)</label>
               <span id="app-note"
                 style="color: #333; font-size: 13px; margin-top: 4px;">-</span>
             </div>
@@ -703,8 +132,13 @@
           <div class="zone-select-wrapper">
             <label>โซน</label>
             <span>ระบุโซนที่ต้องการจอง</span>
+            <div id="zoneRestrictRow" style="display:none; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span id="zoneRestrictNote" style="color: var(--warning-dark, #a06c1f); font-weight: 600;"></span>
+              <button type="button" class="btn-color-toggle" id="zoneShowAllToggle" onclick="toggleShowAllZones(this)">
+                <i class="fa-solid fa-eye"></i> แสดงทุกโซน</button>
+            </div>
 
-            <div class="view-toggle-group">
+            <div class="view-toggle">
               <button type="button" class="toggle-btn active" data-mode="buttons">
                 <i class="fa-solid fa-list"></i> เลือกจากรายการ</button>
               <button type="button" class="toggle-btn" data-mode="overview">
@@ -713,9 +147,9 @@
 
             <div class="zone-btn-group" id="zoneButtons">
               <button class="btn-zone active" data-zone="A">โซน A
-                <small>(แฟชั่น/พิเศษอาหาร A901-A923)</small></button>
+                <small>(แฟชั่น/อาหาร A901-A923)</small></button>
               <button class="btn-zone" data-zone="B">โซน B
-                <small>(อาหาร)</small></button>
+                <small>(อาหาร/แฟชั่น B601-B623)</small></button>
               <button class="btn-zone" data-zone="C">โซน C
                 <small>(แฟชั่น)</small></button>
               <button class="btn-zone" data-zone="D">โซน D
@@ -725,24 +159,29 @@
               <button class="btn-zone" data-zone="F">โซน F
                 <small>(อาหาร)</small></button>
               <button class="btn-zone" data-zone="X">โซน X
-                <small>(อาหาร/บูธพิเศษ)</small></button>
+                <small>(อาหาร)</small></button>
             </div>
 
-            <div class="ov-canvas" id="zoneOverviewCanvas" style="display:none;">
-              <div class="ov-block" id="ov-zone-E" data-zone="E">
-                <span class="ov-title">โซน E</span></div>
-              <div class="ov-block" id="ov-zone-D" data-zone="D">
-                <span class="ov-title">โซน D</span></div>
-              <div class="ov-block" id="ov-zone-X" data-zone="X">
-                <span class="ov-title">โซน X</span></div>
-              <div class="ov-block" id="ov-zone-A" data-zone="A">
-                <span class="ov-title">โซน A</span></div>
-              <div class="ov-block" id="ov-zone-F" data-zone="F">
-                <span class="ov-title">โซน F</span></div>
-              <div class="ov-block" id="ov-zone-B" data-zone="B">
-                <span class="ov-title">โซน B</span></div>
-              <div class="ov-block" id="ov-zone-C" data-zone="C">
-                <span class="ov-title">โซน C</span></div>
+            <div class="zone-info-bar" id="zoneInfoBar">
+              <span class="zone-info-code" id="zoneInfoCode">A</span>
+              <span class="zone-info-text" id="zoneInfoText">-</span>
+            </div>
+
+            <div class="ov-zone-canvas" id="zoneOverviewCanvas" style="display:none;">
+              <div class="ov-zone-block ov-zone-E" data-zone="E">
+                <span class="ov-zone-title">โซน E</span></div>
+              <div class="ov-zone-block ov-zone-D" data-zone="D">
+                <span class="ov-zone-title">โซน D</span></div>
+              <div class="ov-zone-block ov-zone-X" data-zone="X">
+                <span class="ov-zone-title">โซน X</span></div>
+              <div class="ov-zone-block ov-zone-A" data-zone="A">
+                <span class="ov-zone-title">โซน A</span></div>
+              <div class="ov-zone-block ov-zone-F" data-zone="F">
+                <span class="ov-zone-title">โซน F</span></div>
+              <div class="ov-zone-block ov-zone-B" data-zone="B">
+                <span class="ov-zone-title">โซน B</span></div>
+              <div class="ov-zone-block ov-zone-C" data-zone="C">
+                <span class="ov-zone-title">โซน C</span></div>
             </div>
 
             <div class="legend-box">
@@ -766,6 +205,10 @@
                   มุมพิเศษ สีฟ้า (+29 / A9 +20)</div>
                 <div class="legend-item"><div class="color-box color-yellow"></div>
                   มุมพิเศษ สีเหลือง (+89)</div>
+                <div class="legend-item"><div class="color-box color-alt-fashion"></div>
+                  แถวแฟชั่นปนในโซนอาหาร (B601-B623)</div>
+                <div class="legend-item"><div class="color-box color-alt-food"></div>
+                  แถวอาหารปนในโซนแฟชั่น (A901-A923)</div>
                 <button type="button" class="btn-color-toggle"
                   onclick="toggleLotColors(this)"><i class="fa-solid fa-palette"></i> สีมุมพิเศษ</button>
               </div>
@@ -837,12 +280,21 @@
               <span class="confirm-label">โซน/แถวคำขอ</span>
               <span class="confirm-value" id="c-zone">-</span>
 
-              <span class="confirm-label">ช่วงเวลาที่จอง</span>
+              <span class="confirm-label">ประเภทสินค้า</span>
+              <span class="confirm-value" id="c-product-type">-</span>
+
+              <span class="confirm-label">ระยะเวลาเช่า</span>
+              <span class="confirm-value" id="c-rental">-</span>
+
+              <span class="confirm-label">ราคาล็อกที่เลือก</span>
+              <span class="confirm-value" id="c-price-check">-</span>
+
+              <span class="confirm-label">วันที่ส่งคำขอ</span>
               <span class="confirm-value" id="c-date">-</span>
             </div>
 
             <div class="confirm-note">
-              <strong>หมายเหตุจากผู้จอง:</strong><br>
+              <strong>รายละเอียดร้านค้า/สินค้าที่ขาย:</strong><br>
               <span id="c-note">-</span>
             </div>
 
@@ -883,13 +335,17 @@
   }
   window.toggleLotColors = toggleLotColors;
 
-  let currentSelectedStall = String(REQUEST_DATA.assignedStallCode || '').trim().toUpperCase() || null;
+  const REQUESTED_STALL_COUNT = Math.max(1, Number.parseInt(REQUEST_DATA.requestedStallCount, 10) || 1);
+  // เก็บล็อกที่เลือกไว้เป็น array เพราะ 1 คำขออาจขอมากกว่า 1 ล็อก (REQUESTED_STALL_COUNT > 1)
+  let currentSelectedStalls = Array.isArray(REQUEST_DATA.assignedStallCodes) ? [...REQUEST_DATA.assignedStallCodes] : [];
   let currentZone = (REQUEST_DATA.zone || Object.keys(ZONE_BY_CODE)[0] || 'A').toUpperCase();
 
   const tooltip = document.getElementById('adminTooltip');
   const confirmOverlay = document.getElementById('confirmOverlay');
   const zoneBtns = document.querySelectorAll('.btn-zone');
-  const overviewBlocks = document.querySelectorAll('.ov-block');
+  const overviewBlocks = document.querySelectorAll('.ov-zone-block');
+  const zoneInfoCode = document.getElementById('zoneInfoCode');
+  const zoneInfoText = document.getElementById('zoneInfoText');
   const toggleBtns = document.querySelectorAll('.toggle-btn');
   const zoneButtonsPanel = document.getElementById('zoneButtons');
   const zoneOverviewPanel = document.getElementById('zoneOverviewCanvas');
@@ -901,10 +357,60 @@
     document.getElementById('app-zone').textContent = REQUEST_DATA.zoneText || '-';
     document.getElementById('app-date').textContent = REQUEST_DATA.dateText || '-';
     document.getElementById('app-note').textContent = REQUEST_DATA.note || '-';
+    document.getElementById('app-product-type').textContent = REQUEST_DATA.productTypeText || '-';
+    const stallCountEl = document.getElementById('app-stall-count');
+    if (stallCountEl) {
+      stallCountEl.textContent = REQUESTED_STALL_COUNT > 1 ? `${REQUESTED_STALL_COUNT} ล็อก (ขอมากกว่า 1 ล็อก กรุณาเลือกให้ครบ)` : '1 ล็อก';
+    }
+
+    const rentalPeriodEl = document.getElementById('app-rental-period');
+    if (rentalPeriodEl) {
+      rentalPeriodEl.textContent = REQUEST_DATA.rentalDays
+        ? `${REQUEST_DATA.rentalDays} วัน (${REQUEST_DATA.rentalPeriodText})`
+        : 'ยังไม่มีข้อมูล';
+    }
+
+    if (REQUEST_DATA.grandTotalAllStalls) {
+      const applianceParts = [];
+      if (REQUEST_DATA.smallApplianceCount) applianceParts.push(`เครื่องเล็ก ${REQUEST_DATA.smallApplianceCount}`);
+      if (REQUEST_DATA.largeApplianceCount) applianceParts.push(`เครื่องใหญ่ ${REQUEST_DATA.largeApplianceCount}`);
+      if (REQUEST_DATA.lightEnabled) applianceParts.push('เปิดไฟ');
+      const extra = applianceParts.length ? ` (${applianceParts.join(', ')})` : '';
+      document.getElementById('app-grand-total').textContent =
+        `${Number(REQUEST_DATA.grandTotalAllStalls).toLocaleString('th-TH')} บาท${extra}`;
+      document.getElementById('app-grand-total-group').style.display = '';
+    }
+
+    if (REQUEST_DATA.productImage) {
+      document.getElementById('app-image').src = REQUEST_DATA.productImage;
+      document.getElementById('app-image-group').style.display = '';
+    }
+
+    if (REQUEST_DATA.cornerZoneNote) {
+      document.getElementById('app-corner-note').textContent = REQUEST_DATA.cornerZoneNote;
+      document.getElementById('app-corner-note-group').style.display = '';
+    }
   }
 
+  // จำกัดโซนที่แอดมินเลือกได้ให้ตรงกับประเภทสินค้าที่ผู้ขายลงทะเบียนไว้ (มาจาก allowedZones ที่ backend คำนวณแล้ว)
+  // ถ้า backend ส่งมาว่างเปล่า (ไม่มีข้อมูลประเภทสินค้า) ไม่จำกัด ให้เลือกได้ทุกโซนเหมือนเดิม
+  // แอดมินกดปุ่ม "แสดงทุกโซน" เพื่อปิดการจำกัดชั่วคราวได้ เผื่อกรณีพิเศษที่อยากดูโซนอื่นด้วย
+  const ALLOWED_ZONES = (REQUEST_DATA.allowedZones || []).map((z) => String(z).toUpperCase());
+  let showAllZones = false;
+
+  function toggleShowAllZones(btn) {
+    showAllZones = !showAllZones;
+    btn.classList.toggle('active', showAllZones);
+    renderZoneButtons();
+  }
+  window.toggleShowAllZones = toggleShowAllZones;
+
   function renderZoneButtons() {
-    const availableZones = Object.keys(ZONE_BY_CODE);
+    const zonesInMap = Object.keys(ZONE_BY_CODE);
+    const isRestricted = ALLOWED_ZONES.length > 0 && !showAllZones;
+    const availableZones = isRestricted
+      ? zonesInMap.filter((zone) => ALLOWED_ZONES.includes(zone))
+      : zonesInMap;
     zoneBtns.forEach((btn) => {
       const zone = (btn.dataset.zone || '').toUpperCase();
       btn.style.display = availableZones.includes(zone) ? 'inline-flex' : 'none';
@@ -913,6 +419,15 @@
       const zone = (block.dataset.zone || '').toUpperCase();
       block.style.display = availableZones.includes(zone) ? 'flex' : 'none';
     });
+
+    const restrictRow = document.getElementById('zoneRestrictRow');
+    const restrictNote = document.getElementById('zoneRestrictNote');
+    if (restrictRow && restrictNote && ALLOWED_ZONES.length) {
+      restrictRow.style.display = 'flex';
+      restrictNote.textContent = isRestricted
+        ? `— ผู้จองลงทะเบียนขายประเภท "${REQUEST_DATA.productTypeText || '-'}" เลือกได้เฉพาะโซน: ${ALLOWED_ZONES.join(', ')}`
+        : `— กำลังแสดงทุกโซน (ปกติจำกัดเฉพาะ: ${ALLOWED_ZONES.join(', ')} ตามประเภทสินค้า "${REQUEST_DATA.productTypeText || '-'}")`;
+    }
   }
 
   function setActiveZoneBtn(zoneCode) {
@@ -932,10 +447,65 @@
     zoneOverviewPanel.style.display = mode === 'overview' ? 'block' : 'none';
   }
 
+  // สรุปขนาด/ราคาของโซนที่เลือกให้เห็นชัดโดยไม่ต้องเอาเมาส์ไปชี้ทีละล็อก
+  // ใช้ราคาที่มีจำนวนล็อกมากที่สุดเป็นตัวแทนโซน แล้วโชว์ราคาส่วนน้อย (ถ้ามี) ต่อท้าย เช่น โซน B ที่มีแถว B6 เป็นแฟชั่นปนอยู่
+  function updateZoneInfo(zoneKey) {
+    if (!zoneInfoCode || !zoneInfoText) return;
+    zoneInfoCode.textContent = zoneKey || '-';
+
+    const zoneData = ZONE_BY_CODE[zoneKey];
+    if (!zoneData || !zoneData.columns.length) {
+      zoneInfoText.textContent = 'ไม่มีข้อมูลแผงสำหรับโซนนี้';
+      return;
+    }
+
+    // จัดกลุ่มตาม "ประเภท" ก่อน (แฟชั่น 3x3 / อาหาร 3x3 ฯลฯ) ไม่ใช่ตามราคาที่บวกมุมพิเศษแล้ว
+    // เพราะล็อกมุมพิเศษ (ชมพู/ฟ้า/เหลือง) ทำให้ราคาแตกย่อยเยอะ ดูรกถ้าแยกทีละราคา — สรุปแค่ "ราคาปกติ" ของแต่ละประเภทพอ
+    const typeGroups = new Map();
+    zoneData.columns.forEach((column) => {
+      column.stalls.forEach((stall) => {
+        if (stall.status === 'PLACEHOLDER' || stall.pricePerDay == null || !stall.lotType) return;
+        const group = typeGroups.get(stall.lotType) || { count: 0, priceCounts: new Map() };
+        group.count += 1;
+        group.priceCounts.set(stall.pricePerDay, (group.priceCounts.get(stall.pricePerDay) || 0) + 1);
+        typeGroups.set(stall.lotType, group);
+      });
+    });
+
+    if (!typeGroups.size) {
+      zoneInfoText.textContent = 'ไม่มีข้อมูลราคาสำหรับโซนนี้';
+      return;
+    }
+
+    // ราคา "ปกติ" ของแต่ละประเภท = ราคาที่ล็อกส่วนใหญ่ในประเภทนั้นใช้ (ไม่รวมมุมพิเศษ)
+    function normalPriceOf(group) {
+      return [...group.priceCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    }
+
+    const sortedTypes = [...typeGroups.entries()].sort((a, b) => b[1].count - a[1].count);
+    const describeType = ([type, group]) => {
+      const hasCornerVariants = group.priceCounts.size > 1;
+      const base = `${type} · ${normalPriceOf(group).toLocaleString('th-TH')} บาท/วัน`;
+      return hasCornerVariants ? `${base} (บางล็อกมุมพิเศษราคาต่างจากนี้ ดูป้ายสีด้านล่าง)` : base;
+    };
+
+    let text = `${describeType(sortedTypes[0])} · ${sortedTypes[0][1].count} ล็อก`;
+
+    if (sortedTypes.length > 1) {
+      const minorText = sortedTypes.slice(1)
+        .map((entry) => `${describeType(entry)} (${entry[1].count} ล็อก)`)
+        .join(', ');
+      text += ` — ปนอยู่: ${minorText}`;
+    }
+
+    zoneInfoText.textContent = text;
+  }
+
   function selectZone(selectedZone) {
     if (!ZONE_BY_CODE[selectedZone]) return;
     currentZone = selectedZone;
     setActiveZoneBtn(selectedZone);
+    updateZoneInfo(selectedZone);
     renderGrid(selectedZone);
   }
 
@@ -950,35 +520,75 @@
     { code: 'D209', col: 10, row: 2 }
   ];
 
-  function makeStallCell(code, stall) {
+  // สลับเลือก/ยกเลิกล็อก — เลือกได้ไม่เกินจำนวนล็อกที่คำขอนี้ขอมา (REQUESTED_STALL_COUNT)
+  function toggleStallSelection(code, cell) {
+    const alreadySelected = currentSelectedStalls.includes(code);
+    if (alreadySelected) {
+      currentSelectedStalls = currentSelectedStalls.filter((c) => c !== code);
+      cell.classList.remove('selected');
+      return;
+    }
+
+    if (currentSelectedStalls.length >= REQUESTED_STALL_COUNT) {
+      window.showAlertDialog({
+        title: 'เลือกครบจำนวนแล้ว',
+        message: `คำขอนี้ขอมา ${REQUESTED_STALL_COUNT} ล็อก กรุณายกเลิกล็อกที่เลือกไว้ก่อนหากต้องการเปลี่ยน`,
+        tone: 'warning'
+      });
+      return;
+    }
+
+    currentSelectedStalls.push(code);
+    cell.classList.add('selected');
+  }
+
+  // true ถ้าล็อกนี้เป็นคนละประเภทกับหมวดหลักของโซน (เช่น B601-B623 แฟชั่นที่ปนอยู่ในโซน B ซึ่งหลักๆ เป็นอาหาร,
+  // หรือ A901-A923 อาหารที่ปนอยู่ในโซน A ซึ่งหลักๆ เป็นแฟชั่น)
+  function isAltTypeStall(stall, zoneCategoryLabel) {
+    return !!(stall && stall.lotType && zoneCategoryLabel && !stall.lotType.startsWith(zoneCategoryLabel));
+  }
+
+  // แยกสีตามประเภทจริงของล็อกที่ปนอยู่ ไม่ใช้สีเดียวรวมกันหมด จะได้แยกออกว่าล็อกที่ปนเป็นอาหารหรือแฟชั่น
+  function altTypeClass(stall) {
+    if (!stall || !stall.lotType) return '';
+    if (stall.lotType.startsWith('อาหาร')) return 'lot-alt-food';
+    if (stall.lotType.startsWith('แฟชั่น')) return 'lot-alt-fashion';
+    return 'lot-alt-type';
+  }
+
+  // groupSize 2 = ล็อก T คู่ที่วางซ้อนกันแบ่งครึ่งล็อคปกติ 1 ล็อก, groupSize 1 = อยู่เดี่ยวเต็มล็อคปกติ (ตามผังจริง)
+  function isPairedStall(stall) {
+    return !!(stall && stall.small && stall.groupSize === 2);
+  }
+
+  function makeStallCell(code, stall, zoneCategoryLabel) {
     const cell = document.createElement('div');
-    cell.className = stall && stall.small ? 'stall-cell stall-cell-small' : 'stall-cell';
+    cell.className = isPairedStall(stall) ? 'stall-cell stall-cell-small' : 'stall-cell';
     cell.textContent = code;
 
     const lotClass = stall ? lotColorClass(stall.lotColor) : '';
     if (lotClass) cell.classList.add(lotClass);
+
+    if (isAltTypeStall(stall, zoneCategoryLabel)) cell.classList.add(altTypeClass(stall));
 
     const isBooked = BOOKED_STALLS.has(code);
     if (isBooked) {
       cell.classList.add('booked');
       if (stall && stall.expiryState === 'expired') cell.classList.add('expired');
       else if (stall && stall.expiryState === 'near') cell.classList.add('near-expiry');
-      cell.addEventListener('mouseenter', (e) => showTooltip(e, code));
+      cell.addEventListener('mouseenter', (e) => showTooltip(e, code, stall, true));
       cell.addEventListener('mouseleave', hideTooltip);
       cell.addEventListener('mousemove', moveTooltip);
     } else {
-      if (stall && stall.pricePerDay != null) {
-        const colorText = stall.lotColor && stall.lotColor !== 'ไม่มี' ? ` (สี ${stall.lotColor})` : '';
-        cell.title = `${stall.lotType}${colorText} — ${stall.pricePerDay.toLocaleString('th-TH')} บาท/วัน`;
-      }
+      cell.addEventListener('mouseenter', (e) => showTooltip(e, code, stall, false));
+      cell.addEventListener('mouseleave', hideTooltip);
+      cell.addEventListener('mousemove', moveTooltip);
       cell.addEventListener('click', () => {
-        document.querySelectorAll('.stall-cell').forEach((c) => c.classList.remove('selected'));
-        cell.classList.add('selected');
-        currentSelectedStall = code;
+        toggleStallSelection(code, cell);
       });
     }
 
-    if (code === currentSelectedStall) {
+    if (currentSelectedStalls.includes(code)) {
       cell.classList.add('selected');
     }
 
@@ -1042,6 +652,10 @@
       const lbl = document.createElement('div');
       lbl.className = 'col-lbl';
       lbl.textContent = column.rowCode;
+      const altStall = column.stalls.find((s) => isAltTypeStall(s, zoneData.description));
+      if (altStall) {
+        lbl.classList.add('col-lbl-alt', altTypeClass(altStall));
+      }
 
       const wrap = document.createElement('div');
       wrap.className = isHorizontalZone ? 'col-wrap col-wrap-horizontal' : 'col-wrap';
@@ -1050,16 +664,31 @@
       const colDiv = document.createElement('div');
       colDiv.className = isHorizontalZone ? 'stall-column stall-column-horizontal' : 'stall-column';
 
+      // ล็อกเล็ก (โซน T ที่แทรกอยู่ในคอลัมน์ B2) บางคู่วางซ้อนกันแบ่งครึ่งบน-ล่างของล็อคปกติ 1 ล็อกตามผังจริง
+      // (groupSize 2 = จับคู่ซ้อน, groupSize 1 = อยู่เดี่ยวเต็มล็อคปกติ — ดู T_GROUP_SIZES ใน marketController.js)
+      let smallWrap = null;
+      let currentGroupId = null;
+      const getSmallWrap = (groupId) => {
+        if (!smallWrap || groupId !== currentGroupId) {
+          currentGroupId = groupId;
+          smallWrap = document.createElement('div');
+          smallWrap.className = 'small-lot-pair';
+          colDiv.appendChild(smallWrap);
+        }
+        return smallWrap;
+      };
+
       column.stalls.forEach((stall) => {
         if (stall.status === 'PLACEHOLDER') {
           const placeholderCell = document.createElement('div');
-          placeholderCell.className = stall.small ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
+          placeholderCell.className = isPairedStall(stall) ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
           placeholderCell.textContent = 'x';
-          colDiv.appendChild(placeholderCell);
+          (isPairedStall(stall) ? getSmallWrap(stall.groupId) : colDiv).appendChild(placeholderCell);
           return;
         }
 
-        colDiv.appendChild(makeStallCell(stall.code, stall));
+        const cell = makeStallCell(stall.code, stall, zoneData.description);
+        (isPairedStall(stall) ? getSmallWrap(stall.groupId) : colDiv).appendChild(cell);
       });
 
       wrap.appendChild(colDiv);
@@ -1068,14 +697,40 @@
     });
   }
 
-  function showTooltip(e, stallName) {
-    document.getElementById('tt-stall-id').textContent = stallName;
-    document.getElementById('tt-shop').textContent = 'มีผู้จองแล้ว';
-    document.getElementById('tt-lock').textContent = stallName;
-    document.getElementById('tt-date').textContent = '-';
-    document.getElementById('tt-name').textContent = '-';
-    document.getElementById('tt-phone').textContent = '-';
-    document.getElementById('tt-note').textContent = 'ล็อกนี้ไม่ว่าง';
+  function showTooltip(e, code, stall, isBooked) {
+    document.getElementById('tt-stall-id').textContent = code;
+    tooltip.classList.toggle('tt-available', !isBooked);
+
+    if (isBooked) {
+      document.getElementById('tt-label-shop').textContent = 'ชื่อร้านค้า';
+      document.getElementById('tt-shop').textContent = 'มีผู้จองแล้ว';
+      document.getElementById('tt-label-lock').textContent = 'หมายเลขล็อก';
+      document.getElementById('tt-lock').textContent = code;
+      document.getElementById('tt-label-date').textContent = 'วันที่จอง';
+      document.getElementById('tt-date').textContent = '-';
+      document.getElementById('tt-label-name').textContent = 'ผู้จอง';
+      document.getElementById('tt-name').textContent = '-';
+      document.getElementById('tt-phone-group').style.display = '';
+      document.getElementById('tt-label-phone').textContent = 'เบอร์โทรศัพท์';
+      document.getElementById('tt-phone').textContent = '-';
+      document.getElementById('tt-label-note').textContent = 'หมายเหตุ';
+      document.getElementById('tt-note').textContent = 'ล็อกนี้ไม่ว่าง';
+    } else {
+      const colorText = stall && stall.lotColor && stall.lotColor !== 'ไม่มี' ? `สี${stall.lotColor}` : '-';
+      document.getElementById('tt-label-shop').textContent = 'สถานะ';
+      document.getElementById('tt-shop').textContent = 'ว่าง — พร้อมให้จอง';
+      document.getElementById('tt-label-lock').textContent = 'ประเภท/ขนาด';
+      document.getElementById('tt-lock').textContent = (stall && stall.lotType) || '-';
+      document.getElementById('tt-label-date').textContent = 'ราคา/วัน';
+      document.getElementById('tt-date').textContent = stall && stall.pricePerDay != null
+        ? `${stall.pricePerDay.toLocaleString('th-TH')} บาท`
+        : '-';
+      document.getElementById('tt-label-name').textContent = 'มุมพิเศษ';
+      document.getElementById('tt-name').textContent = colorText;
+      document.getElementById('tt-phone-group').style.display = 'none';
+      document.getElementById('tt-label-note').textContent = 'หมายเหตุ';
+      document.getElementById('tt-note').textContent = 'คลิกที่ล็อกนี้เพื่อเลือก';
+    }
 
     tooltip.style.display = 'block';
     moveTooltip(e);
@@ -1086,14 +741,19 @@
   }
 
   function moveTooltip(e) {
-    let x = e.clientX + 15;
-    let y = e.clientY + 15;
+    // ให้ tooltip โผล่ด้านข้างเมาส์ (แนวนอน) แทนบน/ล่าง กันไม่ให้ทับแถวล็อกที่อยู่ติดกัน
+    // (แถวในผังสูงแค่ ~28px ตัว tooltip สูงกว่านั้นมาก ถ้าวางบน/ล่างจะทับแถวข้างเคียงเสมอ เช่นโซน D ที่มีแค่ 2 แถว)
+    let x = e.clientX + 20;
+    let y = e.clientY - (tooltip.offsetHeight / 2);
 
     if (x + tooltip.offsetWidth > window.innerWidth) {
-      x = e.clientX - tooltip.offsetWidth - 10;
+      x = e.clientX - tooltip.offsetWidth - 20;
     }
+    if (x < 0) x = 4;
+
+    if (y < 0) y = 4;
     if (y + tooltip.offsetHeight > window.innerHeight) {
-      y = e.clientY - tooltip.offsetHeight - 10;
+      y = window.innerHeight - tooltip.offsetHeight - 4;
     }
 
     tooltip.style.left = `${x}px`;
@@ -1101,10 +761,18 @@
   }
 
   function confirmStall() {
-    if (!currentSelectedStall) {
+    if (!currentSelectedStalls.length) {
       window.showAlertDialog({
         title: 'ยังไม่ได้เลือกแผงค้า',
-        message: 'กรุณาคลิกเลือกแผงค้า 1 ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้า',
+        message: `กรุณาคลิกเลือกแผงค้า ${REQUESTED_STALL_COUNT} ล็อกบนแผนที่เพื่อจัดแผงให้ลูกค้า`,
+        tone: 'warning'
+      });
+      return;
+    }
+    if (currentSelectedStalls.length < REQUESTED_STALL_COUNT) {
+      window.showAlertDialog({
+        title: 'เลือกล็อกยังไม่ครบ',
+        message: `คำขอนี้ขอมา ${REQUESTED_STALL_COUNT} ล็อก แต่เลือกไว้แค่ ${currentSelectedStalls.length} ล็อก กรุณาเลือกให้ครบก่อนยืนยัน`,
         tone: 'warning'
       });
       return;
@@ -1112,14 +780,50 @@
     openConfirmSummary();
   }
 
+  // หาข้อมูลล็อก (ราคา/ประเภท) จาก ZONE_BY_CODE ด้วยรหัสล็อก ไม่สนใจว่ากำลังดูโซนไหนอยู่บนจอตอนนี้
+  function findStallInfo(code) {
+    for (const zoneCode of Object.keys(ZONE_BY_CODE)) {
+      for (const column of ZONE_BY_CODE[zoneCode].columns) {
+        const found = column.stalls.find((s) => s.code === code);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
   function openConfirmSummary() {
-    document.getElementById('c-stall').textContent = currentSelectedStall;
+    document.getElementById('c-stall').textContent = currentSelectedStalls.join(', ');
     document.getElementById('c-shop').textContent = document.getElementById('app-shop').textContent || '-';
     document.getElementById('c-name').textContent = document.getElementById('app-name').textContent || '-';
     document.getElementById('c-phone').textContent = document.getElementById('app-phone').textContent || '-';
     document.getElementById('c-zone').textContent = document.getElementById('app-zone').textContent || '-';
     document.getElementById('c-date').textContent = document.getElementById('app-date').textContent || '-';
     document.getElementById('c-note').textContent = document.getElementById('app-note').textContent || '-';
+    document.getElementById('c-product-type').textContent = REQUEST_DATA.productTypeText || '-';
+    document.getElementById('c-rental').textContent = REQUEST_DATA.rentalDays
+      ? `${REQUEST_DATA.rentalDays} วัน (${REQUEST_DATA.rentalPeriodText})`
+      : 'ยังไม่มีข้อมูล';
+
+    // เช็คราคาล็อกที่แอดมินเลือกจริงกับยอดรวมที่ผู้ขายเห็นตอนส่งคำขอ เผื่อเลือกล็อกคนละราคากับที่คำนวณไว้
+    // (เช่น เผลอเลือกล็อกมุมพิเศษ หรือแถวคนละประเภทในโซนผสมอย่าง B/A9)
+    const priceCheckEl = document.getElementById('c-price-check');
+    const stallInfos = currentSelectedStalls.map(findStallInfo).filter((s) => s && s.pricePerDay != null);
+    if (stallInfos.length !== currentSelectedStalls.length || !REQUEST_DATA.rentalDays) {
+      priceCheckEl.textContent = stallInfos.length
+        ? `${stallInfos.reduce((sum, s) => sum + s.pricePerDay, 0).toLocaleString('th-TH')} บาท/วัน`
+        : 'ไม่มีข้อมูลราคา';
+      priceCheckEl.classList.remove('highlight');
+    } else {
+      const dailyTotal = stallInfos.reduce((sum, s) => sum + s.pricePerDay, 0);
+      const computedTotal = dailyTotal * REQUEST_DATA.rentalDays;
+      const expectedTotal = Number(REQUEST_DATA.grandTotalAllStalls || 0);
+      const matches = !expectedTotal || Math.abs(computedTotal - expectedTotal) < 1;
+      priceCheckEl.textContent = `${dailyTotal.toLocaleString('th-TH')} บาท/วัน × ${REQUEST_DATA.rentalDays} วัน = ${computedTotal.toLocaleString('th-TH')} บาท`
+        + (matches ? '' : ` (ผู้ขายเห็นยอดรวม ${expectedTotal.toLocaleString('th-TH')} บาท — ไม่ตรงกัน ตรวจสอบก่อนยืนยัน)`);
+      priceCheckEl.classList.toggle('highlight', !matches);
+      priceCheckEl.style.color = matches ? '' : 'var(--danger-color, #c0392b)';
+    }
+
     confirmOverlay.classList.add('active');
   }
 
@@ -1153,7 +857,7 @@
   function submitConfirmStall() {
     postForm('/admin/booking-stall/confirm', {
       requestId: REQUEST_DATA.id || '',
-      selectedStall: currentSelectedStall || ''
+      selectedStalls: currentSelectedStalls.join(',')
     });
   }
 
@@ -1173,6 +877,7 @@
     setApplicantData();
     renderZoneButtons();
     setActiveZoneBtn(currentZone);
+    updateZoneInfo(currentZone);
     renderGrid(currentZone);
     setViewMode('buttons');
 

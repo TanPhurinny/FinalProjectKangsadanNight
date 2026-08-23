@@ -2,7 +2,7 @@
 // Keeps normalization and zone mapping in one place.
 const ZONE_MAP = {
   FASHION: ['e', 'c', 'a'],
-  FOOD: ['f', 'b', 'a', 'x', 'd'],
+  FOOD: ['f', 'b', 'a', 'x', 'd', 't'],
   EVENT_BOOTH: [],
 };
 

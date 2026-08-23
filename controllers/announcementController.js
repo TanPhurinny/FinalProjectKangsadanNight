@@ -1,5 +1,18 @@
+const path = require('path');
+const fs = require('fs');
 const prisma = require('../config/prismaClient');
 const { announcementSchema } = require('../utils/validationSchemas');
+const { buildRoundAnnouncement } = require('../utils/autoRoundAnnouncement');
+
+const uploadsDir = path.join(__dirname, '..', 'public', 'uploads', 'announcements');
+
+// ค่า existingImage มาจาก hidden input ฝั่ง client (แก้ผ่าน devtools ได้) — ยอมรับเฉพาะชื่อไฟล์
+// ที่มีอยู่จริงในโฟลเดอร์ uploads เท่านั้น กัน path traversal (../../etc/passwd เป็นต้น)
+function resolveExistingImage(rawValue) {
+    if (!rawValue) return null;
+    const safeName = path.basename(rawValue);
+    return fs.existsSync(path.join(uploadsDir, safeName)) ? safeName : null;
+}
 
 const ALLOWED_AUDIENCES = ['CUSTOMER', 'SELLER', 'GUEST'];
 
@@ -46,9 +59,12 @@ exports.getAdminAnnouncements = async (req, res) => {
             targetRoles: resolveStoredRoles(post)
         }));
 
-        res.render('admin/announcements', { 
+        const roundPreset = buildRoundAnnouncement(new Date());
+
+        res.render('admin/announcements', {
             announcements: normalizedAnnouncements,
-            user: req.user 
+            user: req.user,
+            roundPreset
         });
     } catch (error) {
         console.error("Fetch Error:", error);
@@ -66,7 +82,7 @@ exports.createAnnouncement = async (req, res) => {
     try {
         const { title, content, category } = parsed.data;
         const { targetRoles } = req.body;
-        const imageName = req.file ? req.file.filename : null;
+        const imageName = req.file ? req.file.filename : resolveExistingImage(req.body.existingImage);
         const normalizedRoles = normalizeTargetRoles(targetRoles);
         const fallbackRole = normalizedRoles.includes('SELLER') ? 'SELLER' : 'CUSTOMER';
         const isImportant = req.body.isImportant === 'on' || req.body.isImportant === 'true';
