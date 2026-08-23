@@ -79,6 +79,42 @@ function submitConfirmPayment(requestId) {
     });
 }
 
+function submitRejectSlip(requestId) {
+    window.showConfirmDialog({
+        title: 'สลิปไม่ถูกต้อง',
+        message: 'ระบุเหตุผลที่สลิปไม่ถูกต้อง (เช่น ยอดไม่ตรง/สลิปคนละคน/รูปไม่ชัด) ระบบจะล้างสลิปเดิมทิ้งและให้ผู้ขายอัปโหลดใหม่ ล็อกที่จัดไว้ยังเป็นของผู้ขายเหมือนเดิม',
+        tone: 'danger',
+        confirmText: 'ปฏิเสธสลิปนี้',
+        inputPlaceholder: 'เหตุผลที่สลิปไม่ถูกต้อง',
+        onConfirm: (reason) => {
+            const trimmedReason = String(reason || '').trim();
+            if (!trimmedReason) {
+                window.showAlertDialog({ title: 'กรุณาระบุเหตุผล', message: 'ต้องระบุเหตุผลก่อนปฏิเสธสลิป', tone: 'warning' });
+                return;
+            }
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/admin/approvals/reject-slip';
+
+            const requestField = document.createElement('input');
+            requestField.type = 'hidden';
+            requestField.name = 'requestId';
+            requestField.value = String(requestId);
+
+            const reasonField = document.createElement('input');
+            reasonField.type = 'hidden';
+            reasonField.name = 'reason';
+            reasonField.value = trimmedReason;
+
+            form.appendChild(requestField);
+            form.appendChild(reasonField);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+
 function confirmArrangeStall(stall) {
     navigateToBookingStall(stall);
 }
@@ -304,6 +340,7 @@ function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, c
     const approveBtn = document.getElementById('m-approve-btn');
     const rejectBtn = document.getElementById('m-reject-btn');
     const confirmPaymentBtn = document.getElementById('m-confirm-payment-btn');
+    const rejectSlipBtn = document.getElementById('m-reject-slip-btn');
     if (approveBtn) {
         approveBtn.onclick = () => navigateToBookingRequest(currentBooking.requestId);
     }
@@ -319,15 +356,19 @@ function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, c
     if (confirmPaymentBtn) {
         confirmPaymentBtn.onclick = () => submitConfirmPayment(currentBooking.requestId);
     }
+    if (rejectSlipBtn) {
+        rejectSlipBtn.onclick = () => submitRejectSlip(currentBooking.requestId);
+    }
 
     // ปุ่ม "อนุมัติ/ปฏิเสธ" ใช้ตอนสถานะยังเป็น pending เท่านั้น
-    // ปุ่ม "ยืนยันการชำระเงิน" ใช้ตอนแอดมินจัดล็อกให้แล้ว (in_progress) และผู้ขายส่งสลิปมาแล้ว แต่ยังไม่ยืนยัน
+    // ปุ่ม "ยืนยันการชำระเงิน"/"สลิปไม่ถูกต้อง" ใช้ตอนแอดมินจัดล็อกให้แล้ว (in_progress) และผู้ขายส่งสลิปมาแล้ว แต่ยังไม่ยืนยัน
     const canApproveReject = pageState.isEditable !== false && rawStatus === 'pending';
     const canConfirmPayment = pageState.isEditable !== false && rawStatus === 'in_progress' && Boolean(slipUrl) && !currentBooking.paymentConfirmed;
 
     if (approveBtn) approveBtn.classList.toggle('d-none', !canApproveReject);
     if (rejectBtn) rejectBtn.classList.toggle('d-none', !canApproveReject);
     if (confirmPaymentBtn) confirmPaymentBtn.classList.toggle('d-none', !canConfirmPayment);
+    if (rejectSlipBtn) rejectSlipBtn.classList.toggle('d-none', !canConfirmPayment);
 
     const footer = document.getElementById('m-footer-actions');
     if (footer) {

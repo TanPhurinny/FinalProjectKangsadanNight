@@ -156,9 +156,13 @@
         </div>
       `;
     } else if (booking.status === 'IN_PROGRESS') {
+      const slipRejectedBanner = (booking.slipVerifyReason || '').startsWith('[แอดมินปฏิเสธสลิป]')
+        ? `<div class="alert alert-danger py-2 px-3 mb-3 d-flex align-items-center gap-2"><i class="bi bi-x-octagon-fill"></i><span>สลิปที่ส่งไปไม่ผ่านการตรวจสอบ: <strong>${booking.slipVerifyReason.replace('[แอดมินปฏิเสธสลิป]', '').trim()}</strong> กรุณาอัปโหลดสลิปใหม่</span></div>`
+        : '';
       paymentSection = `
         <div class="payment-upload-box mt-4 p-3 border rounded-3 bg-light">
           <h6 class="fw-bold mb-2 text-dark-custom"><i class="bi bi-wallet2 me-2"></i>อัปโหลดสลิปโอนเงินเพื่อยืนยันการชำระเงิน</h6>
+          ${slipRejectedBanner}
           <p class="text-muted small mb-3">แอดมินจัดล็อกให้คุณแล้ว กรุณาชำระเงินและแนบสลิปโอนเงินเพื่อยืนยัน แอดมินจะตรวจสอบสลิปก่อนยืนยันล็อกให้เป็นของคุณ (เลขล็อกจะแจ้งให้ทราบหลังยืนยันการชำระเงิน)</p>
           <div class="bank-transfer-box mb-3 p-3 border rounded-3 bg-white text-center">
             <h6 class="fw-bold mb-2 text-dark-custom"><i class="bi bi-qr-code me-2"></i>สแกนจ่ายด้วยพร้อมเพย์</h6>

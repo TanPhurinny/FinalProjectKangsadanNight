@@ -71,6 +71,7 @@ router.get('/users/delete/:id', isAdminOnly, userCtrl.deleteUser);
 router.get('/approvals', approvalCtrl.getApprovalsPage);
 router.post('/approvals/confirm', approvalCtrl.confirmApproval);
 router.post('/approvals/confirm-payment', approvalCtrl.confirmPayment);
+router.post('/approvals/reject-slip', approvalCtrl.rejectPaymentSlip);
 router.get('/requests', requestCtrl.getRequestsPage);
 router.post('/requests/update-status', requestCtrl.updateStatus);
 

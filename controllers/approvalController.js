@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { buildZonesData } = require('./marketController');
@@ -540,6 +542,57 @@ exports.confirmPayment = async (req, res) => {
         return res.redirect('/admin/approvals?success=payment_confirmed');
     } catch (err) {
         return res.redirect('/admin/approvals?error=confirm_payment_failed');
+    }
+};
+
+// แอดมินตรวจแล้วพบว่าสลิปที่ผู้ขายส่งมาไม่ถูกต้อง (ยอดผิด/สลิปคนละคน/รูปไม่ชัด ฯลฯ)
+// ต่างจาก rejectBookingStall (ปฏิเสธทั้งคำขอ ปล่อยล็อกคืน) ตรงนี้แค่ล้างสลิปเดิมทิ้ง
+// เก็บล็อกที่จัดให้ไว้เหมือนเดิม (status ยังเป็น IN_PROGRESS) ให้ผู้ขายอัปโหลดสลิปใหม่ได้
+exports.rejectPaymentSlip = async (req, res) => {
+    try {
+        const requestId = Number.parseInt(req.body.requestId, 10);
+        const reason = String(req.body.reason || '').trim();
+        if (!requestId) {
+            return res.redirect('/admin/approvals?error=missing_request_id');
+        }
+        if (!reason) {
+            return res.redirect('/admin/approvals?error=missing_reject_slip_reason');
+        }
+
+        const requestRecord = await prisma.bookingRequest.findUnique({
+            where: { id: requestId }
+        });
+
+        if (!requestRecord) {
+            return res.redirect('/admin/approvals?error=request_not_found');
+        }
+
+        if (!isRoundEditable(getBookingRoundMetaForDate(requestRecord.createdAt).roundNumber)) {
+            return res.redirect('/admin/approvals?error=history_round_locked');
+        }
+
+        if (String(requestRecord.status || '').toUpperCase() !== 'IN_PROGRESS' || !requestRecord.paymentSlipImage) {
+            return res.redirect('/admin/approvals?error=no_slip_to_confirm');
+        }
+
+        // ลบไฟล์สลิปเดิมออกจากดิสก์ กันไฟล์ค้างไม่มีใครอ้างถึง
+        const relativePath = String(requestRecord.paymentSlipImage || '').replace(/^\/+/, '');
+        const absolutePath = path.join(__dirname, '..', 'public', relativePath);
+        fs.unlink(absolutePath, () => {});
+
+        await prisma.bookingRequest.update({
+            where: { id: requestId },
+            data: {
+                paymentSlipImage: null,
+                slipVerified: null,
+                slipVerifiedAmount: null,
+                slipVerifyReason: `[แอดมินปฏิเสธสลิป] ${reason}`
+            }
+        });
+
+        return res.redirect('/admin/approvals?success=slip_rejected');
+    } catch (err) {
+        return res.redirect('/admin/approvals?error=reject_slip_failed');
     }
 };
 

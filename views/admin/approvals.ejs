@@ -50,6 +50,8 @@
                     no_slip_to_confirm: 'คำขอนี้ยังไม่มีสลิปให้ตรวจ หรือสถานะไม่ตรง',
                     confirm_payment_failed: 'เกิดข้อผิดพลาดขณะยืนยันการชำระเงิน',
                     slip_verification_failed: `ตรวจสลิปอัตโนมัติไม่ผ่าน: ${flashReason || 'ไม่ทราบสาเหตุ'}`,
+                    missing_reject_slip_reason: 'กรุณาระบุเหตุผลที่สลิปไม่ถูกต้อง',
+                    reject_slip_failed: 'เกิดข้อผิดพลาดขณะปฏิเสธสลิป',
                     missing_confirm_payload: 'กรุณาเลือกแผงค้าก่อนยืนยัน',
                     duplicate_stall_selected: 'เลือกแผงค้าซ้ำกัน กรุณาเลือกล็อกที่ต่างกัน',
                     stall_count_mismatch: 'จำนวนล็อกที่เลือกไม่ตรงกับจำนวนที่ผู้ขายขอมา กรุณาเลือกให้ครบ',
@@ -59,7 +61,8 @@
                 const flashSuccessMessages = {
                     payment_confirmed: 'ยืนยันการชำระเงินเรียบร้อย เปิดเผยเลขล็อกให้ลูกค้าแล้ว',
                     status_updated: 'อัปเดตสถานะเรียบร้อย',
-                    stall_assigned: 'จัดล็อกเรียบร้อย'
+                    stall_assigned: 'จัดล็อกเรียบร้อย',
+                    slip_rejected: 'ปฏิเสธสลิปแล้ว ระบบแจ้งผู้ขายให้อัปโหลดสลิปใหม่'
                 };
                 %>
                 <% if (flashError) { %>
@@ -323,6 +326,7 @@
                         <div class="modal-footer" id="m-footer-actions">
                             <button type="button" class="btn-action btn-reject" id="m-reject-btn">ปฏิเสธการจอง</button>
                             <button type="button" class="btn-action btn-approve" id="m-approve-btn">อนุมัติการจอง</button>
+                            <button type="button" class="btn-action btn-reject d-none" id="m-reject-slip-btn">สลิปไม่ถูกต้อง</button>
                             <button type="button" class="btn-action btn-approve d-none" id="m-confirm-payment-btn">ยืนยันการชำระเงิน</button>
                         </div>
                     </div>

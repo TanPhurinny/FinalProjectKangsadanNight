@@ -338,6 +338,28 @@ function buildThursdayReminderMessage() {
     return 'แจ้งเตือนเวลา 15:00 น. — ร้านที่จองครบ 14 วันหรือขอล็อกเต็ง มีสิทธิ์จองล่วงหน้าในรอบถัดไปได้ตั้งแต่วันจันทร์-อังคารนี้';
 }
 
+// การ์ดแจ้งสลิปถูกแอดมินปฏิเสธ (ดู rejectPaymentSlip ใน approvalController.js) — โชว์เฉพาะตอนที่
+// ยัง "ค้างรอสลิปใหม่" จริงๆ (สถานะ IN_PROGRESS, ล้าง paymentSlipImage ไปแล้ว แต่ยังไม่ได้อัปใหม่)
+// ถ้าอัปสลิปใหม่ไปแล้ว paymentSlipImage จะไม่ว่าง การ์ดนี้หายไปเอง ไม่ต้องมี logic เคลียร์แยก
+function buildSlipRejectedReminderEntry(latestBooking, status) {
+    const reason = String(latestBooking?.slipVerifyReason || '');
+    if (status !== 'IN_PROGRESS' || latestBooking?.paymentSlipImage || !reason.startsWith('[แอดมินปฏิเสธสลิป]')) {
+        return [];
+    }
+
+    return [{
+        id: `slip-rejected-${latestBooking.id || 'current'}`,
+        type: 'cancelled',
+        title: 'สลิปโอนเงินไม่ผ่านการตรวจสอบ',
+        desc: `${reason.replace('[แอดมินปฏิเสธสลิป]', '').trim()} — กรุณาอัปโหลดสลิปโอนเงินใหม่ที่หน้าสถานะการจอง (ล็อกที่จัดไว้ยังเป็นของคุณเหมือนเดิม)`,
+        date: formatDateThai(new Date()),
+        time: formatTimeThai(new Date()),
+        status: 'IN_PROGRESS',
+        isRead: false,
+        isNew: true
+    }];
+}
+
 // การ์ดย้ำเตือนต่อล็อก ผูกกับล็อกจริงที่แม่ค้าจองไว้ (assignedStallCode) ไม่ใช่แค่เดาจากวันในสัปดาห์
 // โชว์เฉพาะตอนที่ยังมีวันให้ต่อได้ (rentalEndDate ยังไม่ถึง cycleEnd ของรอบปัจจุบัน)
 function buildExtendLockReminderEntry(extendInfo) {
@@ -495,6 +517,8 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
     const lockMention = stallLabel ? `ล็อก ${stallLabel}` : 'ล็อกของคุณ';
     const zoneLabel = latestBooking.zoneCode ? `โซน ${latestBooking.zoneCode}` : 'ที่แจ้งไว้';
 
+    const slipRejectedEntry = buildSlipRejectedReminderEntry(latestBooking, status);
+
     const reminderEntry = isWednesdayReminderDay(latestBooking.createdAt || new Date())
         ? [{
             id: `wednesday-reminder-${latestBooking.id || 'current'}`,
@@ -579,7 +603,7 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
     ];
 
     const stage = getBookingStep(status);
-    return [...extendReminderEntry, ...thursdayReminderEntry, ...reminderEntry, ...timeline].map((item, index) => ({
+    return [...extendReminderEntry, ...slipRejectedEntry, ...thursdayReminderEntry, ...reminderEntry, ...timeline].map((item, index) => ({
         ...item,
         isRead: typeof item.isRead === 'boolean' ? item.isRead : index < stage,
         isNew: typeof item.isNew === 'boolean' ? item.isNew : index + 1 === stage
@@ -1811,6 +1835,8 @@ async function loadSellerBookingStatus(userId) {
             zoneCode: latestRequest.zone || latestBooking?.zoneCode || '',
             createdAt: latestRequest.createdAt || latestBooking?.createdAt,
             paymentConfirmedAt: latestRequest.paymentConfirmedAt || null,
+            paymentSlipImage: latestRequest.paymentSlipImage || null,
+            slipVerifyReason: latestRequest.slipVerifyReason || null,
             slot: { slotNumber: latestRequest.paymentConfirmedAt ? (latestRequest.assignedStallCode || null) : null }
         }
         : latestBooking;
