@@ -270,15 +270,45 @@
     .ov-zone-X { top: 8%; left: 64%; width: 15%; height: 10%; background: #FDBF60; color: #a84800; }
     .ov-zone-B { top: 20%; left: 47%; width: 49%; height: 66%; background: #FDBF60; color: #a84800; }
     .ov-zone-C { top: 88%; left: 2%; width: 23%; height: 9%; background: #FFB5DA; color: #c0006e; }
+    .ov-zone-E .ov-zone-title, .ov-zone-D .ov-zone-title, .ov-zone-X .ov-zone-title, .ov-zone-C .ov-zone-title {
+      font-size: 11px;
+    }
+
+    /* แถบสรุปขนาด/ราคาของโซนที่เลือก อัปเดตทุกครั้งที่สลับโซน (ดู updateZoneInfo() ใน booking_stall.ejs) */
+    .zone-info-bar {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin: 10px 0 14px;
+      padding: 8px 12px;
+      background: var(--soft-bg, #f6f8f8);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--primary);
+      border-radius: 3px;
+    }
+    .zone-info-code {
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--primary-dark);
+      flex-shrink: 0;
+    }
+    .zone-info-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
 
     /* Legend */
     .legend-box {
-      display: flex; gap: 16px; align-items: center;
-      background: #fff; padding: 10px 20px; border-radius: 3px;
+      display: flex; flex-direction: column; gap: 10px;
+      background: #fff; padding: 12px 18px; border-radius: 3px;
       border: 1px solid var(--border); box-shadow: none;
       margin-top: auto;
       margin-bottom: auto;
     }
+    .legend-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+    .legend-divider { height: 1px; background: var(--border); }
     .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-main); }
     .color-box { width: 18px; height: 18px; border-radius: 3px; border: 1px solid var(--border); }
     .color-empty { background: var(--stall-empty); }
@@ -287,6 +317,23 @@
     .color-expired { background: var(--stall-expired); border-color: var(--border); }
     .color-selected { background: var(--stall-selected); border-color: var(--primary-dark); }
     .color-requested { border: 2px solid var(--primary); background: transparent; }
+    .color-pink { background: #ec4899; border-color: #db2777; }
+    .color-blue { background: #38bdf8; border-color: #0ea5e9; }
+    .color-yellow { background: #facc15; border-color: #eab308; }
+    .color-alt-fashion { background: #fff; border-top: 3px solid #7e57c2; }
+    .color-alt-food { background: #fff; border-top: 3px solid #c98a2e; }
+
+    .btn-color-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 3px; font-size: 12px; font-weight: 600;
+      font-family: inherit;
+      border: 1px solid var(--border); background: #fff; color: var(--text-main);
+      cursor: pointer; transition: 0.15s;
+    }
+    .btn-color-toggle:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-color-toggle.active {
+      background: #7e57c2; border-color: #5e3f9a; color: #fff;
+    }
 
     /* ── MAP OUTER & INNER ── */
     .map-outer {
@@ -392,6 +439,27 @@
       margin-bottom: 1px;
       width: 55px;
       text-align: center;
+    }
+
+    /* แถวที่ประเภทสินค้าไม่ตรงกับหมวดหลักของโซน — แยกสีตามประเภทที่ปนอยู่จริง
+       ม่วง = แถวแฟชั่นปนในโซนอาหาร (เช่น B601-B623), ส้ม = แถวอาหารปนในโซนแฟชั่น (เช่น A901-A923) */
+    .col-lbl-alt.lot-alt-fashion {
+      color: #6b3fa0;
+      border-bottom-color: #7e57c2;
+    }
+    .col-lbl-alt.lot-alt-food {
+      color: #a06c1f;
+      border-bottom-color: #c98a2e;
+    }
+    .stall-cell.lot-alt-fashion {
+      border-top: 3px solid #7e57c2;
+    }
+    .stall-cell.lot-alt-food {
+      border-top: 3px solid #c98a2e;
+    }
+    .stall-cell.lot-alt-fashion.selected,
+    .stall-cell.lot-alt-food.selected {
+      border-top-color: var(--primary-dark);
     }
 
     .stall-column {
@@ -595,6 +663,11 @@
       font-family: 'Kanit', sans-serif;
       font-size: 18px;
       font-weight: 600;
+      transition: background .1s;
+    }
+    /* ล็อกว่าง — ใช้สีหลักของหน้าแทนสีเข้ม ให้แยกออกจากล็อกที่จองแล้วตั้งแต่แวบแรก */
+    .admin-tooltip.tt-available .tt-header {
+      background: var(--primary);
     }
     .tt-body { padding: 16px; }
     .tt-row { display: flex; gap: 16px; margin-bottom: 14px; }

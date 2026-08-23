@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { buildZonesData } = require('./marketController');
+const zoneAccess = require('../utils/zoneAccess');
 
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable } = require('../utils/bookingRound');
 const { verifySlip } = require('../utils/slipVerification');
@@ -72,6 +73,12 @@ function stripInternalTags(descriptionText) {
         .trim();
 }
 
+const PRODUCT_TYPE_LABEL = {
+    FASHION: 'แฟชั่น',
+    FOOD: 'อาหาร',
+    EVENT_BOOTH: 'กิจกรรม/บูธพิเศษ'
+};
+
 async function buildAdminBookingStallPageData(requestId) {
     const bookingRequest = await prisma.bookingRequest.findUnique({
         where: { id: requestId }
@@ -102,13 +109,35 @@ async function buildAdminBookingStallPageData(requestId) {
     const assignedStallCode = String(bookingRequest.assignedStallCode || extractAssignedStallFromDescription(bookingRequest.description) || '').trim().toUpperCase();
     const assignedStallCodes = parseStallCodes(assignedStallCode);
 
+    // จำกัดตัวเลือกโซนบนหน้านี้ให้ตรงกับประเภทสินค้าที่ผู้ขายลงทะเบียนไว้ (กันแอดมินจัดผิดโซน เช่น ร้านอาหารไปได้โซนแฟชั่น)
+    // BookingRequest ไม่มี userId ผูกไว้ตรงๆ (sellerId ชี้โมเดล Seller ซึ่งระบบสมัครจริงไม่ได้ใช้ ปล่อยเป็น null เสมอ)
+    // ข้อมูลประเภทสินค้าจริงอยู่ที่ ShopDetail.productType ของ User จึงต้องเทียบจากเบอร์โทรที่บันทึกไว้ตอนส่งคำขอแทน
+    const applicantUser = bookingRequest.phone
+        ? await prisma.user.findFirst({ where: { phoneNumber: bookingRequest.phone }, include: { shop: true } })
+        : null;
+    const applicantProductType = applicantUser?.shop?.productType || null;
+    // ถ้าไม่มีข้อมูลประเภทสินค้า (คำขอเก่า/หาผู้ใช้ที่ตรงเบอร์ไม่เจอ) ไม่จำกัด ให้เลือกได้ทุกโซนเหมือนเดิมเพื่อไม่บล็อกแอดมินผิดที่
+    let allowedZones = applicantProductType
+        ? zoneAccess.allowedZonesFor(applicantProductType).map((z) => String(z).toUpperCase())
+        : [];
+    // เผื่อกรณีโซนที่ขอมาจริง หรือล็อกที่เคยจัดไว้แล้ว ไม่ตรงกับประเภทสินค้า (ข้อมูลเก่า/ผิดพลาดตั้งแต่ตอนสมัคร)
+    // ยังต้องเลือก/ยืนยันล็อกเดิมได้เสมอ ไม่ถูกบล็อกโดยตัวกรองนี้
+    if (allowedZones.length) {
+        const mustIncludeZones = [requestedZone, ...assignedStallCodes.map((code) => (code.match(/^[A-Z]+/) || [])[0])].filter(Boolean);
+        allowedZones = Array.from(new Set([...allowedZones, ...mustIncludeZones]));
+    }
+
     // Booking ที่ผูกกับคำขอนี้มี 1 แถวต่อ 1 ล็อกที่ขอ (ดู POST /booking-stall ใน sellerRoute.js)
-    // ดึงมานับจำนวนล็อกที่ขอจริง เพื่อให้แอดมินรู้ว่าต้องเลือกกี่ล็อกบนแผนที่
+    // ดึงมาทั้งแถว (ไม่ใช่แค่นับ) เพื่อโชว์ระยะเวลาเช่า/ค่าไฟ/เครื่องใช้ไฟฟ้า/ยอดรวมให้แอดมินเห็นก่อนจัดแผงจริง
+    // ทุกแถวของคำขอเดียวกันมีระยะเวลา/ราคาต่อวันเท่ากันหมด ต่างกันแค่ล็อก จึงอ่านค่าจากแถวแรกพอ
     const requestTag = buildBookingRequestTag(bookingRequest.id);
-    const linkedBookingCount = requestTag
-        ? await prisma.booking.count({ where: { storeDetailSnapshot: { startsWith: requestTag } } })
-        : 0;
+    const linkedBookings = requestTag
+        ? await prisma.booking.findMany({ where: { storeDetailSnapshot: { startsWith: requestTag } } })
+        : [];
+    const linkedBookingCount = linkedBookings.length;
     const requestedStallCount = Math.max(1, linkedBookingCount, assignedStallCodes.length);
+    const bookingDetail = linkedBookings[0] || null;
+    const grandTotalAllStalls = linkedBookings.reduce((sum, b) => sum + Number(b.grandTotal || 0), 0);
 
     // ล็อกที่เคยจัดให้คำขอนี้แล้วไม่ถือว่า "จองแล้ว" ในสายตาแอดมินคนนี้ (จะได้เลือกซ้ำ/ยืนยันใหม่ได้)
     const bookedStallsExcludingOwn = bookedStalls.filter((code) => !assignedStallCodes.includes(code));
@@ -121,12 +150,25 @@ async function buildAdminBookingStallPageData(requestId) {
             phone: bookingRequest.phone,
             zone: requestedZone,
             zoneText: requestedZone ? `โซน ${requestedZone}` : '-',
-            note: bookingRequest.description || '-',
+            note: stripInternalTags(bookingRequest.description) || '-',
+            cornerZoneNote: extractCornerZoneNote(bookingRequest.description),
+            productImage: bookingRequest.productImage || null,
+            productTypeText: PRODUCT_TYPE_LABEL[applicantProductType] || '-',
             dateText: toThaiDate(bookingRequest.createdAt),
             status: String(bookingRequest.status || 'PENDING').toUpperCase(),
+            rentalDays: bookingDetail?.rentalDays ?? null,
+            rentalPeriodText: bookingDetail?.rentalStartDate && bookingDetail?.rentalEndDate
+                ? `${toThaiDate(bookingDetail.rentalStartDate)} - ${toThaiDate(bookingDetail.rentalEndDate)}`
+                : '-',
+            dailyStallPrice: bookingDetail?.dailyStallPrice ?? null,
+            lightEnabled: !!bookingDetail?.lightEnabled,
+            smallApplianceCount: bookingDetail?.smallApplianceCount ?? 0,
+            largeApplianceCount: bookingDetail?.largeApplianceCount ?? 0,
+            grandTotalAllStalls,
             assignedStallCode,
             assignedStallCodes,
-            requestedStallCount
+            requestedStallCount,
+            allowedZones
         },
         zoneByCode,
         bookedStalls: bookedStallsExcludingOwn
