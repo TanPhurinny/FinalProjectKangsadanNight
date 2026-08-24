@@ -1,8 +1,41 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const authController = require('../controllers/authController');
 const { requireAuth } = require('../middlewares/jwtAuth');
 const { authLimiter, forgotPasswordLimiter, registerLimiter } = require('../middlewares/authRateLimit');
+
+// การตั้งค่า Multer สำหรับอัปโหลดรูปโปรไฟล์
+const avatarUploadDir = path.join(__dirname, '..', 'public', 'uploads', 'avatars');
+if (!fs.existsSync(avatarUploadDir)) {
+    fs.mkdirSync(avatarUploadDir, { recursive: true });
+}
+
+const avatarStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, avatarUploadDir);
+    },
+    filename: (req, file, cb) => {
+        cb(null, 'avatar-' + req.authUser?.id + '-' + Date.now() + path.extname(file.originalname));
+    }
+});
+
+const uploadAvatar = multer({
+    storage: avatarStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png|webp/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('ประเภทไฟล์ไม่ถูกต้อง'));
+        }
+    }
+});
 
 // หน้า Login & Register UI
 router.get('/login', (req, res) => {
@@ -39,5 +72,18 @@ router.get('/profile', requireAuth, authController.getProfile);
 
 // อัปเดตโปรไฟล์ของตัวเอง
 router.post('/profile', requireAuth, authController.updateProfile);
+
+// อัปโหลด/เปลี่ยนรูปโปรไฟล์
+router.post('/profile/avatar', requireAuth, (req, res, next) => {
+    uploadAvatar.single('avatar')(req, res, (err) => {
+        if (err) {
+            return res.redirect('/profile?error=' + encodeURIComponent(err.message || 'อัปโหลดรูปไม่สำเร็จ'));
+        }
+        next();
+    });
+}, authController.uploadAvatar);
+
+// ลบรูปโปรไฟล์
+router.post('/profile/avatar/remove', requireAuth, authController.removeAvatar);
 
 module.exports = router;

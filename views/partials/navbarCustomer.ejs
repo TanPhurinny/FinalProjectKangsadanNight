@@ -39,10 +39,11 @@
             </a>
 
             <div class="nav-actions d-flex align-items-center">
-                <div class="user-badge shadow-sm">
+                <a href="/profile"
+                    class="user-badge user-badge-link shadow-sm <%= currentPath.includes('/profile') ? 'active' : '' %>">
                     <i class="fas fa-user-circle"></i>
                     <%= user ? user.name : 'ผู้ใช้งาน' %>
-                </div>
+                </a>
                 <% if (locals.viewAsCustomer) { %>
                 <a href="/switch-view/seller" class="switch-view-btn" title="กลับไปเป็นพ่อค้าแม่ค้า">
                     <i class="fas fa-right-left"></i> สลับเป็นผู้ขาย

@@ -1,5 +1,7 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const path = require('path');
+const fs = require('fs');
 const { SignJWT } = require('jose');
 const { z } = require('zod');
 const userModel = require('../models/userModel');
@@ -114,6 +116,12 @@ function createToken(user) {
 
 function setAuthCookieWithDuration(res, token, rememberMe) {
     res.cookie('token', token, getCookieOptions(rememberMe ? 1000 * 60 * 60 * 24 * 30 : 1000 * 60 * 60 * 24));
+}
+
+// ออก JWT cookie ใหม่ให้ตรงกับข้อมูลผู้ใช้ล่าสุด หลังแก้ไขโปรไฟล์/รูป
+async function syncSession(req, res, updatedUser) {
+    const token = await createToken(updatedUser);
+    setAuthCookieWithDuration(res, token, false);
 }
 
 async function verifyPassword(user, password) {
@@ -499,7 +507,7 @@ exports.updateProfile = async (req, res) => {
 
         const updatedUser = await userModel.updateUser(userId, updateData);
 
-        syncSession(req, updatedUser);
+        await syncSession(req, res, updatedUser);
 
         if (wantsJson(req)) {
             return res.status(200).json({
@@ -518,6 +526,91 @@ exports.updateProfile = async (req, res) => {
         }
 
         return res.redirect('/profile?error=update_failed');
+    }
+};
+
+exports.uploadAvatar = async (req, res) => {
+    try {
+        const userId = getCurrentUserId(req);
+
+        if (!userId) {
+            return sendHybridError(req, res, 401, 'กรุณาเข้าสู่ระบบก่อน', '/login?error=unauthorized');
+        }
+
+        if (!req.file) {
+            return sendHybridError(req, res, 400, 'กรุณาเลือกไฟล์รูปภาพ');
+        }
+
+        const currentUser = await userModel.findById(userId);
+        const newAvatarUrl = '/uploads/avatars/' + req.file.filename;
+
+        const updatedUser = await userModel.updateUser(userId, { avatarUrl: newAvatarUrl });
+
+        if (currentUser?.avatarUrl) {
+            const oldAvatarPath = path.join(__dirname, '..', 'public', currentUser.avatarUrl);
+            fs.unlink(oldAvatarPath, () => {});
+        }
+
+        await syncSession(req, res, updatedUser);
+
+        if (wantsJson(req)) {
+            return res.status(200).json({
+                success: true,
+                message: 'อัปเดตรูปโปรไฟล์สำเร็จ',
+                user: userModel.sanitizeUser(updatedUser)
+            });
+        }
+
+        return res.redirect('/profile?success=' + encodeURIComponent('อัปเดตรูปโปรไฟล์สำเร็จ'));
+    } catch (error) {
+        logger.error({ err: error }, 'Upload Avatar Error');
+
+        if (wantsJson(req)) {
+            return sendError(res, 500, 'ไม่สามารถอัปโหลดรูปโปรไฟล์ได้');
+        }
+
+        return res.redirect('/profile?error=' + encodeURIComponent('ไม่สามารถอัปโหลดรูปโปรไฟล์ได้'));
+    }
+};
+
+exports.removeAvatar = async (req, res) => {
+    try {
+        const userId = getCurrentUserId(req);
+
+        if (!userId) {
+            return sendHybridError(req, res, 401, 'กรุณาเข้าสู่ระบบก่อน', '/login?error=unauthorized');
+        }
+
+        const currentUser = await userModel.findById(userId);
+
+        if (!currentUser?.avatarUrl) {
+            return res.redirect('/profile');
+        }
+
+        const updatedUser = await userModel.updateUser(userId, { avatarUrl: null });
+
+        const oldAvatarPath = path.join(__dirname, '..', 'public', currentUser.avatarUrl);
+        fs.unlink(oldAvatarPath, () => {});
+
+        await syncSession(req, res, updatedUser);
+
+        if (wantsJson(req)) {
+            return res.status(200).json({
+                success: true,
+                message: 'ลบรูปโปรไฟล์สำเร็จ',
+                user: userModel.sanitizeUser(updatedUser)
+            });
+        }
+
+        return res.redirect('/profile?success=' + encodeURIComponent('ลบรูปโปรไฟล์สำเร็จ'));
+    } catch (error) {
+        logger.error({ err: error }, 'Remove Avatar Error');
+
+        if (wantsJson(req)) {
+            return sendError(res, 500, 'ไม่สามารถลบรูปโปรไฟล์ได้');
+        }
+
+        return res.redirect('/profile?error=' + encodeURIComponent('ไม่สามารถลบรูปโปรไฟล์ได้'));
     }
 };
 

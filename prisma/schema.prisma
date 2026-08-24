@@ -17,6 +17,7 @@ model User {
   birthDate     DateTime?
   phoneNumber   String?
   email         String?             @unique
+  avatarUrl     String?
   announcements Announcement[]
   bookings      Booking[]
   requests      MaintenanceReport[] @relation("MaintenanceReportReporter")

@@ -18,7 +18,7 @@
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/admin/dashboard.css">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
-        <link rel="stylesheet" href="/stylesheets/admin/profile.css">
+        <link rel="stylesheet" href="/stylesheets/admin/profile.css?v=20260825-1">
     </head>
     <body class="bg-light">
         <script src="/js/common/tabSession.js"></script>
@@ -44,202 +44,269 @@
             </div>
             <% } %>
 
-            <!-- ข้อมูลพื้นฐาน -->
-            <div class="profile-card">
-                <h3 class="profile-section-title">ข้อมูลพื้นฐาน</h3>
+            <div class="profile-grid">
+                <!-- ===== แผงข้อมูลตัวตน (ซ้าย) ===== -->
+                <aside class="profile-identity">
+                    <div class="identity-card">
+                        <form method="POST" action="/profile/avatar" enctype="multipart/form-data"
+                            id="avatarForm">
+                            <label for="avatarInput" class="avatar-frame" title="เปลี่ยนรูปโปรไฟล์">
+                                <% if (profileUser.avatarUrl) { %>
+                                <img src="<%= profileUser.avatarUrl %>" alt="รูปโปรไฟล์"
+                                    class="avatar-img">
+                                <% } else { %>
+                                <span class="avatar-initials"><%= (profileUser.name ||
+                                    profileUser.username || '?').trim().charAt(0).toUpperCase()
+                                    %></span>
+                                <% } %>
+                                <span class="avatar-edit-overlay">
+                                    <i class="fas fa-camera"></i>
+                                    เปลี่ยนรูป
+                                </span>
+                            </label>
+                            <input type="file" name="avatar" id="avatarInput" accept="image/png,image/jpeg,image/webp"
+                                hidden onchange="document.getElementById('avatarForm').submit()">
+                        </form>
 
-                <div class="info-row">
-                    <span class="info-label">บทบาท</span>
-                    <span class="info-value">
-                        <span
-                            class="role-badge <%= profileUser.role.toLowerCase() %>">
+                        <% if (profileUser.avatarUrl) { %>
+                        <form method="POST" action="/profile/avatar/remove" class="avatar-remove-form">
+                            <button type="submit" class="avatar-remove-btn">
+                                <i class="fas fa-trash-can me-1"></i>ลบรูปโปรไฟล์
+                            </button>
+                        </form>
+                        <% } %>
+
+                        <h3 class="identity-name"><%= profileUser.name %></h3>
+                        <p class="identity-username">@<%= profileUser.username %></p>
+
+                        <span class="role-badge <%= profileUser.role.toLowerCase() %>">
                             <% if (profileUser.role === 'ADMIN') { %>
                             <i class="fas fa-crown me-1"></i>ผู้ดูแลระบบ
                             <% } else if (profileUser.role === 'STAFF') { %>
                             <i class="fas fa-user-tie me-1"></i>พนักงาน
-                            <% } else if (profileUser.role === 'SELLER') {
-                            %>
+                            <% } else if (profileUser.role === 'SELLER') { %>
                             <i class="fas fa-store me-1"></i>พ่อค้า/แม่ค้า
                             <% } else { %>
                             <i class="fas fa-user me-1"></i>ลูกค้า
                             <% } %>
                         </span>
-                    </span>
-                </div>
 
-                <div class="info-row">
-                    <span class="info-label">Username</span>
-                    <span class="info-value"><%= profileUser.username
-                        %></span>
-                </div>
-
-                <div class="info-row">
-                    <span class="info-label">วันที่สมัครสมาชิก</span>
-                    <span class="info-value">
-                        <%= new
-                        Date(profileUser.createdAt).toLocaleDateString('th-TH',
-                        {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                        }) %>
-                    </span>
-                </div>
-            </div>
-
-            <!-- แก้ไขข้อมูลส่วนตัว -->
-            <div class="profile-card">
-                <h3 class="profile-section-title">แก้ไขข้อมูลส่วนตัว</h3>
-
-                <form method="POST" action="/profile">
-                    <div class="form-group-row">
-                        <div class="form-group">
-                            <label class="form-label">ชื่อ-นามสกุล</label>
-                            <input type="text" class="form-control"
-                                name="name" value="<%= profileUser.name %>"
-                                required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">อีเมล (Gmail)</label>
-                            <input type="email" class="form-control"
-                                name="email"
-                                value="<%= profileUser.email || '' %>"
-                                required>
-                        </div>
+                        <dl class="identity-meta">
+                            <div>
+                                <dt>สมาชิกตั้งแต่</dt>
+                                <dd><%= new Date(profileUser.createdAt).toLocaleDateString('th-TH', {
+                                    year: 'numeric', month: 'short', day: 'numeric' }) %></dd>
+                            </div>
+                        </dl>
                     </div>
 
-                    <div class="form-group-row">
-                        <div class="form-group">
-                            <label class="form-label">เบอร์โทรศัพท์</label>
-                            <input type="tel" class="form-control"
-                                name="phoneNumber"
-                                value="<%= profileUser.phoneNumber || '' %>">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">วันเกิด</label>
-                            <input type="date" class="form-control"
-                                name="birthDate"
-                                value="<%= profileUser.birthDate ? profileUser.birthDate.toISOString().split('T')[0] : '' %>">
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn btn-update">
-                        <i class="fas fa-save me-2"></i>อัปเดตข้อมูล
-                    </button>
-                </form>
-            </div>
-
-            <!-- เปลี่ยนรหัสผ่าน -->
-            <div class="profile-card">
-                <h3 class="profile-section-title">เปลี่ยนรหัสผ่าน</h3>
-
-                <form method="POST" action="/profile">
-                    <div class="form-group full">
-                        <label class="form-label">รหัสผ่านปัจจุบัน <span
-                                style="color: red;">*</span></label>
-                        <input type="password"
-                            class="form-control password-input-group"
-                            name="password"
-                            placeholder="กรุณาใส่รหัสผ่านปัจจุบัน">
-                    </div>
-
-                    <div class="form-group-row">
-                        <div class="form-group">
-                            <label class="form-label">รหัสผ่านใหม่
-                                (อย่างน้อย 6 ตัวอักษร)</label>
-                            <input type="password" class="form-control"
-                                name="newPassword"
-                                placeholder="กรุณาใส่รหัสผ่านใหม่"
-                                minlength="6">
-                        </div>
-                        <div class="form-group">
-                            <label
-                                class="form-label">ยืนยันรหัสผ่านใหม่</label>
-                            <input type="password" class="form-control"
-                                name="confirmPassword"
-                                placeholder="ยืนยันรหัสผ่านใหม่"
-                                minlength="6">
-                        </div>
-                    </div>
-
-                    <small class="text-muted d-block mb-3">
-                        <i class="fas fa-info-circle me-1"></i>
-                        เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยนรหัสผ่าน
-                    </small>
-
-                    <button type="submit" class="btn btn-update">
-                        <i class="fas fa-lock me-2"></i>เปลี่ยนรหัสผ่าน
-                    </button>
-                </form>
-            </div>
-
-            <!-- ข้อมูลร้านค้า (สำหรับ Seller เท่านั้น) -->
-            <% if (profileUser.role === 'SELLER' && profileUser.shop) { %>
-            <div class="profile-card">
-                <h3 class="profile-section-title">ข้อมูลร้านค้า</h3>
-
-                <div class="info-row">
-                    <span class="info-label">ชื่อร้าน</span>
-                    <span class="info-value"><%= profileUser.shop.shopName
-                        || 'ยังไม่ได้บันทึก' %></span>
-                </div>
-
-                <div class="info-row">
-                    <span class="info-label">ประเภทสินค้า</span>
-                    <span class="info-value">
-                        <% if (profileUser.shop.productType === 'FOOD') { %>
-                        อาหาร/เครื่องดื่ม
-                        <% } else if (profileUser.shop.productType ===
-                        'FASHION') { %>
-                        เสื้อผ้า/แฟชั่น
-                        <% } else { %>
-                        <%= profileUser.shop.productType ||
-                        'ยังไม่ได้บันทึก' %>
+                    <nav class="identity-nav" id="profileTabNav">
+                        <button type="button" class="identity-nav-item active" data-tab="account">
+                            <i class="fas fa-id-card"></i> ข้อมูลส่วนตัว
+                        </button>
+                        <button type="button" class="identity-nav-item" data-tab="security">
+                            <i class="fas fa-shield-halved"></i> ความปลอดภัย
+                        </button>
+                        <% if (profileUser.role === 'SELLER' && profileUser.shop) { %>
+                        <button type="button" class="identity-nav-item" data-tab="shop">
+                            <i class="fas fa-shop"></i> ร้านค้า
+                        </button>
+                        <% } else if (profileUser.role === 'CUSTOMER') { %>
+                        <button type="button" class="identity-nav-item" data-tab="shop">
+                            <i class="fas fa-store"></i> สมัครเปิดร้านค้า
+                        </button>
                         <% } %>
-                    </span>
-                </div>
+                    </nav>
 
-                <div class="info-row">
-                    <span class="info-label">รายละเอียดสินค้า</span>
-                    <span class="info-value"><%=
-                        profileUser.shop.productDetail || 'ยังไม่ได้บันทึก'
-                        %></span>
-                </div>
+                    <% if (profileUser.role === 'SELLER' || profileUser.role === 'CUSTOMER') { %>
+                    <nav class="identity-nav identity-quicklinks">
+                        <a href="/booking-history" class="identity-nav-item">
+                            <i class="fas fa-clock-rotate-left"></i> ประวัติการจอง
+                        </a>
+                        <a href="/notifications" class="identity-nav-item">
+                            <i class="fas fa-bell"></i> การแจ้งเตือน
+                        </a>
+                    </nav>
+                    <% } %>
+                </aside>
+
+                <!-- ===== แผงเนื้อหา (ขวา) ===== -->
+                <section class="profile-content">
+
+                    <!-- แท็บ: ข้อมูลส่วนตัว -->
+                    <div class="profile-panel active" data-panel="account">
+                        <div class="profile-card">
+                            <h3 class="profile-section-title">แก้ไขข้อมูลส่วนตัว</h3>
+
+                            <form method="POST" action="/profile">
+                                <div class="form-group-row">
+                                    <div class="form-group">
+                                        <label class="form-label">ชื่อ-นามสกุล</label>
+                                        <input type="text" class="form-control" name="name"
+                                            value="<%= profileUser.name %>" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">อีเมล (Gmail)</label>
+                                        <input type="email" class="form-control" name="email"
+                                            value="<%= profileUser.email || '' %>" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group-row">
+                                    <div class="form-group">
+                                        <label class="form-label">เบอร์โทรศัพท์</label>
+                                        <input type="tel" class="form-control" name="phoneNumber"
+                                            value="<%= profileUser.phoneNumber || '' %>">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">วันเกิด</label>
+                                        <input type="date" class="form-control" name="birthDate"
+                                            value="<%= profileUser.birthDate ? profileUser.birthDate.toISOString().split('T')[0] : '' %>">
+                                    </div>
+                                </div>
+
+                                <div class="form-group-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Username</label>
+                                        <input type="text" class="form-control" value="<%= profileUser.username %>"
+                                            disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">บทบาท</label>
+                                        <input type="text" class="form-control" value="<%=
+                                            profileUser.role === 'ADMIN' ? 'ผู้ดูแลระบบ' :
+                                            profileUser.role === 'STAFF' ? 'พนักงาน' :
+                                            profileUser.role === 'SELLER' ? 'พ่อค้า/แม่ค้า' : 'ลูกค้า' %>"
+                                            disabled>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-update">
+                                    <i class="fas fa-save me-2"></i>บันทึกข้อมูล
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- แท็บ: ความปลอดภัย -->
+                    <div class="profile-panel" data-panel="security">
+                        <div class="profile-card">
+                            <h3 class="profile-section-title">เปลี่ยนรหัสผ่าน</h3>
+
+                            <form method="POST" action="/profile">
+                                <div class="form-group full mb-3">
+                                    <label class="form-label">รหัสผ่านปัจจุบัน <span class="req-mark">*</span></label>
+                                    <input type="password" class="form-control" name="password"
+                                        placeholder="กรุณาใส่รหัสผ่านปัจจุบัน">
+                                </div>
+
+                                <div class="form-group-row">
+                                    <div class="form-group">
+                                        <label class="form-label">รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)</label>
+                                        <input type="password" class="form-control" name="newPassword"
+                                            placeholder="กรุณาใส่รหัสผ่านใหม่" minlength="6">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">ยืนยันรหัสผ่านใหม่</label>
+                                        <input type="password" class="form-control" name="confirmPassword"
+                                            placeholder="ยืนยันรหัสผ่านใหม่" minlength="6">
+                                    </div>
+                                </div>
+
+                                <small class="text-muted d-block mb-3">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยนรหัสผ่าน
+                                </small>
+
+                                <button type="submit" class="btn btn-update">
+                                    <i class="fas fa-lock me-2"></i>เปลี่ยนรหัสผ่าน
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- แท็บ: ร้านค้า / สมัครเปิดร้าน -->
+                    <% if (profileUser.role === 'SELLER' && profileUser.shop) { %>
+                    <div class="profile-panel" data-panel="shop">
+                        <div class="profile-card">
+                            <h3 class="profile-section-title">ข้อมูลร้านค้า</h3>
+
+                            <div class="info-row">
+                                <span class="info-label">ชื่อร้าน</span>
+                                <span class="info-value"><%= profileUser.shop.shopName || 'ยังไม่ได้บันทึก' %></span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">ประเภทสินค้า</span>
+                                <span class="info-value">
+                                    <% if (profileUser.shop.productType === 'FOOD') { %>
+                                    อาหาร/เครื่องดื่ม
+                                    <% } else if (profileUser.shop.productType === 'FASHION') { %>
+                                    เสื้อผ้า/แฟชั่น
+                                    <% } else { %>
+                                    <%= profileUser.shop.productType || 'ยังไม่ได้บันทึก' %>
+                                    <% } %>
+                                </span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">รายละเอียดสินค้า</span>
+                                <span class="info-value"><%= profileUser.shop.productDetail || 'ยังไม่ได้บันทึก' %></span>
+                            </div>
+                        </div>
+                    </div>
+                    <% } else if (profileUser.role === 'CUSTOMER') { %>
+                    <div class="profile-panel" data-panel="shop">
+                        <div class="profile-card">
+                            <h3 class="profile-section-title">สมัครเปิดร้านค้า</h3>
+
+                            <% if (typeof latestSellerApplication !== 'undefined' && latestSellerApplication && latestSellerApplication.status === 'PENDING') { %>
+                            <p class="text-muted mb-0">
+                                <i class="fas fa-clock me-1"></i>
+                                ใบสมัครร้าน "<%= latestSellerApplication.shopName %>" ของคุณอยู่ระหว่างตรวจสอบ
+                            </p>
+                            <% } else if (typeof latestSellerApplication !== 'undefined' && latestSellerApplication && latestSellerApplication.status === 'APPROVED') { %>
+                            <p class="text-muted mb-0">
+                                <i class="fas fa-circle-check me-1"></i>
+                                ใบสมัครร้าน "<%= latestSellerApplication.shopName %>" ได้รับการอนุมัติแล้ว กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่เพื่อใช้งานเมนูร้านค้า
+                            </p>
+                            <% } else { %>
+                            <% if (typeof latestSellerApplication !== 'undefined' && latestSellerApplication && latestSellerApplication.status === 'REJECTED') { %>
+                            <p class="text-muted">
+                                ใบสมัครร้าน "<%= latestSellerApplication.shopName %>" ครั้งก่อนไม่ผ่านการอนุมัติ<%= latestSellerApplication.rejectReason ? ` (เหตุผล: ${latestSellerApplication.rejectReason})` : '' %>
+                            </p>
+                            <% } %>
+                            <a href="/shop-application" class="btn btn-update">
+                                <i class="fas fa-store me-2"></i>สมัครเปิดร้านค้า
+                            </a>
+                            <% } %>
+                        </div>
+                    </div>
+                    <% } %>
+                </section>
             </div>
-            <% } %>
-
-            <!-- สมัครเปิดร้านค้า (สำหรับ Customer เท่านั้น) -->
-            <% if (profileUser.role === 'CUSTOMER') { %>
-            <div class="profile-card">
-                <h3 class="profile-section-title">สมัครเปิดร้านค้า</h3>
-
-                <% if (typeof latestSellerApplication !== 'undefined' && latestSellerApplication && latestSellerApplication.status === 'PENDING') { %>
-                <p class="text-muted mb-0">
-                    <i class="fas fa-clock me-1"></i>
-                    ใบสมัครร้าน "<%= latestSellerApplication.shopName %>" ของคุณอยู่ระหว่างตรวจสอบ
-                </p>
-                <% } else if (typeof latestSellerApplication !== 'undefined' && latestSellerApplication && latestSellerApplication.status === 'APPROVED') { %>
-                <p class="text-muted mb-0">
-                    <i class="fas fa-circle-check me-1"></i>
-                    ใบสมัครร้าน "<%= latestSellerApplication.shopName %>" ได้รับการอนุมัติแล้ว กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่เพื่อใช้งานเมนูร้านค้า
-                </p>
-                <% } else { %>
-                <% if (typeof latestSellerApplication !== 'undefined' && latestSellerApplication && latestSellerApplication.status === 'REJECTED') { %>
-                <p class="text-muted">
-                    ใบสมัครร้าน "<%= latestSellerApplication.shopName %>" ครั้งก่อนไม่ผ่านการอนุมัติ<%= latestSellerApplication.rejectReason ? ` (เหตุผล: ${latestSellerApplication.rejectReason})` : '' %>
-                </p>
-                <% } %>
-                <a href="/shop-application" class="btn btn-update">
-                    <i class="fas fa-store me-2"></i>สมัครเปิดร้านค้า
-                </a>
-                <% } %>
-            </div>
-            <% } %>
         </div>
 
         <script
             src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+        <script>
+            (function () {
+                var navItems = document.querySelectorAll('#profileTabNav .identity-nav-item');
+                var panels = document.querySelectorAll('.profile-panel');
+
+                navItems.forEach(function (item) {
+                    item.addEventListener('click', function () {
+                        var target = item.getAttribute('data-tab');
+
+                        navItems.forEach(function (btn) { btn.classList.remove('active'); });
+                        panels.forEach(function (panel) { panel.classList.remove('active'); });
+
+                        item.classList.add('active');
+                        var targetPanel = document.querySelector('.profile-panel[data-panel="' + target + '"]');
+                        if (targetPanel) targetPanel.classList.add('active');
+                    });
+                });
+            })();
+        </script>
     </body>
 </html>

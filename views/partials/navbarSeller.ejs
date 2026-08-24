@@ -57,10 +57,11 @@
             </div>
 
             <div class="nav-actions d-flex align-items-center">
-                <div class="user-badge shadow-sm">
+                <a href="/profile"
+                    class="user-badge user-badge-link shadow-sm <%= currentPath.includes('/profile') ? 'active' : '' %>">
                     <i class="fas fa-user-circle"></i>
                     <%= user ? user.name : 'ผู้ใช้งาน' %>
-                </div>
+                </a>
                 <a href="/switch-view/customer" class="switch-view-btn" title="ดูมุมมองลูกค้าทั่วไป">
                     <i class="fas fa-right-left"></i> สลับเป็นลูกค้า
                 </a>
