@@ -1229,6 +1229,29 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
         const currentPhase = getBookingPhaseForRound(bookingRoundInfo, new Date());
         const nextPhase = getBookingPhaseForRound(nextRoundInfo, new Date());
 
+        // ร้านที่แอดมิน Blacklist จากคะแนนตรวจตลาด จองแผงรอบใหม่ไม่ได้ (ดู controllers/scoreReportController.js)
+        if (userRecord?.isBlacklisted) {
+            return res.status(403).render('seller/booking_stall', {
+                user: userRecord,
+                zone: null,
+                zonePrice: 0,
+                error: 'ร้านค้าของคุณถูกระงับสิทธิ์การจองแผง (Blacklist) กรุณาติดต่อผู้ดูแลตลาด',
+                defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || req.sellerApplication?.productDetail || '',
+                bookingRoundInfo,
+                bookingRoundSummary,
+                nextRoundInfo,
+                currentPhase,
+                nextPhase,
+                cornerZoneValue: resolveCornerZonePrice(req.body.cornerZone),
+                pricing: {
+                    lightUnitPrice: LIGHT_UNIT_PRICE,
+                    smallAppliancePrice: SMALL_APPLIANCE_PRICE,
+                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                    cornerZoneOptions: CORNER_ZONE_OPTIONS
+                }
+            });
+        }
+
         if (!zoneCode) {
             return res.status(400).render('seller/booking_stall', {
                 user: userRecord,
@@ -1577,6 +1600,12 @@ function getExtendPhase(dateValue = new Date()) {
 
 router.get('/booking-stall/extend', isAuthenticated, async (req, res) => {
     const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { sellerProfile: true } });
+
+    // ร้านที่แอดมิน Blacklist จากคะแนนตรวจตลาด ต่อล็อกไม่ได้ (ดู controllers/scoreReportController.js)
+    if (userRecord?.isBlacklisted) {
+        return res.redirect('/booking-status?error=blacklisted');
+    }
+
     const active = await findActiveLockForExtension(userRecord);
 
     if (!active) {
@@ -1601,6 +1630,12 @@ router.get('/booking-stall/extend', isAuthenticated, async (req, res) => {
 router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
     try {
         const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true, sellerProfile: true } });
+
+        // ร้านที่แอดมิน Blacklist จากคะแนนตรวจตลาด ต่อล็อกไม่ได้ (ดู controllers/scoreReportController.js)
+        if (userRecord?.isBlacklisted) {
+            return res.redirect('/booking-status?error=blacklisted');
+        }
+
         const active = await findActiveLockForExtension(userRecord);
 
         if (!active) {

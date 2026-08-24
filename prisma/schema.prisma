@@ -19,7 +19,7 @@ model User {
   email         String?             @unique
   announcements Announcement[]
   bookings      Booking[]
-  requests      MaintenanceReport[]
+  requests      MaintenanceReport[] @relation("MaintenanceReportReporter")
   shop          ShopDetail?
   sellerProfile Seller?
   sellerApplications SellerApplication[]
@@ -30,6 +30,16 @@ model User {
   recordedElectricExcess StallElectricExcessRecord[]
   recordedInspectionChecks StallInspectionCheckRecord[]
   recordedIssues StallIssueRecord[]
+  assignedRepairReports MaintenanceReport[] @relation("MaintenanceReportAssignedTo")
+  // Blacklist จากคะแนนตรวจตลาด — อยู่บน User (ไม่ใช่ Seller model ที่ไม่มีที่ไหนในระบบสร้างข้อมูลจริงเลย)
+  isBlacklisted   Boolean   @default(false)
+  blacklistedAt   DateTime?
+  blacklistReason String?   @db.Text
+  blacklistedById Int?
+  blacklistedBy   User?     @relation("UserBlacklistedBy", fields: [blacklistedById], references: [id], onDelete: SetNull)
+  blacklistedUsers User[]   @relation("UserBlacklistedBy")
+
+  @@index([blacklistedById], map: "User_blacklistedById_fkey")
 }
 
 model PasswordResetToken {
@@ -235,9 +245,14 @@ model MaintenanceReport {
   status      Status   @default(PENDING)
   userId      Int
   createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // assignedToId/updatedAt: มีคอลัมน์นี้อยู่แล้วบน DB กลาง (ทีมอื่นเพิ่มไว้) ผสานเข้า schema ให้ตรงกัน
+  assignedToId Int?
+  updatedAt   DateTime @default(now())
+  user        User     @relation("MaintenanceReportReporter", fields: [userId], references: [id], onDelete: Cascade)
+  assignedTo  User?    @relation("MaintenanceReportAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
 
   @@index([userId], map: "MaintenanceReport_userId_fkey")
+  @@index([assignedToId], map: "MaintenanceReport_assignedToId_fkey")
 }
 
 model Announcement {

@@ -10,7 +10,8 @@ const userCtrl = require('../controllers/userController');
 const approvalCtrl = require('../controllers/approvalController');
 const requestCtrl = require('../controllers/requestController');
 const marketCtrl = require('../controllers/marketController');
-const announceCtrl = require('../controllers/announcementController'); 
+const announceCtrl = require('../controllers/announcementController');
+const scoreReportCtrl = require('../controllers/scoreReportController');
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
 const uploadDir = path.join(__dirname, '..', 'public', 'uploads', 'announcements');
@@ -66,6 +67,10 @@ router.post('/announcements/:id/delete', announceCtrl.deleteAnnouncement);
 router.get('/users', isAdminOnly, userCtrl.getUsersPage);
 router.post('/users/update-role', isAdminOnly, userCtrl.updateRole);
 router.get('/users/delete/:id', isAdminOnly, userCtrl.deleteUser);
+
+// --- 6.1 คะแนนร้านค้าจากการตรวจตลาด + Blacklist (เฉพาะ Admin) ---
+router.get('/sellers/scores', isAdminOnly, scoreReportCtrl.getSellerScoresPage);
+router.post('/sellers/blacklist', isAdminOnly, scoreReportCtrl.toggleBlacklist);
 
 // --- 7. Approvals & Requests ---
 router.get('/approvals', approvalCtrl.getApprovalsPage);

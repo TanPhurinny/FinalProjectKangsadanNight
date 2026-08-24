@@ -4,7 +4,7 @@ const currentPath = locals.path || '';
 
 <nav class="management-nav">
     <div class="nav-container">
-        <a href="/admin/dashboard" class="nav-brand">
+        <a href="/staff/dashboard" class="nav-brand">
             <img src="/img/favicon.png" alt="Kang Night Logo" class="nav-logo">
             KangsadanNight
         </a>
@@ -14,8 +14,8 @@ const currentPath = locals.path || '';
         </button>
 
         <div class="nav-links" id="navMenu">
-            <a href="/admin/dashboard"
-                class="nav-item <%= currentPath.includes('/admin/dashboard') ? 'active' : '' %>">
+            <a href="/staff/dashboard"
+                class="nav-item <%= currentPath.includes('/staff/dashboard') ? 'active' : '' %>">
                 <i class="fas fa-th-large"></i> แดชบอร์ด
             </a>
             <a href="/admin/slots"
@@ -27,8 +27,16 @@ const currentPath = locals.path || '';
                 <i class="fas fa-tools"></i> การแจ้งคำร้อง
             </a>
             <a href="/staff/marketinspection"
-                class="nav-item <%= currentPath.includes('/staff/marketinspection') ? 'active' : '' %>">
+                class="nav-item <%= currentPath.includes('/staff/marketinspection') && !currentPath.includes('/report') ? 'active' : '' %>">
                 <i class="fas fa-clipboard-check"></i> งานตรวจตลาด
+            </a>
+            <a href="/staff/marketinspection/report"
+                class="nav-item <%= currentPath.includes('/staff/marketinspection/report') ? 'active' : '' %>">
+                <i class="fas fa-chart-line"></i> รายงานตรวจตลาด
+            </a>
+            <a href="/staff/seller-scores"
+                class="nav-item <%= currentPath.includes('/staff/seller-scores') ? 'active' : '' %>">
+                <i class="fas fa-star"></i> คะแนนร้านค้า
             </a>
 
             <div class="nav-actions d-flex align-items-center">

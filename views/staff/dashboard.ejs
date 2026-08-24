@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>แดชบอร์ดพนักงาน | Kangsadan Staff</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260724-6">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/dashboard.css">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body class="bg-light">
+        <script src="/js/common/tabSession.js"></script>
+        <%- include('./partials/navbar') %>
+
+        <div class="container dashboard-shell py-4">
+            <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-danger mb-3"><%= error %></div>
+            <% } %>
+
+            <section class="db-hero mb-4">
+                <div class="hero-main">
+                    <div>
+                        <h1 class="hero-title mb-2">
+                            <i class="fas fa-clipboard-user me-2"></i>แดชบอร์ดพนักงาน
+                        </h1>
+                        <p class="hero-subtitle mb-0">ภาพรวมงานแจ้งซ่อมและงานตรวจตลาดที่ต้องดำเนินการวันนี้</p>
+                    </div>
+                </div>
+                <div class="hero-side">
+                    <div id="live-date" class="hero-date"></div>
+                    <div class="hero-actions">
+                        <a href="/staff/marketinspection" class="hero-btn"><i class="fas fa-clipboard-check"></i> ตรวจตลาด</a>
+                        <a href="/admin/requests" class="hero-btn"><i class="fas fa-tools"></i> งานแจ้งซ่อม</a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="kpi-group mb-3">
+                <div class="kpi-group-label needs-action"><i class="fas fa-triangle-exclamation"></i>ต้องดำเนินการ</div>
+                <div class="row g-3">
+                    <div class="col-6 col-lg-6">
+                        <article class="kpi-card needs-action c-info">
+                            <div class="kpi-icon"><i class="fas fa-screwdriver-wrench"></i></div>
+                            <div class="kpi-label">งานซ่อมรอรับเรื่อง</div>
+                            <h3 class="kpi-value count-up" data-target="<%= repair.pending %>"><%= repair.pending %></h3>
+                            <small class="kpi-meta">ต้องดำเนินการ</small>
+                        </article>
+                    </div>
+                    <div class="col-6 col-lg-6">
+                        <article class="kpi-card needs-action c-warning">
+                            <div class="kpi-icon"><i class="fas fa-magnifying-glass"></i></div>
+                            <div class="kpi-label">ล็อคยังไม่ได้ตรวจ</div>
+                            <h3 class="kpi-value count-up" data-target="<%= inspection.notInspected %>"><%= inspection.notInspected %></h3>
+                            <small class="kpi-meta">จากทั้งหมด <%= inspection.totalToday %> ล็อคที่จองไว้</small>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="kpi-group mb-4">
+                <div class="kpi-group-label"><i class="fas fa-chart-pie"></i>ภาพรวมงานตรวจตลาด</div>
+                <div class="row g-3">
+                    <div class="col-6 col-lg-6">
+                        <article class="kpi-card c-success">
+                            <div class="kpi-icon"><i class="fas fa-circle-check"></i></div>
+                            <div class="kpi-label">ล็อคที่ตรวจแล้ว</div>
+                            <h3 class="kpi-value count-up" data-target="<%= inspection.inspected %>"><%= inspection.inspected %></h3>
+                            <small class="kpi-meta">จากทั้งหมด <%= inspection.totalToday %> ล็อค</small>
+                        </article>
+                    </div>
+                    <div class="col-6 col-lg-6">
+                        <article class="kpi-card c-primary">
+                            <div class="kpi-icon"><i class="fas fa-bolt"></i></div>
+                            <div class="kpi-label">ล็อคที่พบปัญหา</div>
+                            <h3 class="kpi-value count-up" data-target="<%= inspection.issuesFound %>"><%= inspection.issuesFound %></h3>
+                            <small class="kpi-meta">ไม่มาขาย/ปล่อยเช่าช่วง/ไฟฟ้าเกิน ฯลฯ</small>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="row g-3 mb-4">
+                <div class="col-lg-8">
+                    <div class="insight-card h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="mb-0 fw-bold"><i class="fas fa-wave-square me-2"></i>ความคืบหน้าการตรวจตลาดวันนี้</h5>
+                            <span class="badge text-bg-light">อัปเดตอัตโนมัติ</span>
+                        </div>
+                        <%
+                        const inspectionRate = inspection.totalToday > 0
+                            ? ((inspection.inspected / inspection.totalToday) * 100).toFixed(1)
+                            : 0;
+                        %>
+                        <div class="progress-track mt-3">
+                            <div class="progress-head">
+                                <span>สัดส่วนล็อคที่ตรวจแล้ว</span>
+                                <strong><%= inspectionRate %>%</strong>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar"
+                                    style="--occupancy: <%= inspectionRate %>;"
+                                    aria-valuenow="<%= inspectionRate %>"
+                                    aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        <div class="quick-stats-grid mt-3">
+                            <div class="mini-stat">
+                                <span>งานซ่อมกำลังดำเนินการ</span>
+                                <strong class="count-up" data-target="<%= repair.inProgress %>"><%= repair.inProgress %></strong>
+                            </div>
+                            <div class="mini-stat">
+                                <span>งานซ่อมทั้งหมด</span>
+                                <strong class="count-up" data-target="<%= repair.total %>"><%= repair.total %></strong>
+                            </div>
+                            <div class="mini-stat">
+                                <span>ล็อคที่จองไว้ทั้งหมด</span>
+                                <strong class="count-up" data-target="<%= inspection.totalToday %>"><%= inspection.totalToday %></strong>
+                            </div>
+                            <div class="mini-stat">
+                                <span>ล็อคที่พบปัญหา</span>
+                                <strong class="count-up" data-target="<%= inspection.issuesFound %>"><%= inspection.issuesFound %></strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="insight-card h-100">
+                        <h5 class="mb-3 fw-bold"><i class="fas fa-bolt me-2"></i>ทางลัดการทำงาน</h5>
+                        <div class="d-grid gap-2 quick-links">
+                            <a href="/staff/marketinspection" class="quick-link-item"><i class="fas fa-clipboard-check"></i> เดินตรวจตลาด</a>
+                            <a href="/admin/requests" class="quick-link-item"><i class="fas fa-screwdriver-wrench"></i> อัปเดตสถานะงานซ่อม</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="zone-panel mb-3">
+                <div class="zone-panel-head">
+                    <h3 class="fw-bold mb-0"><i class="fas fa-tools me-2"></i>งานแจ้งซ่อมล่าสุด</h3>
+                </div>
+            </section>
+
+            <section class="mb-5">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle bg-white">
+                        <thead>
+                            <tr>
+                                <th>สถานที่</th>
+                                <th>ประเภท</th>
+                                <th>ผู้แจ้ง</th>
+                                <th>สถานะ</th>
+                                <th>วันที่แจ้ง</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (!repair.recent.length) { %>
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">ยังไม่มีงานแจ้งซ่อม</td>
+                            </tr>
+                            <% } %>
+                            <% repair.recent.forEach((report) => { %>
+                            <tr>
+                                <td><%= report.location %></td>
+                                <td><%= report.category %></td>
+                                <td><%= report.reporterName %></td>
+                                <td>
+                                    <span class="badge
+                                        <%= report.status === 'PENDING' ? 'badge-warning' : '' %>
+                                        <%= report.status === 'IN_PROGRESS' ? 'badge-info' : '' %>
+                                        <%= report.status === 'SUCCESS' ? 'badge-success' : '' %>
+                                        <%= report.status === 'REJECTED' ? 'badge-danger' : '' %>
+                                    "><%= report.statusLabel %></span>
+                                </td>
+                                <td class="text-muted"><%= report.createdAtText %></td>
+                            </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="quick-links">
+                    <a href="/admin/requests" class="quick-link-item d-inline-flex">ดูงานแจ้งซ่อมทั้งหมด <i class="fas fa-arrow-right ms-2"></i></a>
+                </div>
+            </section>
+        </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+        <script src="/js/admin/dashboard.js"></script>
+    </body>
+</html>

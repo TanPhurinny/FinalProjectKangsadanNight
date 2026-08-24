@@ -33,6 +33,10 @@ const isStaff = user && user.role === 'STAFF';
                 class="nav-item <%= currentPath.includes('/staff/marketinspection') ? 'active' : '' %>">
                 <i class="fas fa-clipboard-check"></i> งานตรวจตลาด
             </a>
+            <a href="/staff/seller-scores"
+                class="nav-item <%= currentPath.includes('/staff/seller-scores') ? 'active' : '' %>">
+                <i class="fas fa-star"></i> คะแนนร้านค้า
+            </a>
             <% } else { %>
             <a href="/admin/approvals"
                 class="nav-item <%= currentPath.includes('approvals') ? 'active' : '' %>">
@@ -45,6 +49,10 @@ const isStaff = user && user.role === 'STAFF';
             <a href="/admin/users"
                 class="nav-item <%= currentPath.includes('users') ? 'active' : '' %>">
                 <i class="fas fa-users"></i> จัดการผู้ใช้
+            </a>
+            <a href="/admin/sellers/scores"
+                class="nav-item <%= currentPath.includes('/sellers/scores') ? 'active' : '' %>">
+                <i class="fas fa-star"></i> คะแนนร้านค้า
             </a>
             <% } %>
 

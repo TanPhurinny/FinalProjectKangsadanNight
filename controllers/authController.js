@@ -83,8 +83,12 @@ function withTabToken(redirectPath, token) {
 }
 
 function buildLoginRedirectTarget(user) {
-    if (user.role === 'ADMIN' || user.role === 'STAFF') {
+    if (user.role === 'ADMIN') {
         return '/admin/dashboard';
+    }
+
+    if (user.role === 'STAFF') {
+        return '/staff/dashboard';
     }
 
     if (user.role === 'SELLER') {

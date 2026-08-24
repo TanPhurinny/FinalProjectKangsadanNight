@@ -1,0 +1,68 @@
+<div class="table-responsive">
+    <table class="table table-hover align-middle bg-white">
+        <thead>
+            <tr>
+                <th>ร้านค้า</th>
+                <th>คะแนนสะสม</th>
+                <th>คะแนนรอบล่าสุด</th>
+                <th>จำนวนรอบที่เคยขาย</th>
+                <th>สถานะ</th>
+                <% if (isAdmin) { %>
+                <th>จัดการ</th>
+                <% } %>
+            </tr>
+        </thead>
+        <tbody>
+            <% if (!rows.length) { %>
+            <tr>
+                <td colspan="<%= isAdmin ? 6 : 5 %>" class="text-center text-muted py-4">ยังไม่มีข้อมูลคะแนนร้านค้า</td>
+            </tr>
+            <% } %>
+            <% rows.forEach((row) => { %>
+            <tr class="<%= row.isBlacklisted ? 'table-danger' : '' %>">
+                <td><%= row.sellerName %></td>
+                <td class="fw-bold"><%= row.cumulativeScore !== null ? row.cumulativeScore.toFixed(1) : '-' %></td>
+                <td>
+                    <% if (row.latestRoundScore) { %>
+                        รอบ <%= row.latestRoundScore.roundNumber %>: <%= row.latestRoundScore.score.toFixed(1) %>
+                    <% } else { %>
+                        -
+                    <% } %>
+                </td>
+                <td><%= row.roundsCount %></td>
+                <td>
+                    <% if (row.isBlacklisted) { %>
+                    <span class="badge badge-danger">Blacklist</span>
+                    <% } else { %>
+                    <span class="badge badge-success">ปกติ</span>
+                    <% } %>
+                </td>
+                <% if (isAdmin) { %>
+                <td>
+                    <% if (row.isBlacklisted) { %>
+                    <form method="POST" action="/admin/sellers/blacklist" class="d-inline">
+                        <input type="hidden" name="userId" value="<%= row.userId %>">
+                        <input type="hidden" name="action" value="unblacklist">
+                        <button type="submit" class="btn btn-outline-primary btn-sm">ยกเลิก Blacklist</button>
+                    </form>
+                    <% if (row.blacklistReason) { %>
+                    <div class="small text-muted mt-1"><%= row.blacklistReason %></div>
+                    <% } %>
+                    <% } else { %>
+                    <details>
+                        <summary class="text-danger" style="cursor:pointer;">Blacklist ร้านนี้</summary>
+                        <form method="POST" action="/admin/sellers/blacklist" class="mt-2">
+                            <input type="hidden" name="userId" value="<%= row.userId %>">
+                            <input type="hidden" name="action" value="blacklist">
+                            <textarea name="reason" class="form-control form-control-sm mb-2" placeholder="เหตุผล (ถ้ามี)" rows="2"></textarea>
+                            <button type="submit" class="btn btn-danger btn-sm">ยืนยัน Blacklist</button>
+                        </form>
+                    </details>
+                    <% } %>
+                </td>
+                <% } %>
+            </tr>
+            <% }) %>
+        </tbody>
+    </table>
+</div>

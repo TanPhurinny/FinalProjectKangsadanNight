@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>รายงานตรวจตลาด | Kangsadan Staff</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260724-6">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/dashboard.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+    </head>
+    <body class="bg-light">
+        <script src="/js/common/tabSession.js"></script>
+        <%- include('./partials/navbar') %>
+
+        <div class="container py-4">
+            <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-danger mb-3"><%= error %></div>
+            <% } %>
+
+            <% if (report) { %>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+                <div>
+                    <h1 class="fw-bold mb-1"><i class="fas fa-chart-line me-2"></i>รายงานตรวจตลาด รอบที่ <%= report.roundNumber %></h1>
+                    <p class="text-muted mb-0">
+                        <%= report.cycleStart.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>
+                        &ndash;
+                        <%= report.cycleEnd.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a class="hero-btn" href="/staff/marketinspection/report?round=<%= roundNumber - 1 %>"><i class="fas fa-arrow-left"></i> รอบก่อนหน้า</a>
+                    <a class="hero-btn" href="/staff/marketinspection/report?round=<%= currentRoundNumber %>">รอบปัจจุบัน</a>
+                    <a class="hero-btn" href="/staff/marketinspection/report?round=<%= roundNumber + 1 %>">รอบถัดไป <i class="fas fa-arrow-right"></i></a>
+                    <a class="hero-btn" href="/staff/marketinspection/report/export?round=<%= roundNumber %>"><i class="fas fa-file-excel"></i> ดาวน์โหลด .xlsx</a>
+                </div>
+            </div>
+
+            <% if (report.inspectionProgressToday.total > 0) { %>
+            <div class="alert <%= report.inspectionProgressToday.isComplete ? 'alert-success' : 'alert-warning' %> mb-4">
+                <% if (report.inspectionProgressToday.isComplete) { %>
+                    <i class="fas fa-circle-check me-1"></i> ตรวจครบทุกร้านของวันนี้แล้ว (<%= report.inspectionProgressToday.inspected %>/<%= report.inspectionProgressToday.total %> ล็อค)
+                <% } else { %>
+                    <i class="fas fa-triangle-exclamation me-1"></i> วันนี้ยังตรวจไม่ครบ: ตรวจแล้ว <%= report.inspectionProgressToday.inspected %> จาก <%= report.inspectionProgressToday.total %> ล็อค
+                <% } %>
+            </div>
+            <% } %>
+
+            <section class="row g-3 mb-4">
+                <div class="col-6 col-lg-3">
+                    <article class="kpi-card c-primary">
+                        <div class="kpi-icon"><i class="fas fa-star"></i></div>
+                        <div class="kpi-label">คะแนนเฉลี่ยรอบนี้</div>
+                        <h3 class="kpi-value"><%= report.overallAverageScore !== null ? report.overallAverageScore.toFixed(1) : '-' %></h3>
+                    </article>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <article class="kpi-card c-info">
+                        <div class="kpi-icon"><i class="fas fa-store"></i></div>
+                        <div class="kpi-label">ร้านที่มีข้อมูลรอบนี้</div>
+                        <h3 class="kpi-value"><%= report.sellerRows.length %></h3>
+                    </article>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <article class="kpi-card c-warning">
+                        <div class="kpi-icon"><i class="fas fa-bolt"></i></div>
+                        <div class="kpi-label">เครื่องใช้ไฟฟ้าเกิน (เครื่อง)</div>
+                        <h3 class="kpi-value"><%= report.electricSmallTotal + report.electricLargeTotal %></h3>
+                    </article>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <article class="kpi-card c-success">
+                        <div class="kpi-icon"><i class="fas fa-ban"></i></div>
+                        <div class="kpi-label">ร้านที่ถูก Blacklist</div>
+                        <h3 class="kpi-value"><%= report.sellerRows.filter((row) => row.isBlacklisted).length %></h3>
+                    </article>
+                </div>
+            </section>
+
+            <section class="row g-3 mb-4">
+                <div class="col-lg-7">
+                    <div class="insight-card h-100">
+                        <h5 class="fw-bold mb-3"><i class="fas fa-wave-square me-2"></i>คะแนนเฉลี่ยรายวันในรอบ</h5>
+                        <canvas id="dailyScoreChart" height="120"></canvas>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="insight-card h-100">
+                        <h5 class="fw-bold mb-3"><i class="fas fa-chart-bar me-2"></i>สรุปปัญหาที่พบทั้งรอบ</h5>
+                        <canvas id="issueBarChart" height="150"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section class="mb-3">
+                <h3 class="fw-bold mb-3"><i class="fas fa-list me-2"></i>คะแนนร้านค้ารอบนี้</h3>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle bg-white">
+                        <thead>
+                            <tr>
+                                <th>ร้านค้า</th>
+                                <th>คะแนนรอบนี้</th>
+                                <th>จำนวนวันที่ตรวจ</th>
+                                <th>สถานะ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (!report.sellerRows.length) { %>
+                            <tr><td colspan="4" class="text-center text-muted py-4">ยังไม่มีข้อมูลตรวจในรอบนี้</td></tr>
+                            <% } %>
+                            <% report.sellerRows.forEach((row) => { %>
+                            <tr class="<%= row.isBlacklisted ? 'table-danger' : '' %>">
+                                <td><%= row.sellerName %></td>
+                                <td class="fw-bold"><%= row.roundScore !== null ? row.roundScore.toFixed(1) : '-' %></td>
+                                <td><%= row.daysInspected %></td>
+                                <td>
+                                    <% if (row.isBlacklisted) { %>
+                                    <span class="badge badge-danger">Blacklist</span>
+                                    <% } else { %>
+                                    <span class="badge badge-success">ปกติ</span>
+                                    <% } %>
+                                </td>
+                            </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            <% } %>
+        </div>
+
+        <% if (report) { %>
+        <script>
+            const dailyOverview = <%- JSON.stringify(report.dailyOverview) %>;
+            const issueCounts = <%- JSON.stringify(report.issueCounts) %>;
+
+            new Chart(document.getElementById('dailyScoreChart'), {
+                type: 'line',
+                data: {
+                    labels: dailyOverview.map((day) => day.dateLabel),
+                    datasets: [{
+                        label: 'คะแนนเฉลี่ย',
+                        data: dailyOverview.map((day) => day.averageScore),
+                        borderColor: '#2C93A8',
+                        backgroundColor: 'rgba(44, 147, 168, 0.15)',
+                        spanGaps: true,
+                        tension: 0.25,
+                        fill: true
+                    }]
+                },
+                options: {
+                    scales: { y: { min: 0, max: 100 } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            new Chart(document.getElementById('issueBarChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['ไม่มาขาย', 'ปล่อยเช่าช่วง', 'เปิดท้ายขายอื่น', 'ขายไม่ตรง', 'ปัญหาอื่นๆ'],
+                    datasets: [{
+                        label: 'จำนวนครั้งที่พบ',
+                        data: [issueCounts.noShow, issueCounts.sublease, issueCounts.otherMarket, issueCounts.wrongSeller, issueCounts.otherIssueNote],
+                        backgroundColor: '#c98a2e'
+                    }]
+                },
+                options: {
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        </script>
+        <% } %>
+    </body>
+</html>
