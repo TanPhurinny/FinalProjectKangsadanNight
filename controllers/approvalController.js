@@ -368,6 +368,8 @@ exports.getApprovalsPage = async (req, res) => {
             error: req.query.error || null,
             errorReason: req.query.reason || null,
             errorRequestId: req.query.requestId || null,
+            slipAmount: req.query.slipAmount || null,
+            expectedAmount: req.query.expectedAmount || null,
             success: req.query.success || null
         });
     } catch (err) {
@@ -453,18 +455,24 @@ exports.confirmPayment = async (req, res) => {
                 ? null
                 : { ok: requestRecord.slipVerified, reason: requestRecord.slipVerifyReason, amount: requestRecord.slipVerifiedAmount };
 
+            // ต้องรู้ยอดที่ต้องชำระจริงเสมอ (ไม่ใช่แค่ตอนยิง SlipOK ใหม่) เพื่อโชว์เทียบยอดสลิป vs ยอดจริง
+            // บนหน้า approvals ตอนแจ้งเตือนตรวจสลิปไม่ผ่าน — ดู views/admin/approvals.ejs
+            const requestTag = buildBookingRequestTag(requestId);
+            const linkedBooking = requestTag
+                ? await prisma.booking.findFirst({ where: { storeDetailSnapshot: { startsWith: requestTag } } })
+                : null;
+            const expectedAmount = linkedBooking ? Number(linkedBooking.grandTotal || 0) : null;
+
             if (verifyResult === null) {
-                const requestTag = buildBookingRequestTag(requestId);
-                const linkedBooking = requestTag
-                    ? await prisma.booking.findFirst({ where: { storeDetailSnapshot: { startsWith: requestTag } } })
-                    : null;
-                const expectedAmount = linkedBooking ? Number(linkedBooking.grandTotal || 0) : null;
                 verifyResult = await verifySlip(requestRecord.paymentSlipImage, expectedAmount);
             }
 
             if (verifyResult && verifyResult.ok === false) {
                 const reason = encodeURIComponent(verifyResult.reason || 'ตรวจสลิปไม่ผ่าน');
-                return res.redirect(`/admin/approvals?error=slip_verification_failed&reason=${reason}&requestId=${requestId}`);
+                const amountParams = (verifyResult.amount != null && expectedAmount != null)
+                    ? `&slipAmount=${encodeURIComponent(verifyResult.amount)}&expectedAmount=${encodeURIComponent(expectedAmount)}`
+                    : '';
+                return res.redirect(`/admin/approvals?error=slip_verification_failed&reason=${reason}${amountParams}&requestId=${requestId}`);
             }
         }
 

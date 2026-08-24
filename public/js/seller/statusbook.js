@@ -300,7 +300,10 @@
         'pending-payment': ['bi-wallet2', 'border-type-pending-payment', 'text-warning'],
         'success-payment': ['bi-check-circle-fill', 'border-type-success', 'text-success-custom'],
         'success-receipt': ['bi-file-earmark-text', 'border-type-success', 'text-success-custom'],
-        'cancelled': ['bi-x-circle-fill', 'border-type-cancelled', 'text-danger']
+        'cancelled': ['bi-x-circle-fill', 'border-type-cancelled', 'text-danger'],
+        'repair-in_progress': ['bi-tools', 'border-type-pending-payment', 'text-warning'],
+        'repair-success': ['bi-tools', 'border-type-success', 'text-success-custom'],
+        'repair-rejected': ['bi-tools', 'border-type-cancelled', 'text-danger']
       };
       const [iconClass, borderClass, iconColor] = iconMap[item.type] || ['bi-bell', 'border-type-pending-review', 'text-warning'];
 
@@ -403,7 +406,10 @@
         'pending-payment': ['bi-wallet2', 'border-type-pending-payment', 'text-warning'],
         'success-payment': ['bi-check-circle-fill', 'border-type-success', 'text-success-custom'],
         'success-receipt': ['bi-file-earmark-text', 'border-type-success', 'text-success-custom'],
-        'cancelled': ['bi-x-circle-fill', 'border-type-cancelled', 'text-danger']
+        'cancelled': ['bi-x-circle-fill', 'border-type-cancelled', 'text-danger'],
+        'repair-in_progress': ['bi-tools', 'border-type-pending-payment', 'text-warning'],
+        'repair-success': ['bi-tools', 'border-type-success', 'text-success-custom'],
+        'repair-rejected': ['bi-tools', 'border-type-cancelled', 'text-danger']
       };
       const [iconClass, borderClass, iconColor] = iconMap[item.type] || ['bi-bell', 'border-type-pending-review', 'text-warning'];
       return `
