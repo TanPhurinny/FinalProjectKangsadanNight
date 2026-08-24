@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient, Prisma } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { buildZonesData } = require('./marketController');
 const zoneAccess = require('../utils/zoneAccess');
@@ -399,6 +399,14 @@ exports.confirmApproval = async (req, res) => {
             return res.redirect('/admin/approvals?error=history_round_locked');
         }
 
+        // ปุ่มนี้ใช้แค่ตอนคำขอยังไม่ได้จัดล็อก (PENDING/APPROVED) — ถ้าจัดล็อกไปแล้ว (IN_PROGRESS/SUCCESS)
+        // ต้องปฏิเสธผ่าน rejectBookingStall เท่านั้น เพราะจุดนั้นปล่อยล็อกที่จัดไว้คืนด้วย ตรงนี้ทำแค่
+        // เปลี่ยน status เฉยๆ ไม่แตะ Stall เลย ถ้าปล่อยให้เรียกได้จะทิ้งล็อกค้างสถานะ BOOKED แบบไม่มีเจ้าของ
+        const currentStatus = String(requestRecord.status || '').toUpperCase();
+        if (!['PENDING', 'APPROVED'].includes(currentStatus)) {
+            return res.redirect('/admin/approvals?error=invalid_state_transition');
+        }
+
         await prisma.bookingRequest.update({
             where: { id: parseInt(requestId) },
             data: { status: normalizedStatus }
@@ -618,6 +626,7 @@ exports.getBookingStallPage = async (req, res) => {
 };
 
 exports.confirmBookingStall = async (req, res) => {
+    let stallUnavailableCode = null;
     try {
         const requestId = Number.parseInt(req.body.requestId, 10);
         // selectedStalls: comma-separated stall codes จากหน้า booking_stall.ejs (รองรับคำขอที่ขอมากกว่า 1 ล็อก)
@@ -656,46 +665,50 @@ exports.confirmBookingStall = async (req, res) => {
         }
 
         const previousAssigned = parseStallCodes(requestRecord.assignedStallCode || extractAssignedStallFromDescription(requestRecord.description));
-
-        const stalls = await prisma.stall.findMany({
-            where: { stallCode: { in: selectedStalls } },
-            select: { id: true, stallCode: true, isAvailable: true, status: true, basePrice: true, extraPrice: true, electricFeePerDay: true, extraElectricityCost: true }
-        });
-        const stallByCode = new Map(stalls.map((s) => [s.stallCode, s]));
-
-        for (const code of selectedStalls) {
-            const stall = stallByCode.get(code);
-            if (!stall) {
-                return res.redirect('/admin/approvals?error=stall_not_found');
-            }
-            const isAlreadyBooked = !stall.isAvailable || String(stall.status || '').toUpperCase() !== 'AVAILABLE';
-            // ล็อกที่คำขอนี้ถืออยู่แล้วจากการจัดครั้งก่อน ไม่ถือว่า "ไม่ว่าง" สำหรับคำขอนี้เอง (จัดใหม่/ยืนยันซ้ำได้)
-            if (isAlreadyBooked && !previousAssigned.includes(code)) {
-                return res.redirect('/admin/approvals?error=stall_unavailable');
-            }
-        }
-
         const stallsToRelease = previousAssigned.filter((code) => !selectedStalls.includes(code));
         const cleanedDescription = String(requestRecord.description || '').replace(/^\[ASSIGNED_STALL:[^\]]+\]\s*/i, '').trim();
 
-        // ราคาที่เห็นตอนแจ้งความสนใจเป็นแค่ราคาต่ำสุดของทั้งโซน (ประมาณการ) ไม่ใช่ราคาจริง
-        // ของล็อกที่จะได้ — ราคาจริงขึ้นกับตำแหน่งล็อกที่แอดมินเลือกให้ (Stall.basePrice + extraPrice)
-        // ขอมากกว่า 1 ล็อก แต่ละล็อกอาจราคาไม่เท่ากัน จึงเฉลี่ยราคาต่อล็อกจากผลรวมของทุกล็อกที่เลือกจริง
-        // (Booking แต่ละแถวเก็บราคา/ยอดรวมชุดเดียวกันซ้ำกันทุกแถว ตามดีไซน์เดิมที่หน้า seller
-        // อ่านแค่แถวเดียว (findFirst) มาแสดงเป็นยอดรวมทั้งคำขอ)
-        const totalDailyStallPrice = selectedStalls.reduce((sum, code) => {
-            const stall = stallByCode.get(code);
-            return sum + Number(stall.basePrice || 0) + Number(stall.extraPrice || 0);
-        }, 0);
-        const totalDailyLightPrice = selectedStalls.reduce((sum, code) => {
-            const stall = stallByCode.get(code);
-            return sum + Number(stall.electricFeePerDay || 0) + Number(stall.extraElectricityCost || 0);
-        }, 0);
-        const averageDailyStallPrice = totalDailyStallPrice / selectedStalls.length;
-        const averageDailyLightPrice = totalDailyLightPrice / selectedStalls.length;
         const joinedAssignedStallCode = joinStallCodes(selectedStalls);
 
+        // เช็คความว่างของล็อก + ล็อกแถว (FOR UPDATE) และคำนวณราคาไว้ในทรานแซกชันเดียวกับที่เขียนจริง
+        // กันสองคำขอ (สองแอดมิน/ดับเบิลคลิก) ผ่านเช็คว่างพร้อมกันแล้วชิงล็อกเดียวกันได้สำเร็จทั้งคู่ (double-booking)
         await prisma.$transaction(async (tx) => {
+            const lockedStalls = await tx.$queryRaw`
+                SELECT id, stallCode, isAvailable, status, basePrice, extraPrice, electricFeePerDay, extraElectricityCost
+                FROM Stall WHERE stallCode IN (${Prisma.join(selectedStalls)}) FOR UPDATE
+            `;
+            const stallByCode = new Map(lockedStalls.map((s) => [s.stallCode, s]));
+
+            for (const code of selectedStalls) {
+                const stall = stallByCode.get(code);
+                if (!stall) {
+                    stallUnavailableCode = 'stall_not_found';
+                    throw new Error('ROLLBACK_STALL_CHECK');
+                }
+                const isAlreadyBooked = !stall.isAvailable || String(stall.status || '').toUpperCase() !== 'AVAILABLE';
+                // ล็อกที่คำขอนี้ถืออยู่แล้วจากการจัดครั้งก่อน ไม่ถือว่า "ไม่ว่าง" สำหรับคำขอนี้เอง (จัดใหม่/ยืนยันซ้ำได้)
+                if (isAlreadyBooked && !previousAssigned.includes(code)) {
+                    stallUnavailableCode = 'stall_unavailable';
+                    throw new Error('ROLLBACK_STALL_CHECK');
+                }
+            }
+
+            // ราคาที่เห็นตอนแจ้งความสนใจเป็นแค่ราคาต่ำสุดของทั้งโซน (ประมาณการ) ไม่ใช่ราคาจริง
+            // ของล็อกที่จะได้ — ราคาจริงขึ้นกับตำแหน่งล็อกที่แอดมินเลือกให้ (Stall.basePrice + extraPrice)
+            // ขอมากกว่า 1 ล็อก แต่ละล็อกอาจราคาไม่เท่ากัน จึงเฉลี่ยราคาต่อล็อกจากผลรวมของทุกล็อกที่เลือกจริง
+            // (Booking แต่ละแถวเก็บราคา/ยอดรวมชุดเดียวกันซ้ำกันทุกแถว ตามดีไซน์เดิมที่หน้า seller
+            // อ่านแค่แถวเดียว (findFirst) มาแสดงเป็นยอดรวมทั้งคำขอ)
+            const totalDailyStallPrice = selectedStalls.reduce((sum, code) => {
+                const stall = stallByCode.get(code);
+                return sum + Number(stall.basePrice || 0) + Number(stall.extraPrice || 0);
+            }, 0);
+            const totalDailyLightPrice = selectedStalls.reduce((sum, code) => {
+                const stall = stallByCode.get(code);
+                return sum + Number(stall.electricFeePerDay || 0) + Number(stall.extraElectricityCost || 0);
+            }, 0);
+            const averageDailyStallPrice = totalDailyStallPrice / selectedStalls.length;
+            const averageDailyLightPrice = totalDailyLightPrice / selectedStalls.length;
+
             await tx.bookingRequest.update({
                 where: { id: requestId },
                 data: {
@@ -762,6 +775,9 @@ exports.confirmBookingStall = async (req, res) => {
 
         return res.redirect('/admin/approvals?success=stall_assigned');
     } catch (err) {
+        if (stallUnavailableCode) {
+            return res.redirect(`/admin/approvals?error=${stallUnavailableCode}`);
+        }
         return res.redirect('/admin/approvals?error=confirm_booking_stall_failed');
     }
 };
