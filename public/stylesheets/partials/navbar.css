@@ -95,6 +95,42 @@
     justify-content: flex-end;
 }
 
+/* navbar ผู้ขายมีเมนูเยอะกว่า navbar อื่น — บังคับให้อยู่แถวเดียวเสมอ (ไม่ตกบรรทัด)
+   ด้วย nowrap + เลื่อนแนวนอนได้ถ้าจอแคบเกินไป แทนที่จะปล่อยให้ล้นไปแถวสอง
+   ย่อ padding/ฟอนต์ของแต่ละเมนูลงด้วย เพื่อให้พอดีแถวเดียวโดยไม่ต้องเลื่อนในจอทั่วไป */
+.management-nav.seller-nav .nav-links {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.management-nav.seller-nav .nav-item {
+    padding: 0 8px;
+    font-size: 0.72rem;
+    gap: 5px;
+}
+
+/* ไอคอนแต่ละเมนูกว้างไม่เท่ากันตามรูปกราฟิก (เช่น fa-clock-rotate-left กว้างกว่า fa-home)
+   ทำให้ปุ่ม "ประวัติการจอง" ดูขนาดไม่เท่าเพื่อน — ล็อกความกว้างคอลัมน์ไอคอนให้เท่ากันทุกปุ่ม */
+.management-nav.seller-nav .nav-item i {
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.management-nav.seller-nav .user-badge,
+.management-nav.seller-nav .switch-view-btn {
+    padding: 5px 8px;
+    margin-left: 6px;
+    font-size: 0.7rem;
+}
+
+.management-nav.seller-nav .logout-link {
+    margin-left: 6px;
+    font-size: 0.72rem;
+}
+
 .nav-item {
     text-decoration: none;
     color: rgba(255, 255, 255, 0.66);
