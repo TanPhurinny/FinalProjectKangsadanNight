@@ -20,6 +20,7 @@ model User {
   announcements Announcement[]
   bookings      Booking[]
   requests      MaintenanceReport[]
+  assignedRepairReports MaintenanceReport[] @relation("MaintenanceAssignee")
   shop          ShopDetail?
   sellerProfile Seller?
   sellerApplications SellerApplication[]
@@ -224,17 +225,22 @@ model Booking {
 }
 
 model MaintenanceReport {
-  id          Int      @id @default(autoincrement())
-  location    String
-  category    String
-  description String   @db.Text
-  image       String? // เส้นทางรูปภาพ
-  status      Status   @default(PENDING)
-  userId      Int
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           Int      @id @default(autoincrement())
+  location     String
+  category     String
+  description  String   @db.Text
+  image        String? // เส้นทางรูปภาพ
+  status       Status   @default(PENDING)
+  rejectReason String?  @db.Text // เหตุผลที่แอดมิน/สตาฟกดปฏิเสธคำร้อง
+  userId       Int
+  assignedToId Int? // staff/admin ที่กด "รับเรื่อง" (เปลี่ยนสถานะเป็น IN_PROGRESS) เป็นคนแรก
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedTo   User?    @relation("MaintenanceAssignee", fields: [assignedToId], references: [id])
 
   @@index([userId], map: "MaintenanceReport_userId_fkey")
+  @@index([assignedToId], map: "MaintenanceReport_assignedToId_fkey")
 }
 
 model Announcement {

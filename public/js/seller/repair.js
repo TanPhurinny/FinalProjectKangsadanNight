@@ -17,10 +17,19 @@ function openDetailModal(el) {
     document.getElementById('detailCategory').textContent = d.category;
     document.getElementById('detailDescription').textContent = d.description;
     document.getElementById('detailDate').textContent = d.date;
+    document.getElementById('detailAssigned').textContent = d.assigned || 'ยังไม่มีเจ้าหน้าที่รับเรื่อง';
 
     const statusEl = document.getElementById('detailStatus');
     statusEl.textContent = d.statusLabel;
     statusEl.className = 'status-badge status-' + d.status;
+
+    const reasonRow = document.getElementById('detailRejectReasonRow');
+    if (d.status === 'REJECTED' && d.rejectReason) {
+        document.getElementById('detailRejectReason').textContent = d.rejectReason;
+        reasonRow.style.display = '';
+    } else {
+        reasonRow.style.display = 'none';
+    }
 
     document.getElementById('detailOverlay').classList.add('active');
 }

@@ -156,7 +156,9 @@
                         data-description="<%= report.description %>"
                         data-status="<%= report.status %>"
                         data-status-label="<%= statusLabel[report.status] || report.status %>"
-                        data-date="<%= new Date(report.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) %>">
+                        data-date="<%= new Date(report.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) %>"
+                        data-assigned="<%= report.assignedTo ? report.assignedTo.name : 'ยังไม่มีเจ้าหน้าที่รับเรื่อง' %>"
+                        data-reject-reason="<%= report.rejectReason || '' %>">
                         <% if (report.image) { %>
                         <img class="history-thumb" src="<%= report.image %>"
                             alt="รูปแจ้งซ่อม"
@@ -174,6 +176,12 @@
                                 Date(report.createdAt).toLocaleDateString('th-TH',
                                 { year: 'numeric', month: 'short', day:
                                 'numeric' }) %></div>
+                            <% if (report.assignedTo) { %>
+                            <div class="meta">ผู้รับเรื่อง: <%= report.assignedTo.name %></div>
+                            <% } %>
+                            <% if (report.status === 'REJECTED' && report.rejectReason) { %>
+                            <div class="meta reject-reason">เหตุผล: <%= report.rejectReason %></div>
+                            <% } %>
                             <span
                                 class="status-badge status-<%= report.status %>"><%=
                                 statusLabel[report.status] || report.status %></span>
@@ -222,9 +230,18 @@
                     <div class="detail-label">วันที่แจ้ง</div>
                     <div class="detail-value" id="detailDate"></div>
                 </div>
-                <div class="detail-row" style="margin-bottom: 0;">
+                <div class="detail-row">
                     <div class="detail-label">สถานะ</div>
                     <span class="status-badge" id="detailStatus"></span>
+                </div>
+                <div class="detail-row" id="detailAssignedRow">
+                    <div class="detail-label">ผู้รับเรื่อง</div>
+                    <div class="detail-value" id="detailAssigned"></div>
+                </div>
+                <div class="detail-row" id="detailRejectReasonRow"
+                    style="display: none; margin-bottom: 0;">
+                    <div class="detail-label">เหตุผลที่ปฏิเสธ</div>
+                    <div class="detail-value" id="detailRejectReason"></div>
                 </div>
             </div>
         </div>

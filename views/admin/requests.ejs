@@ -23,6 +23,7 @@
     </head>
     <body>
         <script src="/js/common/tabSession.js"></script>
+        <script src="/js/common/dialogs.js"></script>
         <%- include('../partials/navbar') %>
 
         <header class="site-header">
@@ -176,6 +177,11 @@
                                             req.createdAtText
                                             %>
                                         </div>
+                                        <div class="small text-muted mt-1">
+                                            <i class="fas fa-user-check me-1"></i><%=
+                                            req.assignedToName ? `ผู้รับเรื่อง: ${req.assignedToName}` : 'ยังไม่มีผู้รับเรื่อง'
+                                            %>
+                                        </div>
                                     </td>
                                     <td class="text-center">
                                         <span
@@ -196,12 +202,18 @@
                                             data-status="<%= req.status %>"
                                             data-status-label="<%= req.statusLabel %>"
                                             data-image="<%= req.image || '' %>"
+                                            data-assigned="<%= req.assignedToName || 'ยังไม่มีผู้รับเรื่อง' %>"
+                                            data-updated="<%= req.updatedAtText %>"
+                                            data-reject-reason="<%= req.rejectReason || '' %>"
                                             title="ดูรายละเอียด">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                         <% if (user.role === 'ADMIN' ||
                                         user.role === 'STAFF') { %>
                                         <% if (req.status === 'PENDING') { %>
+                                        <button type="button"
+                                            class="btn btn-danger btn-sm action-btn reject-repair-btn"
+                                            data-reject-id="<%= req.id %>">ปฏิเสธ</button>
                                         <form
                                             action="/admin/requests/update-status"
                                             method="POST" class="d-inline">
@@ -210,19 +222,12 @@
                                             <input type="hidden" name="status"
                                                 value="IN_PROGRESS">
                                             <button
-                                                class="btn btn-outline-primary btn-sm action-btn">รับเรื่อง</button>
-                                        </form>
-                                        <form
-                                            action="/admin/requests/update-status"
-                                            method="POST" class="d-inline">
-                                            <input type="hidden" name="id"
-                                                value="<%= req.id %>">
-                                            <input type="hidden" name="status"
-                                                value="REJECTED">
-                                            <button
-                                                class="btn btn-danger btn-sm action-btn">ปฏิเสธ</button>
+                                                class="btn btn-primary btn-sm action-btn">รับเรื่อง</button>
                                         </form>
                                         <% } else if (req.status === 'IN_PROGRESS') { %>
+                                        <button type="button"
+                                            class="btn btn-danger btn-sm action-btn reject-repair-btn"
+                                            data-reject-id="<%= req.id %>">ปฏิเสธ</button>
                                         <form
                                             action="/admin/requests/update-status"
                                             method="POST" class="d-inline">
@@ -231,17 +236,7 @@
                                             <input type="hidden" name="status"
                                                 value="SUCCESS">
                                             <button
-                                                class="btn btn-outline-success btn-sm action-btn">ซ่อมเสร็จแล้ว</button>
-                                        </form>
-                                        <form
-                                            action="/admin/requests/update-status"
-                                            method="POST" class="d-inline">
-                                            <input type="hidden" name="id"
-                                                value="<%= req.id %>">
-                                            <input type="hidden" name="status"
-                                                value="REJECTED">
-                                            <button
-                                                class="btn btn-danger btn-sm action-btn">ปฏิเสธ</button>
+                                                class="btn btn-success btn-sm action-btn">ซ่อมเสร็จแล้ว</button>
                                         </form>
                                         <% } else { %>
                                         <span
@@ -300,8 +295,12 @@
 
                     <p class="small mb-2"><%= req.description %></p>
                     <p class="small mb-2">เบอร์โทร: <%= req.phone %></p>
-                    <div class="small text-muted mb-3"><i
+                    <div class="small text-muted mb-1"><i
                             class="far fa-clock me-1"></i><%= req.createdAtText %></div>
+                    <div class="small text-muted mb-3"><i
+                            class="fas fa-user-check me-1"></i><%=
+                            req.assignedToName ? `ผู้รับเรื่อง: ${req.assignedToName}` : 'ยังไม่มีผู้รับเรื่อง'
+                            %></div>
 
                     <button type="button"
                         class="btn btn-outline-secondary btn-sm w-100 mb-2"
@@ -314,13 +313,19 @@
                         data-date="<%= req.createdAtText %>"
                         data-status="<%= req.status %>"
                         data-status-label="<%= req.statusLabel %>"
-                        data-image="<%= req.image || '' %>">
+                        data-image="<%= req.image || '' %>"
+                        data-assigned="<%= req.assignedToName || 'ยังไม่มีผู้รับเรื่อง' %>"
+                        data-updated="<%= req.updatedAtText %>"
+                        data-reject-reason="<%= req.rejectReason || '' %>">
                         <i class="fas fa-eye me-1"></i>ดูรายละเอียด
                     </button>
 
                     <% if (user.role === 'ADMIN' || user.role === 'STAFF') { %>
                     <div class="d-flex gap-2">
                         <% if (req.status === 'PENDING') { %>
+                        <button type="button"
+                            class="btn btn-danger w-100 action-btn reject-repair-btn flex-grow-1"
+                            data-reject-id="<%= req.id %>">ปฏิเสธ</button>
                         <form action="/admin/requests/update-status"
                             method="POST" class="flex-grow-1">
                             <input type="hidden" name="id"
@@ -328,32 +333,19 @@
                             <input type="hidden" name="status"
                                 value="IN_PROGRESS">
                             <button
-                                class="btn btn-outline-primary w-100 action-btn">รับเรื่อง</button>
-                        </form>
-                        <form action="/admin/requests/update-status"
-                            method="POST" class="flex-grow-1">
-                            <input type="hidden" name="id"
-                                value="<%= req.id %>">
-                            <input type="hidden" name="status" value="REJECTED">
-                            <button
-                                class="btn btn-outline-danger w-100 action-btn">ปฏิเสธ</button>
+                                class="btn btn-primary w-100 action-btn">รับเรื่อง</button>
                         </form>
                         <% } else if (req.status === 'IN_PROGRESS') { %>
+                        <button type="button"
+                            class="btn btn-danger w-100 action-btn reject-repair-btn flex-grow-1"
+                            data-reject-id="<%= req.id %>">ปฏิเสธ</button>
                         <form action="/admin/requests/update-status"
                             method="POST" class="flex-grow-1">
                             <input type="hidden" name="id"
                                 value="<%= req.id %>">
                             <input type="hidden" name="status" value="SUCCESS">
                             <button
-                                class="btn btn-outline-success w-100 action-btn">ซ่อมเสร็จแล้ว</button>
-                        </form>
-                        <form action="/admin/requests/update-status"
-                            method="POST" class="flex-grow-1">
-                            <input type="hidden" name="id"
-                                value="<%= req.id %>">
-                            <input type="hidden" name="status" value="REJECTED">
-                            <button
-                                class="btn btn-outline-danger w-100 action-btn">ปฏิเสธ</button>
+                                class="btn btn-success w-100 action-btn">ซ่อมเสร็จแล้ว</button>
                         </form>
                         <% } else { %>
                         <span
@@ -414,6 +406,13 @@
                             <dt class="col-4 text-muted">สถานะ</dt>
                             <dd class="col-8"><span class="badge"
                                     id="detailStatusBadge"></span></dd>
+                            <dt class="col-4 text-muted">ผู้รับเรื่อง</dt>
+                            <dd class="col-8" id="detailAssigned"></dd>
+                            <dt class="col-4 text-muted">อัปเดตล่าสุด</dt>
+                            <dd class="col-8" id="detailUpdated"></dd>
+                            <dt class="col-4 text-muted d-none" id="detailRejectReasonLabel">เหตุผลที่ปฏิเสธ</dt>
+                            <dd class="col-8 d-none" id="detailRejectReason"
+                                style="white-space: pre-wrap;"></dd>
                         </dl>
                     </div>
                 </div>

@@ -13,20 +13,23 @@ exports.getRequestsPage = async (req, res) => {
     try {
         const reports = await prisma.maintenanceReport.findMany({
             include: {
-                user: { select: { name: true, phoneNumber: true } }
+                user: { select: { name: true, phoneNumber: true } },
+                assignedTo: { select: { name: true } }
             },
             orderBy: { createdAt: 'desc' }
         });
 
         const requestRows = reports.map((report) => {
             const statusCode = String(report.status || 'PENDING').toUpperCase();
-            const createdAtText = new Date(report.createdAt).toLocaleString('th-TH', {
+            const dateTimeOpts = {
                 day: '2-digit',
                 month: 'short',
                 year: '2-digit',
                 hour: '2-digit',
                 minute: '2-digit'
-            });
+            };
+            const createdAtText = new Date(report.createdAt).toLocaleString('th-TH', dateTimeOpts);
+            const updatedAtText = new Date(report.updatedAt).toLocaleString('th-TH', dateTimeOpts);
 
             return {
                 id: report.id,
@@ -38,8 +41,11 @@ exports.getRequestsPage = async (req, res) => {
                 phone: report.user?.phoneNumber || '-',
                 status: statusCode,
                 statusLabel: STATUS_LABELS[statusCode] || statusCode,
+                rejectReason: report.rejectReason || null,
                 createdAt: report.createdAt,
-                createdAtText
+                createdAtText,
+                updatedAtText,
+                assignedToName: report.assignedTo?.name || null
             };
         });
 
@@ -68,12 +74,30 @@ exports.updateStatus = async (req, res) => {
     if (!parsed.success) {
         return res.redirect('/admin/requests?error=invalid_status');
     }
-    const { id, status } = parsed.data;
+    const { id, status, reason } = parsed.data;
+
+    if (status === 'REJECTED' && !reason) {
+        return res.redirect('/admin/requests?error=reason_required');
+    }
 
     try {
+        const existing = await prisma.maintenanceReport.findUnique({
+            where: { id },
+            select: { assignedToId: true }
+        });
+        if (!existing) {
+            return res.redirect('/admin/requests?error=update_failed');
+        }
+
+        // ใครก็ตามที่กดเปลี่ยนสถานะเป็นคนแรก (รับเรื่อง/ปฏิเสธ) ถือเป็น "ผู้รับเรื่อง" ของคำร้องนี้
+        // ไม่ทับผู้รับเรื่องเดิมถ้ามีคนรับไปแล้ว
         await prisma.maintenanceReport.update({
             where: { id },
-            data: { status }
+            data: {
+                status,
+                assignedToId: existing.assignedToId || req.user.id,
+                rejectReason: status === 'REJECTED' ? reason : null
+            }
         });
         res.redirect('/admin/requests?success=updated');
     } catch (err) {

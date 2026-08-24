@@ -66,7 +66,8 @@ if (requestDetailModal) {
     const statusBadgeClass = {
         PENDING: 'bg-warning text-dark',
         IN_PROGRESS: 'bg-info text-dark',
-        SUCCESS: 'bg-success'
+        SUCCESS: 'bg-success',
+        REJECTED: 'bg-danger'
     };
 
     requestDetailModal.addEventListener('show.bs.modal', (event) => {
@@ -89,13 +90,72 @@ if (requestDetailModal) {
         document.getElementById('detailCategory').textContent = d.category;
         document.getElementById('detailDescription').textContent = d.description;
         document.getElementById('detailDate').textContent = d.date;
+        document.getElementById('detailAssigned').textContent = d.assigned || 'ยังไม่มีผู้รับเรื่อง';
+        document.getElementById('detailUpdated').textContent = d.updated || '-';
 
         const badge = document.getElementById('detailStatusBadge');
         badge.textContent = d.statusLabel;
         badge.className = 'badge ' + (statusBadgeClass[d.status] || 'bg-secondary');
+
+        const reasonLabel = document.getElementById('detailRejectReasonLabel');
+        const reasonEl = document.getElementById('detailRejectReason');
+        if (d.rejectReason) {
+            reasonEl.textContent = d.rejectReason;
+            reasonLabel.classList.remove('d-none');
+            reasonEl.classList.remove('d-none');
+        } else {
+            reasonLabel.classList.add('d-none');
+            reasonEl.classList.add('d-none');
+        }
     });
 
     detailImage.addEventListener('click', () => {
         if (detailImage.src) window.open(detailImage.src, '_blank');
     });
 }
+
+// ปฏิเสธคำร้องแจ้งซ่อม — ต้องระบุเหตุผลก่อนเสมอ ผู้ขายจะเห็นเหตุผลนี้ในหน้าประวัติ/แจ้งเตือน
+document.querySelectorAll('.reject-repair-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        const id = btn.dataset.rejectId;
+        window.showConfirmDialog({
+            title: 'ปฏิเสธคำร้องแจ้งซ่อม',
+            message: 'ระบุเหตุผลที่ปฏิเสธคำร้องนี้ ผู้ขายจะเห็นเหตุผลนี้ในหน้าประวัติแจ้งซ่อมของตน',
+            tone: 'danger',
+            confirmText: 'ปฏิเสธคำร้อง',
+            inputPlaceholder: 'เหตุผลที่ปฏิเสธ',
+            onConfirm: (reason) => {
+                const trimmedReason = String(reason || '').trim();
+                if (!trimmedReason) {
+                    window.showAlertDialog({ title: 'กรุณาระบุเหตุผล', message: 'ต้องระบุเหตุผลก่อนปฏิเสธคำร้อง', tone: 'warning' });
+                    return;
+                }
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/admin/requests/update-status';
+
+                const idField = document.createElement('input');
+                idField.type = 'hidden';
+                idField.name = 'id';
+                idField.value = id;
+
+                const statusField = document.createElement('input');
+                statusField.type = 'hidden';
+                statusField.name = 'status';
+                statusField.value = 'REJECTED';
+
+                const reasonField = document.createElement('input');
+                reasonField.type = 'hidden';
+                reasonField.name = 'reason';
+                reasonField.value = trimmedReason;
+
+                form.appendChild(idField);
+                form.appendChild(statusField);
+                form.appendChild(reasonField);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    });
+});
