@@ -1,3 +1,13 @@
+// เลื่อนหน้าไปหาแบนเนอร์แจ้งเตือน (error/warning) อัตโนมัติหลัง redirect กลับมา
+// กันแอดมินพลาดเห็นตอนหน้ายาวและ scroll ผ่านไปแล้ว — ไม่ใช้ pop up เพราะแอดมินต้องเลื่อนดูรูปสลิป
+// เทียบยอดไปพร้อมกันด้วย pop up จะบังหน้าจอ
+const flashBannerEl = document.getElementById('flashBanner');
+if (flashBannerEl) {
+    flashBannerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    flashBannerEl.classList.add('flash-banner--flash');
+    setTimeout(() => flashBannerEl.classList.remove('flash-banner--flash'), 1600);
+}
+
 const statusBtns = document.querySelectorAll('#statusFilters .btn-filter');
 const zoneBtns = document.querySelectorAll('#zoneFilters .btn-filter');
 const cards = document.querySelectorAll('.booking-card');
@@ -109,6 +119,35 @@ function submitRejectSlip(requestId) {
 
             form.appendChild(requestField);
             form.appendChild(reasonField);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+
+function submitForcePayment(requestId) {
+    window.showConfirmDialog({
+        title: 'ยืนยันการชำระเงินโดยไม่ตรวจสลิป',
+        message: 'ยืนยันการชำระเงินโดยไม่ใช้ผลตรวจสลิปอัตโนมัติ (ตรวจสอบด้วยตาเองแล้ว) ใช่ไหม?',
+        tone: 'warning',
+        confirmText: 'ยืนยันต่อโดยไม่ตรวจสลิป',
+        onConfirm: () => {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/admin/approvals/confirm-payment';
+
+            const requestField = document.createElement('input');
+            requestField.type = 'hidden';
+            requestField.name = 'requestId';
+            requestField.value = String(requestId);
+
+            const forceField = document.createElement('input');
+            forceField.type = 'hidden';
+            forceField.name = 'force';
+            forceField.value = '1';
+
+            form.appendChild(requestField);
+            form.appendChild(forceField);
             document.body.appendChild(form);
             form.submit();
         }

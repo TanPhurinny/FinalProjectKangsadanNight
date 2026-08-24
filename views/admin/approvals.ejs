@@ -42,6 +42,10 @@
                 const flashError = (typeof error !== 'undefined' && error) ? error : null;
                 const flashReason = (typeof errorReason !== 'undefined' && errorReason) ? errorReason : null;
                 const flashRequestId = (typeof errorRequestId !== 'undefined' && errorRequestId) ? errorRequestId : null;
+                const flashSlipAmount = (typeof locals.slipAmount !== 'undefined' && locals.slipAmount !== null && locals.slipAmount !== '') ? Number(locals.slipAmount) : null;
+                const flashExpectedAmount = (typeof locals.expectedAmount !== 'undefined' && locals.expectedAmount !== null && locals.expectedAmount !== '') ? Number(locals.expectedAmount) : null;
+                const hasAmountMismatch = flashError === 'slip_verification_failed' && Number.isFinite(flashSlipAmount) && Number.isFinite(flashExpectedAmount);
+                const formatBaht = (n) => Number(n || 0).toLocaleString('th-TH') + ' ฿';
                 const flashSuccess = (typeof success !== 'undefined' && success) ? success : null;
                 const flashErrorMessages = {
                     missing_request_id: 'ไม่พบรหัสคำขอ',
@@ -65,15 +69,25 @@
                     slip_rejected: 'ปฏิเสธสลิปแล้ว ระบบแจ้งผู้ขายให้อัปโหลดสลิปใหม่'
                 };
                 %>
-                <% if (flashError) { %>
-                <div class="flash-banner flash-banner--error">
+                <% if (flashError === 'slip_verification_failed' && hasAmountMismatch) { %>
+                <div class="flash-banner flash-banner--warning" id="flashBanner">
+                    <div class="flash-banner__body">
+                        <span class="flash-banner__title">ยอดในสลิปไม่ตรงกับยอดที่ต้องชำระ</span>
+                        <span class="flash-banner__amounts">
+                            สลิป <strong><%= formatBaht(flashSlipAmount) %></strong>
+                            <i class="fa-solid fa-not-equal"></i>
+                            ต้องชำระ <strong><%= formatBaht(flashExpectedAmount) %></strong>
+                        </span>
+                    </div>
+                    <% if (flashRequestId) { %>
+                    <button type="button" class="flash-banner__force-btn flash-banner__force-btn--warning" onclick="submitForcePayment(<%= flashRequestId %>)">ยืนยันต่อโดยไม่ตรวจสลิป</button>
+                    <% } %>
+                </div>
+                <% } else if (flashError) { %>
+                <div class="flash-banner flash-banner--error" id="flashBanner">
                     <span><%= flashErrorMessages[flashError] || 'เกิดข้อผิดพลาด' %></span>
                     <% if (flashError === 'slip_verification_failed' && flashRequestId) { %>
-                    <form method="POST" action="/admin/approvals/confirm-payment" class="flash-banner__force-form">
-                        <input type="hidden" name="requestId" value="<%= flashRequestId %>">
-                        <input type="hidden" name="force" value="1">
-                        <button type="submit" onclick="return confirm('ยืนยันการชำระเงินโดยไม่ใช้ผลตรวจสลิปอัตโนมัติ (ตรวจสอบด้วยตาเองแล้ว) ใช่ไหม?')">ยืนยันต่อโดยไม่ตรวจสลิป</button>
-                    </form>
+                    <button type="button" class="flash-banner__force-btn" onclick="submitForcePayment(<%= flashRequestId %>)">ยืนยันต่อโดยไม่ตรวจสลิป</button>
                     <% } %>
                 </div>
                 <% } %>
@@ -314,7 +328,7 @@
                         <div class="card-tags d-none" id="m-tags"></div>
 
                         <div class="note-box">
-                            <strong>หมายเหตุจากผู้เช่า:</strong><br>
+                            <strong>รายละเอียดร้าน/สินค้า:</strong><br>
                             <span id="m-note"></span>
                         </div>
 

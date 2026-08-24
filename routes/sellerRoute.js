@@ -610,6 +610,36 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
     }));
 }
 
+// สร้างการ์ดแจ้งเตือนตอนสถานะแจ้งซ่อมของผู้ใช้เปลี่ยน (รับเรื่อง/เสร็จ/ปฏิเสธ) ให้ขึ้นในหน้า
+// /notifications เดียวกับแจ้งเตือนการจอง — ไม่แจ้งตอนยังเป็น PENDING (ยังไม่มีความคืบหน้าให้แจ้ง)
+function buildRepairNotifications(reports) {
+    const REPAIR_NOTIFICATION_META = {
+        IN_PROGRESS: { type: 'repair-in_progress', title: 'เจ้าหน้าที่รับเรื่องแจ้งซ่อมแล้ว', verb: 'กำลังดำเนินการซ่อม' },
+        SUCCESS: { type: 'repair-success', title: 'ซ่อมเสร็จเรียบร้อยแล้ว', verb: 'ซ่อมเสร็จแล้ว' },
+        REJECTED: { type: 'repair-rejected', title: 'คำร้องแจ้งซ่อมถูกปฏิเสธ', verb: 'ถูกปฏิเสธ' }
+    };
+
+    return (reports || [])
+        .filter((report) => REPAIR_NOTIFICATION_META[String(report.status || '').toUpperCase()])
+        .map((report) => {
+            const meta = REPAIR_NOTIFICATION_META[String(report.status).toUpperCase()];
+            const reasonSuffix = report.status === 'REJECTED' && report.rejectReason
+                ? ` เหตุผล: ${report.rejectReason}`
+                : '';
+            return {
+                id: `repair-${report.id}`,
+                type: meta.type,
+                title: meta.title,
+                desc: `คำร้องแจ้งซ่อม "${report.location} — ${report.category}" ${meta.verb}${reasonSuffix}`,
+                date: formatDateThai(report.updatedAt),
+                time: formatTimeThai(report.updatedAt),
+                status: report.status,
+                isRead: false,
+                isNew: true
+            };
+        });
+}
+
 function parseShopTags(rawTags) {
     return String(rawTags || '')
         .split(',')
@@ -1032,6 +1062,7 @@ router.get("/repair", isAuthenticated, async (req, res) => {
     });
     const reports = await prisma.maintenanceReport.findMany({
         where: { userId: req.user.id },
+        include: { assignedTo: { select: { name: true } } },
         orderBy: { createdAt: 'desc' }
     });
     res.render("seller/repair", {
@@ -1878,10 +1909,18 @@ async function loadSellerBookingStatus(userId) {
 
     const extendInfo = await findActiveLockForExtension(userRecord);
 
+    const repairReports = await prisma.maintenanceReport.findMany({
+        where: { userId },
+        orderBy: { updatedAt: 'desc' }
+    });
+
     return {
         userRecord,
         bookingView,
-        notifications: buildBookingNotifications(notificationBooking, awaitingPaymentVerification, extendInfo)
+        notifications: [
+            ...buildRepairNotifications(repairReports),
+            ...buildBookingNotifications(notificationBooking, awaitingPaymentVerification, extendInfo)
+        ]
     };
 }
 

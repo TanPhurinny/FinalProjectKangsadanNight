@@ -38,7 +38,39 @@
     color: var(--success-color);
     border: 1px solid rgba(39, 174, 96, 0.3);
 }
-.approvals-page .flash-banner__force-form button {
+.approvals-page .flash-banner--warning {
+    background: rgba(201, 138, 46, 0.08);
+    color: var(--warning-color);
+    border: 1px solid rgba(201, 138, 46, 0.3);
+}
+.approvals-page .flash-banner--flash {
+    animation: flash-banner-pulse 0.4s ease 2;
+}
+@keyframes flash-banner-pulse {
+    0%, 100% { box-shadow: none; }
+    50% { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 35%, transparent); }
+}
+.approvals-page .flash-banner__body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.approvals-page .flash-banner__title {
+    font-weight: 600;
+}
+.approvals-page .flash-banner__amounts {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.approvals-page .flash-banner__amounts i {
+    font-size: 0.75rem;
+    color: var(--warning-color);
+}
+.approvals-page .flash-banner__force-btn {
     background: #fff;
     border: 1px solid var(--danger-color);
     color: var(--danger-color);
@@ -47,9 +79,18 @@
     font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
+    flex-shrink: 0;
 }
-.approvals-page .flash-banner__force-form button:hover {
+.approvals-page .flash-banner__force-btn:hover {
     background: var(--danger-color);
+    color: #fff;
+}
+.approvals-page .flash-banner__force-btn--warning {
+    border-color: var(--warning-color);
+    color: var(--warning-color);
+}
+.approvals-page .flash-banner__force-btn--warning:hover {
+    background: var(--warning-color);
     color: #fff;
 }
 

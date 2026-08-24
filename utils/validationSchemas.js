@@ -68,7 +68,8 @@ const repairReportSchema = z.object({
 
 const repairStatusUpdateSchema = z.object({
     id: z.coerce.number().int().positive(),
-    status: upperCaseEnum(REPAIR_STATUS_VALUES)
+    status: upperCaseEnum(REPAIR_STATUS_VALUES),
+    reason: z.string().trim().max(500).optional()
 });
 
 const announcementSchema = z.object({
