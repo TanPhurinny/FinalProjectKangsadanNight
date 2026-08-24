@@ -27,6 +27,9 @@ model User {
   communityPosts CommunityPost[]
   communityLikes CommunityLike[]
   communityComments CommunityComment[]
+  recordedElectricExcess StallElectricExcessRecord[]
+  recordedInspectionChecks StallInspectionCheckRecord[]
+  recordedIssues StallIssueRecord[]
 }
 
 model PasswordResetToken {
@@ -306,8 +309,74 @@ model Stall {
   row                  ZoneRow   @relation(fields: [rowId], references: [id], onDelete: Cascade)
   bookingItems         BookingItem[]
   priceRules           StallPriceRule[]
+  electricExcessRecords StallElectricExcessRecord[]
+  inspectionCheckRecords StallInspectionCheckRecord[]
+  issueRecords         StallIssueRecord[]
 
   @@index([rowId], map: "Stall_rowId_fkey")
+}
+
+// พบเครื่องใช้ไฟฟ้าเกินตอนตรวจตลาดหน้างาน (แยกจาก Booking.smallApplianceCount/largeApplianceCount
+// ซึ่งเป็นจำนวนที่แจ้งไว้ตอนจองและคิดราคาไปแล้ว) เก็บราคาต่อหน่วย ณ ตอนบันทึกไว้ด้วยกันราคากลาง
+// เปลี่ยนในอนาคตแล้วกระทบข้อมูลย้อนหลัง
+model StallElectricExcessRecord {
+  id             Int      @id @default(autoincrement())
+  stallId        Int
+  stallCode      String
+  smallCount     Int      @default(0)
+  largeCount     Int      @default(0)
+  smallUnitPrice Float    @default(20)
+  largeUnitPrice Float    @default(40)
+  subtotal       Float    @default(0)
+  note           String?  @db.Text
+  recordedById   Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  stall          Stall    @relation(fields: [stallId], references: [id], onDelete: Cascade)
+  recordedBy     User     @relation(fields: [recordedById], references: [id], onDelete: Cascade)
+
+  @@index([stallId], map: "StallElectricExcessRecord_stallId_fkey")
+  @@index([recordedById], map: "StallElectricExcessRecord_recordedById_fkey")
+}
+
+// สถานะ "ตรวจสอบแล้ว" ตอนเดินตรวจตลาด เก็บเป็น event log เหมือน StallElectricExcessRecord
+// (เร็คอร์ดล่าสุดต่อ stallId คือสถานะปัจจุบัน) เพื่อเก็บประวัติการติ๊ก/เอาออกไว้ด้วย ไม่เขียนทับ record เดิมที่มีอยู่แล้ว
+model StallInspectionCheckRecord {
+  id           Int      @id @default(autoincrement())
+  stallId      Int
+  stallCode    String
+  isInspected  Boolean  @default(false)
+  recordedById Int
+  createdAt    DateTime @default(now())
+
+  stall        Stall    @relation(fields: [stallId], references: [id], onDelete: Cascade)
+  recordedBy   User     @relation(fields: [recordedById], references: [id], onDelete: Cascade)
+
+  @@index([stallId], map: "StallInspectionCheckRecord_stallId_fkey")
+  @@index([recordedById], map: "StallInspectionCheckRecord_recordedById_fkey")
+}
+
+// หัวข้อปัญหาที่พบตอนตรวจตลาด (ไม่มาขาย/ปล่อยเช่าช่วง/ไปเปิดท้ายหรือขายอื่น/ขายไม่ตรง + หมายเหตุปัญหาอื่นๆ)
+// เก็บเป็น event log เหมือน StallInspectionCheckRecord (เร็คอร์ดล่าสุดต่อ stallId คือค่าปัจจุบัน)
+// บันทึกทุก field พร้อมกันทุกครั้งที่มีการแก้ไข (ไม่แยกเป็นรายฟิลด์) เพื่อให้เร็คอร์ดล่าสุดสมบูรณ์เสมอ
+model StallIssueRecord {
+  id             Int      @id @default(autoincrement())
+  stallId        Int
+  stallCode      String
+  noShow         Boolean  @default(false)
+  sublease       Boolean  @default(false)
+  otherMarket    Boolean  @default(false)
+  wrongSeller    Boolean  @default(false)
+  otherIssueNote String?  @db.Text
+  recordedById   Int
+  createdAt      DateTime @default(now())
+
+  stall          Stall    @relation(fields: [stallId], references: [id], onDelete: Cascade)
+  recordedBy     User     @relation(fields: [recordedById], references: [id], onDelete: Cascade)
+
+  @@index([stallId], map: "StallIssueRecord_stallId_fkey")
+  @@index([recordedById], map: "StallIssueRecord_recordedById_fkey")
 }
 
 model ProductType {

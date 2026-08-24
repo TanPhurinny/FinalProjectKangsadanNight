@@ -17,6 +17,16 @@ function optionalBoundedInt(min, max) {
     }, z.coerce.number().int().min(min).max(max).optional());
 }
 
+// z.coerce.boolean() จะมองค่า string ที่ไม่ว่างเป็น true เสมอ (เช่น "false" -> true) จึงต้องแปลง string เหล่านี้เองก่อน
+function strictBoolean() {
+    return z.preprocess((value) => {
+        if (typeof value === 'boolean') return value;
+        if (value === 'false' || value === '0') return false;
+        if (value === 'true' || value === '1') return true;
+        return value;
+    }, z.boolean());
+}
+
 const MAX_STALL_COUNT = 20;
 const MAX_APPLIANCE_COUNT = 50;
 
@@ -112,6 +122,32 @@ const shopProfileSchema = z.object({
     shopTags: z.string().trim().max(300).optional()
 });
 
+// บันทึกจำนวนเครื่องใช้ไฟฟ้าเกินที่พบตอนตรวจตลาดจริง (แยกจากยอดที่แจ้งไว้ตอนจองใน Booking)
+// อนุญาตให้ส่ง 0/0 ได้ เพื่อรองรับกรณีแก้ไขล้างค่าที่เคยบันทึกผิดออก
+const electricExcessInputSchema = z.object({
+    stallId: z.coerce.number().int().positive(),
+    smallCount: optionalBoundedInt(0, MAX_APPLIANCE_COUNT).transform((value) => value ?? 0),
+    largeCount: optionalBoundedInt(0, MAX_APPLIANCE_COUNT).transform((value) => value ?? 0),
+    note: z.string().trim().max(500).optional()
+});
+
+// สลับสถานะ "ตรวจสอบแล้ว" ตอนเดินตรวจตลาด (โทรเพื่อดู/ยกเลิกได้ตลอด)
+const inspectionCheckInputSchema = z.object({
+    stallId: z.coerce.number().int().positive(),
+    isInspected: strictBoolean()
+});
+
+// บันทึกหัวข้อปัญหาที่พบตอนตรวจตลาด (ไม่มาขาย/ปล่อยเช่าช่วง/ไปเปิดท้ายหรือขายอื่น/ขายไม่ตรง + หมายเหตุปัญหาอื่นๆ)
+// ส่งค่าทุก field มาพร้อมกันเสมอ (แถวปัจจุบันทั้งหมด) เพื่อสร้าง event log record ใหม่ที่สมบูรณ์
+const stallIssueInputSchema = z.object({
+    stallId: z.coerce.number().int().positive(),
+    noShow: strictBoolean(),
+    sublease: strictBoolean(),
+    otherMarket: strictBoolean(),
+    wrongSeller: strictBoolean(),
+    otherIssueNote: z.string().trim().max(1000).optional()
+});
+
 module.exports = {
     USER_ROLE_VALUES,
     REPAIR_STATUS_VALUES,
@@ -124,5 +160,8 @@ module.exports = {
     bookingStallInputSchema,
     sellerApplicationSchema,
     shopProfileSchema,
+    electricExcessInputSchema,
+    inspectionCheckInputSchema,
+    stallIssueInputSchema,
     THAI_BANK_NAMES
 };

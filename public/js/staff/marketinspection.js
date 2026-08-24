@@ -8,8 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const visibleCountEl = document.getElementById('visibleCount');
     const vacantCountEl = document.getElementById('vacantCount');
     const flaggedCountEl = document.getElementById('flaggedCount');
+    const inspectedCountEl = document.getElementById('inspectedCount');
     const rows = Array.from(document.querySelectorAll('.inspection-row'));
     const noResults = document.getElementById('noResults');
+    const smallPrice = Number(document.body.dataset.smallAppliancePrice || 20);
+    const largePrice = Number(document.body.dataset.largeAppliancePrice || 40);
     const issueLabelMap = {
         ALL: 'ทุกหัวข้อ',
         'no-show': 'ไม่มาขาย',
@@ -21,12 +24,24 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     let searchDebounceTimer = null;
 
+    function isElectricExcessActive(row) {
+        const button = row.querySelector('.electric-excess-btn');
+        return button ? button.dataset.active === 'true' : false;
+    }
+
+    function isInspectedChecked(row) {
+        const checkbox = row.querySelector('input[data-role="inspected"]');
+        return checkbox ? checkbox.checked : false;
+    }
+
     function getAnyIssueChecked(row) {
-        return Array.from(row.querySelectorAll('input[type="checkbox"][data-issue]')).some((input) => input.checked);
+        const anyCheckbox = Array.from(row.querySelectorAll('input[type="checkbox"][data-issue]')).some((input) => input.checked);
+        return anyCheckbox || isElectricExcessActive(row);
     }
 
     function getIssueChecked(row, issue) {
         if (issue === 'ALL') return true;
+        if (issue === 'electric-overuse') return isElectricExcessActive(row);
         const issueInput = row.querySelector(`input[type="checkbox"][data-issue="${issue}"]`);
         return issueInput ? issueInput.checked : false;
     }
@@ -42,11 +57,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const visibleCount = visibleRows.length;
         const vacantCount = visibleRows.filter((row) => row.classList.contains('is-vacant')).length;
         const flaggedCount = visibleRows.filter((row) => getAnyIssueChecked(row)).length;
+        const inspectedCount = visibleRows.filter(isInspectedChecked).length;
 
         if (totalCountEl) totalCountEl.textContent = String(totalCount);
         if (visibleCountEl) visibleCountEl.textContent = String(visibleCount);
         if (vacantCountEl) vacantCountEl.textContent = String(vacantCount);
         if (flaggedCountEl) flaggedCountEl.textContent = String(flaggedCount);
+        if (inspectedCountEl) inspectedCountEl.textContent = String(inspectedCount);
     }
 
     function updateIssueMode(issue) {
@@ -73,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const shouldShow = passSearch && passZone && passIssue;
             row.style.display = shouldShow ? '' : 'none';
+            row.classList.toggle('is-inspected', isInspectedChecked(row));
             if (shouldShow) {
                 visibleRows.push(row);
                 const checkedForIssue = getIssueChecked(row, issue);
@@ -107,9 +125,268 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // --- ล็อค/ปลดล็อคหัวข้อปัญหา (no-show/sublease/other-market/wrong-seller/เครื่องใช้ไฟฟ้าเกิน/ปัญหาอื่นๆ)
+    // เมื่อติ๊ก "ตรวจสอบแล้ว" กันแก้ไขข้อมูลย้อนหลังโดยไม่ตั้งใจ ต้องกดปุ่ม "แก้ไข" เพื่อปลดล็อคก่อน ---
+    function lockRowFields(row, locked) {
+        if (!row) return;
+        row.querySelectorAll('[data-role="issue-field"]').forEach((field) => {
+            field.disabled = locked;
+        });
+        const excessBtn = row.querySelector('.electric-excess-btn');
+        if (excessBtn) excessBtn.disabled = locked;
+        const editBtn = row.querySelector('.row-edit-btn');
+        if (editBtn) editBtn.classList.toggle('d-none', !locked);
+    }
+
+    document.querySelectorAll('.row-edit-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+            lockRowFields(button.closest('.inspection-row'), false);
+        });
+    });
+
+    document.querySelectorAll('input[data-role="inspected"]').forEach((checkbox) => {
+        checkbox.addEventListener('change', async () => {
+            const row = checkbox.closest('.inspection-row');
+            const stallId = checkbox.dataset.stallId;
+            const isInspected = checkbox.checked;
+
+            checkbox.disabled = true;
+
+            try {
+                const response = await fetch('/staff/marketinspection/inspection-check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stallId, isInspected })
+                });
+                const payload = await response.json();
+
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
+                }
+            } catch (error) {
+                checkbox.checked = !isInspected; // การบันทึกล้มเหลว: คืนค่าเดิมให้ตรงกับสิ่งที่บันทึกจริงใน DB
+                console.error(error);
+            } finally {
+                checkbox.disabled = false;
+                if (row) row.classList.toggle('is-inspected', checkbox.checked);
+                lockRowFields(row, checkbox.checked);
+                applyFilter();
+            }
+        });
+    });
+
+    // --- บันทึกหัวข้อปัญหา (checkbox 4 ตัว + หมายเหตุปัญหาอื่นๆ) ลง DB จริง ---
+    // ส่งค่าทุก field ของแถวไปพร้อมกันเสมอ (ตรงกับ event log record เดียวที่ backend สร้างต่อครั้ง)
+    function collectRowIssueState(row) {
+        const getChecked = (issue) => {
+            const el = row.querySelector(`input[type="checkbox"][data-issue="${issue}"]`);
+            return el ? el.checked : false;
+        };
+        const noteInput = row.querySelector('.other-issue-input');
+
+        return {
+            noShow: getChecked('no-show'),
+            sublease: getChecked('sublease'),
+            otherMarket: getChecked('other-market'),
+            wrongSeller: getChecked('wrong-seller'),
+            otherIssueNote: noteInput ? noteInput.value.trim() : ''
+        };
+    }
+
+    async function saveRowIssue(row) {
+        if (!row) return false;
+        const stallId = row.dataset.stallId;
+        if (!stallId) return false;
+
+        try {
+            const response = await fetch('/staff/marketinspection/issue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stallId, ...collectRowIssueState(row) })
+            });
+            const payload = await response.json();
+
+            if (!response.ok || !payload.success) {
+                throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
+            }
+
+            const noteInput = row.querySelector('.other-issue-input');
+            if (noteInput) noteInput.dataset.lastSaved = payload.issue.otherIssueNote || '';
+            return true;
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    }
+
+    document.querySelectorAll('input[type="checkbox"][data-role="issue-field"]').forEach((checkbox) => {
+        checkbox.addEventListener('change', async () => {
+            const row = checkbox.closest('.inspection-row');
+            const previousChecked = !checkbox.checked;
+
+            checkbox.disabled = true;
+            const ok = await saveRowIssue(row);
+            checkbox.disabled = false;
+
+            if (!ok) checkbox.checked = previousChecked; // บันทึกล้มเหลว: คืนค่าเดิม
+            applyFilter();
+        });
+    });
+
+    document.querySelectorAll('.other-issue-input').forEach((input) => {
+        input.addEventListener('blur', async () => {
+            const currentValue = input.value.trim();
+            if (currentValue === (input.dataset.lastSaved || '')) return; // ไม่มีการเปลี่ยนแปลง ไม่ต้องยิง request ซ้ำ
+
+            const previousValue = input.dataset.lastSaved || '';
+            const row = input.closest('.inspection-row');
+
+            input.disabled = true;
+            const ok = await saveRowIssue(row);
+            input.disabled = false;
+
+            if (!ok) input.value = previousValue; // บันทึกล้มเหลว: คืนค่าเดิม
+        });
+    });
+
     if (searchInput) searchInput.addEventListener('input', debounceApplyFilter);
     if (zoneFilter) zoneFilter.addEventListener('change', applyFilter);
     if (issueFilter) issueFilter.addEventListener('change', applyFilter);
 
+    // --- แผงบันทึกเครื่องใช้ไฟฟ้าเกิน (popover บน desktop / bottom sheet บนมือถือ) ---
+    const excessBackdrop = document.getElementById('excessPanelBackdrop');
+    const excessPanel = document.getElementById('excessPanel');
+    const excessTitle = document.getElementById('excessPanelTitle');
+    const excessSmallInput = document.getElementById('excessSmallCount');
+    const excessLargeInput = document.getElementById('excessLargeCount');
+    const excessNoteInput = document.getElementById('excessNote');
+    const excessSubtotalPreview = document.getElementById('excessSubtotalPreview');
+    const excessError = document.getElementById('excessPanelError');
+    const excessSaveBtn = document.getElementById('excessPanelSave');
+    const excessCancelBtn = document.getElementById('excessPanelCancel');
+    const excessCloseBtn = document.getElementById('excessPanelClose');
+    let activeExcessButton = null;
+
+    function clampCount(value) {
+        const parsed = Number.parseInt(value, 10);
+        if (!Number.isFinite(parsed) || parsed < 0) return 0;
+        return Math.min(parsed, 50);
+    }
+
+    function syncExcessSubtotal() {
+        const small = clampCount(excessSmallInput.value);
+        const large = clampCount(excessLargeInput.value);
+        const subtotal = (small * smallPrice) + (large * largePrice);
+        excessSubtotalPreview.textContent = String(subtotal);
+    }
+
+    function positionExcessPanel(anchorButton) {
+        if (window.innerWidth <= 767) return; // มือถือใช้ bottom sheet ตาม CSS อยู่แล้ว
+
+        const rect = anchorButton.getBoundingClientRect();
+        const panelWidth = excessPanel.offsetWidth || 320;
+        let left = rect.left + window.scrollX;
+        let top = rect.bottom + window.scrollY + 8;
+
+        if (left + panelWidth > window.scrollX + window.innerWidth - 12) {
+            left = window.scrollX + window.innerWidth - panelWidth - 12;
+        }
+
+        excessPanel.style.transform = 'none';
+        excessPanel.style.top = `${top}px`;
+        excessPanel.style.left = `${Math.max(12, left)}px`;
+    }
+
+    function openExcessPanel(button) {
+        if (button.disabled) return;
+
+        activeExcessButton = button;
+        excessTitle.textContent = `เครื่องใช้ไฟฟ้าเกิน - ล็อค ${button.dataset.stallCode || ''}`;
+        excessSmallInput.value = clampCount(button.dataset.smallCount || 0);
+        excessLargeInput.value = clampCount(button.dataset.largeCount || 0);
+        excessNoteInput.value = button.dataset.note || '';
+        excessError.classList.add('d-none');
+        excessError.textContent = '';
+        syncExcessSubtotal();
+
+        excessBackdrop.classList.remove('d-none');
+        excessPanel.classList.remove('d-none');
+        document.body.classList.add('excess-panel-open');
+        positionExcessPanel(button);
+    }
+
+    function closeExcessPanel() {
+        excessBackdrop.classList.add('d-none');
+        excessPanel.classList.add('d-none');
+        document.body.classList.remove('excess-panel-open');
+        activeExcessButton = null;
+    }
+
+    function renderExcessButtonState(button, record) {
+        button.dataset.smallCount = String(record.smallCount);
+        button.dataset.largeCount = String(record.largeCount);
+        button.dataset.note = record.note || '';
+        const isActive = record.smallCount > 0 || record.largeCount > 0;
+        button.dataset.active = isActive ? 'true' : 'false';
+        button.innerHTML = isActive
+            ? `เล็ก x${record.smallCount} / ใหญ่ x${record.largeCount} • ${record.subtotal}฿`
+            : '<i class="fas fa-plus"></i> ไม่มี';
+    }
+
+    async function saveExcessRecord() {
+        if (!activeExcessButton) return;
+
+        const stallId = activeExcessButton.dataset.stallId;
+        const smallCount = clampCount(excessSmallInput.value);
+        const largeCount = clampCount(excessLargeInput.value);
+        const note = String(excessNoteInput.value || '').trim();
+
+        excessSaveBtn.disabled = true;
+        excessError.classList.add('d-none');
+
+        try {
+            const response = await fetch('/staff/marketinspection/electric-excess', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stallId, smallCount, largeCount, note })
+            });
+            const payload = await response.json();
+
+            if (!response.ok || !payload.success) {
+                throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
+            }
+
+            renderExcessButtonState(activeExcessButton, payload.record);
+            closeExcessPanel();
+            applyFilter();
+        } catch (error) {
+            excessError.textContent = error.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่';
+            excessError.classList.remove('d-none');
+        } finally {
+            excessSaveBtn.disabled = false;
+        }
+    }
+
+    document.querySelectorAll('.electric-excess-btn').forEach((button) => {
+        button.addEventListener('click', () => openExcessPanel(button));
+    });
+
+    document.querySelectorAll('.excess-step-btn').forEach((stepButton) => {
+        stepButton.addEventListener('click', () => {
+            const target = stepButton.dataset.step === 'large' ? excessLargeInput : excessSmallInput;
+            const dir = Number(stepButton.dataset.dir || 0);
+            target.value = clampCount(Number(target.value || 0) + dir);
+            syncExcessSubtotal();
+        });
+    });
+
+    if (excessSmallInput) excessSmallInput.addEventListener('input', syncExcessSubtotal);
+    if (excessLargeInput) excessLargeInput.addEventListener('input', syncExcessSubtotal);
+    if (excessSaveBtn) excessSaveBtn.addEventListener('click', saveExcessRecord);
+    if (excessCancelBtn) excessCancelBtn.addEventListener('click', closeExcessPanel);
+    if (excessCloseBtn) excessCloseBtn.addEventListener('click', closeExcessPanel);
+    if (excessBackdrop) excessBackdrop.addEventListener('click', closeExcessPanel);
+
     applyFilter();
 });
+

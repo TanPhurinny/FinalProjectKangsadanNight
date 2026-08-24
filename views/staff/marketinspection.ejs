@@ -2,7 +2,7 @@
 <html lang="th">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
         <title>งานตรวจตลาด | Kangsadan Staff</title>
         <link rel="icon" type="image/png" href="/img/favicon.png">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
@@ -12,7 +12,10 @@
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/staff/marketinspection.css">
     </head>
-    <body>
+    <body
+        data-small-appliance-price="<%= smallAppliancePrice %>"
+        data-large-appliance-price="<%= largeAppliancePrice %>"
+    >
         <script src="/js/common/tabSession.js"></script>
         <%- include('./partials/navbar') %>
 
@@ -56,6 +59,7 @@
                             <span class="stats-chip">ที่แสดง <b id="visibleCount">0</b></span>
                             <span class="stats-chip">ล็อคว่าง <b id="vacantCount">0</b></span>
                             <span class="stats-chip">มีประเด็น <b id="flaggedCount">0</b></span>
+                            <span class="stats-chip">ตรวจแล้ว <b id="inspectedCount">0</b></span>
                         </div>
                     </div>
                 </div>
@@ -78,14 +82,18 @@
                             <th data-issue="wrong-seller">ขายไม่ตรง(แจ้งเจ้าของล็อค)</th>
                             <th data-issue="electric-overuse">เครื่องใช้ไฟฟ้าเกิน</th>
                             <th data-issue="other-issue">ปัญหาอื่นๆ</th>
-                            <th data-issue="status">สถานะ</th>
+                            <th>ตรวจสอบแล้ว</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <% stalls.forEach((stall, index) => { %>
+                        <% stalls.forEach((stall, index) => {
+                            const fieldsLocked = stall.inspectionEnabled && stall.isInspected;
+                            const fieldsDisabled = !stall.inspectionEnabled || fieldsLocked;
+                        %>
                         <tr
-                            class="inspection-row <%= stall.isVacant ? 'is-vacant' : '' %>"
+                            class="inspection-row <%= stall.isVacant ? 'is-vacant' : '' %> <%= stall.isInspected ? 'is-inspected' : '' %>"
                             data-zone="<%= stall.zoneCode %>"
+                            data-stall-id="<%= stall.id %>"
                             data-search="<%= String(`${stall.stallCode} ${stall.shopName} ${stall.sellerName}`).toLowerCase() %>"
                         >
                             <td>
@@ -94,16 +102,63 @@
                                 <div class="stall-meta">ชื่อผู้ขาย <%= stall.sellerName %> | โทร <%= stall.sellerPhone %></div>
                                 <div class="stall-meta">สินค้าหลัก <%= stall.productDetail %></div>
                             </td>
-                            <td data-label="ไม่มาขาย" data-issue="no-show"><input type="checkbox" data-issue="no-show" <%= stall.inspectionEnabled ? '' : 'disabled' %>></td>
-                            <td data-label="ปล่อยเช่าช่วง" data-issue="sublease"><input type="checkbox" data-issue="sublease" <%= stall.inspectionEnabled ? '' : 'disabled' %>></td>
-                            <td data-label="ไปเปิดท้ายหรือขายอื่น" data-issue="other-market"><input type="checkbox" data-issue="other-market" <%= stall.inspectionEnabled ? '' : 'disabled' %>></td>
-                            <td data-label="ขายไม่ตรง(แจ้งเจ้าของล็อค)" data-issue="wrong-seller"><input type="checkbox" data-issue="wrong-seller" <%= stall.inspectionEnabled ? '' : 'disabled' %>></td>
-                            <td data-label="เครื่องใช้ไฟฟ้าเกิน" data-issue="electric-overuse"><input type="checkbox" data-issue="electric-overuse" <%= stall.inspectionEnabled ? '' : 'disabled' %>></td>
-                            <td class="text-start issue-placeholder" data-label="ปัญหาอื่นๆ" data-issue="other-issue"><%= stall.inspectionEnabled ? '-' : 'ล็อคว่าง (ไม่ต้องให้คะแนน)' %></td>
-                            <td data-label="สถานะ">
-                                <span class="status-chip <%= stall.isVacant ? 'status-vacant' : `status-${String(stall.stallStatus || '').toLowerCase()}` %>">
-                                    <%= stall.isVacant ? 'ว่าง' : stall.stallStatus %>
-                                </span>
+                            <td data-label="ไม่มาขาย" data-issue="no-show"><input type="checkbox" data-issue="no-show" data-role="issue-field" data-stall-id="<%= stall.id %>" <%= stall.issues.noShow ? 'checked' : '' %> <%= fieldsDisabled ? 'disabled' : '' %>></td>
+                            <td data-label="ปล่อยเช่าช่วง" data-issue="sublease"><input type="checkbox" data-issue="sublease" data-role="issue-field" data-stall-id="<%= stall.id %>" <%= stall.issues.sublease ? 'checked' : '' %> <%= fieldsDisabled ? 'disabled' : '' %>></td>
+                            <td data-label="ไปเปิดท้ายหรือขายอื่น" data-issue="other-market"><input type="checkbox" data-issue="other-market" data-role="issue-field" data-stall-id="<%= stall.id %>" <%= stall.issues.otherMarket ? 'checked' : '' %> <%= fieldsDisabled ? 'disabled' : '' %>></td>
+                            <td data-label="ขายไม่ตรง(แจ้งเจ้าของล็อค)" data-issue="wrong-seller"><input type="checkbox" data-issue="wrong-seller" data-role="issue-field" data-stall-id="<%= stall.id %>" <%= stall.issues.wrongSeller ? 'checked' : '' %> <%= fieldsDisabled ? 'disabled' : '' %>></td>
+                            <td data-label="เครื่องใช้ไฟฟ้าเกิน" data-issue="electric-overuse">
+                                <button
+                                    type="button"
+                                    class="electric-excess-btn"
+                                    data-issue="electric-overuse"
+                                    data-stall-id="<%= stall.id %>"
+                                    data-stall-code="<%= stall.stallCode %>"
+                                    data-small-count="<%= stall.electricExcess ? stall.electricExcess.smallCount : 0 %>"
+                                    data-large-count="<%= stall.electricExcess ? stall.electricExcess.largeCount : 0 %>"
+                                    data-note="<%= stall.electricExcess ? stall.electricExcess.note : '' %>"
+                                    data-active="<%= stall.electricExcess && (stall.electricExcess.smallCount > 0 || stall.electricExcess.largeCount > 0) ? 'true' : 'false' %>"
+                                    <%= fieldsDisabled ? 'disabled' : '' %>
+                                >
+                                    <% if (stall.electricExcess && (stall.electricExcess.smallCount > 0 || stall.electricExcess.largeCount > 0)) { %>
+                                    เล็ก x<%= stall.electricExcess.smallCount %> / ใหญ่ x<%= stall.electricExcess.largeCount %> • <%= stall.electricExcess.subtotal %>฿
+                                    <% } else { %>
+                                    <i class="fas fa-plus"></i> ไม่มี
+                                    <% } %>
+                                </button>
+                            </td>
+                            <td class="text-start" data-label="ปัญหาอื่นๆ" data-issue="other-issue">
+                                <% if (stall.inspectionEnabled) { %>
+                                <input
+                                    type="text"
+                                    class="other-issue-input"
+                                    data-role="issue-field"
+                                    data-stall-id="<%= stall.id %>"
+                                    value="<%= stall.issues.otherIssueNote %>"
+                                    data-last-saved="<%= stall.issues.otherIssueNote %>"
+                                    maxlength="1000"
+                                    placeholder="พิมพ์รายละเอียดปัญหาอื่นๆ"
+                                    <%= fieldsDisabled ? 'disabled' : '' %>
+                                >
+                                <% } else { %>
+                                <span class="issue-placeholder">ล็อคว่าง (ไม่ต้องให้คะแนน)</span>
+                                <% } %>
+                            </td>
+                            <td data-label="ตรวจสอบแล้ว">
+                                <div class="inspected-cell-actions">
+                                    <input
+                                        type="checkbox"
+                                        data-role="inspected"
+                                        data-stall-id="<%= stall.id %>"
+                                        <%= stall.isInspected ? 'checked' : '' %>
+                                        <%= stall.inspectionEnabled ? '' : 'disabled' %>
+                                    >
+                                    <button
+                                        type="button"
+                                        class="row-edit-btn <%= fieldsLocked ? '' : 'd-none' %>"
+                                        data-role="row-edit"
+                                        data-stall-id="<%= stall.id %>"
+                                    >แก้ไข</button>
+                                </div>
                             </td>
                         </tr>
                         <% }) %>
@@ -112,6 +167,46 @@
                 <div id="noResults" class="no-results d-none">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
             </div>
         </section>
+
+        <div class="excess-panel-backdrop d-none" id="excessPanelBackdrop"></div>
+        <div class="excess-panel d-none" id="excessPanel" role="dialog" aria-modal="true" aria-labelledby="excessPanelTitle">
+            <div class="excess-panel-header">
+                <h3 id="excessPanelTitle">เครื่องใช้ไฟฟ้าเกิน</h3>
+                <button type="button" class="excess-panel-close" id="excessPanelClose" aria-label="ปิด"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="excess-panel-body">
+                <div class="excess-stepper-row">
+                    <div class="excess-stepper-info">
+                        <div class="excess-stepper-label">เครื่องเล็ก (1-1200W)</div>
+                        <div class="excess-stepper-price" id="excessSmallPriceLabel">20 บาท/เครื่อง</div>
+                    </div>
+                    <div class="excess-stepper-control">
+                        <button type="button" class="excess-step-btn" data-step="small" data-dir="-1" aria-label="ลดจำนวนเครื่องเล็ก">&minus;</button>
+                        <input type="number" min="0" max="50" id="excessSmallCount" value="0" inputmode="numeric">
+                        <button type="button" class="excess-step-btn" data-step="small" data-dir="1" aria-label="เพิ่มจำนวนเครื่องเล็ก">+</button>
+                    </div>
+                </div>
+                <div class="excess-stepper-row">
+                    <div class="excess-stepper-info">
+                        <div class="excess-stepper-label">เครื่องใหญ่ (1201W ขึ้นไป)</div>
+                        <div class="excess-stepper-price" id="excessLargePriceLabel">40 บาท/เครื่อง</div>
+                    </div>
+                    <div class="excess-stepper-control">
+                        <button type="button" class="excess-step-btn" data-step="large" data-dir="-1" aria-label="ลดจำนวนเครื่องใหญ่">&minus;</button>
+                        <input type="number" min="0" max="50" id="excessLargeCount" value="0" inputmode="numeric">
+                        <button type="button" class="excess-step-btn" data-step="large" data-dir="1" aria-label="เพิ่มจำนวนเครื่องใหญ่">+</button>
+                    </div>
+                </div>
+                <label class="excess-note-label" for="excessNote">หมายเหตุ (ถ้ามี)</label>
+                <textarea id="excessNote" maxlength="500" placeholder="เช่น พบไมโครเวฟเพิ่ม 1 เครื่องหลังเคาน์เตอร์"></textarea>
+                <div class="excess-subtotal-row">ยอดรวม: <b id="excessSubtotalPreview">0</b> บาท</div>
+                <div class="excess-panel-error d-none" id="excessPanelError"></div>
+            </div>
+            <div class="excess-panel-footer">
+                <button type="button" class="btn-excess-cancel" id="excessPanelCancel">ยกเลิก</button>
+                <button type="button" class="btn-excess-save" id="excessPanelSave">บันทึก</button>
+            </div>
+        </div>
 
         <script src="/js/staff/marketinspection.js"></script>
     </body>
