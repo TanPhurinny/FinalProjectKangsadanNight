@@ -95,40 +95,54 @@
     justify-content: flex-end;
 }
 
+/* wrapper รอบเมนู/แจ้งเตือน (ไม่รวม nav-actions) เฉพาะ navbar ผู้ขาย — desktop โปร่งใส
+   (display:contents = เหมือนไม่มี wrapper อยู่เลย ไม่กระทบ flex row เดิม) ส่วนมือถือ
+   เปลี่ยนเป็นพื้นที่เลื่อนแยกต่างหาก ดู media query max-width:992px ด้านล่าง */
+.nav-links__primary {
+    display: contents;
+}
+
 /* navbar ผู้ขายมีเมนูเยอะกว่า navbar อื่น — บังคับให้อยู่แถวเดียวเสมอ (ไม่ตกบรรทัด)
    ด้วย nowrap + เลื่อนแนวนอนได้ถ้าจอแคบเกินไป แทนที่จะปล่อยให้ล้นไปแถวสอง
-   ย่อ padding/ฟอนต์ของแต่ละเมนูลงด้วย เพื่อให้พอดีแถวเดียวโดยไม่ต้องเลื่อนในจอทั่วไป */
-.management-nav.seller-nav .nav-links {
-    justify-content: flex-start;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: thin;
-}
+   ย่อ padding/ฟอนต์ของแต่ละเมนูลงด้วย เพื่อให้พอดีแถวเดียวโดยไม่ต้องเลื่อนในจอทั่วไป
+   จำกัดไว้เฉพาะจอ >992px (min-width) เพราะบนมือถือ .nav-links กลายเป็นเมนู flyout แนวตั้ง
+   (ดู media query max-width:992px ด้านล่าง) — ถ้าไม่จำกัด breakpoint กฎพวกนี้จะมี specificity
+   สูงกว่ากฎในเมนู flyout (3 class ตรง 1 class) เลยไปทับ padding/ขนาดของ user-badge/
+   switch-view-btn/logout-link ในเมนูมือถือ ทำให้เปิดเมนู hamburger แล้วโปรไฟล์/ปุ่มออกจากระบบ
+   บีบเล็กจนดูเหมือนหายไป */
+@media (min-width: 992.02px) {
+    .management-nav.seller-nav .nav-links {
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
 
-.management-nav.seller-nav .nav-item {
-    padding: 0 8px;
-    font-size: 0.72rem;
-    gap: 5px;
-}
+    .management-nav.seller-nav .nav-item {
+        padding: 0 8px;
+        font-size: 0.72rem;
+        gap: 5px;
+    }
 
-/* ไอคอนแต่ละเมนูกว้างไม่เท่ากันตามรูปกราฟิก (เช่น fa-clock-rotate-left กว้างกว่า fa-home)
-   ทำให้ปุ่ม "ประวัติการจอง" ดูขนาดไม่เท่าเพื่อน — ล็อกความกว้างคอลัมน์ไอคอนให้เท่ากันทุกปุ่ม */
-.management-nav.seller-nav .nav-item i {
-    width: 14px;
-    text-align: center;
-    flex-shrink: 0;
-}
+    /* ไอคอนแต่ละเมนูกว้างไม่เท่ากันตามรูปกราฟิก (เช่น fa-clock-rotate-left กว้างกว่า fa-home)
+       ทำให้ปุ่ม "ประวัติการจอง" ดูขนาดไม่เท่าเพื่อน — ล็อกความกว้างคอลัมน์ไอคอนให้เท่ากันทุกปุ่ม */
+    .management-nav.seller-nav .nav-item i {
+        width: 14px;
+        text-align: center;
+        flex-shrink: 0;
+    }
 
-.management-nav.seller-nav .user-badge,
-.management-nav.seller-nav .switch-view-btn {
-    padding: 5px 8px;
-    margin-left: 6px;
-    font-size: 0.7rem;
-}
+    .management-nav.seller-nav .user-badge,
+    .management-nav.seller-nav .switch-view-btn {
+        padding: 5px 8px;
+        margin-left: 6px;
+        font-size: 0.7rem;
+    }
 
-.management-nav.seller-nav .logout-link {
-    margin-left: 6px;
-    font-size: 0.72rem;
+    .management-nav.seller-nav .logout-link {
+        margin-left: 6px;
+        font-size: 0.72rem;
+    }
 }
 
 .nav-item {
@@ -380,11 +394,12 @@
         height: 100vh;
         width: 280px;
         background: var(--navy, #12303a);
+        display: flex;
         flex-direction: column;
         align-items: flex-start;
         justify-content: flex-start;
         overflow-y: auto;
-        padding: 64px 0 20px;
+        padding: 64px 0 0;
         box-shadow: -10px 0 30px rgba(0, 0, 0, 0.25);
         z-index: 1001;
         border-left: 1px solid rgba(255, 255, 255, 0.1);
@@ -392,6 +407,20 @@
 
     .nav-links.active {
         right: 0;
+    }
+
+    /* เมนู/แจ้งเตือนเลื่อนได้เองในพื้นที่ของตัวเอง (flex:1) ส่วน nav-actions ที่ตามหลังมา
+       (โปรไฟล์/สลับ role/ออกจากระบบ) เป็น flex-shrink:0 เลยโผล่พ้น viewport เสมอ
+       ไม่ต้องเลื่อนจนสุดถึงจะเจอ — ก่อนหน้านี้ทุกอย่างอยู่ในคอนเทนเนอร์เลื่อนเดียวกัน
+       เมนูเยอะจนล้น ปุ่มพวกนี้เลยตกไปอยู่ท้ายสุดที่มองไม่เห็นถ้าไม่เลื่อน */
+    .nav-links__primary {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
     }
 
     .nav-links .nav-item {
@@ -408,10 +437,10 @@
 
     .nav-actions {
         flex-direction: column;
+        flex-shrink: 0;
         width: 100%;
         align-items: flex-start;
         border-top: 1px solid rgba(255, 255, 255, 0.1);
-        margin-top: 10px;
         padding: 20px;
     }
 

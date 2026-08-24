@@ -19,6 +19,7 @@
         </button>
 
         <div class="nav-links" id="navMenu">
+            <div class="nav-links__primary">
             <a href="/seller" class="nav-item <%= currentPath === '/seller' ? 'active' : '' %>">
                 <i class="fas fa-home"></i> หน้าหลัก
             </a>
@@ -53,6 +54,7 @@
                     <span class="nav-notification-badge"><%= unreadNotifications %></span>
                 <% } %>
             </a>
+            </div>
 
             <div class="nav-actions d-flex align-items-center">
                 <div class="user-badge shadow-sm">
