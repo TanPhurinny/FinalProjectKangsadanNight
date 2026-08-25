@@ -1,5 +1,6 @@
 const prisma = require('../config/prismaClient');
 const { electricExcessInputSchema, inspectionCheckInputSchema, stallIssueInputSchema } = require('../utils/validationSchemas');
+const { buildZonesData } = require('./marketController');
 
 // ต้องตรงกับค่าที่ routes/sellerRoute.js ใช้คิดเงินเครื่องใช้ไฟฟ้าตอนจอง (คนละจุดโดยเจตนา)
 const SMALL_APPLIANCE_PRICE = 20;
@@ -282,6 +283,30 @@ exports.getMarketInspectionPage = async (req, res) => {
 
         const zones = Array.from(new Set(stalls.map((stall) => stall.zoneCode).filter(Boolean)));
 
+        // ข้อมูลผังจริง (โซน/แถว/ล็อค) ใช้ตัวเดียวกับหน้า /admin/booking-stall และ /market
+        // เพื่อไม่ให้ผัง "ดูแบบผัง" ของหน้านี้เพี้ยนไปคนละแบบ — ดู buildZonesData()
+        const zonesData = await buildZonesData();
+        const zoneByCode = {};
+        zonesData.forEach((zone) => { zoneByCode[zone.code] = zone; });
+
+        // lookup แบบแบน keyed ด้วย stallCode แทนการ merge เข้าไปใน zoneByCode ฝั่ง server
+        // (zoneByCode มี hardcode reshaping เยอะ ผูก logic เพิ่มเข้าไปเสี่ยง drift — ให้ client JS lookup เองตอน render cell)
+        const inspectionByStallCode = {};
+        stalls.forEach((stall) => {
+            const hasIssue = Boolean(
+                stall.issues.noShow || stall.issues.sublease || stall.issues.otherMarket ||
+                stall.issues.wrongSeller || (stall.issues.otherIssueNote && stall.issues.otherIssueNote.trim()) ||
+                (stall.electricExcess && (stall.electricExcess.smallCount > 0 || stall.electricExcess.largeCount > 0))
+            );
+            inspectionByStallCode[String(stall.stallCode || '').trim().toUpperCase()] = {
+                id: stall.id,
+                isVacant: stall.isVacant,
+                inspectionEnabled: stall.inspectionEnabled,
+                isInspected: stall.isInspected,
+                hasIssue
+            };
+        });
+
         return res.render('staff/marketinspection', {
             user: req.user,
             inspectionRoundLabel: req.query.round || 'งานตรวจตลาดรอบที่ 45',
@@ -295,7 +320,9 @@ exports.getMarketInspectionPage = async (req, res) => {
             selectedZone: String(req.query.zone || 'ALL').toUpperCase(),
             query: String(req.query.q || '').trim(),
             smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-            largeAppliancePrice: LARGE_APPLIANCE_PRICE
+            largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+            zoneByCode,
+            inspectionByStallCode
         });
     } catch (error) {
         console.error('Staff market inspection page error:', error);
@@ -309,6 +336,8 @@ exports.getMarketInspectionPage = async (req, res) => {
             query: '',
             smallAppliancePrice: SMALL_APPLIANCE_PRICE,
             largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+            zoneByCode: {},
+            inspectionByStallCode: {},
             error: 'ไม่สามารถโหลดข้อมูลงานตรวจตลาดได้'
         });
     }

@@ -1,3 +1,4 @@
 {
-  "ext": "js,mjs,cjs,json,ejs,csv"
+  "ext": "js,mjs,cjs,json,ejs,csv",
+  "ignore": ["public/*"]
 }

@@ -1,0 +1,385 @@
+/* ========================================
+   "ดูแบบผัง" — ผังโซน/ล็อคจริง สำหรับหน้างานตรวจตลาด (staff)
+   ย้อมสีตามสถานะการตรวจ (ไม่ใช่สถานะการจอง) ดูอย่างเดียว คลิกแล้วเลื่อนไปแถวในตาราง
+   โครงกริดอิงจาก public/stylesheets/admin/bookingStall.css แต่เปลี่ยนชุดสีเป็นสถานะตรวจ
+   ======================================== */
+
+.view-toggle {
+    display: inline-flex;
+    border: 1px solid var(--line);
+    border-radius: var(--border-radius-sm);
+    overflow: hidden;
+    width: fit-content;
+}
+
+.view-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 14px;
+    border: none;
+    border-right: 1px solid var(--line);
+    background: #fff;
+    color: var(--navy);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.view-toggle-btn:last-child {
+    border-right: none;
+}
+
+.view-toggle-btn:hover {
+    color: var(--primary-color);
+    background: var(--soft-bg);
+}
+
+.view-toggle-btn.active {
+    background: var(--navy);
+    color: #fff;
+}
+
+/* ── LEGEND ── */
+.inspection-map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--border-radius-sm);
+    background: #fff;
+    margin-bottom: 10px;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+}
+
+.map-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+}
+
+.legend-swatch.legend-issue { background: var(--danger-color); }
+.legend-swatch.legend-inspected { background: var(--success-color); }
+.legend-swatch.legend-pending { background: var(--warning-color); }
+.legend-swatch.legend-vacant { background: var(--muted-color); }
+
+/* ── ZONE OVERVIEW (มินิแผนผังตำแหน่งโซนจริง — ค่า % คัดลอกจาก admin/bookingStall.css .ov-zone-*) ── */
+.insp-ov-zone-canvas {
+    position: relative;
+    width: 100%;
+    height: 280px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--border-radius);
+}
+
+.insp-ov-zone-block {
+    position: absolute;
+    border: 1px solid var(--line);
+    border-radius: var(--border-radius-sm);
+    background: var(--soft-bg);
+    color: var(--navy);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.insp-ov-zone-block:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: #fff;
+}
+
+.insp-ov-zone-title {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 13px;
+    pointer-events: none;
+}
+
+.insp-ov-zone-A { top: 8%; left: 2%; width: 23%; height: 78%; }
+.insp-ov-zone-E { top: 8%; left: 27%; width: 17%; height: 10%; }
+.insp-ov-zone-F { top: 20%; left: 27%; width: 18%; height: 66%; }
+.insp-ov-zone-D { top: 8%; left: 47%; width: 17%; height: 10%; }
+.insp-ov-zone-X { top: 8%; left: 64%; width: 15%; height: 10%; }
+.insp-ov-zone-B { top: 20%; left: 47%; width: 49%; height: 66%; }
+.insp-ov-zone-C { top: 88%; left: 2%; width: 23%; height: 9%; }
+.insp-ov-zone-E .insp-ov-zone-title,
+.insp-ov-zone-D .insp-ov-zone-title,
+.insp-ov-zone-X .insp-ov-zone-title,
+.insp-ov-zone-C .insp-ov-zone-title {
+    font-size: 11px;
+}
+
+.insp-ov-zone-block.is-empty {
+    cursor: default;
+    pointer-events: none;
+    opacity: 0.4;
+}
+
+/* ── ZONE DETAIL (ผังล็อคของโซนที่เลือก) ── */
+.zone-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--border-radius-sm);
+    background: #fff;
+    color: var(--navy);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-bottom: 10px;
+}
+
+.zone-back-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.zone-detail-title {
+    font-family: var(--mono);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0 0 10px;
+}
+
+/* ── CANVAS OUTER ── */
+.inspection-zone-canvas-wrap {
+    border: 1px solid var(--line);
+    border-radius: var(--border-radius);
+    background: var(--soft-bg);
+    overflow-x: auto;
+}
+
+.inspection-zone-canvas {
+    padding: 24px;
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 24px;
+    min-height: 240px;
+    width: max-content;
+}
+
+.insp-empty-msg {
+    padding: 24px;
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+}
+
+/* ── GRID STRUCTURE (ported from admin/bookingStall.css, .insp- prefix) ── */
+.insp-col-block {
+    display: flex;
+    gap: 0;
+}
+
+.insp-col-block.insp-col-group-end {
+    margin-right: 16px;
+}
+
+.insp-col-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.insp-col-wrap-horizontal {
+    align-items: flex-start;
+}
+
+.insp-col-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    font-family: var(--mono);
+    color: var(--ink-soft);
+    letter-spacing: 0.04em;
+    padding: 3px 0 4px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 1px;
+    width: 55px;
+    text-align: center;
+}
+
+.insp-stall-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.insp-stall-column-horizontal {
+    flex-direction: row;
+}
+
+.insp-stall-cell {
+    width: 55px;
+    height: 28px;
+    border: 1px solid var(--line);
+    background: var(--muted-color);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--mono);
+    cursor: pointer;
+    margin-top: -1px;
+    margin-left: -1px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.insp-stall-cell:hover:not(.placeholder) {
+    transform: scale(1.12);
+    box-shadow: 0 3px 10px rgba(18, 48, 58, 0.25);
+    z-index: 5;
+}
+
+.insp-small-lot-pair {
+    display: flex;
+    flex-direction: column;
+    width: 55px;
+    height: 42px;
+    margin-top: -1px;
+    margin-left: -1px;
+}
+
+.insp-stall-cell-small {
+    flex: 1 1 0;
+    width: 100%;
+    height: auto;
+    font-size: 9px;
+    box-sizing: border-box;
+    margin: 0 !important;
+}
+
+.insp-stall-cell.placeholder {
+    background: repeating-linear-gradient(45deg, #f2f4f4, #f2f4f4 4px, #e5e9ea 4px, #e5e9ea 8px);
+    color: #b8c0c3;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* สถานะตรวจ — ลำดับสีสำคัญ: มีปัญหา > ตรวจแล้ว > ยังไม่ตรวจ > ว่าง (ดู resolveStatus ใน marketinspection-map.js) */
+.insp-stall-cell.status-vacant {
+    background: var(--muted-color);
+    opacity: 0.55;
+    cursor: default;
+    pointer-events: none;
+}
+
+.insp-stall-cell.status-pending {
+    background: var(--warning-color);
+}
+
+.insp-stall-cell.status-inspected {
+    background: var(--success-color);
+}
+
+.insp-stall-cell.status-issue {
+    background: var(--danger-color);
+}
+
+.insp-zone-d-layout {
+    display: grid;
+    grid-template-columns: repeat(10, 55px);
+    grid-auto-rows: 28px;
+    gap: 0;
+    width: max-content;
+}
+
+.insp-zone-d-layout .insp-stall-cell {
+    margin: -1px 0 0 -1px;
+}
+
+.insp-zone-d-tag {
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+    width: 55px;
+    height: 28px;
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--mono);
+    color: var(--ink-soft);
+    background: var(--soft-bg);
+    margin: -1px 0 0 -1px;
+}
+
+/* ── TOOLTIP ── */
+.inspection-map-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 950;
+    width: 220px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--border-radius-sm);
+    box-shadow: 0 6px 18px rgba(18, 48, 58, 0.18);
+    padding: 10px 12px;
+    font-size: 0.78rem;
+    color: var(--navy);
+    pointer-events: none;
+}
+
+.inspection-map-tooltip .imt-code {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+}
+
+.inspection-map-tooltip .imt-status {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.inspection-map-tooltip .imt-meta {
+    color: var(--ink-soft);
+}
+
+/* ── FLASH HIGHLIGHT (ตอนคลิก cell แล้วเลื่อนกลับไปตาราง) ── */
+@keyframes inspectionRowFlash {
+    0%, 100% { background-color: transparent; }
+    25%, 75% { background-color: rgba(201, 138, 46, 0.35); }
+}
+
+.inspection-row.stall-cell-flash td {
+    animation: inspectionRowFlash 1.5s ease;
+}
+
+@media (max-width: 767px) {
+    .inspection-zone-canvas {
+        padding: 16px;
+        gap: 16px;
+    }
+
+    .insp-ov-zone-canvas {
+        height: 220px;
+    }
+
+    .insp-ov-zone-title {
+        font-size: 10px;
+    }
+}

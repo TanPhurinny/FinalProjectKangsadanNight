@@ -191,6 +191,13 @@ body {
     background-color: rgba(44, 147, 168, 0.05);
 }
 
+.inspection-table td input[type='checkbox'] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
+
 .inspection-table td[data-issue] {
     transition: background-color 0.16s ease;
 }
@@ -532,6 +539,9 @@ body {
     z-index: 901;
     width: 320px;
     max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    display: flex;
+    flex-direction: column;
     background: #fff;
     border: 1px solid var(--line);
     box-shadow: none;
@@ -548,6 +558,7 @@ body {
     padding: 14px 16px;
     background: var(--navy);
     border-bottom: 1px solid var(--navy);
+    flex: 0 0 auto;
 }
 
 .excess-panel-header h3 {
@@ -575,6 +586,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    flex: 1 1 auto;
+    overflow-y: auto;
 }
 
 .excess-stepper-row {
@@ -673,6 +686,7 @@ body {
     gap: 10px;
     padding: 12px 16px;
     border-top: 1px solid var(--line);
+    flex: 0 0 auto;
 }
 
 .btn-excess-cancel,

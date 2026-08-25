@@ -280,21 +280,10 @@ document.addEventListener('DOMContentLoaded', () => {
         excessSubtotalPreview.textContent = String(subtotal);
     }
 
-    function positionExcessPanel(anchorButton) {
-        if (window.innerWidth <= 767) return; // มือถือใช้ bottom sheet ตาม CSS อยู่แล้ว
-
-        const rect = anchorButton.getBoundingClientRect();
-        const panelWidth = excessPanel.offsetWidth || 320;
-        let left = rect.left + window.scrollX;
-        let top = rect.bottom + window.scrollY + 8;
-
-        if (left + panelWidth > window.scrollX + window.innerWidth - 12) {
-            left = window.scrollX + window.innerWidth - panelWidth - 12;
-        }
-
-        excessPanel.style.transform = 'none';
-        excessPanel.style.top = `${top}px`;
-        excessPanel.style.left = `${Math.max(12, left)}px`;
+    function resetExcessPanelPosition() {
+        excessPanel.style.removeProperty('top');
+        excessPanel.style.removeProperty('left');
+        excessPanel.style.removeProperty('transform');
     }
 
     function openExcessPanel(button) {
@@ -312,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
         excessBackdrop.classList.remove('d-none');
         excessPanel.classList.remove('d-none');
         document.body.classList.add('excess-panel-open');
-        positionExcessPanel(button);
+        resetExcessPanelPosition();
     }
 
     function closeExcessPanel() {
@@ -320,6 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
         excessPanel.classList.add('d-none');
         document.body.classList.remove('excess-panel-open');
         activeExcessButton = null;
+        resetExcessPanelPosition();
     }
 
     function renderExcessButtonState(button, record) {

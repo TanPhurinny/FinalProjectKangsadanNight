@@ -11,6 +11,7 @@
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260724-6">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/staff/marketinspection.css">
+        <link rel="stylesheet" href="/stylesheets/staff/marketinspection-map.css">
     </head>
     <body
         data-small-appliance-price="<%= smallAppliancePrice %>"
@@ -35,6 +36,12 @@
                                 placeholder="ค้นหาชื่อล็อค/เลขล็อค"
                                 value="<%= query %>"
                             >
+                        </div>
+                        <div class="view-toggle">
+                            <button type="button" class="view-toggle-btn active" id="viewToggleTable" data-mode="table">
+                                <i class="fas fa-table"></i> ตาราง</button>
+                            <button type="button" class="view-toggle-btn" id="viewToggleZone" data-mode="zone">
+                                <i class="fas fa-border-all"></i> โซน</button>
                         </div>
                         <div class="filter-row">
                             <span class="filter-label">กรองข้อมูล</span>
@@ -94,6 +101,7 @@
                             class="inspection-row <%= stall.isVacant ? 'is-vacant' : '' %> <%= stall.isInspected ? 'is-inspected' : '' %>"
                             data-zone="<%= stall.zoneCode %>"
                             data-stall-id="<%= stall.id %>"
+                            data-stall-code="<%= stall.stallCode %>"
                             data-search="<%= String(`${stall.stallCode} ${stall.shopName} ${stall.sellerName}`).toLowerCase() %>"
                         >
                             <td>
@@ -166,7 +174,43 @@
                 </table>
                 <div id="noResults" class="no-results d-none">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
             </div>
+
+            <div class="inspection-map-wrap d-none" id="inspectionMapWrap">
+                <div class="inspection-map-legend">
+                    <span class="map-legend-item"><span class="legend-swatch legend-issue"></span> มีปัญหา</span>
+                    <span class="map-legend-item"><span class="legend-swatch legend-inspected"></span> ตรวจแล้ว</span>
+                    <span class="map-legend-item"><span class="legend-swatch legend-pending"></span> ยังไม่ตรวจ</span>
+                    <span class="map-legend-item"><span class="legend-swatch legend-vacant"></span> ว่าง</span>
+                </div>
+
+                <div class="insp-zone-overview" id="inspectionZoneOverview">
+                    <div class="insp-ov-zone-canvas" id="zoneOverviewCanvas">
+                        <div class="insp-ov-zone-block insp-ov-zone-E" data-zone="E"><span class="insp-ov-zone-title">โซน E</span></div>
+                        <div class="insp-ov-zone-block insp-ov-zone-D" data-zone="D"><span class="insp-ov-zone-title">โซน D</span></div>
+                        <div class="insp-ov-zone-block insp-ov-zone-X" data-zone="X"><span class="insp-ov-zone-title">โซน X</span></div>
+                        <div class="insp-ov-zone-block insp-ov-zone-A" data-zone="A"><span class="insp-ov-zone-title">โซน A</span></div>
+                        <div class="insp-ov-zone-block insp-ov-zone-F" data-zone="F"><span class="insp-ov-zone-title">โซน F</span></div>
+                        <div class="insp-ov-zone-block insp-ov-zone-B" data-zone="B"><span class="insp-ov-zone-title">โซน B</span></div>
+                        <div class="insp-ov-zone-block insp-ov-zone-C" data-zone="C"><span class="insp-ov-zone-title">โซน C</span></div>
+                    </div>
+                </div>
+
+                <div class="insp-zone-detail d-none" id="inspectionZoneDetail">
+                    <button type="button" class="zone-back-btn" id="zoneBackBtn">
+                        <i class="fas fa-arrow-left"></i> กลับ
+                    </button>
+                    <h3 class="zone-detail-title" id="zoneDetailTitle">โซน</h3>
+                    <div class="inspection-zone-canvas-wrap">
+                        <div class="inspection-zone-canvas" id="inspectionZoneCanvas"></div>
+                    </div>
+                </div>
+            </div>
         </section>
+
+        <div class="inspection-map-tooltip" id="inspectionMapTooltip"></div>
+
+        <script type="application/json" id="inspectionZonesDataJson"><%- JSON.stringify(zoneByCode || {}).replace(/</g, '\\u003c') %></script>
+        <script type="application/json" id="inspectionStatusByCodeJson"><%- JSON.stringify(inspectionByStallCode || {}).replace(/</g, '\\u003c') %></script>
 
         <div class="excess-panel-backdrop d-none" id="excessPanelBackdrop"></div>
         <div class="excess-panel d-none" id="excessPanel" role="dialog" aria-modal="true" aria-labelledby="excessPanelTitle">
@@ -209,5 +253,6 @@
         </div>
 
         <script src="/js/staff/marketinspection.js"></script>
+        <script src="/js/staff/marketinspection-map.js"></script>
     </body>
 </html>
