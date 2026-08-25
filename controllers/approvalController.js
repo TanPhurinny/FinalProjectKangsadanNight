@@ -7,7 +7,7 @@ const zoneAccess = require('../utils/zoneAccess');
 
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable } = require('../utils/bookingRound');
 const { verifySlip } = require('../utils/slipVerification');
-const { buildBookingRequestTag } = require('../utils/bookingRequestTag');
+const { BOOKING_REQUEST_TAG_PREFIX, buildBookingRequestTag } = require('../utils/bookingRequestTag');
 
 function normalizeZone(zone) {
     return String(zone || '').trim().toUpperCase();
@@ -180,12 +180,44 @@ exports.getApprovalsPage = async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
 
+        // Join ข้อมูลการจองจริง (วันที่/จำนวนวัน/ราคา ฯลฯ) เข้ากับคำขอ — ผูกด้วย tag เดียวกับที่
+        // confirmBookingStall ใช้คำนวณราคาจริง และที่ extend-lock ใช้หา "ล็อกที่กำลังใช้อยู่"
+        // ดึงทั้งหมดโดยไม่จำกัดช่วงเวลา เพราะต้องใช้ rentalStartDate ของแต่ละคำขอมาตัดสินว่าคำขอนั้น
+        // อยู่รอบไหน (ผู้ขายอาจส่งคำขอก่อนรอบเปิดไม่กี่วัน แต่จองวันที่ของรอบถัดไป — ต้องยึดวันที่จองจริง
+        // ไม่ใช่วันที่ส่งคำขอ ไม่งั้นคำขอจะไปโผล่ผิดรอบ)
+        const allTaggedBookings = await prisma.booking.findMany({
+            where: { storeDetailSnapshot: { startsWith: BOOKING_REQUEST_TAG_PREFIX } },
+            select: {
+                storeDetailSnapshot: true,
+                rentalStartDate: true,
+                rentalEndDate: true,
+                rentalDays: true,
+                stallCount: true,
+                dailyStallPrice: true,
+                grandTotal: true,
+                smallApplianceCount: true,
+                largeApplianceCount: true
+            }
+        });
+
+        const bookingByRequestId = new Map();
+        allTaggedBookings.forEach((booking) => {
+            const match = String(booking.storeDetailSnapshot || '').match(/^\[BOOKING_REQUEST_ID:(\d+)\]/);
+            if (match) {
+                bookingByRequestId.set(Number.parseInt(match[1], 10), booking);
+            }
+        });
+
+        // รอบของคำขอยึดตามวันที่เริ่มเช่าจริง (rentalStartDate) ถ้ามีการจองผูกไว้แล้ว
+        // ถ้ายังไม่มี (กรณีข้อมูลเก่า/ไม่ครบ) ค่อย fallback ไปใช้วันที่ส่งคำขอแทน
         const bookingRequests = allRequests.filter((request) => {
-            const createdAt = new Date(request.createdAt);
-            if (Number.isNaN(createdAt.getTime())) {
+            const linkedBooking = bookingByRequestId.get(request.id);
+            const roundBasisDate = linkedBooking ? linkedBooking.rentalStartDate : request.createdAt;
+            const roundBasis = new Date(roundBasisDate);
+            if (Number.isNaN(roundBasis.getTime())) {
                 return false;
             }
-            return createdAt >= selectedRoundWindow.cycleStart && createdAt <= selectedRoundWindow.cycleEnd;
+            return roundBasis >= selectedRoundWindow.cycleStart && roundBasis <= selectedRoundWindow.cycleEnd;
         });
 
         const sellerNames = Array.from(
@@ -225,35 +257,6 @@ exports.getApprovalsPage = async (req, res) => {
 
         const zoneCounts = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
         const statusCounts = { PENDING: 0, IN_PROGRESS: 0, SUCCESS: 0, APPROVED: 0, REJECTED: 0 };
-
-        // Join ข้อมูลการจองจริง (วันที่/จำนวนวัน/ราคา ฯลฯ) เข้ากับคำขอ — ผูกด้วย tag เดียวกับที่
-        // confirmBookingStall ใช้คำนวณราคาจริง และที่ extend-lock ใช้หา "ล็อกที่กำลังใช้อยู่"
-        // ดึงเป็นก้อนเดียวแทนการ query ทีละคำขอ (N+1) โดยจำกัดช่วงเวลาตามรอบที่กำลังดูอยู่
-        const bookingsInRound = await prisma.booking.findMany({
-            where: {
-                storeDetailSnapshot: { startsWith: BOOKING_REQUEST_TAG_PREFIX },
-                createdAt: { gte: selectedRoundWindow.cycleStart, lte: addDays(selectedRoundWindow.cycleEnd, 1) }
-            },
-            select: {
-                storeDetailSnapshot: true,
-                rentalStartDate: true,
-                rentalEndDate: true,
-                rentalDays: true,
-                stallCount: true,
-                dailyStallPrice: true,
-                grandTotal: true,
-                smallApplianceCount: true,
-                largeApplianceCount: true
-            }
-        });
-
-        const bookingByRequestId = new Map();
-        bookingsInRound.forEach((booking) => {
-            const match = String(booking.storeDetailSnapshot || '').match(/^\[BOOKING_REQUEST_ID:(\d+)\]/);
-            if (match) {
-                bookingByRequestId.set(Number.parseInt(match[1], 10), booking);
-            }
-        });
 
         const bookingRows = bookingRequests.map((request) => {
             const zoneCode = String(request.zone || '').trim().toUpperCase();
@@ -355,6 +358,8 @@ exports.getApprovalsPage = async (req, res) => {
             nextRoundNumber,
             currentRoundNumber: currentRoundMeta.roundNumber,
             roundMeta: selectedRoundWindow,
+            previousRoundMeta: getRoundWindow(previousRoundNumber),
+            nextRoundMeta: getRoundWindow(nextRoundNumber),
             isCurrentRound,
             isEditable,
             error: req.query.error || null,
@@ -365,9 +370,26 @@ exports.getApprovalsPage = async (req, res) => {
             success: req.query.success || null
         });
     } catch (err) {
-        res.render('admin/dashboard', {
+        const fallbackRoundNumber = getBookingRoundMetaForDate(new Date()).roundNumber;
+        res.render('admin/approvals', {
             user: req.user,
-            error: "ไม่สามารถดึงข้อมูลรายการอนุมัติได้"
+            bookingRequests: [],
+            counts: { all: 0, pending: 0, approved: 0, inProgress: 0, success: 0, rejected: 0, zones: {} },
+            selectedRoundNumber: fallbackRoundNumber,
+            previousRoundNumber: fallbackRoundNumber - 1,
+            nextRoundNumber: fallbackRoundNumber + 1,
+            currentRoundNumber: fallbackRoundNumber,
+            roundMeta: getRoundWindow(fallbackRoundNumber),
+            previousRoundMeta: getRoundWindow(fallbackRoundNumber - 1),
+            nextRoundMeta: getRoundWindow(fallbackRoundNumber + 1),
+            isCurrentRound: true,
+            isEditable: false,
+            error: 'load_approvals_failed',
+            errorReason: null,
+            errorRequestId: null,
+            slipAmount: null,
+            expectedAmount: null,
+            success: null
         });
     }
 };
