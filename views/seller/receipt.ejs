@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ใบเสร็จ/ใบกำกับภาษี — Seller Center</title>
+  <link rel="icon" type="image/png" href="/img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260724-6">
+  <link rel="stylesheet" href="/stylesheets/receipt.css">
+</head>
+<body>
+<script src="/js/common/tabSession.js"></script>
+  <% if (user && user.role === 'SELLER' && !viewAsCustomer) { %>
+  <%- include('../partials/navbarSeller') %>
+  <% } else { %>
+  <%- include('../partials/navbarCustomer') %>
+  <% } %>
+
+  <div class="receipt-page">
+    <% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-danger"><%= error %></div>
+    <% } else { %>
+    <div class="receipt-toolbar d-print-none">
+        <button type="button" class="receipt-btn" id="receiptSaveImage"><i class="fas fa-image"></i> บันทึกเป็นรูปภาพ</button>
+        <button type="button" class="receipt-btn receipt-btn-primary" id="receiptSavePdf"><i class="fas fa-file-pdf"></i> บันทึกเป็น PDF</button>
+    </div>
+    <%- include('../partials/receiptDocument', { data: receipt }) %>
+    <% } %>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="/js/receipt-export.js"></script>
+</body>
+</html>

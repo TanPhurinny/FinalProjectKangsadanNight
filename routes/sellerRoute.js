@@ -16,6 +16,8 @@ const {
     getBookingRoundStatusDetails,
     getBookingPhaseForRound
 } = require('../utils/bookingRound');
+const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
+const { buildReceiptData } = require('../controllers/receiptController');
 
 // สร้างโฟลเดอร์ upload ถ้ายังไม่มี
 const uploadDir = path.join(__dirname, '../public/uploads/repairs');
@@ -145,21 +147,10 @@ const CORNER_ZONE_OPTIONS = [
     { value: 89, label: 'ทำเลหัวมุมพิเศษ ริมถนนใหญ่', desc: 'จุดเด่นที่สุดในโซน มองเห็นชัดจากถนนใหญ่' }
 ];
 const CORNER_ZONE_VALID_PRICES = CORNER_ZONE_OPTIONS.map((opt) => opt.value);
-const BOOKING_REQUEST_TAG_PREFIX = '[BOOKING_REQUEST_ID:';
 
 function resolveCornerZonePrice(rawValue) {
     const parsed = Number.parseInt(rawValue, 10);
     return CORNER_ZONE_VALID_PRICES.includes(parsed) ? parsed : 0;
-}
-
-function buildBookingRequestTag(requestId) {
-    const parsed = Number.parseInt(requestId, 10);
-    if (!Number.isInteger(parsed) || parsed <= 0) return '';
-    return `${BOOKING_REQUEST_TAG_PREFIX}${parsed}]`;
-}
-
-function stripBookingRequestTag(snapshotText) {
-    return String(snapshotText || '').replace(/^\[BOOKING_REQUEST_ID:\d+\]\s*/i, '').trim();
 }
 
 function getRentalDays(startDate, endDate) {
@@ -599,7 +590,19 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
             date: formatDateThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             time: formatTimeThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             status: 'SUCCESS'
-        }
+        },
+        // การ์ดแจ้งว่าใบเสร็จ/ใบกำกับภาษีพร้อมแล้ว — โผล่เฉพาะตอนจ่ายเงินสำเร็จจริง (มีใบเสร็จให้ดูที่ /receipts/:id แล้ว)
+        // type: 'success-receipt' ตรงกับไอคอน bi-file-earmark-text ที่ map ไว้ใน public/js/seller/statusbook.js อยู่แล้ว
+        ...(status === 'SUCCESS' ? [{
+            id: 4,
+            type: 'success-receipt',
+            title: 'ใบเสร็จพร้อมแล้ว',
+            desc: 'ใบเสร็จ/ใบกำกับภาษีของคุณพร้อมให้ดูและดาวน์โหลดแล้ว',
+            date: formatDateThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
+            time: formatTimeThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
+            status: 'SUCCESS',
+            link: `/receipts/${latestBooking.id}`
+        }] : [])
     ];
 
     const stage = getBookingStep(status);
@@ -829,6 +832,7 @@ router.get('/booking-history', isAuthenticated, async (req, res) => {
         roundNumber: booking.rentalStartDate ? getBookingRoundMetaForDate(booking.rentalStartDate).roundNumber : null,
         zoneLabel: booking.selectedZoneLabel || (booking.zoneCode ? `โซน ${booking.zoneCode}` : '-'),
         slotLabel: booking.status === 'SUCCESS' ? (booking.slot?.slotNumber || '-') : null,
+        receiptRequestId: booking.status === 'SUCCESS' ? extractBookingRequestId(booking.storeDetailSnapshot) : null,
         rentalStartDate: formatDateThai(booking.rentalStartDate),
         rentalEndDate: formatDateThai(booking.rentalEndDate),
         stallCount: booking.stallCount || 1,
@@ -2019,6 +2023,18 @@ router.get('/notifications', isAuthenticated, async (req, res) => {
         booking: bookingView,
         notifications
     });
+});
+
+router.get('/receipts/:requestId', isAuthenticated, async (req, res) => {
+    try {
+        const receipt = await buildReceiptData(req.params.requestId, req.user?.name);
+        if (!receipt || receipt.ownerUserId !== req.user.id) {
+            return res.redirect('/booking-status?error=receipt_not_found');
+        }
+        return res.render('seller/receipt', { receipt, error: null });
+    } catch (err) {
+        return res.status(500).render('seller/receipt', { error: 'เกิดข้อผิดพลาดในการโหลดใบเสร็จ', receipt: null });
+    }
 });
 
 module.exports = router;

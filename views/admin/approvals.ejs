@@ -256,6 +256,11 @@
                                 <% } %>
                             </div>
                             <% } %>
+                            <% if (request.status === 'SUCCESS') { %>
+                            <div class="card-tags">
+                                <a href="/admin/receipts/<%= request.id %>" class="tag tag--slip-ok" onclick="event.stopPropagation()"><i class="fa-solid fa-receipt"></i> พิมพ์ใบเสร็จ</a>
+                            </div>
+                            <% } %>
                             <div class="card-body">
                                 <p><i class="fa-solid fa-map-location-dot"></i> โซน: <%= request.zoneLabel %></p>
                                 <p><i class="fa-solid fa-store"></i> ผู้จอง: <%= request.sellerName %></p>

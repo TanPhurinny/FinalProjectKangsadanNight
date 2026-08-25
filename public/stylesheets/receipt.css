@@ -1,0 +1,313 @@
+/* ========================================
+   ใบเสร็จ/ใบกำกับภาษี — gridgeist
+   หน้าฝั่งแอดมินโหลด admin/theme.css อยู่แล้วซึ่งมีโทเค็นพวกนี้ แต่หน้าฝั่งผู้ขายไม่ได้โหลด theme.css
+   (ใช้ navbarSeller/navbarCustomer + สไตล์ของตัวเอง) — ทุก var() ในไฟล์นี้จึงใส่ค่า fallback
+   (อาร์กิวเมนต์ที่ 2) กำกับไว้เสมอ ให้ใบเสร็จหน้าตาเหมือนกันไม่ว่าจะเปิดจากฝั่งไหน ไม่พังเงียบๆ
+   ถ้า custom property ต้นทางไม่ถูกโหลด (เคยเกิดปัญหานี้มาแล้ว — ตารางรายการไม่มีเส้นกรอบเลย)
+   ======================================== */
+
+.receipt-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 16px 60px;
+}
+
+.receipt-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.receipt-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 16px;
+    border: 1px solid var(--line, #d7e3e6);
+    border-radius: var(--border-radius-sm, 3px);
+    background: #fff;
+    color: var(--navy, #12303a);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition, all 0.15s ease);
+}
+
+.receipt-btn:hover {
+    border-color: var(--primary-color, #2C93A8);
+    color: var(--primary-color, #2C93A8);
+}
+
+.receipt-btn-primary {
+    background: var(--primary-color, #2C93A8);
+    border-color: var(--primary-color, #2C93A8);
+    color: #fff;
+}
+
+.receipt-btn-primary:hover {
+    background: var(--primary-dark, #1f6f80);
+    border-color: var(--primary-dark, #1f6f80);
+    color: #fff;
+}
+
+.receipt-doc {
+    background: #fff;
+    border: 1px solid var(--line, #d7e3e6);
+    padding: 28px;
+    color: var(--ink, #16333c);
+}
+
+.receipt-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    border-bottom: 2px solid var(--navy, #12303a);
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+}
+
+.receipt-logo {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    flex: 0 0 auto;
+}
+
+.receipt-company {
+    flex: 1 1 auto;
+}
+
+.receipt-company-th {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--navy, #12303a);
+}
+
+.receipt-company-en {
+    font-size: 0.85rem;
+    color: var(--ink-soft, #5b7a84);
+    font-family: var(--mono, 'IBM Plex Mono', 'Courier New', monospace);
+}
+
+.receipt-company-meta {
+    font-size: 0.78rem;
+    color: var(--ink-soft, #5b7a84);
+    margin-top: 2px;
+}
+
+.receipt-title {
+    flex: 0 0 auto;
+    text-align: right;
+}
+
+.receipt-title-th {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--navy, #12303a);
+}
+
+.receipt-title-en {
+    font-size: 0.85rem;
+    color: var(--ink-soft, #5b7a84);
+    font-family: var(--mono, 'IBM Plex Mono', 'Courier New', monospace);
+}
+
+.receipt-meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 14px;
+}
+
+.receipt-meta-col {
+    flex: 1 1 50%;
+}
+
+.receipt-meta-col-right {
+    text-align: right;
+}
+
+.receipt-field {
+    font-size: 0.85rem;
+    margin-bottom: 3px;
+}
+
+.receipt-field span {
+    color: var(--ink-soft, #5b7a84);
+    margin-right: 6px;
+}
+
+.receipt-field b {
+    color: var(--navy, #12303a);
+}
+
+.receipt-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+    font-size: 0.82rem;
+}
+
+.receipt-items-table th,
+.receipt-items-table td {
+    /* เข้มกว่า --line ปกติเจตนา — เส้นกรอบตารางต้องเห็นชัดแบบใบเสร็จจริง ไม่ใช่เส้นบางจางแบบ UI ทั่วไป */
+    border: 1px solid var(--receipt-grid-line, #7c98a0);
+    padding: 6px 8px;
+    text-align: center;
+}
+
+.receipt-items-table thead th {
+    background: var(--navy, #12303a);
+    color: #fff;
+    font-family: var(--mono, 'IBM Plex Mono', 'Courier New', monospace);
+    font-weight: 600;
+    font-size: 0.74rem;
+}
+
+.receipt-items-table td.col-no {
+    width: 44px;
+}
+
+.receipt-items-table td.col-name,
+.receipt-items-table th.col-name {
+    text-align: left;
+}
+
+.receipt-summary-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 12px;
+}
+
+.receipt-note-box {
+    flex: 1 1 55%;
+    font-size: 0.78rem;
+    color: var(--ink-soft, #5b7a84);
+}
+
+.receipt-totals {
+    flex: 0 0 320px;
+    border: 1px solid var(--receipt-grid-line, #7c98a0);
+}
+
+.receipt-total-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--line-soft, #e7eeef);
+}
+
+.receipt-total-line:last-child {
+    border-bottom: none;
+}
+
+.receipt-total-line span {
+    color: var(--ink-soft, #5b7a84);
+}
+
+.receipt-total-net {
+    background: var(--soft-bg, #f6f8f8);
+    font-weight: 700;
+}
+
+.receipt-total-net span,
+.receipt-total-net b {
+    color: var(--navy, #12303a);
+}
+
+.receipt-amount-text {
+    border: 1px solid var(--receipt-grid-line, #7c98a0);
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    margin-bottom: 24px;
+}
+
+.receipt-amount-text span {
+    color: var(--ink-soft, #5b7a84);
+    margin-right: 8px;
+}
+
+.receipt-amount-text b {
+    color: var(--navy, #12303a);
+}
+
+.receipt-signature-row {
+    display: flex;
+    justify-content: space-around;
+    gap: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.receipt-signature-box {
+    flex: 1 1 240px;
+}
+
+.receipt-sig-line {
+    height: 50px;
+    border-bottom: 1px solid var(--ink-soft, #5b7a84);
+    margin-bottom: 6px;
+}
+
+.receipt-sig-label {
+    font-size: 0.85rem;
+    color: var(--navy, #12303a);
+    font-weight: 600;
+}
+
+.receipt-sig-date {
+    font-size: 0.75rem;
+    color: var(--ink-soft, #5b7a84);
+    margin-top: 4px;
+}
+
+.receipt-footnote {
+    font-size: 0.68rem;
+    color: var(--ink-soft, #5b7a84);
+    max-width: 340px;
+}
+
+@media print {
+    .d-print-none {
+        display: none !important;
+    }
+
+    .receipt-page {
+        padding: 0;
+        max-width: none;
+    }
+
+    .receipt-doc {
+        border: none;
+        padding: 0;
+    }
+}
+
+@media (max-width: 767px) {
+    .receipt-header,
+    .receipt-meta-row,
+    .receipt-summary-row,
+    .receipt-signature-row {
+        flex-direction: column;
+    }
+
+    .receipt-title {
+        text-align: left;
+    }
+
+    .receipt-meta-col-right {
+        text-align: left;
+    }
+
+    .receipt-totals {
+        flex: 1 1 auto;
+    }
+
+    .receipt-items-table {
+        font-size: 0.7rem;
+    }
+}

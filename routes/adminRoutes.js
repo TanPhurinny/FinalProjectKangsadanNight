@@ -12,6 +12,7 @@ const requestCtrl = require('../controllers/requestController');
 const marketCtrl = require('../controllers/marketController');
 const announceCtrl = require('../controllers/announcementController');
 const scoreReportCtrl = require('../controllers/scoreReportController');
+const { buildReceiptData } = require('../controllers/receiptController');
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
 const uploadDir = path.join(__dirname, '..', 'public', 'uploads', 'announcements');
@@ -77,6 +78,17 @@ router.get('/approvals', approvalCtrl.getApprovalsPage);
 router.post('/approvals/confirm', approvalCtrl.confirmApproval);
 router.post('/approvals/confirm-payment', approvalCtrl.confirmPayment);
 router.post('/approvals/reject-slip', approvalCtrl.rejectPaymentSlip);
+router.get('/receipts/:requestId', async (req, res) => {
+    try {
+        const receipt = await buildReceiptData(req.params.requestId, req.user?.name);
+        if (!receipt) {
+            return res.status(404).render('admin/receipt', { error: 'ไม่พบใบเสร็จ หรือคำขอนี้ยังไม่ได้ยืนยันการชำระเงิน', receipt: null });
+        }
+        return res.render('admin/receipt', { receipt, error: null });
+    } catch (err) {
+        return res.status(500).render('admin/receipt', { error: 'เกิดข้อผิดพลาดในการโหลดใบเสร็จ', receipt: null });
+    }
+});
 router.get('/requests', requestCtrl.getRequestsPage);
 router.post('/requests/update-status', requestCtrl.updateStatus);
 

@@ -324,7 +324,10 @@
                   <span class="text-muted" style="font-size:0.75rem;"><i class="bi bi-clock me-1"></i>${item.date} | ${item.time}</span>
                 </div>
               </div>
-              <button class="btn btn-sm btn-light border hover-lift px-3 text-nowrap ms-auto align-self-center" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
+              <div class="d-flex gap-2 ms-auto align-self-center">
+                ${item.link ? `<a href="${item.link}" class="btn btn-sm btn-custom-primary text-white px-3 text-nowrap"><i class="bi bi-receipt me-1"></i>ดูใบเสร็จ</a>` : ''}
+                <button class="btn btn-sm btn-light border hover-lift px-3 text-nowrap" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
+              </div>
             </div>
           </div>
         </div>
@@ -427,7 +430,10 @@
                   <span class="text-muted" style="font-size:0.75rem;"><i class="bi bi-clock me-1"></i>${item.date} | ${item.time}</span>
                 </div>
               </div>
-              <button class="btn btn-sm btn-light border hover-lift px-3 text-nowrap ms-auto align-self-center" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
+              <div class="d-flex gap-2 ms-auto align-self-center">
+                ${item.link ? `<a href="${item.link}" class="btn btn-sm btn-custom-primary text-white px-3 text-nowrap"><i class="bi bi-receipt me-1"></i>ดูใบเสร็จ</a>` : ''}
+                <button class="btn btn-sm btn-light border hover-lift px-3 text-nowrap" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
+              </div>
             </div>
           </div>
         </div>

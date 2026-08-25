@@ -1,0 +1,100 @@
+<%
+    const moneyFmt = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const intFmt = (n) => Number(n || 0).toLocaleString('th-TH');
+    const receiptRows = Array.from({ length: 10 }, (_, i) => data.items[i] || null);
+%>
+<div id="receiptPrintArea" class="receipt-doc" data-receipt-number="<%= data.receiptNumber %>">
+    <div class="receipt-header">
+        <img src="<%= data.company.logo %>" class="receipt-logo" alt="โลโก้">
+        <div class="receipt-company">
+            <div class="receipt-company-th"><%= data.company.nameTh %></div>
+            <div class="receipt-company-en"><%= data.company.nameEn %></div>
+            <div class="receipt-company-meta"><%= data.company.address %></div>
+            <div class="receipt-company-meta">Tax ID: <%= data.company.taxId %> &nbsp; โทร <%= data.company.phone %></div>
+        </div>
+        <div class="receipt-title">
+            <div class="receipt-title-th">ใบเสร็จ/ใบกำกับภาษี</div>
+            <div class="receipt-title-en">(Invoice)</div>
+        </div>
+    </div>
+
+    <div class="receipt-meta-row">
+        <div class="receipt-meta-col">
+            <div class="receipt-field"><span>ชื่อ-นามสกุล</span><b><%= data.customerName %></b></div>
+            <div class="receipt-field"><span>ที่อยู่</span><b><%= data.customerAddress %></b></div>
+        </div>
+        <div class="receipt-meta-col receipt-meta-col-right">
+            <div class="receipt-field"><span>เลขที่</span><b><%= data.receiptNumber %></b></div>
+            <div class="receipt-field"><span>วันที่</span><b><%= data.issuedDateLabel %></b></div>
+            <div class="receipt-field"><span>เวลา</span><b><%= data.issuedTimeLabel %></b></div>
+            <div class="receipt-field"><span>พนักงานและผู้พิมพ์</span><b><%= data.printedByName %></b></div>
+        </div>
+    </div>
+
+    <table class="receipt-items-table">
+        <thead>
+            <tr>
+                <th class="col-no">ลำดับ</th>
+                <th class="col-name">รายการ</th>
+                <th>จำนวน</th>
+                <th>หน่วย</th>
+                <th>จำนวนวันต่อหน่วย</th>
+                <th>ส่วนลด</th>
+                <th>ราคารวม</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% receiptRows.forEach((item, i) => { %>
+            <tr>
+                <td class="col-no"><%= i + 1 %></td>
+                <% if (item) { %>
+                <td class="col-name"><%= item.name %></td>
+                <td><%= intFmt(item.qty) %></td>
+                <td><%= item.unit %></td>
+                <td><%= intFmt(item.days) %></td>
+                <td><%= moneyFmt(item.discount) %></td>
+                <td><%= moneyFmt(item.total) %></td>
+                <% } else { %>
+                <td class="col-name">&nbsp;</td>
+                <td></td><td></td><td></td><td></td><td></td>
+                <% } %>
+            </tr>
+            <% }) %>
+        </tbody>
+    </table>
+
+    <div class="receipt-summary-row">
+        <div class="receipt-note-box">
+            หมายเหตุ:
+        </div>
+        <div class="receipt-totals">
+            <div class="receipt-total-line"><span>ราคารวม</span><b><%= moneyFmt(data.totalBeforeDiscount) %></b></div>
+            <div class="receipt-total-line"><span>ส่วนลดท้ายบิล</span><b><%= moneyFmt(data.discount) %></b></div>
+            <div class="receipt-total-line"><span>ยอดก่อนภาษีมูลค่าเพิ่ม</span><b><%= moneyFmt(data.amountBeforeVat) %></b></div>
+            <div class="receipt-total-line"><span>ภาษีมูลค่าเพิ่ม (<%= (data.vatRate * 100).toFixed(0) %>%)</span><b><%= moneyFmt(data.vatAmount) %></b></div>
+            <div class="receipt-total-line receipt-total-net"><span>ยอดรวมสุทธิ</span><b><%= moneyFmt(data.netTotal) %></b></div>
+        </div>
+    </div>
+
+    <div class="receipt-amount-text">
+        <span>จำนวนเงินตัวอักษร</span>
+        <b><%= data.netTotalText %></b>
+    </div>
+
+    <div class="receipt-signature-row">
+        <div class="receipt-signature-box">
+            <div class="receipt-sig-line"></div>
+            <div class="receipt-sig-label">ผู้ตรวจสอบ</div>
+            <div class="receipt-sig-date">วันที่ ......../......../........</div>
+        </div>
+        <div class="receipt-signature-box">
+            <div class="receipt-sig-line"></div>
+            <div class="receipt-sig-label">ผู้รับเงิน</div>
+            <div class="receipt-sig-date">วันที่ ......../......../........</div>
+        </div>
+    </div>
+
+    <div class="receipt-footnote">
+        *หมายเหตุ โปรดเก็บใบเสร็จ/ใบกำกับภาษีนี้ไว้เป็นหลักฐาน สอบถามเพิ่มเติมหรือติดต่อข่าวสารและโปรโมชั่นได้ที่ Facebook KangsadanNight
+    </div>
+</div>

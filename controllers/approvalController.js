@@ -7,18 +7,10 @@ const zoneAccess = require('../utils/zoneAccess');
 
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable } = require('../utils/bookingRound');
 const { verifySlip } = require('../utils/slipVerification');
+const { buildBookingRequestTag } = require('../utils/bookingRequestTag');
 
 function normalizeZone(zone) {
     return String(zone || '').trim().toUpperCase();
-}
-
-// เดียวกับ BOOKING_REQUEST_TAG_PREFIX/buildBookingRequestTag ใน routes/sellerRoute.js
-// (คัดลอกมาเพราะไฟล์นั้น export แค่ router ดึงฟังก์ชันเดี่ยวออกมาใช้ตรงๆ ไม่ได้)
-const BOOKING_REQUEST_TAG_PREFIX = '[BOOKING_REQUEST_ID:';
-function buildBookingRequestTag(requestId) {
-    const parsed = Number.parseInt(requestId, 10);
-    if (!Number.isInteger(parsed) || parsed <= 0) return '';
-    return `${BOOKING_REQUEST_TAG_PREFIX}${parsed}]`;
 }
 
 function toThaiDate(value) {
@@ -480,7 +472,10 @@ exports.confirmPayment = async (req, res) => {
             where: { id: requestId },
             data: {
                 status: 'SUCCESS',
-                paymentConfirmedAt: new Date()
+                paymentConfirmedAt: new Date(),
+                // เก็บชื่อแอดมิน/พนักงานที่กดยืนยันสลิปไว้ ให้ใบเสร็จ (controllers/receiptController.js) แสดง
+                // "พนักงานและผู้พิมพ์" เป็นคนที่ยืนยันจริง ไม่ใช่คนที่บังเอิญล็อกอินอยู่ตอนเปิดดูใบเสร็จ
+                confirmedByName: req.user?.name || null
             }
         });
 
