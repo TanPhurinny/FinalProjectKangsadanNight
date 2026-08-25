@@ -223,6 +223,12 @@
         ${booking.isFinalPrice
           ? `<div class="price-status-note price-status-note--final"><i class="bi bi-check-circle-fill me-1"></i>ราคาจริงหลังแอดมินจัดล็อกให้แล้ว</div>`
           : `<div class="price-status-note price-status-note--estimate"><i class="bi bi-info-circle-fill me-1"></i>ราคาประเมิน (ราคาต่ำสุดของโซน) ราคาจริงขึ้นกับตำแหน่งล็อกที่แอดมินจัดให้ อาจสูงกว่านี้</div>`}
+        ${booking.cornerZoneNote
+          ? `<div class="details-row"><span><i class="bi bi-star-fill text-warning me-1"></i>สนใจแผงหัวมุม/แผงพิเศษ</span><strong>${booking.cornerZoneNote}</strong></div>`
+          : ''}
+        ${booking.isSpecialCornerLot
+          ? `<div class="alert alert-warning py-2 px-3 my-2 d-flex align-items-center gap-2"><i class="bi bi-star-fill"></i><span>ล็อกที่แอดมินจัดให้เป็น<strong>แผงหัวมุม/แผงพิเศษ</strong> มีค่าธรรมเนียมเพิ่ม ${formatMoney(booking.cornerExtraPerDay)}/ล็อก/วัน ซึ่งรวมอยู่ในค่าเช่าแผงด้านล่างแล้ว</span></div>`
+          : ''}
         <div class="details-row"><span>ค่าเช่าแผง</span><strong>${formatMoney(booking.rentTotal)}</strong></div>
         <div class="details-row"><span>ค่าไฟสว่าง</span><strong>${formatMoney(booking.lightTotal)}</strong></div>
         <div class="details-row"><span>เครื่องใช้ไฟฟ้าที่แจ้ง</span><strong>${booking.smallApplianceCount} เครื่องเล็ก / ${booking.largeApplianceCount} เครื่องใหญ่</strong></div>
