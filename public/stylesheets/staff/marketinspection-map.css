@@ -15,14 +15,14 @@
 .view-toggle-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    height: 38px;
-    padding: 0 14px;
+    gap: 5px;
+    height: 32px;
+    padding: 0 10px;
     border: none;
     border-right: 1px solid var(--line);
     background: #fff;
     color: var(--navy);
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     font-weight: 600;
     cursor: pointer;
     transition: var(--transition);
@@ -77,10 +77,14 @@
 .legend-swatch.legend-vacant { background: var(--muted-color); }
 
 /* ── ZONE OVERVIEW (มินิแผนผังตำแหน่งโซนจริง — ค่า % คัดลอกจาก admin/bookingStall.css .ov-zone-*) ── */
+.insp-zone-overview {
+    margin-bottom: 14px;
+}
+
 .insp-ov-zone-canvas {
     position: relative;
     width: 100%;
-    height: 280px;
+    height: 150px;
     background: #fff;
     border: 1px solid var(--line);
     border-radius: var(--border-radius);
@@ -103,6 +107,18 @@
     border-color: var(--primary-color);
     color: var(--primary-color);
     background: #fff;
+}
+
+.insp-ov-zone-block.is-active {
+    border-color: var(--primary-color);
+    border-width: 2px;
+    background: #fff;
+    color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(44, 147, 168, 0.18) inset;
+}
+
+.insp-ov-zone-block.is-active .insp-ov-zone-title {
+    font-weight: 800;
 }
 
 .insp-ov-zone-title {
@@ -133,28 +149,6 @@
 }
 
 /* ── ZONE DETAIL (ผังล็อคของโซนที่เลือก) ── */
-.zone-back-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 34px;
-    padding: 0 14px;
-    border: 1px solid var(--line);
-    border-radius: var(--border-radius-sm);
-    background: #fff;
-    color: var(--navy);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-    margin-bottom: 10px;
-}
-
-.zone-back-btn:hover {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-}
-
 .zone-detail-title {
     font-family: var(--mono);
     font-size: 1rem;
@@ -163,12 +157,90 @@
     margin: 0 0 10px;
 }
 
-/* ── CANVAS OUTER ── */
-.inspection-zone-canvas-wrap {
+/* ── MAP OUTER (กรอบถนน/ป้ายสังเกต — พอร์ตจาก public/stylesheets/admin/bookingStall.css .map-outer ฯลฯ) ── */
+.insp-map-outer {
+    display: flex;
+    background: var(--soft-bg);
     border: 1px solid var(--line);
     border-radius: var(--border-radius);
-    background: var(--soft-bg);
     overflow-x: auto;
+}
+
+.insp-map-inner {
+    flex: 1;
+    background: #fff;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 800px;
+}
+
+.insp-road-left {
+    width: 50px; min-width: 50px; background: var(--soft-bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border-right: 1px solid var(--line); position: relative; gap: 10px;
+}
+
+.insp-road-left-stripe {
+    position: absolute; top: 0; left: 8px; bottom: 0; width: 12px;
+    background: repeating-linear-gradient(180deg, #e2b83a 0px, #e2b83a 20px, #333 20px, #333 40px);
+}
+
+.insp-road-left-text {
+    writing-mode: vertical-rl; transform: rotate(180deg);
+    font-size: 14px; font-weight: 700; position: relative; z-index: 2; margin-left: 10px;
+    color: var(--navy);
+}
+
+.insp-road-right {
+    width: 50px; min-width: 50px; background: var(--soft-bg);
+    display: flex; align-items: center; justify-content: center;
+    border-left: 1px solid var(--line);
+}
+
+.insp-road-right-text {
+    writing-mode: vertical-rl; font-size: 14px; font-weight: 700;
+    color: var(--navy);
+}
+
+.insp-road-top {
+    position: relative;
+    height: 50px; background: var(--soft-bg); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: flex-end; padding: 0 20px;
+}
+
+.insp-road-top-sign {
+    background: #e2b83a; font-weight: 700; font-size: 14px; padding: 6px 16px; border-radius: 3px;
+}
+
+.insp-road-bottom {
+    height: 50px; background: var(--soft-bg); border-top: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: flex-end; padding: 0 20px;
+}
+
+.insp-road-bottom-stripe {
+    flex: 1; height: 12px; margin-right: 20px;
+    background: repeating-linear-gradient(90deg, #e2b83a 0px, #e2b83a 24px, #333 24px, #333 48px);
+}
+
+@media (max-width: 767px) {
+    .insp-road-left-text,
+    .insp-road-right-text {
+        font-size: 11px;
+    }
+
+    .insp-road-left,
+    .insp-road-right {
+        width: 36px;
+        min-width: 36px;
+    }
+}
+
+/* ── CANVAS OUTER ── */
+.inspection-zone-canvas-wrap {
+    border: none;
+    border-radius: 0;
+    background: transparent;
 }
 
 .inspection-zone-canvas {

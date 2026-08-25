@@ -110,6 +110,22 @@ body {
     box-shadow: 0 0 0 3px rgba(44, 147, 168, 0.12);
 }
 
+.toolbar-top-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.toolbar-top-row .view-toggle {
+    flex: 0 0 auto;
+}
+
+.toolbar-zone-select {
+    flex: 0 0 auto;
+    min-width: 130px;
+}
+
 .filter-row {
     display: flex;
     align-items: center;
@@ -304,6 +320,19 @@ body {
     .search-box-wrapper input {
         height: 42px;
         font-size: 0.95rem;
+    }
+
+    .toolbar-top-row {
+        gap: 8px;
+    }
+
+    .toolbar-top-row .view-toggle {
+        flex: 1 1 auto;
+    }
+
+    .toolbar-zone-select {
+        flex: 1 1 auto;
+        min-width: 0;
     }
 
     .filter-row {

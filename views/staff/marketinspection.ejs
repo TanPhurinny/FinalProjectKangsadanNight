@@ -37,20 +37,22 @@
                                 value="<%= query %>"
                             >
                         </div>
-                        <div class="view-toggle">
-                            <button type="button" class="view-toggle-btn active" id="viewToggleTable" data-mode="table">
-                                <i class="fas fa-table"></i> ตาราง</button>
-                            <button type="button" class="view-toggle-btn" id="viewToggleZone" data-mode="zone">
-                                <i class="fas fa-border-all"></i> โซน</button>
-                        </div>
-                        <div class="filter-row">
-                            <span class="filter-label">กรองข้อมูล</span>
-                            <select id="zoneFilter" class="filter-select">
+                        <div class="toolbar-top-row">
+                            <div class="view-toggle">
+                                <button type="button" class="view-toggle-btn active" id="viewToggleTable" data-mode="table">
+                                    <i class="fas fa-table"></i> ตาราง</button>
+                                <button type="button" class="view-toggle-btn" id="viewToggleZone" data-mode="zone">
+                                    <i class="fas fa-border-all"></i> ผัง</button>
+                            </div>
+                            <select id="zoneFilter" class="filter-select toolbar-zone-select">
                                 <option value="ALL" <%= selectedZone === 'ALL' ? 'selected' : '' %>>โซนทั้งหมด</option>
                                 <% zones.forEach((zone) => { %>
                                 <option value="<%= zone %>" <%= selectedZone === zone ? 'selected' : '' %>>โซน <%= zone %></option>
                                 <% }) %>
                             </select>
+                        </div>
+                        <div class="filter-row">
+                            <span class="filter-label">กรองข้อมูล</span>
                             <select id="issueFilter" class="filter-select">
                                 <option value="ALL" selected>ทุกประเภท</option>
                                 <option value="no-show">ไม่มาขาย</option>
@@ -195,13 +197,29 @@
                     </div>
                 </div>
 
-                <div class="insp-zone-detail d-none" id="inspectionZoneDetail">
-                    <button type="button" class="zone-back-btn" id="zoneBackBtn">
-                        <i class="fas fa-arrow-left"></i> กลับ
-                    </button>
+                <div class="insp-zone-detail" id="inspectionZoneDetail">
                     <h3 class="zone-detail-title" id="zoneDetailTitle">โซน</h3>
-                    <div class="inspection-zone-canvas-wrap">
-                        <div class="inspection-zone-canvas" id="inspectionZoneCanvas"></div>
+                    <div class="insp-map-outer">
+                        <div class="insp-road-left">
+                            <div class="insp-road-left-stripe"></div>
+                            <span class="insp-road-left-text">ทางเข้าตลาด 62 บล็อค</span>
+                            <i class="fa-solid fa-arrow-down" style="position:absolute; bottom:20px; color:#555;"></i>
+                        </div>
+                        <div class="insp-map-inner">
+                            <div class="insp-road-top">
+                                <div class="insp-road-top-sign"><i class="fa-solid fa-location-dot" style="color:red;"></i> U Seoul Grill</div>
+                            </div>
+                            <div class="inspection-zone-canvas-wrap">
+                                <div class="inspection-zone-canvas" id="inspectionZoneCanvas"></div>
+                            </div>
+                            <div class="insp-road-bottom">
+                                <div class="insp-road-bottom-stripe"></div>
+                                <span style="font-weight: 700; font-size: 14px;">เข้า-ออก</span>
+                            </div>
+                        </div>
+                        <div class="insp-road-right">
+                            <span class="insp-road-right-text">ลานจอดรถ กังสดาลไนท์</span>
+                        </div>
                     </div>
                 </div>
             </div>

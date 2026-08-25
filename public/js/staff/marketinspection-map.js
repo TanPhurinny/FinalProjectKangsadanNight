@@ -19,7 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const overviewEl = document.getElementById('inspectionZoneOverview');
     const detailEl = document.getElementById('inspectionZoneDetail');
     const detailTitleEl = document.getElementById('zoneDetailTitle');
-    const backBtn = document.getElementById('zoneBackBtn');
     const canvasEl = document.getElementById('inspectionZoneCanvas');
     const tooltip = document.getElementById('inspectionMapTooltip');
 
@@ -217,30 +216,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // เลือกโซนแล้วเรนเดอร์กริดล็อคของโซนนั้นทันที โดยไม่ต้องกดกลับไปหน้าเลือกโซนก่อน
+    // (มินิแผนผังโซนด้านบนกับกริดล็อคด้านล่างแสดงพร้อมกันตลอด)
+    function selectZone(code) {
+        activeZone = code;
+        overviewEl.querySelectorAll('.insp-ov-zone-block').forEach((block) => {
+            block.classList.toggle('is-active', block.dataset.zone === code);
+        });
+        if (detailTitleEl) detailTitleEl.textContent = `โซน ${code}`;
+        renderGrid(code);
+    }
+
     // มินิแผนผังโซนเป็น DOM คงที่ที่ EJS render ไว้แล้ว (ตำแหน่ง % คัดลอกจาก admin/bookingStall.css)
-    // แค่ผูก click listener และซ่อนบล็อกที่ไม่มีข้อมูลจริงใน ZONES_DATA
+    // ผูก click listener, ซ่อนบล็อกที่ไม่มีข้อมูลจริงใน ZONES_DATA และเลือกโซนแรกที่มีข้อมูลไว้เป็นค่าเริ่มต้น
     function renderOverview() {
+        let firstAvailable = null;
+
         overviewEl.querySelectorAll('.insp-ov-zone-block').forEach((block) => {
             const code = block.dataset.zone;
             if (!ZONES_DATA[code] || !ZONES_DATA[code].columns || !ZONES_DATA[code].columns.length) {
                 block.classList.add('is-empty');
                 return;
             }
-            block.addEventListener('click', () => openZoneDetail(code));
+            if (!firstAvailable) firstAvailable = code;
+            block.addEventListener('click', () => selectZone(code));
         });
-    }
 
-    function openZoneDetail(code) {
-        activeZone = code;
-        if (detailTitleEl) detailTitleEl.textContent = `โซน ${code}`;
-        renderGrid(code);
-        overviewEl.classList.add('d-none');
-        detailEl.classList.remove('d-none');
-    }
-
-    function closeZoneDetail() {
-        detailEl.classList.add('d-none');
-        overviewEl.classList.remove('d-none');
+        if (firstAvailable) {
+            selectZone(firstAvailable);
+        } else if (detailTitleEl) {
+            detailTitleEl.textContent = 'ไม่มีข้อมูลผังตลาด';
+        }
     }
 
     function setViewMode(mode) {
@@ -258,5 +264,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     toggleTableBtn.addEventListener('click', () => setViewMode('table'));
     toggleZoneBtn.addEventListener('click', () => setViewMode('zone'));
-    if (backBtn) backBtn.addEventListener('click', closeZoneDetail);
 });
