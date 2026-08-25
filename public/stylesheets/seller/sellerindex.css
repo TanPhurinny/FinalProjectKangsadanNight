@@ -300,6 +300,18 @@ body {
 	background: var(--line);
 }
 
+.round-strip__note {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 0.82rem;
+	color: var(--ink-soft);
+}
+
+.round-strip__note i {
+	color: var(--primary);
+}
+
 /* แถบชื่อร้าน — กระชับ ไม่ใช้ภาพปกใหญ่ที่ไม่มีข้อมูลจริง */
 .identity-bar {
 	display: flex;
@@ -473,6 +485,25 @@ body {
 	margin: 6px 0 0;
 	color: var(--ink-soft);
 	font-size: 0.84rem;
+}
+
+.booking-card__lot-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.lot-chip {
+	display: inline-flex;
+	align-items: center;
+	padding: 6px 12px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-sm);
+	background: var(--soft-bg);
+	font-family: var(--mono);
+	font-size: 1.05rem;
+	font-weight: 700;
+	color: var(--navy);
 }
 
 .booking-card__meta {

@@ -46,7 +46,7 @@
         statusCtaHref = '/booking-status'; statusCtaLabel = 'ชำระเงินตอนนี้';
       } else if (lb.status === 'SUCCESS') {
         statusTone = 'success'; statusIcon = 'bi-patch-check-fill';
-        statusTitle = lb.slot ? `ชำระเงินสำเร็จ · ล็อก ${lb.slot.slotNumber} เป็นของร้านคุณ` : 'ชำระเงินสำเร็จ เสร็จสิ้นการจอง';
+        statusTitle = lb.slotLabel ? `ชำระเงินสำเร็จ · ล็อก ${lb.slotLabel} เป็นของร้านคุณ` : 'ชำระเงินสำเร็จ เสร็จสิ้นการจอง';
         statusDesc = 'ยืนยันเรียบร้อยแล้ว พร้อมขายได้ตามวันที่จองไว้';
         statusCtaHref = '/booking-status'; statusCtaLabel = 'ดูรายละเอียดการจอง';
       } else if (lb.status === 'REJECTED') {
@@ -84,8 +84,19 @@
           <i class="bi bi-calendar-range"></i>
           <span>รอบที่ <%= bookingRound.roundNumber %> · <%= bookingRound.cycleStart %> - <%= bookingRound.cycleEnd %> · <b><%= bookingRound.status %></b></span>
           <span class="round-strip__sep"></span>
+          <span>
+            <% if (bookingRound.daysRemaining <= 0) { %>
+              <b>ปิดรอบวันนี้</b>
+            <% } else { %>
+              เหลืออีก <b><%= bookingRound.daysRemaining %> วัน</b> ก่อนปิดรอบ
+            <% } %>
+          </span>
+          <span class="round-strip__sep"></span>
           <span>รอบถัดไป: รอบที่ <%= bookingRound.nextRoundNumber %> เปิดจอง <%= bookingRound.nextOpenAt %></span>
         </section>
+        <% if (bookingRound.statusText) { %>
+          <p class="round-strip__note mb-4"><i class="bi bi-info-circle"></i> <%= bookingRound.statusText %></p>
+        <% } %>
       <% } %>
 
       <section class="identity-bar mb-4">
@@ -167,20 +178,28 @@
               <% const lb = dashboard.latestBooking; %>
               <div class="booking-card__content">
                 <div>
-                  <p class="booking-card__eyebrow"><%= lb.slot ? 'แผงของคุณ' : 'โซนที่จอง' %></p>
-                  <h3 class="booking-card__title"><%= lb.slot ? lb.slot.slotNumber : (lb.selectedZoneLabel || (lb.zoneCode ? `โซน ${lb.zoneCode}` : '-')) %></h3>
+                  <p class="booking-card__eyebrow"><%= lb.stallCodes.length ? 'แผงของคุณ' : 'โซนที่จอง' %></p>
+                  <% if (lb.stallCodes.length) { %>
+                    <div class="booking-card__lot-chips">
+                      <% lb.stallCodes.forEach(function (code) { %>
+                        <span class="lot-chip">ล็อก <%= code %></span>
+                      <% }) %>
+                    </div>
+                  <% } else { %>
+                    <h3 class="booking-card__title"><%= lb.zoneLabel || '-' %></h3>
+                  <% } %>
                   <p class="booking-card__sub">จองเมื่อ <%= lb.createdAt %></p>
                 </div>
                 <div class="booking-card__meta">
                   <div>
                     <span class="booking-card__label">โซน</span>
-                    <strong><%= lb.selectedZoneLabel || (lb.zoneCode ? `โซน ${lb.zoneCode}` : '-') %></strong>
+                    <strong><%= lb.zoneLabel || '-' %></strong>
                   </div>
                   <div>
                     <span class="booking-card__label">จำนวนแผง</span>
                     <strong><%= lb.stallCount %> แผง</strong>
                   </div>
-                  <% if (lb.rentalStartDate) { %>
+                  <% if (lb.rentalStartDate && lb.rentalStartDate !== '-') { %>
                     <div>
                       <span class="booking-card__label">ระยะเวลาเช่า</span>
                       <strong><%= lb.rentalStartDate %> - <%= lb.rentalEndDate %></strong>

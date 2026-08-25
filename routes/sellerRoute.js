@@ -153,6 +153,12 @@ function resolveCornerZonePrice(rawValue) {
     return CORNER_ZONE_VALID_PRICES.includes(parsed) ? parsed : 0;
 }
 
+// ความสนใจแผงหัวมุม/แผงพิเศษที่ผู้ขายแจ้งไว้ตอนจอง (ฝังใน description เหมือนกับที่ approvalController อ่าน)
+function extractCornerZoneNote(descriptionText) {
+    const match = String(descriptionText || '').match(/\[สนใจแผงพิเศษ:\s*([^\]]+)\]/);
+    return match ? String(match[1] || '').trim() : null;
+}
+
 function getRentalDays(startDate, endDate) {
     if (!startDate || !endDate) return 1;
     const diffMs = endDate.getTime() - startDate.getTime();
@@ -665,22 +671,29 @@ function getBookingStatusClass(status) {
     }
 }
 
-function buildSellerDashboard(userRecord, activeBookingCount, latestBooking, latestRepairReport, latestAnnouncement) {
+// แตก slotLabel (เช่น "A901,A902" ตอนจองหลายแผงในคำขอเดียว) เป็นรายล็อก
+// ใช้ pattern เดียวกับ parseStallCodes ที่ควบคุมโดย marketController/communityController ฝั่งแอดมิน
+function parseStallCodesForDashboard(assignedStallCodeText) {
+    return String(assignedStallCodeText || '')
+        .split(',')
+        .map((code) => code.trim())
+        .filter(Boolean);
+}
+
+function buildSellerDashboard(userRecord, activeBookingCount, bookingView, latestRepairReport, latestAnnouncement) {
     const shop = userRecord?.shop || {};
     const shopName = shop.shopName || 'ยังไม่ได้ตั้งชื่อร้าน';
     const displayLetter = String(shopName || userRecord?.name || 'ร').trim().charAt(0).toUpperCase();
 
-    const latestBookingView = latestBooking
+    // bookingView มาจาก loadSellerBookingStatus() แหล่งข้อมูลเดียวกับหน้า /booking-status
+    // เพื่อไม่ให้แดชบอร์ดกับหน้าสถานะการจองแสดงข้อมูลไม่ตรงกัน (เดิมแดชบอร์ดคิวรี Booking model
+    // แบบเก่าเอง ทำให้ไม่เห็นล็อกที่จองหลายแผง/ตกหล่นเวลาแอดมินจัดล็อกผ่าน BookingRequest)
+    const stallCodes = bookingView ? parseStallCodesForDashboard(bookingView.slotLabel) : [];
+    const latestBookingView = bookingView
         ? {
-            ...latestBooking,
-            // ไม่เปิดเผยเลขล็อกจนกว่าจะยืนยันสลิปโอนเงินเสร็จ (SUCCESS) ให้สอดคล้องกับกติกา
-            // เดียวกับที่ใช้ในหน้า booking-status ทั้งระบบ — ก่อนหน้านี้หน้านี้หลุดโชว์เลขล็อกก่อนจ่ายเงิน
-            slot: latestBooking.status === 'SUCCESS' ? latestBooking.slot : null,
-            statusText: getBookingStatusText(latestBooking.status),
-            statusClass: getBookingStatusClass(latestBooking.status),
-            rentalStartDate: formatDateThai(latestBooking.rentalStartDate),
-            rentalEndDate: formatDateThai(latestBooking.rentalEndDate),
-            createdAt: formatDateThai(latestBooking.createdAt)
+            ...bookingView,
+            statusClass: getBookingStatusClass(bookingView.status),
+            stallCodes
         }
         : null;
 
@@ -770,22 +783,24 @@ const isSellerOrApplicant = async (req, res, next) => {
 };
 
 router.get('/seller', isSellerOnly, async (req, res) => {
-    const user = await prisma.user.findUnique({
+    // ใช้ตัวเดียวกับหน้า /booking-status เพื่อให้เลขล็อก/สถานะตรงกันทั้งระบบ
+    const { userRecord, bookingView } = await loadSellerBookingStatus(req.user.id);
+    const user = userRecord || await prisma.user.findUnique({
         where: { id: req.user.id },
         include: { shop: true }
     });
 
-    const activeBookingCount = await prisma.booking.count({
+    // นับ "การจองที่กำลังดำเนินการ" จาก BookingRequest (คำขอจริง 1 ใบ) ไม่ใช่ Booking model เดิม
+    // ที่สร้างแยกเป็นหลายแถวต่อ 1 คำขอเมื่อจองหลายแผง (ทำให้นับเกินจำนวนจริง)
+    const sellerProfileId = userRecord?.sellerProfile?.id || null;
+    const sellerName = String(userRecord?.name || '').trim();
+    const activeBookingCount = await prisma.bookingRequest.count({
         where: {
-            userId: req.user.id,
-            status: { in: ['PENDING', 'APPROVED'] }
+            status: { in: ['PENDING', 'APPROVED', 'IN_PROGRESS'] },
+            ...(sellerProfileId
+                ? { sellerId: sellerProfileId }
+                : { sellerName })
         }
-    });
-
-    const latestBooking = await prisma.booking.findFirst({
-        where: { userId: req.user.id },
-        include: { slot: true },
-        orderBy: { createdAt: 'desc' }
     });
 
     const latestRepairReport = await prisma.maintenanceReport.findFirst({
@@ -799,19 +814,22 @@ router.get('/seller', isSellerOnly, async (req, res) => {
 
     const bookingRoundSummary = getBookingRoundStatusDetails(new Date());
     const nextRoundMeta = getBookingRoundMetaForDate(addDays(bookingRoundSummary.cycleEnd, 1));
+    // นับ "เหลืออีกกี่วันก่อนหมดรอบ" แบบรวมวันนี้ (พรุ่งนี้ปิดรอบ = เหลือ 1 วัน ไม่ใช่ 0)
+    const daysRemainingInRound = Math.max(0, Math.round((toStartOfDay(bookingRoundSummary.cycleEnd).getTime() - toStartOfDay(new Date()).getTime()) / 86400000) + 1);
     const bookingRoundView = {
         roundNumber: bookingRoundSummary.roundNumber,
         cycleStart: formatDateThai(bookingRoundSummary.cycleStart),
         cycleEnd: formatDateThai(bookingRoundSummary.cycleEnd),
         status: bookingRoundSummary.status,
         statusText: bookingRoundSummary.statusText,
+        daysRemaining: daysRemainingInRound,
         nextRoundNumber: nextRoundMeta.roundNumber,
         nextOpenAt: formatDateThai(addDays(nextRoundMeta.cycleStart, 1))
     };
 
     return res.render('seller/indexseller', {
         user,
-        dashboard: buildSellerDashboard(user, activeBookingCount, latestBooking, latestRepairReport, latestAnnouncement),
+        dashboard: buildSellerDashboard(user, activeBookingCount, bookingView, latestRepairReport, latestAnnouncement),
         bookingRound: bookingRoundView
     });
 });
@@ -1466,7 +1484,7 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
         }
 
         const rentTotal = zonePrice * stallCount * rentalDays;
-        const applianceTotal = (smallApplianceCount * SMALL_APPLIANCE_PRICE + largeApplianceCount * LARGE_APPLIANCE_PRICE) * rentalDays;
+        const applianceTotal = (smallApplianceCount * SMALL_APPLIANCE_PRICE + largeApplianceCount * LARGE_APPLIANCE_PRICE) * stallCount * rentalDays;
         const lightTotal = LIGHT_UNIT_PRICE * stallCount * rentalDays;
         // ค่าแผงหัวมุม/แผงพิเศษยังไม่คิดตอนจอง เป็นแค่การแจ้งความสนใจ
         // จะคิดเงินจริงต่อเมื่อแอดมินจัดแผงพิเศษให้ในขั้นตอน "จัดล็อก" เท่านั้น
@@ -1700,7 +1718,7 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
         }
         const rentTotal = currentBooking.dailyStallPrice * currentBooking.stallCount * rentalDays;
         const applianceTotal = (currentBooking.smallApplianceCount * currentBooking.smallAppliancePrice
-            + currentBooking.largeApplianceCount * currentBooking.largeAppliancePrice) * rentalDays;
+            + currentBooking.largeApplianceCount * currentBooking.largeAppliancePrice) * currentBooking.stallCount * rentalDays;
         const lightTotal = currentBooking.lightUnitPrice * currentBooking.stallCount * rentalDays;
         const grandTotal = rentTotal + applianceTotal + lightTotal;
 
@@ -1889,6 +1907,23 @@ async function loadSellerBookingStatus(userId) {
         // ราคาที่แสดงระหว่างรอตรวจสอบ/รอจัดล็อก เป็นแค่ราคาประมาณการ (ราคาต่ำสุดของโซน) —
         // ราคาจริงต้องรอแอดมินจัดล็อกก่อน (ดู confirmBookingStall ที่คำนวณราคาจริงใหม่)
         bookingView.isFinalPrice = Boolean(latestRequest.assignedStallCode);
+
+        // ความสนใจแผงหัวมุม/แผงพิเศษที่ผู้ขายแจ้งไว้ตอนจอง (แค่แจ้งความสนใจ ยังไม่ยืนยันว่าได้จริง)
+        bookingView.cornerZoneNote = extractCornerZoneNote(latestRequest.description);
+
+        // ถ้าแอดมินจัดล็อกให้แล้ว เช็คว่าล็อกที่ได้เป็นแผงหัวมุม/แผงพิเศษจริงหรือไม่ (Stall.extraPrice > 0)
+        bookingView.isSpecialCornerLot = false;
+        bookingView.cornerExtraPerDay = 0;
+        if (latestRequest.assignedStallCode) {
+            const assignedStall = await prisma.stall.findUnique({
+                where: { stallCode: latestRequest.assignedStallCode },
+                select: { extraPrice: true }
+            });
+            if (assignedStall && Number(assignedStall.extraPrice) > 0) {
+                bookingView.isSpecialCornerLot = true;
+                bookingView.cornerExtraPerDay = Number(assignedStall.extraPrice);
+            }
+        }
 
         // สร้าง QR พร้อมเพย์ให้จ่ายได้เลย เฉพาะตอนที่รู้ราคาจริงแล้วและยังไม่ได้ส่งสลิป
         // (จัดล็อกแล้ว รอชำระเงิน — ตรงกับตอนที่หน้า booking_status โชว์ช่องอัปโหลดสลิป)
