@@ -113,10 +113,33 @@ async function buildAdminBookingStallPageData(requestId) {
     // จำกัดตัวเลือกโซนบนหน้านี้ให้ตรงกับประเภทสินค้าที่ผู้ขายลงทะเบียนไว้ (กันแอดมินจัดผิดโซน เช่น ร้านอาหารไปได้โซนแฟชั่น)
     // BookingRequest ไม่มี userId ผูกไว้ตรงๆ (sellerId ชี้โมเดล Seller ซึ่งระบบสมัครจริงไม่ได้ใช้ ปล่อยเป็น null เสมอ)
     // ข้อมูลประเภทสินค้าจริงอยู่ที่ ShopDetail.productType ของ User จึงต้องเทียบจากเบอร์โทรที่บันทึกไว้ตอนส่งคำขอแทน
-    const applicantUser = bookingRequest.phone
-        ? await prisma.user.findFirst({ where: { phoneNumber: bookingRequest.phone }, include: { shop: true } })
-        : null;
-    const applicantProductType = applicantUser?.shop?.productType || null;
+    // เบอร์โทรอาจซ้ำกันได้ระหว่างบัญชี (เช่น ข้อมูลทดสอบ/แอดมินใช้เบอร์เดียวกับผู้ขาย) และบางคำขอเก่าเบอร์
+    // ที่บันทึกไว้ก็ตกเลข 0 นำหน้าไปจนไม่ตรงเป๊ะกับ User.phoneNumber เลย จึงหาแบบ OR ทั้งเบอร์และชื่อผู้ส่งคำขอ
+    // (sellerName) ไว้ก่อน แล้วค่อยเลือกตัวที่ชื่อตรงเป๊ะเป็นอันดับแรก กันจับผิดคน/พลาดคนที่ควรจะเจอ
+    const candidateUsers = await prisma.user.findMany({
+        where: {
+            OR: [
+                bookingRequest.phone ? { phoneNumber: bookingRequest.phone } : null,
+                bookingRequest.sellerName ? { name: bookingRequest.sellerName } : null
+            ].filter(Boolean)
+        },
+        include: { shop: true }
+    });
+    const applicantUser = candidateUsers.find((u) => u.name === bookingRequest.sellerName)
+        || candidateUsers.find((u) => u.phoneNumber === bookingRequest.phone)
+        || candidateUsers[0]
+        || null;
+    // ShopDetail ยังไม่ถูกสร้างจนกว่าแอดมินจะยืนยันสลิปสำเร็จ (ดูคอมเมนต์ที่ confirmSlipPayment) แต่หน้านี้
+    // ใช้ตอน "จัดล็อก" ซึ่งเกิดก่อนจ่ายเงินเสมอ — ถ้ายังไม่มี ShopDetail ต้องย้อนไปดูใบสมัคร (SellerApplication)
+    // ล่าสุดของผู้ใช้แทน ไม่งั้นประเภทสินค้าจะว่างเปล่าทุกคำขอที่ยังไม่เคยจ่ายเงินมาก่อน
+    let applicantProductType = applicantUser?.shop?.productType || null;
+    if (!applicantProductType) {
+        const latestApplication = await prisma.sellerApplication.findFirst({
+            where: applicantUser?.id ? { userId: applicantUser.id } : { phoneNumber: bookingRequest.phone },
+            orderBy: { createdAt: 'desc' }
+        });
+        applicantProductType = latestApplication?.productType || null;
+    }
     // ถ้าไม่มีข้อมูลประเภทสินค้า (คำขอเก่า/หาผู้ใช้ที่ตรงเบอร์ไม่เจอ) ไม่จำกัด ให้เลือกได้ทุกโซนเหมือนเดิมเพื่อไม่บล็อกแอดมินผิดที่
     let allowedZones = applicantProductType
         ? zoneAccess.allowedZonesFor(applicantProductType).map((z) => String(z).toUpperCase())
@@ -138,7 +161,8 @@ async function buildAdminBookingStallPageData(requestId) {
     const linkedBookingCount = linkedBookings.length;
     const requestedStallCount = Math.max(1, linkedBookingCount, assignedStallCodes.length);
     const bookingDetail = linkedBookings[0] || null;
-    const grandTotalAllStalls = linkedBookings.reduce((sum, b) => sum + Number(b.grandTotal || 0), 0);
+    // แต่ละแถวเก็บ grandTotal ของทั้งคำขอซ้ำกันทุกแถวอยู่แล้ว (ดูคอมเมนต์ด้านบน) ห้าม sum ซ้ำ ไม่งั้นราคาจะคูณเกินตามจำนวนล็อก
+    const grandTotalAllStalls = Number(bookingDetail?.grandTotal || 0);
 
     // ล็อกที่เคยจัดให้คำขอนี้แล้วไม่ถือว่า "จองแล้ว" ในสายตาแอดมินคนนี้ (จะได้เลือกซ้ำ/ยืนยันใหม่ได้)
     const bookedStallsExcludingOwn = bookedStalls.filter((code) => !assignedStallCodes.includes(code));
@@ -154,7 +178,9 @@ async function buildAdminBookingStallPageData(requestId) {
             note: stripInternalTags(bookingRequest.description) || '-',
             cornerZoneNote: extractCornerZoneNote(bookingRequest.description),
             productImage: bookingRequest.productImage || null,
-            productTypeText: PRODUCT_TYPE_LABEL[applicantProductType] || '-',
+            // productType เก็บได้ทั้งค่า enum (FOOD/FASHION) หรือข้อความไทยดิบ เช่น "อื่นๆ" (ตัวเลือกในฟอร์มสมัคร)
+            // หรือค่าเก่าที่เคยเป็นข้อความไทยตรงๆ อยู่แล้ว ("อาหาร") ถ้าไม่เจอใน map ให้ใช้ค่าดิบแทนที่จะโชว์ "-" ทั้งที่มีข้อมูลจริง
+            productTypeText: PRODUCT_TYPE_LABEL[applicantProductType] || applicantProductType || '-',
             dateText: toThaiDate(bookingRequest.createdAt),
             status: String(bookingRequest.status || 'PENDING').toUpperCase(),
             rentalDays: bookingDetail?.rentalDays ?? null,

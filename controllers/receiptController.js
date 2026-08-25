@@ -63,13 +63,13 @@ async function buildReceiptData(requestId, printedByName) {
     const smallAppliancePrice = first.smallAppliancePrice || 0;
     const largeAppliancePrice = first.largeAppliancePrice || 0;
 
-    const sum = (field) => bookings.reduce((total, b) => total + Number(b[field] || 0), 0);
-    const rentTotal = sum('rentTotal');
-    const lightTotal = sum('lightTotal');
-    const applianceTotal = sum('applianceTotal');
-    const grandTotal = sum('grandTotal');
-    const smallApplianceCount = sum('smallApplianceCount');
-    const largeApplianceCount = sum('largeApplianceCount');
+    // ทุกแถวเก็บยอดรวมของทั้งคำขอซ้ำกันทุกแถว (1 แถวต่อ 1 ล็อก แต่ราคาคือยอดรวมทั้งหมด) จึงอ่านจากแถวแรกพอ ห้าม sum ข้ามแถว
+    const rentTotal = Number(first.rentTotal || 0);
+    const lightTotal = Number(first.lightTotal || 0);
+    const applianceTotal = Number(first.applianceTotal || 0);
+    const grandTotal = Number(first.grandTotal || 0);
+    const smallApplianceCount = Number(first.smallApplianceCount || 0);
+    const largeApplianceCount = Number(first.largeApplianceCount || 0);
 
     const items = [];
     if (rentTotal > 0) {
