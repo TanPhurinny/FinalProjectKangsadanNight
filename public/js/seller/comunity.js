@@ -9,9 +9,33 @@ const state = {
       return [];
     }
   })(),
+  categoryIcons: (() => {
+    try {
+      return JSON.parse(document.body?.dataset?.categoryIcons || '{}');
+    } catch (error) {
+      return {};
+    }
+  })(),
+  defaultCategoryIcon: document.body?.dataset?.defaultCategoryIcon || 'bi-chat-dots',
+  categoryColors: (() => {
+    try {
+      return JSON.parse(document.body?.dataset?.categoryColors || '{}');
+    } catch (error) {
+      return {};
+    }
+  })(),
+  defaultCategoryColor: document.body?.dataset?.defaultCategoryColor || 'teal',
   removeImageIds: new Set(),
   activePostIdForComments: null
 };
+
+function categoryIconClass(category) {
+  return state.categoryIcons[category] || state.defaultCategoryIcon;
+}
+
+function categoryColorClass(category) {
+  return state.categoryColors[category] || state.defaultCategoryColor;
+}
 
 function showToast(message) {
   const toastEl = document.getElementById('shareToast');
@@ -98,7 +122,7 @@ function initImageDropzone(dropzoneEl, inputEl, previewEl) {
     if (!droppedFiles || !droppedFiles.length) return;
 
     inputEl.files = droppedFiles;
-    renderImagePreview(previewEl, inputEl.files);
+    renderImagePreview(previewEl, inputEl);
   });
 }
 
@@ -114,11 +138,21 @@ function initAutoGrowTextarea(textareaEl) {
   textareaEl.addEventListener('input', () => resizeAutoGrowTextarea(textareaEl));
 }
 
-function renderImagePreview(container, files) {
-  if (!container) return;
+// สร้าง FileList ใหม่จาก input[type=file] โดยตัดไฟล์ที่ index ที่ระบุออก
+// (FileList เป็น read-only แก้ไขตรง ๆ ไม่ได้ ต้องสร้าง DataTransfer ใหม่แล้วสั่ง input.files =)
+function removeFileFromInput(inputEl, indexToRemove) {
+  const dataTransfer = new DataTransfer();
+  Array.from(inputEl.files).forEach((file, index) => {
+    if (index !== indexToRemove) dataTransfer.items.add(file);
+  });
+  inputEl.files = dataTransfer.files;
+}
+
+function renderImagePreview(container, inputEl) {
+  if (!container || !inputEl) return;
   container.innerHTML = '';
 
-  Array.from(files).slice(0, 10).forEach((file) => {
+  Array.from(inputEl.files).slice(0, 10).forEach((file, index) => {
     const item = document.createElement('div');
     item.className = 'image-preview-item';
 
@@ -127,7 +161,15 @@ function renderImagePreview(container, files) {
     image.alt = file.name;
     image.onload = () => URL.revokeObjectURL(image.src);
 
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.className = 'remove-image-btn js-remove-new-image';
+    removeButton.dataset.fileIndex = String(index);
+    removeButton.setAttribute('aria-label', 'ลบรูปนี้ออกก่อนโพสต์');
+    removeButton.textContent = 'ลบ';
+
     item.appendChild(image);
+    item.appendChild(removeButton);
     container.appendChild(item);
   });
 }
@@ -170,12 +212,19 @@ function buildPostCardHtml(post) {
   }).join('');
 
   const ownerMenuHtml = post.isOwner ? `
-    <span class="owner-badge">โพสต์ของคุณ</span>
+    <span class="owner-badge"><i class="bi bi-person-check-fill"></i>โพสต์ของคุณ</span>
     <div class="dropdown">
-      <button class="post-menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">⋮</button>
+      <button class="post-menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots-vertical"></i></button>
       <ul class="dropdown-menu dropdown-menu-end">
-        <li><button class="dropdown-item js-edit-post" type="button" data-post-id="${post.id}">แก้ไขโพสต์</button></li>
-        <li><button class="dropdown-item text-danger js-delete-post" type="button" data-post-id="${post.id}">ลบโพสต์</button></li>
+        <li><button class="dropdown-item js-edit-post" type="button" data-post-id="${post.id}"><i class="bi bi-pencil-square"></i>แก้ไขโพสต์</button></li>
+        <li><button class="dropdown-item text-danger js-delete-post" type="button" data-post-id="${post.id}"><i class="bi bi-trash3"></i>ลบโพสต์</button></li>
+      </ul>
+    </div>
+  ` : post.canModerate ? `
+    <div class="dropdown">
+      <button class="post-menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots-vertical"></i></button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><button class="dropdown-item text-danger js-delete-post" type="button" data-post-id="${post.id}"><i class="bi bi-shield-fill-exclamation"></i>ลบโพสต์ (แอดมิน)</button></li>
       </ul>
     </div>
   ` : '';
@@ -191,13 +240,15 @@ function buildPostCardHtml(post) {
       </div>
 
       <div class="post-header-right">
-        <div class="stall-badge">${post.stallNo || '-'}</div>
+        ${(Array.isArray(post.stallCodes) && post.stallCodes.length)
+          ? post.stallCodes.map((code) => `<a href="/market-map?stall=${encodeURIComponent(code)}" class="stall-badge stall-badge--link" title="ดูตำแหน่งแผง ${code} บนผัง"><i class="bi bi-geo-alt-fill"></i>${code}</a>`).join('')
+          : `<div class="stall-badge"><i class="bi bi-shop"></i>${post.stallNo || '-'}</div>`}
         ${ownerMenuHtml}
       </div>
     </div>
 
     <div class="post-content">
-      <span class="post-category-pill">${post.category}</span>
+      <span class="post-category-pill cat-${categoryColorClass(post.category)}"><i class="bi ${categoryIconClass(post.category)}"></i>${post.category}</span>
       <p class="post-text"></p>
     </div>
 
@@ -207,11 +258,13 @@ function buildPostCardHtml(post) {
       <div class="d-flex align-items-center gap-3">
         <button class="action-btn like-btn ${post.isLiked ? 'is-liked' : ''}" type="button" data-post-id="${post.id}" aria-label="Like">
           <i class="bi ${post.isLiked ? 'bi-heart-fill' : 'bi-heart'}"></i>
+          <span class="action-label">ถูกใจ</span>
           <span class="action-count">${post.likes}</span>
         </button>
 
         <button class="action-btn comment-btn" type="button" data-post-id="${post.id}" aria-label="Comment">
           <i class="bi bi-chat-round-dots"></i>
+          <span class="action-label">คอมเมนต์</span>
           <span class="action-count">${post.comments}</span>
         </button>
 
@@ -416,6 +469,45 @@ function handleDeletePost(postId) {
   });
 }
 
+function handleDeleteComment(commentId) {
+  window.showConfirmDialog({
+    title: 'ลบคอมเมนต์',
+    message: 'ยืนยันการลบคอมเมนต์นี้ใช่หรือไม่? ลบแล้วกู้คืนไม่ได้',
+    tone: 'danger',
+    confirmText: 'ลบคอมเมนต์',
+    onConfirm: async () => {
+      const response = await fetch(`/community/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json'
+        }
+      });
+
+      const result = await parseJsonSafe(response);
+      if (!response.ok || !result.success) {
+        showToast(result.message || 'ลบคอมเมนต์ไม่สำเร็จ');
+        return;
+      }
+
+      const commentEl = document.querySelector(`.comment-item[data-comment-id="${commentId}"]`);
+      if (commentEl) {
+        commentEl.remove();
+      }
+
+      if (Number.isInteger(result.postId)) {
+        updateCommentCount(result.postId, result.commentCount || 0);
+      }
+
+      const container = document.getElementById('commentsList');
+      if (container && !container.querySelector('.comment-item')) {
+        container.innerHTML = '<div class="comment-empty">ยังไม่มีคอมเมนต์</div>';
+      }
+
+      showToast('ลบคอมเมนต์สำเร็จ');
+    }
+  });
+}
+
 async function handleLike(postId, button) {
   const response = await fetch(`/community/posts/${postId}/like`, {
     method: 'POST',
@@ -469,13 +561,14 @@ function renderComments(comments) {
   }
 
   container.innerHTML = comments.map((comment) => `
-    <div class="comment-item">
+    <div class="comment-item" data-comment-id="${comment.id}">
       <img class="comment-avatar" src="${comment.profileImage}" alt="avatar">
       <div class="comment-content-wrap">
         <div class="comment-author">${comment.authorName}</div>
         <div class="comment-text">${comment.content}</div>
         <div class="comment-time">${comment.createdAt}</div>
       </div>
+      ${comment.canDelete ? `<button class="comment-delete-btn js-delete-comment" type="button" data-comment-id="${comment.id}" aria-label="ลบคอมเมนต์"><i class="bi bi-trash"></i></button>` : ''}
     </div>
   `).join('');
 }
@@ -564,7 +657,21 @@ function bindEvents() {
   const createInput = document.getElementById('createPostImages');
   if (createForm && createInput) {
     createForm.addEventListener('submit', handleCreatePostSubmit);
-    createInput.addEventListener('change', () => renderImagePreview(document.getElementById('createImagePreview'), createInput.files));
+    createInput.addEventListener('change', () => renderImagePreview(document.getElementById('createImagePreview'), createInput));
+  }
+
+  const createImagePreview = document.getElementById('createImagePreview');
+  if (createImagePreview && createInput) {
+    createImagePreview.addEventListener('click', (event) => {
+      const removeButton = event.target.closest('.js-remove-new-image');
+      if (!removeButton) return;
+
+      const fileIndex = Number.parseInt(removeButton.dataset.fileIndex, 10);
+      if (!Number.isInteger(fileIndex)) return;
+
+      removeFileFromInput(createInput, fileIndex);
+      renderImagePreview(createImagePreview, createInput);
+    });
   }
 
   initCategoryCardGroup(document.getElementById('createCategoryGrid'), document.getElementById('createCategorySelect'));
@@ -591,8 +698,22 @@ function bindEvents() {
     editForm.addEventListener('submit', handleEditPostSubmit);
   }
 
+  const editNewImagePreview = document.getElementById('editNewImagePreview');
   if (editInput) {
-    editInput.addEventListener('change', () => renderImagePreview(document.getElementById('editNewImagePreview'), editInput.files));
+    editInput.addEventListener('change', () => renderImagePreview(editNewImagePreview, editInput));
+  }
+
+  if (editNewImagePreview && editInput) {
+    editNewImagePreview.addEventListener('click', (event) => {
+      const removeButton = event.target.closest('.js-remove-new-image');
+      if (!removeButton) return;
+
+      const fileIndex = Number.parseInt(removeButton.dataset.fileIndex, 10);
+      if (!Number.isInteger(fileIndex)) return;
+
+      removeFileFromInput(editInput, fileIndex);
+      renderImagePreview(editNewImagePreview, editInput);
+    });
   }
 
   const existingImagesContainer = document.getElementById('editExistingImages');
@@ -671,6 +792,15 @@ function bindEvents() {
       const postId = Number.parseInt(deleteButton.dataset.postId, 10);
       if (Number.isInteger(postId)) {
         handleDeletePost(postId);
+      }
+      return;
+    }
+
+    const deleteCommentButton = event.target.closest('.js-delete-comment[data-comment-id]');
+    if (deleteCommentButton) {
+      const commentId = Number.parseInt(deleteCommentButton.dataset.commentId, 10);
+      if (Number.isInteger(commentId)) {
+        handleDeleteComment(commentId);
       }
       return;
     }

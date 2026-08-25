@@ -7,10 +7,15 @@ const COMMUNITY_CATEGORIES = [
     'โปรโมทร้านค้าของคุณ'
 ];
 
-const COMMUNITY_BANNERS = [
-    { image: '/img/banner.png' },
-    { image: '/img/kang.jpg' }
-];
+// แบนเนอร์วิ่งหน้าคอมมูนิตี้ แก้ไข/เพิ่ม/ลบได้ที่ /admin/community-banners (ตาราง CommunityBanner)
+async function getActiveBanners() {
+    const banners = await prisma.communityBanner.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: 'asc' }
+    });
+
+    return banners.map((banner) => ({ image: banner.imageUrl }));
+}
 
 // ไอคอนประจำแต่ละหมวดหมู่ ใช้แสดงบนการ์ดเลือกประเภทโพสต์ (custom form UI)
 // ใช้ bootstrap-icons ที่โหลดไว้อยู่แล้วในทุกหน้า ไม่ต้องเพิ่ม asset ใหม่
@@ -21,6 +26,15 @@ const COMMUNITY_CATEGORY_ICONS = {
     'โปรโมทร้านค้าของคุณ': 'bi-megaphone'
 };
 const DEFAULT_CATEGORY_ICON = 'bi-grid';
+
+// สีประจำแต่ละหมวดหมู่ ใช้แยกแยะป้ายหมวดหมู่/ปุ่มกรองด้วยตา ไม่ต้องอ่านข้อความ
+const COMMUNITY_CATEGORY_COLORS = {
+    'แนะนำร้าน-บริการ': 'teal',
+    'ของหายได้คืน': 'amber',
+    'เรื่องทั่วไป': 'blue',
+    'โปรโมทร้านค้าของคุณ': 'rose'
+};
+const DEFAULT_CATEGORY_COLOR = 'teal';
 
 function isSeller(user) {
     return String(user?.role || '').toUpperCase() === 'SELLER';
@@ -127,7 +141,11 @@ async function getActiveStallCodesByUserId(userIds) {
     return stallCodesByUserId;
 }
 
-function buildPostView(post, currentUserId, activeStallCodes = []) {
+function isModerator(user) {
+    return user?.role === 'ADMIN' || user?.role === 'STAFF';
+}
+
+function buildPostView(post, currentUserId, activeStallCodes = [], canModerate = false) {
     const { date, time } = parseDateTimeThai(post.createdAt);
     const isOwner = Number(currentUserId) === Number(post.userId);
     const shop = post.author?.shop || {};
@@ -143,6 +161,7 @@ function buildPostView(post, currentUserId, activeStallCodes = []) {
         storeName: shop.shopName || post.author?.name || 'ผู้ใช้งาน',
         profileImage: shop.productImage || '/img/favicon.png',
         stallNo: activeStallCodes.length ? activeStallCodes.join(', ') : 'ยังไม่มีแผง',
+        stallCodes: activeStallCodes,
         authorName: post.author?.name || '-',
         images: post.images.map((image) => ({
             id: image.id,
@@ -151,11 +170,12 @@ function buildPostView(post, currentUserId, activeStallCodes = []) {
         likes: post.likes.length,
         comments: post.comments.length,
         isLiked: post.likes.some((like) => Number(like.userId) === Number(currentUserId)),
-        isOwner
+        isOwner,
+        canModerate: !isOwner && canModerate
     };
 }
 
-async function fetchFeedPosts(currentUserId, where = {}) {
+async function fetchFeedPosts(currentUserId, where = {}, canModerate = false) {
     const posts = await prisma.communityPost.findMany({
         where,
         include: {
@@ -181,7 +201,7 @@ async function fetchFeedPosts(currentUserId, where = {}) {
 
     const stallCodesByUserId = await getActiveStallCodesByUserId(posts.map((post) => post.userId));
 
-    return posts.map((post) => buildPostView(post, currentUserId, stallCodesByUserId.get(post.userId) || []));
+    return posts.map((post) => buildPostView(post, currentUserId, stallCodesByUserId.get(post.userId) || [], canModerate));
 }
 
 async function fetchPostOrThrow(postId) {
@@ -206,17 +226,20 @@ async function fetchPostOrThrow(postId) {
 
 exports.renderFeedPage = async (req, res) => {
     try {
-        const [posts, currentUserAvatar] = await Promise.all([
-            fetchFeedPosts(req.user.id),
-            getUserAvatar(req.user.id)
+        const [posts, currentUserAvatar, banners] = await Promise.all([
+            fetchFeedPosts(req.user.id, {}, isModerator(req.user)),
+            getUserAvatar(req.user.id),
+            getActiveBanners()
         ]);
 
         return res.render('seller/comunity', {
             user: req.user,
-            banners: COMMUNITY_BANNERS,
+            banners,
             categories: COMMUNITY_CATEGORIES,
             categoryIcons: COMMUNITY_CATEGORY_ICONS,
             defaultCategoryIcon: DEFAULT_CATEGORY_ICON,
+            categoryColors: COMMUNITY_CATEGORY_COLORS,
+            defaultCategoryColor: DEFAULT_CATEGORY_COLOR,
             posts,
             currentUserAvatar,
             canCreatePost: isSeller(req.user) && !req.session?.viewAsCustomer
@@ -235,7 +258,7 @@ exports.getFeedPosts = async (req, res) => {
     try {
         const category = normalizeCategory(req.query.category);
         const where = category ? { category } : {};
-        const posts = await fetchFeedPosts(req.user.id, where);
+        const posts = await fetchFeedPosts(req.user.id, where, isModerator(req.user));
 
         return res.json({ success: true, posts });
     } catch (error) {
@@ -403,7 +426,7 @@ exports.deletePost = async (req, res) => {
             return res.status(404).json({ success: false, message: 'ไม่พบโพสต์ที่ต้องการลบ' });
         }
 
-        if (Number(post.userId) !== Number(req.user.id)) {
+        if (Number(post.userId) !== Number(req.user.id) && !isModerator(req.user)) {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ลบโพสต์นี้' });
         }
 
@@ -471,6 +494,8 @@ exports.getComments = async (req, res) => {
             }
         });
 
+        const canModerate = isModerator(req.user);
+
         return res.json({
             success: true,
             comments: comments.map((comment) => ({
@@ -478,7 +503,8 @@ exports.getComments = async (req, res) => {
                 content: comment.content,
                 authorName: comment.user?.shop?.shopName || comment.user?.name || 'ผู้ใช้งาน',
                 profileImage: comment.user?.shop?.productImage || '/img/favicon.png',
-                createdAt: new Date(comment.createdAt).toLocaleString('th-TH')
+                createdAt: new Date(comment.createdAt).toLocaleString('th-TH'),
+                canDelete: canModerate || Number(comment.userId) === Number(req.user.id)
             }))
         });
     } catch (error) {
@@ -529,12 +555,40 @@ exports.createComment = async (req, res) => {
                 content: comment.content,
                 authorName: comment.user?.shop?.shopName || comment.user?.name || 'ผู้ใช้งาน',
                 profileImage: comment.user?.shop?.productImage || '/img/favicon.png',
-                createdAt: new Date(comment.createdAt).toLocaleString('th-TH')
+                createdAt: new Date(comment.createdAt).toLocaleString('th-TH'),
+                canDelete: true
             }
         });
     } catch (error) {
         console.error('createComment error:', error);
         return res.status(500).json({ success: false, message: 'ไม่สามารถเพิ่มคอมเมนต์ได้' });
+    }
+};
+
+exports.deleteComment = async (req, res) => {
+    try {
+        const commentId = Number.parseInt(req.params.id, 10);
+        if (!Number.isInteger(commentId) || commentId <= 0) {
+            return res.status(400).json({ success: false, message: 'รหัสคอมเมนต์ไม่ถูกต้อง' });
+        }
+
+        const comment = await prisma.communityComment.findUnique({ where: { id: commentId } });
+        if (!comment) {
+            return res.status(404).json({ success: false, message: 'ไม่พบคอมเมนต์ที่ต้องการลบ' });
+        }
+
+        if (Number(comment.userId) !== Number(req.user.id) && !isModerator(req.user)) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ลบคอมเมนต์นี้' });
+        }
+
+        await prisma.communityComment.delete({ where: { id: commentId } });
+
+        const commentCount = await prisma.communityComment.count({ where: { postId: comment.postId } });
+
+        return res.json({ success: true, message: 'ลบคอมเมนต์สำเร็จ', postId: comment.postId, commentCount });
+    } catch (error) {
+        console.error('deleteComment error:', error);
+        return res.status(500).json({ success: false, message: 'ไม่สามารถลบคอมเมนต์ได้' });
     }
 };
 
@@ -599,5 +653,4 @@ exports.getMyPosts = async (req, res) => {
 };
 
 exports.communityCategories = COMMUNITY_CATEGORIES;
-exports.communityBanners = COMMUNITY_BANNERS;
 exports.isSeller = isSeller;

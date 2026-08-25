@@ -76,6 +76,7 @@ router.delete('/community/posts/:id', requireAuth, communityController.deletePos
 router.post('/community/posts/:id/like', requireAuth, communityController.toggleLike);
 router.get('/community/posts/:id/comments', requireAuth, communityController.getComments);
 router.post('/community/posts/:id/comments', requireAuth, communityController.createComment);
+router.delete('/community/comments/:id', requireAuth, communityController.deleteComment);
 
 router.get('/community/my-posts', requireAuth, communityController.renderMyPostsPage);
 router.get('/community/my-posts/data', requireAuth, communityController.getMyPosts);

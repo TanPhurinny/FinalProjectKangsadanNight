@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>จัดการแบนเนอร์คอมมูนิตี้ | Kangsadan Admin</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+            rel="stylesheet">
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+            rel="stylesheet">
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+        <link rel="stylesheet" href="/stylesheets/admin/communityBanners.css">
+    </head>
+    <body class="bg-light">
+        <script src="/js/common/tabSession.js"></script>
+        <%- include('../partials/navbar') %>
+
+        <header class="site-header">
+            <a href="javascript:history.back()" class="btn-back"><i
+                    class="fa-solid fa-arrow-left"></i></a>
+            <h2 class="header-title">จัดการแบนเนอร์คอมมูนิตี้</h2>
+            <div class="header-spacer"></div>
+        </header>
+
+        <div class="container banners-shell py-4">
+            <% if (success) { %>
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle me-2"></i> <%= success %>
+            </div>
+            <% } %>
+
+            <% if (error) { %>
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle me-2"></i> <%= error %>
+            </div>
+            <% } %>
+
+            <p class="banners-hint">
+                <i class="fas fa-circle-info me-1"></i>
+                แบนเนอร์ที่ "เปิดใช้งาน" จะแสดงเป็นสไลด์วิ่งด้านบนหน้าคอมมูนิตี้ เรียงตามลำดับด้านล่าง — ใช้ปุ่มลูกศรเพื่อสลับลำดับ
+            </p>
+
+            <!-- เพิ่มแบนเนอร์ใหม่ -->
+            <div class="banner-card banner-card--upload">
+                <h3 class="banner-card-title">เพิ่มแบนเนอร์ใหม่</h3>
+                <form method="POST" action="/admin/community-banners" enctype="multipart/form-data" class="banner-upload-form">
+                    <input type="file" name="image" id="bannerImageInput" accept="image/png,image/jpeg,image/gif,image/webp" required>
+                    <button type="submit" class="btn btn-update">
+                        <i class="fas fa-plus me-2"></i>เพิ่มแบนเนอร์
+                    </button>
+                </form>
+            </div>
+
+            <!-- รายการแบนเนอร์ -->
+            <div class="banner-list">
+                <% if (!banners.length) { %>
+                <div class="banner-empty">
+                    <i class="fas fa-images"></i>
+                    <p>ยังไม่มีแบนเนอร์ในระบบ</p>
+                </div>
+                <% } %>
+
+                <% banners.forEach(function(banner, index) { %>
+                <div class="banner-card">
+                    <img src="<%= banner.imageUrl %>" alt="แบนเนอร์ลำดับ <%= index + 1 %>" class="banner-thumb">
+
+                    <div class="banner-card-body">
+                        <div class="banner-card-meta">
+                            <span class="banner-order">ลำดับ <%= index + 1 %></span>
+                            <span class="banner-status-badge <%= banner.isActive ? 'is-active' : 'is-inactive' %>">
+                                <i class="fas <%= banner.isActive ? 'fa-eye' : 'fa-eye-slash' %>"></i>
+                                <%= banner.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' %>
+                            </span>
+                        </div>
+
+                        <div class="banner-card-actions">
+                            <form method="POST" action="/admin/community-banners/<%= banner.id %>/move/up">
+                                <button type="submit" class="btn-icon" title="เลื่อนขึ้น" <%= index === 0 ? 'disabled' : '' %>>
+                                    <i class="fas fa-arrow-up"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="/admin/community-banners/<%= banner.id %>/move/down">
+                                <button type="submit" class="btn-icon" title="เลื่อนลง" <%= index === banners.length - 1 ? 'disabled' : '' %>>
+                                    <i class="fas fa-arrow-down"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="/admin/community-banners/<%= banner.id %>/toggle">
+                                <button type="submit" class="btn-icon" title="<%= banner.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน' %>">
+                                    <i class="fas <%= banner.isActive ? 'fa-toggle-on' : 'fa-toggle-off' %>"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="/admin/community-banners/<%= banner.id %>/delete" class="js-delete-banner-form">
+                                <button type="submit" class="btn-icon btn-icon--danger" title="ลบแบนเนอร์">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <% }) %>
+            </div>
+        </div>
+
+        <script src="/js/common/dialogs.js"></script>
+        <script>
+            document.querySelectorAll('.js-delete-banner-form').forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    window.showConfirmDialog({
+                        title: 'ลบแบนเนอร์',
+                        message: 'ยืนยันการลบแบนเนอร์นี้ใช่หรือไม่? ลบแล้วกู้คืนไม่ได้',
+                        tone: 'danger',
+                        confirmText: 'ลบแบนเนอร์',
+                        onConfirm: function () {
+                            form.submit();
+                        }
+                    });
+                });
+            });
+        </script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    </body>
+</html>
