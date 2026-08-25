@@ -497,6 +497,14 @@ model StallPriceRule {
   @@index([stallId], map: "StallPriceRule_stallId_fkey")
 }
 
+model CommunityBanner {
+  id        Int      @id @default(autoincrement())
+  imageUrl  String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
 enum Role {
   ADMIN
   STAFF

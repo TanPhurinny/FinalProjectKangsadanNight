@@ -329,6 +329,44 @@ function quickStatusFilter(btn, status) {
     refreshFilterResults();
 }
 
+function findZoneForStall(code) {
+    for (const z of Object.keys(ZONES_DATA)) {
+        const columns = ZONES_DATA[z].columns || [];
+        if (columns.some((column) => (column.stalls || []).some((s) => s.code === code))) {
+            return z;
+        }
+    }
+    return null;
+}
+
+// เปิดจากลิงก์ deep link (เช่น จากหน้าคอมมูนิตี้ที่คลิกเลขล็อกของร้าน) — ?stall=A101
+// เปิดโซนที่ล็อกนั้นอยู่ให้อัตโนมัติ, เลื่อนจอไปหา, ไฮไลต์ และเปิดการ์ดข้อมูลร้านถ้าล็อกนั้นมีร้านจองอยู่
+function openStallDeepLink(code) {
+    const zone = findZoneForStall(code);
+    if (!zone) return;
+
+    openZone(zone);
+
+    requestAnimationFrame(() => {
+        const cell = document.querySelector(`.stall-cell[data-stall="${code}"]`);
+        if (!cell) return;
+
+        cell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        cell.classList.add('deeplink-target');
+        setTimeout(() => cell.classList.remove('deeplink-target'), 3000);
+
+        if (cell.classList.contains('booked')) {
+            showInfo(code);
+        }
+    });
+}
+
+// สคริปต์นี้โหลดแบบไม่มี defer อยู่ท้าย body จึง DOM พร้อมใช้งานแล้ว ไม่ต้องรอ DOMContentLoaded
+const stallParam = new URLSearchParams(window.location.search).get('stall');
+if (stallParam) {
+    openStallDeepLink(stallParam.trim().toUpperCase());
+}
+
 window.openZone = openZone;
 window.closeZone = closeZone;
 window.clearSearch = clearSearch;

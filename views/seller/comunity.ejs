@@ -10,23 +10,32 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260724-6" />
-  <link rel="stylesheet" href="/stylesheets/seller/comunity.css?v=20260724-5">
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7" />
+  <link rel="stylesheet" href="/stylesheets/seller/comunity.css?v=20260825-3">
 </head>
-<body data-can-create-post="<%= canCreatePost ? '1' : '0' %>" data-categories='<%- JSON.stringify(categories || []) %>'>
+<body data-can-create-post="<%= canCreatePost ? '1' : '0' %>" data-categories='<%- JSON.stringify(categories || []) %>'
+  data-category-icons='<%- JSON.stringify(categoryIcons || {}) %>' data-default-category-icon="<%= defaultCategoryIcon %>"
+  data-category-colors='<%- JSON.stringify(categoryColors || {}) %>' data-default-category-color="<%= defaultCategoryColor %>">
 <script src="/js/common/tabSession.js"></script>
   <% if (user && user.role === 'SELLER' && !viewAsCustomer) { %>
   <%- include('../partials/navbarSeller') %>
+  <% } else if (user && user.role === 'STAFF') { %>
+  <%- include('../staff/partials/navbar') %>
+  <% } else if (user && user.role === 'ADMIN') { %>
+  <%- include('../partials/navbar') %>
   <% } else { %>
   <%- include('../partials/navbarCustomer') %>
   <% } %>
 
 <div class="feed-page" id="feedPage">
   <header class="community-header">
-    <div>
-      <p class="community-header__eyebrow">Seller Community</p>
-      <h1 class="community-header__title">คอมมูนิตี้ผู้ขาย</h1>
-      <p class="community-header__subtitle">พูดคุย แชร์ไอเดีย และติดตามความเคลื่อนไหวของร้านค้าต่าง ๆ ในตลาด</p>
+    <div class="community-header__main">
+      <div class="community-header__icon"><i class="bi bi-people-fill"></i></div>
+      <div>
+        <p class="community-header__eyebrow">Seller Community</p>
+        <h1 class="community-header__title">คอมมูนิตี้ผู้ขาย</h1>
+        <p class="community-header__subtitle">พูดคุย แชร์ไอเดีย และติดตามความเคลื่อนไหวของร้านค้าต่าง ๆ ในตลาด</p>
+      </div>
     </div>
     <% if (canCreatePost) { %>
       <div class="community-header__actions">
@@ -40,6 +49,7 @@
     <% } %>
   </header>
 
+  <% if (banners && banners.length) { %>
   <section class="banner-section mb-3">
     <div id="heroBannerCarousel" class="carousel slide banner-carousel" data-bs-ride="carousel" data-bs-interval="4000">
       <div class="carousel-inner">
@@ -50,20 +60,28 @@
         <% }) %>
       </div>
 
+      <% if (banners.length > 1) { %>
       <div class="carousel-indicators banner-dots">
         <% banners.forEach(function(banner, index) { %>
           <button type="button" data-bs-target="#heroBannerCarousel" data-bs-slide-to="<%= index %>" class="<%= index === 0 ? 'active' : '' %>" aria-label="Slide <%= index + 1 %>"></button>
         <% }) %>
       </div>
+      <% } %>
     </div>
   </section>
+  <% } %>
 
   <section class="filter-section" id="filterSection">
+    <div class="filter-label"><i class="bi bi-funnel"></i>หมวดหมู่</div>
     <div class="filter-scroll-wrapper">
       <div class="filter-pills d-flex gap-2" id="filterPills">
-        <button class="filter-pill btn filter-pill--active" data-category="ทั้งหมด" type="button">ทั้งหมด</button>
+        <button class="filter-pill btn filter-pill--active" data-category="ทั้งหมด" type="button">
+          <i class="bi bi-grid-3x3-gap-fill"></i>ทั้งหมด
+        </button>
         <% categories.forEach(function(category) { %>
-          <button class="filter-pill btn filter-pill--inactive" data-category="<%= category %>" type="button"><%= category %></button>
+          <button class="filter-pill btn filter-pill--inactive cat-<%= (categoryColors && categoryColors[category]) || defaultCategoryColor %>" data-category="<%= category %>" type="button">
+            <i class="bi <%= (categoryIcons && categoryIcons[category]) || defaultCategoryIcon %>"></i><%= category %>
+          </button>
         <% }) %>
       </div>
     </div>
@@ -72,7 +90,10 @@
   <section class="feed-section mt-3" id="feedSection">
     <div class="feed-container" id="feedContainer">
       <% if (!posts.length) { %>
-        <div class="empty-state-card" id="emptyFeedState">ยังไม่มีโพสต์ในคอมมูนิตี้</div>
+        <div class="empty-state-card" id="emptyFeedState">
+          <i class="bi bi-chat-square-text"></i>
+          <p>ยังไม่มีโพสต์ในคอมมูนิตี้</p>
+        </div>
       <% } %>
 
       <% posts.forEach(function(post) { %>
@@ -94,14 +115,29 @@
             </div>
 
             <div class="post-header-right">
-              <div class="stall-badge"><%= post.stallNo %></div>
+              <% if (post.stallCodes && post.stallCodes.length) { %>
+                <% post.stallCodes.forEach(function(code) { %>
+                  <a href="/market-map?stall=<%= encodeURIComponent(code) %>" class="stall-badge stall-badge--link" title="ดูตำแหน่งแผง <%= code %> บนผัง">
+                    <i class="bi bi-geo-alt-fill"></i><%= code %>
+                  </a>
+                <% }) %>
+              <% } else { %>
+                <div class="stall-badge"><i class="bi bi-shop"></i><%= post.stallNo %></div>
+              <% } %>
               <% if (post.isOwner) { %>
-                <span class="owner-badge">โพสต์ของคุณ</span>
+                <span class="owner-badge"><i class="bi bi-person-check-fill"></i>โพสต์ของคุณ</span>
                 <div class="dropdown">
-                  <button class="post-menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">⋮</button>
+                  <button class="post-menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots-vertical"></i></button>
                   <ul class="dropdown-menu dropdown-menu-end">
-                    <li><button class="dropdown-item js-edit-post" type="button" data-post-id="<%= post.id %>">แก้ไขโพสต์</button></li>
-                    <li><button class="dropdown-item text-danger js-delete-post" type="button" data-post-id="<%= post.id %>">ลบโพสต์</button></li>
+                    <li><button class="dropdown-item js-edit-post" type="button" data-post-id="<%= post.id %>"><i class="bi bi-pencil-square"></i>แก้ไขโพสต์</button></li>
+                    <li><button class="dropdown-item text-danger js-delete-post" type="button" data-post-id="<%= post.id %>"><i class="bi bi-trash3"></i>ลบโพสต์</button></li>
+                  </ul>
+                </div>
+              <% } else if (post.canModerate) { %>
+                <div class="dropdown">
+                  <button class="post-menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots-vertical"></i></button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li><button class="dropdown-item text-danger js-delete-post" type="button" data-post-id="<%= post.id %>"><i class="bi bi-shield-fill-exclamation"></i>ลบโพสต์ (แอดมิน)</button></li>
                   </ul>
                 </div>
               <% } %>
@@ -109,7 +145,7 @@
           </div>
 
           <div class="post-content">
-            <span class="post-category-pill"><%= post.category %></span>
+            <span class="post-category-pill cat-<%= (categoryColors && categoryColors[post.category]) || defaultCategoryColor %>"><i class="bi <%= (categoryIcons && categoryIcons[post.category]) || defaultCategoryIcon %>"></i><%= post.category %></span>
             <p class="post-text"><%= post.content %></p>
           </div>
 
@@ -136,11 +172,13 @@
             <div class="d-flex align-items-center gap-3">
               <button class="action-btn like-btn <%= post.isLiked ? 'is-liked' : '' %>" type="button" data-post-id="<%= post.id %>" aria-label="Like">
                 <i class="bi <%= post.isLiked ? 'bi-heart-fill' : 'bi-heart' %>"></i>
+                <span class="action-label">ถูกใจ</span>
                 <span class="action-count"><%= post.likes %></span>
               </button>
 
               <button class="action-btn comment-btn" type="button" data-post-id="<%= post.id %>" aria-label="Comment">
                 <i class="bi bi-chat-round-dots"></i>
+                <span class="action-label">คอมเมนต์</span>
                 <span class="action-count"><%= post.comments %></span>
               </button>
 
@@ -160,7 +198,7 @@
       <div class="modal-content">
         <form id="createPostForm">
           <div class="modal-header">
-            <h5 class="modal-title">สร้างโพสต์ใหม่</h5>
+            <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>สร้างโพสต์ใหม่</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
@@ -168,7 +206,7 @@
               <label class="form-label">เลือกประเภทโพสต์</label>
               <div class="category-card-grid" id="createCategoryGrid" role="radiogroup" aria-label="เลือกประเภทโพสต์">
                 <% categories.forEach(function(category) { %>
-                  <button type="button" class="category-card" data-category="<%= category %>" role="radio" aria-checked="false">
+                  <button type="button" class="category-card cat-<%= (categoryColors && categoryColors[category]) || defaultCategoryColor %>" data-category="<%= category %>" role="radio" aria-checked="false">
                     <i class="bi <%= (categoryIcons && categoryIcons[category]) || defaultCategoryIcon %>"></i>
                     <span><%= category %></span>
                   </button>
@@ -212,7 +250,7 @@
         <form id="editPostForm">
           <input type="hidden" name="postId" id="editPostId">
           <div class="modal-header">
-            <h5 class="modal-title">แก้ไขโพสต์</h5>
+            <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>แก้ไขโพสต์</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
@@ -220,7 +258,7 @@
               <label class="form-label">เลือกประเภทโพสต์</label>
               <div class="category-card-grid" id="editCategoryGrid" role="radiogroup" aria-label="เลือกประเภทโพสต์">
                 <% categories.forEach(function(category) { %>
-                  <button type="button" class="category-card" data-category="<%= category %>" role="radio" aria-checked="false">
+                  <button type="button" class="category-card cat-<%= (categoryColors && categoryColors[category]) || defaultCategoryColor %>" data-category="<%= category %>" role="radio" aria-checked="false">
                     <i class="bi <%= (categoryIcons && categoryIcons[category]) || defaultCategoryIcon %>"></i>
                     <span><%= category %></span>
                   </button>
@@ -261,7 +299,7 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">คอมเมนต์</h5>
+          <h5 class="modal-title"><i class="bi bi-chat-dots me-2"></i>คอมเมนต์</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -293,6 +331,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/js/common/dialogs.js" defer></script>
-<script src="/js/seller/comunity.js" defer></script>
+<script src="/js/seller/comunity.js?v=20260825-3" defer></script>
 </body>
 </html>

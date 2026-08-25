@@ -427,6 +427,18 @@ async function main() {
 
   console.log('✅ Booking requests created');
 
+  // แบนเนอร์คอมมูนิตี้เริ่มต้น (แก้ไข/เพิ่ม/ลบได้ที่หน้าแอดมินหลังจากนี้ — seed แค่ครั้งแรกตอน DB ว่าง)
+  const bannerCount = await prisma.communityBanner.count();
+  if (bannerCount === 0) {
+    await prisma.communityBanner.createMany({
+      data: [
+        { imageUrl: '/img/banner.png', sortOrder: 0, isActive: true },
+        { imageUrl: '/img/kang.jpg', sortOrder: 1, isActive: true },
+      ],
+    });
+    console.log('✅ Community banners created');
+  }
+
   // ═══════════════════════════════════════════════════════════
   // สรุป
   // ═══════════════════════════════════════════════════════════

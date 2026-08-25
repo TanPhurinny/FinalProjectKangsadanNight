@@ -51,6 +51,26 @@
   border-bottom: 1px solid var(--line);
 }
 
+.community-header__main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.community-header__icon {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--primary-tint);
+  color: var(--primary-dark);
+  font-size: 1.3rem;
+}
+
 .community-header__eyebrow {
   margin: 0 0 6px;
   font-family: var(--mono);
@@ -130,7 +150,7 @@
 
 .banner-img {
   width: 100%;
-  height: 140px;
+  aspect-ratio: 2.8 / 1;
   object-fit: cover;
   display: block;
 }
@@ -179,6 +199,19 @@
   box-shadow: 0 1px 0 var(--line);
 }
 
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 12px 8px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+
 .filter-scroll-wrapper {
   overflow-x: auto;
   overflow-y: hidden;
@@ -198,6 +231,9 @@
 
 .filter-pill {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border-radius: var(--radius-sm);
   font-size: 0.82rem;
   font-weight: 600;
@@ -209,6 +245,10 @@
   white-space: nowrap;
   color: var(--ink);
   background: #fff;
+}
+
+.filter-pill i {
+  font-size: 0.95rem;
 }
 
 .filter-pill--active {
@@ -251,6 +291,17 @@
   color: var(--ink-soft);
   padding: 32px 24px;
   text-align: center;
+}
+
+.empty-state-card i {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 10px;
+  color: var(--line);
+}
+
+.empty-state-card p {
+  margin: 0;
 }
 
 /* ============================================================
@@ -304,6 +355,9 @@
 }
 
 .owner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: var(--soft-bg);
   color: var(--ink-soft);
   border: 1px solid var(--line);
@@ -316,9 +370,9 @@
   border: 1px solid transparent;
   background: transparent;
   color: var(--ink-soft);
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   line-height: 1;
-  padding: 2px 6px;
+  padding: 5px 7px;
   border-radius: var(--radius-sm);
 }
 .post-menu-btn:hover {
@@ -327,7 +381,9 @@
   background: var(--soft-bg);
 }
 .post-category-pill {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   background: var(--primary-tint);
   color: var(--primary-dark);
   border: 1px solid rgba(59, 184, 212, 0.3);
@@ -336,6 +392,54 @@
   font-weight: 600;
   padding: 4px 9px;
   margin-bottom: 8px;
+}
+
+/* สีประจำหมวดหมู่ — คู่กับ COMMUNITY_CATEGORY_COLORS ใน communityController.js
+   ใช้กับป้ายหมวดหมู่บนโพสต์ (.post-category-pill) และปุ่มกรองตอนยังไม่ได้เลือก
+   (.filter-pill--inactive) ตอนเลือกแล้วปุ่มกรองใช้สี primary เดียวกันหมดเพื่อให้ดูออกว่า "เลือกอยู่" */
+.post-category-pill.cat-teal {
+  background: var(--primary-tint);
+  color: var(--primary-dark);
+  border-color: rgba(59, 184, 212, 0.3);
+}
+.post-category-pill.cat-amber {
+  background: rgba(201, 138, 46, 0.1);
+  color: var(--warning);
+  border-color: rgba(201, 138, 46, 0.32);
+}
+.post-category-pill.cat-blue {
+  background: rgba(52, 152, 219, 0.1);
+  color: #2f7bb0;
+  border-color: rgba(52, 152, 219, 0.32);
+}
+.post-category-pill.cat-rose {
+  background: rgba(199, 55, 108, 0.1);
+  color: #a52d5c;
+  border-color: rgba(199, 55, 108, 0.32);
+}
+
+.filter-pill--inactive.cat-amber { border-color: rgba(201, 138, 46, 0.4); }
+.filter-pill--inactive.cat-amber i { color: var(--warning); }
+.filter-pill--inactive.cat-amber:hover { background: rgba(201, 138, 46, 0.1); border-color: var(--warning); color: var(--warning); }
+
+.filter-pill--inactive.cat-blue { border-color: rgba(52, 152, 219, 0.4); }
+.filter-pill--inactive.cat-blue i { color: #2f7bb0; }
+.filter-pill--inactive.cat-blue:hover { background: rgba(52, 152, 219, 0.1); border-color: #2f7bb0; color: #2f7bb0; }
+
+.filter-pill--inactive.cat-rose { border-color: rgba(199, 55, 108, 0.4); }
+.filter-pill--inactive.cat-rose i { color: #a52d5c; }
+.filter-pill--inactive.cat-rose:hover { background: rgba(199, 55, 108, 0.1); border-color: #a52d5c; color: #a52d5c; }
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdown-item i {
+  font-size: 0.95rem;
+  width: 16px;
+  text-align: center;
 }
 
 /* ============================================================
@@ -409,6 +513,19 @@
   font-family: var(--mono);
   font-size: 0.7rem;
   color: var(--ink-soft);
+}
+.comment-delete-btn {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+.comment-delete-btn:hover {
+  color: var(--danger-color, #c0392b);
+  background: var(--soft-bg);
 }
 .comment-empty {
   color: var(--ink-soft);
@@ -537,6 +654,12 @@
   color: var(--primary-dark);
 }
 
+/* สีไอคอนตอนยังไม่ได้เลือก (ตอนเลือกแล้วใช้สี primary เดียวกันหมด ดู .category-card--active ด้านบน) */
+.category-card.cat-teal:not(.category-card--active) i { color: var(--primary); }
+.category-card.cat-amber:not(.category-card--active) i { color: var(--warning); }
+.category-card.cat-blue:not(.category-card--active) i { color: #2f7bb0; }
+.category-card.cat-rose:not(.category-card--active) i { color: #a52d5c; }
+
 /* ============================================================
    CUSTOM FORM UI — Drag & Drop อัปโหลดรูป
    ============================================================ */
@@ -592,6 +715,9 @@
 
 /* Stall Badge */
 .stall-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   background: #fff;
   color: var(--primary-dark);
   font-weight: 700;
@@ -603,6 +729,23 @@
   white-space: nowrap;
   flex-shrink: 0;
   border: 1px solid var(--line);
+}
+
+.stall-badge i {
+  font-size: 0.85rem;
+}
+
+.stall-badge--link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.stall-badge--link:hover,
+.stall-badge--link:focus-visible {
+  background: var(--primary-tint);
+  border-color: var(--primary);
+  color: var(--primary-dark);
 }
 
 /* ---- POST CONTENT ---- */
@@ -819,7 +962,6 @@
 @media (min-width: 768px) {
   .community-header { margin: 28px 20px 22px; }
   .banner-section { padding: 0 20px; }
-  .banner-img { height: 220px; }
   .filter-section { padding: 14px 0; }
   .filter-scroll-wrapper { padding: 2px 20px; }
   .feed-section { padding: 0 20px; }
@@ -839,7 +981,6 @@
    ============================================================ */
 @media (min-width: 900px) {
   .banner-section { padding: 0 24px; }
-  .banner-img { height: 260px; }
   .filter-scroll-wrapper { padding: 2px 24px; }
   .feed-section { padding: 0 24px; }
 }

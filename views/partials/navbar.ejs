@@ -4,11 +4,10 @@ const currentPath = locals.path || '';
 const isStaff = user && user.role === 'STAFF';
 %>
 
-<nav class="management-nav">
+<nav class="management-nav admin-nav">
     <div class="nav-container">
         <a href="/admin/dashboard" class="nav-brand">
             <img src="/img/favicon.png" alt="Kang Night Logo" class="nav-logo">
-            KangsadanNight
         </a>
 
         <button class="nav-toggle" id="navToggle">
@@ -45,6 +44,14 @@ const isStaff = user && user.role === 'STAFF';
             <a href="/admin/announcements"
                 class="nav-item <%= currentPath.includes('announcements') ? 'active' : '' %>">
                 <i class="fas fa-bullhorn"></i> จัดการประกาศ
+            </a>
+            <a href="/community"
+                class="nav-item <%= currentPath.includes('/community') || currentPath.includes('/comunity') ? 'active' : '' %>">
+                <i class="fas fa-comments"></i> คอมมูนิตี้
+            </a>
+            <a href="/admin/community-banners"
+                class="nav-item <%= currentPath.includes('/community-banners') ? 'active' : '' %>">
+                <i class="fas fa-images"></i> แบนเนอร์คอมมูนิตี้
             </a>
             <a href="/admin/users"
                 class="nav-item <%= currentPath.includes('users') ? 'active' : '' %>">
