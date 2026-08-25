@@ -86,6 +86,16 @@ if (requestDetailModal) {
         }
 
         document.getElementById('detailLocation').textContent = d.location;
+        const stallInfoLabel = document.getElementById('detailStallInfoLabel');
+        const stallInfoEl = document.getElementById('detailStallInfo');
+        if (d.stallInfo) {
+            stallInfoEl.textContent = d.stallInfo;
+            stallInfoLabel.classList.remove('d-none');
+            stallInfoEl.classList.remove('d-none');
+        } else {
+            stallInfoLabel.classList.add('d-none');
+            stallInfoEl.classList.add('d-none');
+        }
         document.getElementById('detailRequester').textContent = d.requester;
         document.getElementById('detailCategory').textContent = d.category;
         document.getElementById('detailDescription').textContent = d.description;

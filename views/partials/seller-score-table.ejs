@@ -3,6 +3,7 @@
         <thead>
             <tr>
                 <th>ร้านค้า</th>
+                <th>คะแนนรอบที่เลือก</th>
                 <th>คะแนนสะสม</th>
                 <th>คะแนนรอบล่าสุด</th>
                 <th>จำนวนรอบที่เคยขาย</th>
@@ -15,13 +16,21 @@
         <tbody>
             <% if (!rows.length) { %>
             <tr>
-                <td colspan="<%= isAdmin ? 6 : 5 %>" class="text-center text-muted py-4">ยังไม่มีข้อมูลคะแนนร้านค้า</td>
+                <td colspan="<%= isAdmin ? 7 : 6 %>" class="text-center text-muted py-4">ยังไม่มีข้อมูลคะแนนร้านค้า</td>
             </tr>
             <% } %>
             <% rows.forEach((row) => { %>
             <tr class="<%= row.isBlacklisted ? 'table-danger' : '' %>">
                 <td><%= row.sellerName %></td>
-                <td class="fw-bold"><%= row.cumulativeScore !== null ? row.cumulativeScore.toFixed(1) : '-' %></td>
+                <td class="fw-bold">
+                    <% if (typeof row.selectedRoundScore !== 'undefined' && row.selectedRoundScore) { %>
+                        <%= row.selectedRoundScore.score.toFixed(1) %>
+                        <span class="text-muted small">(<%= row.selectedRoundScore.daysInspected %> วัน)</span>
+                    <% } else { %>
+                        <span class="text-muted">ไม่มีข้อมูลรอบนี้</span>
+                    <% } %>
+                </td>
+                <td><%= row.cumulativeScore !== null ? row.cumulativeScore.toFixed(1) : '-' %></td>
                 <td>
                     <% if (row.latestRoundScore) { %>
                         รอบ <%= row.latestRoundScore.roundNumber %>: <%= row.latestRoundScore.score.toFixed(1) %>

@@ -32,6 +32,7 @@ model User {
   recordedInspectionChecks StallInspectionCheckRecord[]
   recordedIssues StallIssueRecord[]
   assignedRepairReports MaintenanceReport[] @relation("MaintenanceReportAssignedTo")
+  dailyInspectionSubmissions DailyInspectionSubmission[]
   // Blacklist จากคะแนนตรวจตลาด — อยู่บน User (ไม่ใช่ Seller model ที่ไม่มีที่ไหนในระบบสร้างข้อมูลจริงเลย)
   isBlacklisted   Boolean   @default(false)
   blacklistedAt   DateTime?
@@ -253,9 +254,22 @@ model MaintenanceReport {
   updatedAt    DateTime @default(now()) @updatedAt
   user         User     @relation("MaintenanceReportReporter", fields: [userId], references: [id], onDelete: Cascade)
   assignedTo   User?    @relation("MaintenanceReportAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  images       MaintenanceReportImage[]
 
   @@index([userId], map: "MaintenanceReport_userId_fkey")
   @@index([assignedToId], map: "MaintenanceReport_assignedToId_fkey")
+}
+
+// รูปแนบหลายรูปต่อ 1 รายงานแจ้งซ่อม — คอลัมน์ image เดิมบน MaintenanceReport ยังคงไว้เพื่อแสดงผล
+// รายงานเก่าที่มีแค่รูปเดียว รายงานใหม่ใช้ตารางนี้แทน (ไม่เติมค่า image เดิมอีกต่อไป)
+model MaintenanceReportImage {
+  id                  Int               @id @default(autoincrement())
+  maintenanceReportId Int
+  imageUrl            String
+  createdAt           DateTime          @default(now())
+  maintenanceReport   MaintenanceReport @relation(fields: [maintenanceReportId], references: [id], onDelete: Cascade)
+
+  @@index([maintenanceReportId], map: "MaintenanceReportImage_maintenanceReportId_fkey")
 }
 
 model Announcement {
@@ -373,6 +387,22 @@ model StallInspectionCheckRecord {
 
   @@index([stallId], map: "StallInspectionCheckRecord_stallId_fkey")
   @@index([recordedById], map: "StallInspectionCheckRecord_recordedById_fkey")
+}
+
+// การ "ส่งงาน" ตรวจตลาดรายวัน แยกตามพนักงานแต่ละคน — เป็นแค่หลักฐาน/สรุปยอด ณ เวลาที่ส่ง
+// ไม่ใช่ hard lock (StallInspectionCheckRecord ยังแก้ไขได้ตามหน้าต่าง 24 ชม. ปกติ แม้ส่งงานไปแล้ว)
+model DailyInspectionSubmission {
+  id             Int      @id @default(autoincrement())
+  submissionDate DateTime
+  submittedById  Int
+  inspectedCount Int
+  totalCount     Int
+  createdAt      DateTime @default(now())
+
+  submittedBy    User     @relation(fields: [submittedById], references: [id], onDelete: Cascade)
+
+  @@unique([submissionDate, submittedById])
+  @@index([submittedById], map: "DailyInspectionSubmission_submittedById_fkey")
 }
 
 // หัวข้อปัญหาที่พบตอนตรวจตลาด (ไม่มาขาย/ปล่อยเช่าช่วง/ไปเปิดท้ายหรือขายอื่น/ขายไม่ตรง + หมายเหตุปัญหาอื่นๆ)

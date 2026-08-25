@@ -1,15 +1,19 @@
 // เปิดหน้าต่างรายละเอียดการแจ้งซ่อมทั้งหมด
 function openDetailModal(el) {
     const d = el.dataset;
+    const images = (d.images || '').split(',').filter(Boolean);
 
-    const img = document.getElementById('detailImage');
+    const gallery = document.getElementById('detailImageGallery');
     const imgEmpty = document.getElementById('detailImageEmpty');
-    if (d.image) {
-        img.src = d.image;
-        img.style.display = 'block';
+    if (images.length) {
+        gallery.innerHTML = images.map((src) =>
+            `<img src="${src}" alt="รูปแจ้งซ่อม" onclick="openLightbox('${src}')">`
+        ).join('');
+        gallery.style.display = 'grid';
         imgEmpty.style.display = 'none';
     } else {
-        img.style.display = 'none';
+        gallery.innerHTML = '';
+        gallery.style.display = 'none';
         imgEmpty.style.display = 'flex';
     }
 
@@ -48,28 +52,88 @@ function closeLightbox(e) {
     document.getElementById('lightboxOverlay').classList.remove('active');
 }
 
-// Script สำหรับ Preview รูปภาพเมื่อผู้ใช้อัปโหลด
-const imageUpload = document.getElementById('imageUpload');
-const imagePreview = document.getElementById('imagePreview');
-const submitBtn = document.getElementById('submitBtn');
+// ── ตำแหน่งล็อค: สลับระหว่าง dropdown (จาก DB) กับช่องกรอกเอง "อื่นๆ" ──
+const locationSelect = document.getElementById('locationSelect');
+const locationOther = document.getElementById('locationOther');
 
-imageUpload.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            imagePreview.src = e.target.result;
-            imagePreview.style.display = 'block'; // แสดงรูปภาพทับเครื่องหมายบวก
-        }
-        reader.readAsDataURL(file);
+function syncLocationField() {
+    if (locationSelect.value === '__OTHER__') {
+        locationSelect.removeAttribute('name');
+        locationOther.setAttribute('name', 'location');
+        locationOther.required = true;
+        locationOther.style.display = '';
     } else {
-        imagePreview.src = '';
-        imagePreview.style.display = 'none';
+        locationSelect.setAttribute('name', 'location');
+        locationOther.removeAttribute('name');
+        locationOther.required = false;
+        locationOther.style.display = 'none';
     }
+}
+locationSelect.addEventListener('change', syncLocationField);
+syncLocationField();
+
+// ── แนบรูปได้หลายรูป พร้อม preview และปุ่มลบต่อรูป ──
+const imageUpload = document.getElementById('imageUpload');
+const uploadLabel = document.getElementById('uploadLabel');
+const submitBtn = document.getElementById('submitBtn');
+const MAX_REPAIR_IMAGES = imageUpload.dataset.max ? Number(imageUpload.dataset.max) : 5;
+
+let selectedFiles = [];
+
+function renderImagePreviews() {
+    uploadLabel.innerHTML = '';
+    selectedFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const item = document.createElement('div');
+            item.className = 'upload-thumb-item';
+            item.innerHTML = `<img src="${e.target.result}" alt="Preview ${index + 1}">
+                <button type="button" class="upload-thumb-remove" data-index="${index}" title="ลบรูปนี้">&times;</button>`;
+            item.querySelector('.upload-thumb-remove').addEventListener('click', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                removeSelectedFile(index);
+            });
+            uploadLabel.appendChild(item);
+        };
+        reader.readAsDataURL(file);
+    });
+    if (selectedFiles.length < MAX_REPAIR_IMAGES) {
+        const addBox = document.createElement('div');
+        addBox.className = 'upload-add-icon';
+        uploadLabel.appendChild(addBox);
+    }
+}
+
+function syncFileInput() {
+    const dt = new DataTransfer();
+    selectedFiles.forEach((file) => dt.items.add(file));
+    imageUpload.files = dt.files;
+}
+
+function removeSelectedFile(index) {
+    selectedFiles.splice(index, 1);
+    syncFileInput();
+    renderImagePreviews();
+}
+
+imageUpload.addEventListener('change', function (e) {
+    const incoming = Array.from(e.target.files || []);
+    selectedFiles = selectedFiles.concat(incoming).slice(0, MAX_REPAIR_IMAGES);
+    syncFileInput();
+    renderImagePreviews();
 });
 
+window.clearRepairImageSelection = function () {
+    selectedFiles = [];
+    syncFileInput();
+    renderImagePreviews();
+};
+
+renderImagePreviews();
+
 // ปิดการส่งฟอร์มซ้อนและแสดง loading state
-document.querySelector('form').addEventListener('submit', function(e) {
+document.querySelector('form').addEventListener('submit', function (e) {
     if (!submitBtn.disabled) {
         submitBtn.disabled = true;
         submitBtn.textContent = 'กำลังส่งข้อมูล...';
@@ -77,8 +141,8 @@ document.querySelector('form').addEventListener('submit', function(e) {
 });
 
 // ซ่อนข้อความ success/error หลังจาก 5 วินาที
-window.addEventListener('load', function() {
-    const alertDivs = document.querySelectorAll('[style*="background-color"]');
+window.addEventListener('load', function () {
+    const alertDivs = document.querySelectorAll('.form-alert');
     alertDivs.forEach(alertDiv => {
         if (window.location.search.includes('success=true') || window.location.search.includes('error=')) {
             setTimeout(() => {

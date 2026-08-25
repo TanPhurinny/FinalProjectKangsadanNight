@@ -23,8 +23,17 @@
             <div class="alert alert-success mb-3">บันทึกสำเร็จ</div>
             <% } %>
 
-            <h1 class="fw-bold mb-1"><i class="fas fa-star me-2"></i>คะแนนร้านค้า</h1>
-            <p class="text-muted mb-4">คะแนนสะสม = ค่าเฉลี่ยคะแนนของทุกรอบที่ร้านนั้นเคยขาย ร้านที่คะแนนต่ำมากสามารถ Blacklist ได้ — บล็อกไม่ให้สมัคร/จองแผงรอบถัดไป</p>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <div>
+                    <h1 class="fw-bold mb-1"><i class="fas fa-star me-2"></i>คะแนนร้านค้า รอบที่ <%= roundNumber %></h1>
+                    <p class="text-muted mb-0">คะแนนสะสม = ค่าเฉลี่ยคะแนนของทุกรอบที่ร้านนั้นเคยขาย ร้านที่คะแนนต่ำมากสามารถ Blacklist ได้ — บล็อกไม่ให้สมัคร/จองแผงรอบถัดไป</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a class="hero-btn" href="<%= basePath %>?round=<%= roundNumber - 1 %>"><i class="fas fa-arrow-left"></i> รอบก่อนหน้า</a>
+                    <a class="hero-btn" href="<%= basePath %>?round=<%= currentRoundNumber %>">รอบปัจจุบัน</a>
+                    <a class="hero-btn" href="<%= basePath %>?round=<%= roundNumber + 1 %>">รอบถัดไป <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
 
             <%- include('../partials/seller-score-table') %>
         </div>

@@ -63,6 +63,30 @@ body {
     font-size: 0.85rem;
 }
 
+.btn-submit-day {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--primary-color);
+    border-right: none;
+    border-top: none;
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.btn-submit-day:hover {
+    background: var(--navy);
+    border-color: var(--navy);
+}
+.btn-submit-day:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .inspection-flow-hint {
     position: sticky;
     top: 64px;

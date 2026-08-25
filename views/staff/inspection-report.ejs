@@ -22,30 +22,42 @@
             <div class="alert alert-danger mb-3"><%= error %></div>
             <% } %>
 
-            <% if (report) { %>
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+            <% if (report) {
+                const selectedDay = report.dailyOverview.find((d) => d.dateKey === report.selectedDateKey) || null;
+            %>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                 <div>
-                    <h1 class="fw-bold mb-1"><i class="fas fa-chart-line me-2"></i>รายงานตรวจตลาด รอบที่ <%= report.roundNumber %></h1>
+                    <h1 class="fw-bold mb-1">
+                        <i class="fas fa-chart-line me-2"></i>รายงานตรวจตลาด รอบที่ <%= report.roundNumber %>
+                        <% if (selectedDay) { %><span class="text-muted fw-normal">&middot; <%= selectedDay.dateLabel %><%= selectedDay.dateKey === report.todayKey ? ' (วันนี้)' : '' %></span><% } %>
+                    </h1>
                     <p class="text-muted mb-0">
                         <%= report.cycleStart.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>
                         &ndash;
                         <%= report.cycleEnd.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>
                     </p>
                 </div>
-                <div class="d-flex gap-2">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <select id="dateFilterSelect" class="form-select form-select-sm" style="width: auto;">
+                        <option value="" <%= !report.selectedDateKey ? 'selected' : '' %>>ทั้งรอบ (เฉลี่ยทุกวัน)</option>
+                        <% report.dailyOverview.forEach((day) => { %>
+                        <option value="<%= day.dateKey %>" <%= report.selectedDateKey === day.dateKey ? 'selected' : '' %>><%= day.dateLabel %><%= day.dateKey === report.todayKey ? ' (วันนี้)' : '' %></option>
+                        <% }) %>
+                    </select>
                     <a class="hero-btn" href="/staff/marketinspection/report?round=<%= roundNumber - 1 %>"><i class="fas fa-arrow-left"></i> รอบก่อนหน้า</a>
                     <a class="hero-btn" href="/staff/marketinspection/report?round=<%= currentRoundNumber %>">รอบปัจจุบัน</a>
                     <a class="hero-btn" href="/staff/marketinspection/report?round=<%= roundNumber + 1 %>">รอบถัดไป <i class="fas fa-arrow-right"></i></a>
-                    <a class="hero-btn" href="/staff/marketinspection/report/export?round=<%= roundNumber %>"><i class="fas fa-file-excel"></i> ดาวน์โหลด .xlsx</a>
+                    <a class="hero-btn" href="/staff/marketinspection/report/export?round=<%= roundNumber %><%= report.selectedDateKey ? `&date=${report.selectedDateKey}` : '' %>"><i class="fas fa-file-excel"></i> ดาวน์โหลด .xlsx</a>
                 </div>
             </div>
 
             <% if (report.inspectionProgressToday.total > 0) { %>
             <div class="alert <%= report.inspectionProgressToday.isComplete ? 'alert-success' : 'alert-warning' %> mb-4">
+                <% const progressDayLabel = selectedDay ? selectedDay.dateLabel : 'วันนี้'; %>
                 <% if (report.inspectionProgressToday.isComplete) { %>
-                    <i class="fas fa-circle-check me-1"></i> ตรวจครบทุกร้านของวันนี้แล้ว (<%= report.inspectionProgressToday.inspected %>/<%= report.inspectionProgressToday.total %> ล็อค)
+                    <i class="fas fa-circle-check me-1"></i> ตรวจครบทุกร้านของ<%= progressDayLabel %>แล้ว (<%= report.inspectionProgressToday.inspected %>/<%= report.inspectionProgressToday.total %> ล็อค)
                 <% } else { %>
-                    <i class="fas fa-triangle-exclamation me-1"></i> วันนี้ยังตรวจไม่ครบ: ตรวจแล้ว <%= report.inspectionProgressToday.inspected %> จาก <%= report.inspectionProgressToday.total %> ล็อค
+                    <i class="fas fa-triangle-exclamation me-1"></i> <%= progressDayLabel %>ยังตรวจไม่ครบ: ตรวจแล้ว <%= report.inspectionProgressToday.inspected %> จาก <%= report.inspectionProgressToday.total %> ล็อค
                 <% } %>
             </div>
             <% } %>
@@ -54,14 +66,14 @@
                 <div class="col-6 col-lg-3">
                     <article class="kpi-card c-primary">
                         <div class="kpi-icon"><i class="fas fa-star"></i></div>
-                        <div class="kpi-label">คะแนนเฉลี่ยรอบนี้</div>
+                        <div class="kpi-label"><%= selectedDay ? 'คะแนนเฉลี่ยวันนี้' : 'คะแนนเฉลี่ยรอบนี้' %></div>
                         <h3 class="kpi-value"><%= report.overallAverageScore !== null ? report.overallAverageScore.toFixed(1) : '-' %></h3>
                     </article>
                 </div>
                 <div class="col-6 col-lg-3">
                     <article class="kpi-card c-info">
                         <div class="kpi-icon"><i class="fas fa-store"></i></div>
-                        <div class="kpi-label">ร้านที่มีข้อมูลรอบนี้</div>
+                        <div class="kpi-label"><%= selectedDay ? 'ร้านที่มีข้อมูลวันนี้' : 'ร้านที่มีข้อมูลรอบนี้' %></div>
                         <h3 class="kpi-value"><%= report.sellerRows.length %></h3>
                     </article>
                 </div>
@@ -97,26 +109,28 @@
             </section>
 
             <section class="mb-3">
-                <h3 class="fw-bold mb-3"><i class="fas fa-list me-2"></i>คะแนนร้านค้ารอบนี้</h3>
+                <h3 class="fw-bold mb-3"><i class="fas fa-list me-2"></i>คะแนนร้านค้า<%= selectedDay ? `วันที่ ${selectedDay.dateLabel}` : 'รอบนี้' %></h3>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle bg-white">
                         <thead>
                             <tr>
                                 <th>ร้านค้า</th>
-                                <th>คะแนนรอบนี้</th>
-                                <th>จำนวนวันที่ตรวจ</th>
+                                <th><%= selectedDay ? 'คะแนนวันนี้' : 'คะแนนรอบนี้' %></th>
+                                <th>จำนวนล็อค</th>
+                                <% if (!selectedDay) { %><th>จำนวนวันที่ตรวจ</th><% } %>
                                 <th>สถานะ</th>
                             </tr>
                         </thead>
                         <tbody>
                             <% if (!report.sellerRows.length) { %>
-                            <tr><td colspan="4" class="text-center text-muted py-4">ยังไม่มีข้อมูลตรวจในรอบนี้</td></tr>
+                            <tr><td colspan="<%= selectedDay ? 4 : 5 %>" class="text-center text-muted py-4"><%= selectedDay ? 'ยังไม่มีข้อมูลตรวจในวันนี้' : 'ยังไม่มีข้อมูลตรวจในรอบนี้' %></td></tr>
                             <% } %>
                             <% report.sellerRows.forEach((row) => { %>
                             <tr class="<%= row.isBlacklisted ? 'table-danger' : '' %>">
                                 <td><%= row.sellerName %></td>
                                 <td class="fw-bold"><%= row.roundScore !== null ? row.roundScore.toFixed(1) : '-' %></td>
-                                <td><%= row.daysInspected %></td>
+                                <td><%= row.stallCount %> ล็อค</td>
+                                <% if (!selectedDay) { %><td><%= row.daysInspected %></td><% } %>
                                 <td>
                                     <% if (row.isBlacklisted) { %>
                                     <span class="badge badge-danger">Blacklist</span>
@@ -135,6 +149,20 @@
 
         <% if (report) { %>
         <script>
+            const dateFilterSelect = document.getElementById('dateFilterSelect');
+            if (dateFilterSelect) {
+                dateFilterSelect.addEventListener('change', () => {
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('round', <%= roundNumber %>);
+                    if (dateFilterSelect.value) {
+                        params.set('date', dateFilterSelect.value);
+                    } else {
+                        params.delete('date');
+                    }
+                    window.location.href = `/staff/marketinspection/report?${params.toString()}`;
+                });
+            }
+
             const dailyOverview = <%- JSON.stringify(report.dailyOverview) %>;
             const issueCounts = <%- JSON.stringify(report.issueCounts) %>;
 

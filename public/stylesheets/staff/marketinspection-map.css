@@ -84,7 +84,7 @@
 .insp-ov-zone-canvas {
     position: relative;
     width: 100%;
-    height: 150px;
+    height: 230px;
     background: #fff;
     border: 1px solid var(--line);
     border-radius: var(--border-radius);
@@ -100,6 +100,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     transition: var(--transition);
 }
 
@@ -128,19 +129,15 @@
     pointer-events: none;
 }
 
-.insp-ov-zone-A { top: 8%; left: 2%; width: 23%; height: 78%; }
-.insp-ov-zone-E { top: 8%; left: 27%; width: 17%; height: 10%; }
-.insp-ov-zone-F { top: 20%; left: 27%; width: 18%; height: 66%; }
-.insp-ov-zone-D { top: 8%; left: 47%; width: 17%; height: 10%; }
-.insp-ov-zone-X { top: 8%; left: 64%; width: 15%; height: 10%; }
-.insp-ov-zone-B { top: 20%; left: 47%; width: 49%; height: 66%; }
-.insp-ov-zone-C { top: 88%; left: 2%; width: 23%; height: 9%; }
-.insp-ov-zone-E .insp-ov-zone-title,
-.insp-ov-zone-D .insp-ov-zone-title,
-.insp-ov-zone-X .insp-ov-zone-title,
-.insp-ov-zone-C .insp-ov-zone-title {
-    font-size: 11px;
-}
+/* E/D/X/C ขยายให้สูงขึ้นกว่าสัดส่วนจริง (เดิม 9-10%) เพื่อให้กดง่ายขึ้นบนหน้าจอ — เป็น widget ย่อสำหรับ
+   คลิกสลับดูโซนเท่านั้น ไม่ต้องยึดสัดส่วนจริงเป๊ะเหมือนผังจัดล็อคของแอดมิน จึงปรับเพื่อ usability ได้ */
+.insp-ov-zone-A { top: 8%; left: 2%; width: 23%; height: 72%; }
+.insp-ov-zone-E { top: 8%; left: 27%; width: 17%; height: 18%; }
+.insp-ov-zone-F { top: 28%; left: 27%; width: 18%; height: 58%; }
+.insp-ov-zone-D { top: 8%; left: 47%; width: 17%; height: 18%; }
+.insp-ov-zone-X { top: 8%; left: 64%; width: 15%; height: 18%; }
+.insp-ov-zone-B { top: 28%; left: 47%; width: 49%; height: 58%; }
+.insp-ov-zone-C { top: 82%; left: 2%; width: 23%; height: 16%; }
 
 .insp-ov-zone-block.is-empty {
     cursor: default;
@@ -448,10 +445,17 @@
     }
 
     .insp-ov-zone-canvas {
-        height: 220px;
+        height: 250px;
     }
 
     .insp-ov-zone-title {
         font-size: 10px;
+    }
+
+    .insp-ov-zone-E .insp-ov-zone-title,
+    .insp-ov-zone-D .insp-ov-zone-title,
+    .insp-ov-zone-X .insp-ov-zone-title,
+    .insp-ov-zone-C .insp-ov-zone-title {
+        font-size: 9px;
     }
 }

@@ -1,6 +1,8 @@
 const prisma = require('../config/prismaClient');
 const { electricExcessInputSchema, inspectionCheckInputSchema, stallIssueInputSchema } = require('../utils/validationSchemas');
 const { buildZonesData } = require('./marketController');
+const { toStartOfDay, getBookingRoundMetaForDate } = require('../utils/bookingRound');
+const { toDateKey } = require('../utils/inspectionScoring');
 
 // ต้องตรงกับค่าที่ routes/sellerRoute.js ใช้คิดเงินเครื่องใช้ไฟฟ้าตอนจอง (คนละจุดโดยเจตนา)
 const SMALL_APPLIANCE_PRICE = 20;
@@ -87,6 +89,16 @@ async function isStallPaidAndBooked(stallCode) {
     });
 
     return candidates.some((request) => parseStallCodes(request.assignedStallCode).includes(normalizedCode));
+}
+
+// หน้าต่างแก้ไข 24 ชม. — ให้ "ตรวจทุกวัน" ทำงานได้จริง: ถ้าเร็คอร์ดล่าสุดของล็อคนี้เป็นของวันก่อนหน้า
+// (คนละวันปฏิทินกับวันนี้) ถือเป็นการตรวจรอบใหม่ของวันนี้เสมอ ไม่ต้องเช็คเวลา — เช็ค 24 ชม. แบบ rolling
+// เฉพาะกรณีเร็คอร์ดล่าสุดเป็นของ "วันนี้" เท่านั้น (กันแก้ของเก่าข้ามวันแบบไม่มีที่สิ้นสุด)
+function isWithinEditWindow(latestRecordCreatedAt) {
+    if (!latestRecordCreatedAt) return true;
+    const sameDay = toDateKey(new Date(latestRecordCreatedAt)) === toDateKey(new Date());
+    if (!sameDay) return true;
+    return (Date.now() - new Date(latestRecordCreatedAt).getTime()) < 24 * 60 * 60 * 1000;
 }
 
 function parseStallNumber(stallCode) {
@@ -307,9 +319,12 @@ exports.getMarketInspectionPage = async (req, res) => {
             };
         });
 
+        // คำนวณรอบปัจจุบันจริงด้วย getBookingRoundMetaForDate เหมือนหน้ารายงาน/คะแนนร้านค้า
+        // (เดิม hardcode ข้อความ "รอบที่ 45" ไว้ตรงๆ ทำให้เลขรอบไม่ตรงกับหน้ารายงานที่คำนวณจริง)
+        const currentRoundNumberForLabel = getBookingRoundMetaForDate(new Date()).roundNumber;
         return res.render('staff/marketinspection', {
             user: req.user,
-            inspectionRoundLabel: req.query.round || 'งานตรวจตลาดรอบที่ 45',
+            inspectionRoundLabel: `งานตรวจตลาดรอบที่ ${currentRoundNumberForLabel}`,
             inspectionDateLabel: new Date().toLocaleDateString('th-TH', {
                 day: '2-digit',
                 month: 'long',
@@ -368,6 +383,15 @@ exports.saveElectricExcess = async (req, res) => {
             return res.status(400).json({ success: false, message: 'บันทึกได้เฉพาะล็อคที่มีการจองอยู่เท่านั้น' });
         }
 
+        const latestExcess = await prisma.stallElectricExcessRecord.findFirst({
+            where: { stallId: stall.id },
+            orderBy: { createdAt: 'desc' },
+            select: { createdAt: true }
+        });
+        if (!isWithinEditWindow(latestExcess?.createdAt)) {
+            return res.status(400).json({ success: false, message: 'เกินเวลาที่แก้ไขได้แล้ว (24 ชม.)' });
+        }
+
         const subtotal = (smallCount * SMALL_APPLIANCE_PRICE) + (largeCount * LARGE_APPLIANCE_PRICE);
 
         const record = await prisma.stallElectricExcessRecord.create({
@@ -424,6 +448,15 @@ exports.saveInspectionCheck = async (req, res) => {
             return res.status(400).json({ success: false, message: 'บันทึกได้เฉพาะล็อคที่มีการจองอยู่เท่านั้น' });
         }
 
+        const latestCheck = await prisma.stallInspectionCheckRecord.findFirst({
+            where: { stallId: stall.id },
+            orderBy: { createdAt: 'desc' },
+            select: { createdAt: true }
+        });
+        if (!isWithinEditWindow(latestCheck?.createdAt)) {
+            return res.status(400).json({ success: false, message: 'เกินเวลาที่แก้ไขได้แล้ว (24 ชม.)' });
+        }
+
         await prisma.stallInspectionCheckRecord.create({
             data: {
                 stallId: stall.id,
@@ -465,6 +498,15 @@ exports.saveStallIssue = async (req, res) => {
             return res.status(400).json({ success: false, message: 'บันทึกได้เฉพาะล็อคที่มีการจองอยู่เท่านั้น' });
         }
 
+        const latestIssue = await prisma.stallIssueRecord.findFirst({
+            where: { stallId: stall.id },
+            orderBy: { createdAt: 'desc' },
+            select: { createdAt: true }
+        });
+        if (!isWithinEditWindow(latestIssue?.createdAt)) {
+            return res.status(400).json({ success: false, message: 'เกินเวลาที่แก้ไขได้แล้ว (24 ชม.)' });
+        }
+
         const record = await prisma.stallIssueRecord.create({
             data: {
                 stallId: stall.id,
@@ -491,5 +533,44 @@ exports.saveStallIssue = async (req, res) => {
     } catch (error) {
         console.error('Save stall issue error:', error);
         return res.status(500).json({ success: false, message: 'บันทึกไม่สำเร็จ กรุณาลองใหม่' });
+    }
+};
+
+// "ส่งงาน" ตรวจตลาดรายวัน แยกตามพนักงานแต่ละคน — เป็นแค่หลักฐาน/สรุปยอด ณ เวลาที่ส่ง ไม่ใช่ hard lock
+// (ยังกลับมาแก้ไข checkbox ของวันนั้นได้ตามหน้าต่าง 24 ชม. ปกติ ดู isWithinEditWindow)
+// คำนวณ inspectedCount/totalCount จากฝั่งเซิร์ฟเวอร์เองเสมอ ไม่เชื่อค่าที่ client ส่งมา
+exports.submitDay = async (req, res) => {
+    try {
+        // นับเฉพาะล็อคที่เปิดให้ตรวจได้จริง (มีการจองและชำระเงินแล้ว) ตรงกับ inspectionEnabled บนหน้า
+        const stallRows = await prisma.stall.findMany({ select: { id: true, stallCode: true } });
+        const bookedFlags = await Promise.all(stallRows.map((stall) => isStallPaidAndBooked(stall.stallCode)));
+        const bookedStallIds = stallRows.filter((_, idx) => bookedFlags[idx]).map((stall) => stall.id);
+
+        const totalCount = bookedStallIds.length;
+
+        let inspectedCount = 0;
+        if (bookedStallIds.length) {
+            const latestChecks = await prisma.stallInspectionCheckRecord.findMany({
+                where: { stallId: { in: bookedStallIds } },
+                orderBy: { createdAt: 'desc' }
+            });
+            const latestByStallId = new Map();
+            latestChecks.forEach((record) => {
+                if (!latestByStallId.has(record.stallId)) latestByStallId.set(record.stallId, record);
+            });
+            inspectedCount = Array.from(latestByStallId.values()).filter((record) => record.isInspected).length;
+        }
+
+        const submissionDate = toStartOfDay(new Date());
+        await prisma.dailyInspectionSubmission.upsert({
+            where: { submissionDate_submittedById: { submissionDate, submittedById: req.user.id } },
+            update: { inspectedCount, totalCount },
+            create: { submissionDate, submittedById: req.user.id, inspectedCount, totalCount }
+        });
+
+        return res.json({ success: true, inspectedCount, totalCount });
+    } catch (error) {
+        console.error('Submit inspection day error:', error);
+        return res.status(500).json({ success: false, message: 'ส่งงานไม่สำเร็จ กรุณาลองใหม่' });
     }
 };
