@@ -214,22 +214,25 @@ async function buildScoredEntries(rangeStart, rangeEnd) {
 }
 
 // สร้างรายงานของ "หนึ่งรอบ" — ใช้ทั้งหน้ารายงาน (staff/inspection-report) และตัว export .xlsx
-async function buildRoundReport(roundNumber) {
+// selectedDateKey (optional, 'YYYY-MM-DD'): ถ้าระบุ จะกรองคะแนนร้านค้า/สรุปปัญหาให้เหลือแค่วันนั้นวันเดียว
+// แทนการเฉลี่ยทั้งรอบ (ใช้ให้หน้ารายงานสลับดูได้ทั้งแบบรอบและรายวัน)
+async function buildRoundReport(roundNumber, selectedDateKey = null) {
     const { cycleStart, cycleEnd } = getRoundWindow(roundNumber);
     const { scored, occupancy } = await buildScoredEntries(cycleStart, cycleEnd);
 
     const today = toStartOfDay(new Date());
     const todayKey = toDateKey(today);
-    const todayStallSet = new Set(
-        occupancy.filter((entry) => entry.dateKey === todayKey).map((entry) => entry.stallCode)
+    const progressDateKey = selectedDateKey || todayKey;
+    const progressDateSet = new Set(
+        occupancy.filter((entry) => entry.dateKey === progressDateKey).map((entry) => entry.stallCode)
     );
-    const todayInspectedSet = new Set(
-        scored.filter((entry) => entry.dateKey === todayKey).map((entry) => entry.stallCode)
+    const progressInspectedSet = new Set(
+        scored.filter((entry) => entry.dateKey === progressDateKey).map((entry) => entry.stallCode)
     );
     const inspectionProgressToday = {
-        total: todayStallSet.size,
-        inspected: todayInspectedSet.size,
-        isComplete: todayStallSet.size > 0 && todayInspectedSet.size >= todayStallSet.size
+        total: progressDateSet.size,
+        inspected: progressInspectedSet.size,
+        isComplete: progressDateSet.size > 0 && progressInspectedSet.size >= progressDateSet.size
     };
 
     // เฉลี่ยคะแนนของร้าน ต่อวัน (ถ้าร้านมีหลายล็อกวันเดียวกัน เฉลี่ยก่อนเป็นคะแนนรายวันของร้าน)
@@ -262,11 +265,16 @@ async function buildRoundReport(roundNumber) {
     });
 
     // คะแนนรอบต่อร้าน (เฉลี่ยคะแนนรายวันของร้านนั้น เฉพาะวันที่มีข้อมูล)
+    // stallCodesByDate: ร้านหนึ่งอาจมีหลายล็อคพร้อมกัน — เก็บไว้แสดง "จำนวนล็อค" ต่อแถว กันสับสนว่าทำไมร้านเดียว
+    // ครอบคลุมหลายล็อคที่ถูกตรวจ (คะแนนยังคงเฉลี่ยเป็นคะแนนเดียวต่อร้านต่อวันเหมือนเดิม ไม่แยกเป็นหลายแถว)
     const sellerRoundMap = new Map();
     scored.forEach((entry) => {
         if (!sellerRoundMap.has(entry.sellerId)) {
-            sellerRoundMap.set(entry.sellerId, { seller: entry.seller, dayScoresByDate: new Map() });
+            sellerRoundMap.set(entry.sellerId, { seller: entry.seller, dayScoresByDate: new Map(), stallCodesByDate: new Map() });
         }
+        const stallCodesByDate = sellerRoundMap.get(entry.sellerId).stallCodesByDate;
+        if (!stallCodesByDate.has(entry.dateKey)) stallCodesByDate.set(entry.dateKey, new Set());
+        stallCodesByDate.get(entry.dateKey).add(entry.stallCode);
     });
     sellerDayAverage.forEach((value, key) => {
         const [sellerIdText, dateKey] = key.split('|');
@@ -275,22 +283,39 @@ async function buildRoundReport(roundNumber) {
         sellerRoundMap.get(sellerId).dayScoresByDate.set(dateKey, value);
     });
 
+    // แบบทั้งรอบ: เฉลี่ยคะแนนทุกวันที่มีข้อมูลของร้านนั้น / แบบรายวัน: ใช้คะแนนเฉพาะวันที่เลือกวันเดียว
+    // (ร้านที่ไม่มีข้อมูลของวันนั้นจะไม่ถูกนับ ไม่ใช่ได้ 0 คะแนน — สอดคล้องกับ "ไม่มีข้อมูล" ของ scored)
     const sellerRows = Array.from(sellerRoundMap.entries()).map(([sellerId, info]) => {
+        if (selectedDateKey) {
+            if (!info.dayScoresByDate.has(selectedDateKey)) return null;
+            return {
+                sellerId,
+                sellerName: sellerDisplayName(info.seller),
+                isBlacklisted: Boolean(info.seller?.isBlacklisted),
+                daysInspected: 1,
+                stallCount: (info.stallCodesByDate.get(selectedDateKey) || new Set()).size,
+                roundScore: info.dayScoresByDate.get(selectedDateKey)
+            };
+        }
         const dayValues = Array.from(info.dayScoresByDate.values());
+        const allStallCodes = new Set();
+        info.stallCodesByDate.forEach((codes) => codes.forEach((code) => allStallCodes.add(code)));
         return {
             sellerId,
             sellerName: sellerDisplayName(info.seller),
             isBlacklisted: Boolean(info.seller?.isBlacklisted),
             daysInspected: dayValues.length,
+            stallCount: allStallCodes.size,
             roundScore: average(dayValues)
         };
-    }).sort((a, b) => (a.roundScore ?? 101) - (b.roundScore ?? 101));
+    }).filter(Boolean).sort((a, b) => (a.roundScore ?? 101) - (b.roundScore ?? 101));
 
-    // สรุปจำนวนครั้งที่พบปัญหาแต่ละประเภททั้งรอบ (สำหรับกราฟแท่ง)
+    // สรุปจำนวนครั้งที่พบปัญหาแต่ละประเภท — ทั้งรอบ หรือเฉพาะวันที่เลือก
+    const scopedEntries = selectedDateKey ? scored.filter((entry) => entry.dateKey === selectedDateKey) : scored;
     const issueCounts = { noShow: 0, sublease: 0, otherMarket: 0, wrongSeller: 0, otherIssueNote: 0 };
     let electricSmallTotal = 0;
     let electricLargeTotal = 0;
-    scored.forEach((entry) => {
+    scopedEntries.forEach((entry) => {
         if (entry.issue?.noShow) issueCounts.noShow += 1;
         if (entry.issue?.sublease) issueCounts.sublease += 1;
         if (entry.issue?.otherMarket) issueCounts.otherMarket += 1;
@@ -306,6 +331,8 @@ async function buildRoundReport(roundNumber) {
         roundNumber,
         cycleStart,
         cycleEnd,
+        selectedDateKey,
+        todayKey,
         inspectionProgressToday,
         dailyOverview,
         sellerRows,
@@ -378,19 +405,27 @@ async function buildSellerScoreIndex() {
     return result;
 }
 
+// รับค่า ?date=YYYY-MM-DD จาก query — คืนค่าเฉพาะรูปแบบที่ถูกต้อง วันที่นอกรอบจะแค่ไม่มีข้อมูลให้แสดง (graceful)
+function parseDateKeyParam(value) {
+    const text = String(value || '').trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+}
+
 exports.getStaffReportPage = async (req, res) => {
     const currentRoundNumber = getBookingRoundMetaForDate(new Date()).roundNumber;
     const requestedRound = Number.parseInt(req.query.round, 10);
     const roundNumber = Number.isFinite(requestedRound) ? requestedRound : currentRoundNumber;
+    const selectedDateKey = parseDateKeyParam(req.query.date);
 
     try {
-        const report = await buildRoundReport(roundNumber);
+        const report = await buildRoundReport(roundNumber, selectedDateKey);
 
         return res.render('staff/inspection-report', {
             user: req.user,
             report,
             roundNumber,
-            currentRoundNumber
+            currentRoundNumber,
+            selectedDateKey
         });
     } catch (error) {
         console.error('Staff inspection report error:', error);
@@ -399,6 +434,7 @@ exports.getStaffReportPage = async (req, res) => {
             report: null,
             roundNumber,
             currentRoundNumber,
+            selectedDateKey,
             error: 'ไม่สามารถโหลดรายงานได้'
         });
     }
@@ -409,7 +445,8 @@ exports.exportStaffReportExcel = async (req, res) => {
         const currentRoundNumber = getBookingRoundMetaForDate(new Date()).roundNumber;
         const requestedRound = Number.parseInt(req.query.round, 10);
         const roundNumber = Number.isFinite(requestedRound) ? requestedRound : currentRoundNumber;
-        const report = await buildRoundReport(roundNumber);
+        const selectedDateKey = parseDateKeyParam(req.query.date);
+        const report = await buildRoundReport(roundNumber, selectedDateKey);
 
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Kangsadan Night Market';
@@ -433,7 +470,8 @@ exports.exportStaffReportExcel = async (req, res) => {
         const sellerSheet = workbook.addWorksheet('คะแนนรายร้าน');
         sellerSheet.columns = [
             { header: 'ร้านค้า', key: 'sellerName', width: 28 },
-            { header: 'คะแนนรอบนี้', key: 'roundScore', width: 14 },
+            { header: 'คะแนน', key: 'roundScore', width: 14 },
+            { header: 'จำนวนล็อค', key: 'stallCount', width: 14 },
             { header: 'จำนวนวันที่ตรวจ', key: 'daysInspected', width: 16 },
             { header: 'สถานะ', key: 'status', width: 16 }
         ];
@@ -441,6 +479,7 @@ exports.exportStaffReportExcel = async (req, res) => {
             sellerSheet.addRow({
                 sellerName: row.sellerName,
                 roundScore: row.roundScore !== null ? Number(row.roundScore.toFixed(1)) : '-',
+                stallCount: row.stallCount,
                 daysInspected: row.daysInspected,
                 status: row.isBlacklisted ? 'ถูก Blacklist' : 'ปกติ'
             });
@@ -463,8 +502,9 @@ exports.exportStaffReportExcel = async (req, res) => {
         ]);
         summarySheet.getRow(1).font = { bold: true };
 
+        const filenameSuffix = selectedDateKey ? `round-${roundNumber}-${selectedDateKey}` : `round-${roundNumber}`;
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename="inspection-report-round-${roundNumber}.xlsx"`);
+        res.setHeader('Content-Disposition', `attachment; filename="inspection-report-${filenameSuffix}.xlsx"`);
 
         await workbook.xlsx.write(res);
         res.end();
@@ -477,23 +517,35 @@ exports.exportStaffReportExcel = async (req, res) => {
 exports.getSellerScoresPage = async (req, res) => {
     const isAdmin = req.user.role === 'ADMIN';
     const templateName = isAdmin ? 'admin/seller-scores' : 'staff/seller-scores';
+    const basePath = isAdmin ? '/admin/sellers/scores' : '/staff/seller-scores';
+    const currentRoundNumber = getBookingRoundMetaForDate(new Date()).roundNumber;
+    const requestedRound = Number.parseInt(req.query.round, 10);
+    const roundNumber = Number.isFinite(requestedRound) ? requestedRound : currentRoundNumber;
 
     try {
         const scoreIndex = await buildSellerScoreIndex();
-        const rows = Array.from(scoreIndex.entries()).map(([userId, info]) => ({
-            userId,
-            sellerName: sellerDisplayName(info.seller),
-            isBlacklisted: Boolean(info.seller?.isBlacklisted),
-            blacklistReason: info.seller?.blacklistReason || '',
-            cumulativeScore: info.cumulativeScore,
-            latestRoundScore: info.latestRoundScore,
-            roundsCount: info.rounds.length
-        })).sort((a, b) => (a.cumulativeScore ?? 101) - (b.cumulativeScore ?? 101));
+        const rows = Array.from(scoreIndex.entries()).map(([userId, info]) => {
+            // คะแนน "รอบที่เลือก" ดูอยู่ — ไม่มีข้อมูลถ้าร้านนั้นไม่ได้ขาย/ไม่ถูกตรวจในรอบนี้
+            const selectedRound = info.rounds.find((round) => round.roundNumber === roundNumber) || null;
+            return {
+                userId,
+                sellerName: sellerDisplayName(info.seller),
+                isBlacklisted: Boolean(info.seller?.isBlacklisted),
+                blacklistReason: info.seller?.blacklistReason || '',
+                selectedRoundScore: selectedRound,
+                cumulativeScore: info.cumulativeScore,
+                latestRoundScore: info.latestRoundScore,
+                roundsCount: info.rounds.length
+            };
+        }).sort((a, b) => (a.selectedRoundScore?.score ?? a.cumulativeScore ?? 101) - (b.selectedRoundScore?.score ?? b.cumulativeScore ?? 101));
 
         return res.render(templateName, {
             user: req.user,
             rows,
             isAdmin,
+            roundNumber,
+            currentRoundNumber,
+            basePath,
             error: req.query.error || null,
             success: req.query.success || null
         });
@@ -503,6 +555,9 @@ exports.getSellerScoresPage = async (req, res) => {
             user: req.user,
             rows: [],
             isAdmin,
+            roundNumber,
+            currentRoundNumber,
+            basePath,
             error: 'ไม่สามารถโหลดคะแนนร้านค้าได้',
             success: null
         });

@@ -164,6 +164,9 @@
                                     data-search="<%= `${req.location} ${req.category} ${req.sellerName} ${req.phone}`.toLowerCase() %>">
                                     <td class="ps-4">
                                         <div class="fw-bold text-dark"><%= req.location %></div>
+                                        <% if (req.stallInfo) { %>
+                                        <div class="small text-muted stall-meta">(โซน <%= req.stallInfo.zoneName || req.stallInfo.zoneCode %> / แถว <%= req.stallInfo.rowCode %>)</div>
+                                        <% } %>
                                         <div class="small text-muted"><%= req.category %></div>
                                     </td>
                                     <td>
@@ -202,6 +205,7 @@
                                             data-status="<%= req.status %>"
                                             data-status-label="<%= req.statusLabel %>"
                                             data-image="<%= req.image || '' %>"
+                                            data-stall-info="<%= req.stallInfo ? `โซน ${req.stallInfo.zoneName || req.stallInfo.zoneCode} / แถว ${req.stallInfo.rowCode}` : '' %>"
                                             data-assigned="<%= req.assignedToName || 'ยังไม่มีผู้รับเรื่อง' %>"
                                             data-updated="<%= req.updatedAtText %>"
                                             data-reject-reason="<%= req.rejectReason || '' %>"
@@ -279,6 +283,9 @@
                     <div class="request-card-head">
                         <div>
                             <h6 class="mb-1 fw-bold"><%= req.location %></h6>
+                            <% if (req.stallInfo) { %>
+                            <small class="text-muted d-block stall-meta">(โซน <%= req.stallInfo.zoneName || req.stallInfo.zoneCode %> / แถว <%= req.stallInfo.rowCode %>)</small>
+                            <% } %>
                             <small class="text-muted"><%= req.category %></small>
                         </div>
                         <span
@@ -314,6 +321,7 @@
                         data-status="<%= req.status %>"
                         data-status-label="<%= req.statusLabel %>"
                         data-image="<%= req.image || '' %>"
+                        data-stall-info="<%= req.stallInfo ? `โซน ${req.stallInfo.zoneName || req.stallInfo.zoneCode} / แถว ${req.stallInfo.rowCode}` : '' %>"
                         data-assigned="<%= req.assignedToName || 'ยังไม่มีผู้รับเรื่อง' %>"
                         data-updated="<%= req.updatedAtText %>"
                         data-reject-reason="<%= req.rejectReason || '' %>">
@@ -394,6 +402,8 @@
                         <dl class="row mb-0">
                             <dt class="col-4 text-muted">พื้นที่</dt>
                             <dd class="col-8" id="detailLocation"></dd>
+                            <dt class="col-4 text-muted d-none" id="detailStallInfoLabel">ตำแหน่งจริง</dt>
+                            <dd class="col-8 d-none" id="detailStallInfo"></dd>
                             <dt class="col-4 text-muted">ผู้แจ้ง</dt>
                             <dd class="col-8" id="detailRequester"></dd>
                             <dt class="col-4 text-muted">หมวดหมู่</dt>

@@ -36,6 +36,8 @@ const storage = multer.diskStorage({
     }
 });
 
+const REPAIR_MAX_IMAGES = 5;
+
 const upload = multer({
     storage: storage,
     fileFilter: (req, file, cb) => {
@@ -46,7 +48,7 @@ const upload = multer({
             cb(new Error('ประเภทไฟล์ไม่ถูกต้อง'), false);
         }
     },
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+    limits: { fileSize: 5 * 1024 * 1024, files: REPAIR_MAX_IMAGES } // 5MB/ไฟล์, สูงสุด 5 รูป/รายการ
 });
 
 // โฟลเดอร์เก็บสลิปโอนเงินยืนยันการจอง
@@ -507,6 +509,7 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
     const stallLabel = latestBooking.slot?.slotNumber || null;
     const lockMention = stallLabel ? `ล็อก ${stallLabel}` : 'ล็อกของคุณ';
     const zoneLabel = latestBooking.zoneCode ? `โซน ${latestBooking.zoneCode}` : 'ที่แจ้งไว้';
+    const receiptRequestId = extractBookingRequestId(latestBooking.storeDetailSnapshot);
 
     const slipRejectedEntry = buildSlipRejectedReminderEntry(latestBooking, status);
 
@@ -593,7 +596,8 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
         },
         // การ์ดแจ้งว่าใบเสร็จ/ใบกำกับภาษีพร้อมแล้ว — โผล่เฉพาะตอนจ่ายเงินสำเร็จจริง (มีใบเสร็จให้ดูที่ /receipts/:id แล้ว)
         // type: 'success-receipt' ตรงกับไอคอน bi-file-earmark-text ที่ map ไว้ใน public/js/seller/statusbook.js อยู่แล้ว
-        ...(status === 'SUCCESS' ? [{
+        // ลิงก์ต้องใช้ BookingRequest.id (คนละ sequence กับ Booking.id) เหมือนที่หน้าประวัติการจองดึงผ่าน extractBookingRequestId
+        ...(status === 'SUCCESS' && receiptRequestId ? [{
             id: 4,
             type: 'success-receipt',
             title: 'ใบเสร็จพร้อมแล้ว',
@@ -601,7 +605,7 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
             date: formatDateThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             time: formatTimeThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             status: 'SUCCESS',
-            link: `/receipts/${latestBooking.id}`
+            link: `/receipts/${receiptRequestId}`
         }] : [])
     ];
 
@@ -1059,6 +1063,36 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
     });
 });
 
+// รหัสล็อคที่ผู้ขายกำลังใช้งานอยู่จริง — เดินตามเส้นทางเดียวกับที่ scoreReportController.js/approvalController.js
+// ใช้กันทั้งระบบ: Booking(SUCCESS).storeDetailSnapshot -> [BOOKING_REQUEST_ID:x] -> BookingRequest.assignedStallCode
+// (ไม่ใช้ BookingItem/Stall เพราะ BookingItem ไม่เคยถูกเติมข้อมูลจริงในระบบนี้)
+async function getActiveStallCodesForUser(userId) {
+    const activeBookings = await prisma.booking.findMany({
+        where: { userId, status: 'SUCCESS' },
+        select: { storeDetailSnapshot: true }
+    });
+
+    const requestIds = Array.from(new Set(
+        activeBookings
+            .map((b) => extractBookingRequestId(b.storeDetailSnapshot))
+            .filter(Boolean)
+    ));
+
+    if (!requestIds.length) return [];
+
+    const requests = await prisma.bookingRequest.findMany({
+        where: { id: { in: requestIds } },
+        select: { assignedStallCode: true }
+    });
+
+    const codes = requests.flatMap((r) => String(r.assignedStallCode || '')
+        .split(',')
+        .map((code) => code.trim().toUpperCase())
+        .filter(Boolean));
+
+    return Array.from(new Set(codes));
+}
+
 // --- 1. หน้าแจ้งซ่อม ---
 router.get("/repair", isAuthenticated, async (req, res) => {
     const user = await prisma.user.findUnique({
@@ -1066,12 +1100,15 @@ router.get("/repair", isAuthenticated, async (req, res) => {
     });
     const reports = await prisma.maintenanceReport.findMany({
         where: { userId: req.user.id },
-        include: { assignedTo: { select: { name: true } } },
+        include: { assignedTo: { select: { name: true } }, images: true },
         orderBy: { createdAt: 'desc' }
     });
+    const activeStallCodes = await getActiveStallCodesForUser(req.user.id);
     res.render("seller/repair", {
         user: user,
         reports: reports,
+        activeStallCodes: activeStallCodes,
+        maxImages: REPAIR_MAX_IMAGES,
         error: req.query.error || null,
         success: req.query.success || null
     });
@@ -1079,8 +1116,14 @@ router.get("/repair", isAuthenticated, async (req, res) => {
 
 // บันทึกแจ้งซ่อม (POST)
 router.post("/repair", isAuthenticated, (req, res) => {
-    upload.single('image')(req, res, async (err) => {
+    upload.array('images', REPAIR_MAX_IMAGES)(req, res, async (err) => {
         if (err) {
+            if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_COUNT') {
+                return res.redirect(`/repair?error=too_many_images`);
+            }
+            if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+                return res.redirect("/repair?error=file_too_large");
+            }
             return res.redirect("/repair?error=upload_failed");
         }
 
@@ -1091,15 +1134,15 @@ router.post("/repair", isAuthenticated, (req, res) => {
             }
             const { location, category, description } = parsed.data;
 
-            const imagePath = req.file ? `/uploads/repairs/${req.file.filename}` : null;
-
             await prisma.maintenanceReport.create({
                 data: {
                     location,
                     category,
                     description,
-                    image: imagePath,
-                    userId: req.user.id
+                    userId: req.user.id,
+                    images: {
+                        create: (req.files || []).map((f) => ({ imageUrl: `/uploads/repairs/${f.filename}` }))
+                    }
                 }
             });
             res.redirect("/repair?success=true");

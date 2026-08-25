@@ -14,10 +14,22 @@ exports.getRequestsPage = async (req, res) => {
         const reports = await prisma.maintenanceReport.findMany({
             include: {
                 user: { select: { name: true, phoneNumber: true } },
-                assignedTo: { select: { name: true } }
+                assignedTo: { select: { name: true } },
+                images: true
             },
             orderBy: { createdAt: 'desc' }
         });
+
+        // เชื่อมตำแหน่งล็อคที่แจ้ง (report.location) กับข้อมูลโซน/แถวจริงจาก Stall — รายงานเก่าที่เป็น
+        // free text ที่ไม่ตรงกับรหัสล็อคจริงจะหา stallInfo ไม่เจอ ก็แค่แสดง location แบบ raw text เหมือนเดิม
+        const locations = [...new Set(reports.map((r) => String(r.location || '').trim().toUpperCase()).filter(Boolean))];
+        const stallRows = locations.length
+            ? await prisma.stall.findMany({
+                where: { stallCode: { in: locations } },
+                include: { row: { include: { zone: true } } }
+            })
+            : [];
+        const stallByCode = new Map(stallRows.map((s) => [s.stallCode.toUpperCase(), s]));
 
         const requestRows = reports.map((report) => {
             const statusCode = String(report.status || 'PENDING').toUpperCase();
@@ -30,13 +42,20 @@ exports.getRequestsPage = async (req, res) => {
             };
             const createdAtText = new Date(report.createdAt).toLocaleString('th-TH', dateTimeOpts);
             const updatedAtText = new Date(report.updatedAt).toLocaleString('th-TH', dateTimeOpts);
+            const stall = stallByCode.get(String(report.location || '').trim().toUpperCase()) || null;
 
             return {
                 id: report.id,
                 location: report.location,
                 category: report.category,
                 description: report.description,
-                image: report.image,
+                // รายงานใหม่เก็บรูปในตาราง images (หลายรูป) รายงานเก่ายังมีแค่คอลัมน์ image เดี่ยว
+                image: report.images?.[0]?.imageUrl || report.image,
+                stallInfo: stall ? {
+                    zoneCode: stall.row?.zone?.code || null,
+                    zoneName: stall.row?.zone?.name || null,
+                    rowCode: stall.row?.rowCode || null
+                } : null,
                 sellerName: report.user?.name || 'ไม่ระบุ',
                 phone: report.user?.phoneNumber || '-',
                 status: statusCode,

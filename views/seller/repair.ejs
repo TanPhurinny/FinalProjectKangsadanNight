@@ -44,8 +44,11 @@
                 const errorMsg = {
                 'missing_fields': 'กรุณากรอกข้อมูลให้ครบถ้วน',
                 'upload_failed': 'อัปโหลดรูปภาพล้มเหลว กรุณาลองใหม่',
+                'too_many_images': `แนบรูปได้สูงสุด ${typeof maxImages !== 'undefined' ? maxImages : 5} รูปต่อรายการ`,
+                'file_too_large': 'ขนาดไฟล์ต้องไม่เกิน 5MB ต่อรูป',
                 'db_error': 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่'
                 }[errorParam] || null;
+                const stallCodes = typeof activeStallCodes !== 'undefined' ? activeStallCodes : [];
                 %>
 
                 <% if (successMsg) { %>
@@ -81,9 +84,16 @@
 
                         <div class="form-group">
                             <label>แผงที่ต้องการซ่อม</label>
-                            <input type="text" name="location"
-                                class="input-white"
-                                placeholder="เช่น A105, โซน F" required>
+                            <select id="locationSelect" class="input-white" required>
+                                <option value disabled <%= stallCodes.length ? 'selected' : '' %>>เลือกล็อคที่ต้องการแจ้งซ่อม...</option>
+                                <% stallCodes.forEach(function(code) { %>
+                                <option value="<%= code %>"><%= code %></option>
+                                <% }); %>
+                                <option value="__OTHER__" <%= stallCodes.length ? '' : 'selected' %>>อื่นๆ (ระบุเอง)</option>
+                            </select>
+                            <input type="text" id="locationOther"
+                                class="input-white" style="margin-top: 8px; display:none;"
+                                placeholder="ระบุตำแหน่งล็อค เช่น A105, โซน F">
                         </div>
 
                         <div class="form-group">
@@ -109,14 +119,12 @@
                     </div>
 
                     <div class="form-group full-width">
-                        <label>แนบรูปภาพเพิ่มเติม</label>
-                        <div class="upload-wrapper">
-                            <label for="imageUpload" class="upload-box"
-                                id="uploadLabel">
-                                <img id="imagePreview" src alt="Preview">
-                            </label>
-                            <input type="file" name="image" id="imageUpload"
-                                class="upload-input" accept="image/*">
+                        <label>แนบรูปภาพเพิ่มเติม (สูงสุด <%= typeof maxImages !== 'undefined' ? maxImages : 5 %> รูป)</label>
+                        <div class="upload-wrapper" id="uploadWrapper">
+                            <label for="imageUpload" class="upload-box" id="uploadLabel"></label>
+                            <input type="file" name="images" id="imageUpload"
+                                class="upload-input" accept="image/*" multiple
+                                data-max="<%= typeof maxImages !== 'undefined' ? maxImages : 5 %>">
                         </div>
                     </div>
 
@@ -130,7 +138,7 @@
                 <script>
                     // รีเซ็ตฟอร์มเมื่อสำเร็จ
                     document.querySelector('form').reset();
-                    document.getElementById('imagePreview').style.display = 'none';
+                    if (window.clearRepairImageSelection) window.clearRepairImageSelection();
                 </script>
                 <% } %>
             </div>
@@ -148,9 +156,13 @@
 
                 <% if (typeof reports !== 'undefined' && reports.length > 0) { %>
                 <div class="history-list">
-                    <% reports.forEach(function(report) { %>
+                    <% reports.forEach(function(report) {
+                        const reportImages = (report.images && report.images.length)
+                            ? report.images.map(function(img) { return img.imageUrl; })
+                            : (report.image ? [report.image] : []);
+                    %>
                     <div class="history-item" onclick="openDetailModal(this)"
-                        data-image="<%= report.image || '' %>"
+                        data-images="<%= reportImages.join(',') %>"
                         data-location="<%= report.location %>"
                         data-category="<%= report.category %>"
                         data-description="<%= report.description %>"
@@ -159,10 +171,15 @@
                         data-date="<%= new Date(report.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) %>"
                         data-assigned="<%= report.assignedTo ? report.assignedTo.name : 'ยังไม่มีเจ้าหน้าที่รับเรื่อง' %>"
                         data-reject-reason="<%= report.rejectReason || '' %>">
-                        <% if (report.image) { %>
-                        <img class="history-thumb" src="<%= report.image %>"
-                            alt="รูปแจ้งซ่อม"
-                            onclick="event.stopPropagation(); openLightbox('<%= report.image %>')">
+                        <% if (reportImages.length) { %>
+                        <div class="history-thumb-wrap">
+                            <img class="history-thumb" src="<%= reportImages[0] %>"
+                                alt="รูปแจ้งซ่อม"
+                                onclick="event.stopPropagation(); openLightbox('<%= reportImages[0] %>')">
+                            <% if (reportImages.length > 1) { %>
+                            <span class="history-thumb-count">+<%= reportImages.length - 1 %></span>
+                            <% } %>
+                        </div>
                         <% } else { %>
                         <div class="history-thumb-empty"><i
                                 class="fa-solid fa-image"></i></div>
@@ -207,9 +224,7 @@
                 <button class="detail-close"
                     onclick="closeDetailModal(event)">&times;</button>
 
-                <img id="detailImage" class="detail-image" src
-                    alt="รูปแจ้งซ่อม" style="display: none;"
-                    onclick="openLightbox(this.src)">
+                <div id="detailImageGallery" class="detail-image-gallery" style="display: none;"></div>
                 <div id="detailImageEmpty" class="detail-image-empty"
                     style="display: none;"><i
                         class="fa-solid fa-image"></i></div>

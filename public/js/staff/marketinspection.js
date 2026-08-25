@@ -166,6 +166,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 checkbox.checked = !isInspected; // การบันทึกล้มเหลว: คืนค่าเดิมให้ตรงกับสิ่งที่บันทึกจริงใน DB
                 console.error(error);
+                if (window.showAlertDialog) {
+                    window.showAlertDialog({ title: 'บันทึกไม่สำเร็จ', message: error.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่', tone: 'danger' });
+                }
             } finally {
                 checkbox.disabled = false;
                 if (row) row.classList.toggle('is-inspected', checkbox.checked);
@@ -378,5 +381,47 @@ document.addEventListener('DOMContentLoaded', () => {
     if (excessBackdrop) excessBackdrop.addEventListener('click', closeExcessPanel);
 
     applyFilter();
+
+    // --- ปุ่ม "ส่งงาน" ตรวจตลาดรายวัน — popup ยืนยันสรุปยอดตรวจแล้ว/ทั้งหมด ก่อนส่งจริง ---
+    const submitDayBtn = document.getElementById('submitDayBtn');
+    if (submitDayBtn) {
+        submitDayBtn.addEventListener('click', () => {
+            const inspectedCount = inspectedCountEl ? inspectedCountEl.textContent : '0';
+            const totalCount = totalCountEl ? totalCountEl.textContent : '0';
+
+            if (!window.showConfirmDialog) return;
+            window.showConfirmDialog({
+                title: 'ยืนยันส่งงาน',
+                message: `ตรวจสำเร็จไปแล้ว ${inspectedCount} ร้าน / ทั้งหมด ${totalCount} ร้าน ยืนยันส่งงานตรวจตลาดวันนี้?`,
+                tone: 'success',
+                confirmText: 'ยืนยัน',
+                cancelText: 'ยกเลิก',
+                onConfirm: async () => {
+                    submitDayBtn.disabled = true;
+                    try {
+                        const response = await fetch('/staff/marketinspection/submit-day', { method: 'POST' });
+                        const payload = await response.json();
+                        if (!response.ok || !payload.success) {
+                            throw new Error(payload.message || 'ส่งงานไม่สำเร็จ');
+                        }
+                        if (window.showAlertDialog) {
+                            window.showAlertDialog({
+                                title: 'ส่งงานสำเร็จ',
+                                message: `บันทึกยอดตรวจวันนี้แล้ว: ${payload.inspectedCount} จาก ${payload.totalCount} ร้าน`,
+                                tone: 'success'
+                            });
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        if (window.showAlertDialog) {
+                            window.showAlertDialog({ title: 'ส่งงานไม่สำเร็จ', message: error.message || 'กรุณาลองใหม่', tone: 'danger' });
+                        }
+                    } finally {
+                        submitDayBtn.disabled = false;
+                    }
+                }
+            });
+        });
+    }
 });
 
