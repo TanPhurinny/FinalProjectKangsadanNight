@@ -230,14 +230,14 @@
 
                     <% bookingRequestsList.forEach(function(request) { %>
                         <%
-                        const openDetailArgs = `${JSON.stringify(request.productName || "-")}, ${JSON.stringify(request.zoneLabel || "-")}, ${JSON.stringify(request.sellerName || "-")}, ${JSON.stringify(request.phone || "-")}, ${JSON.stringify(request.statusLabel || "-")}, ${JSON.stringify(request.description || "-")}, ${request.id}, ${JSON.stringify(request.createdAtText || "-")}, ${JSON.stringify(request.status || "pending")}, ${JSON.stringify(request.productImage || "")}, ${JSON.stringify(request.assignedStallCode || "")}, ${JSON.stringify(request.paymentSlipImage || "")}, ${JSON.stringify(Boolean(request.paymentConfirmedAt))}, ${JSON.stringify(Boolean(request.isExtension))}, ${JSON.stringify(request.extendOfRequestId || "")}, ${JSON.stringify(request.cornerZoneNote || "")}, ${JSON.stringify(Boolean(request.isFinalPrice))}, ${JSON.stringify(request.booking || null)}, ${JSON.stringify(request.slipVerified)}, ${JSON.stringify(request.slipVerifyReason || "")}`;
+                        const openDetailArgs = `${JSON.stringify(request.productName || "-")}, ${JSON.stringify(request.zoneLabel || "-")}, ${JSON.stringify(request.sellerName || "-")}, ${JSON.stringify(request.phone || "-")}, ${JSON.stringify(request.statusLabel || "-")}, ${JSON.stringify(request.description || "-")}, ${request.id}, ${JSON.stringify(request.createdAtText || "-")}, ${JSON.stringify(request.status || "pending")}, ${JSON.stringify(request.productImage || "")}, ${JSON.stringify(request.assignedStallCode || "")}, ${JSON.stringify(request.paymentSlipImage || "")}, ${JSON.stringify(Boolean(request.paymentConfirmedAt))}, ${JSON.stringify(Boolean(request.isExtension))}, ${JSON.stringify(request.extendOfRequestId || "")}, ${JSON.stringify(request.cornerZoneNote || "")}, ${JSON.stringify(Boolean(request.isFinalPrice))}, ${JSON.stringify(request.booking || null)}, ${JSON.stringify(request.slipVerified)}, ${JSON.stringify(request.slipVerifyReason || "")}, ${JSON.stringify(request.rejectReason || "")}`;
                         %>
                         <div class="booking-card" data-request-id="<%= request.id %>" data-status="<%= request.status %>" data-zone="<%= request.zone || '' %>" data-shop="<%= request.productName || '' %>" onclick='openDetail(<%- openDetailArgs %>)'>
                             <div class="card-header">
                                 <h3 class="shop-name"><%= request.productName %></h3>
                                 <span class="badge <%= request.status %>"><%= request.statusLabel %></span>
                             </div>
-                            <% if (request.isExtension || request.cornerZoneNote || request.paymentSlipImage || request.requestedStallCount > 1) { %>
+                            <% if (request.isExtension || request.cornerZoneNote || request.paymentSlipImage || request.requestedStallCount > 1 || request.rejectReason) { %>
                             <div class="card-tags">
                                 <% if (request.requestedStallCount > 1) { %>
                                 <span class="tag tag--multi-stall"><i class="fa-solid fa-layer-group"></i> ขอ <%= request.requestedStallCount %> ล็อก</span>
@@ -247,6 +247,9 @@
                                 <% } %>
                                 <% if (request.cornerZoneNote) { %>
                                 <span class="tag tag--corner"><i class="fa-solid fa-star"></i> สนใจล็อคเต็ง: <%= request.cornerZoneNote %></span>
+                                <% } %>
+                                <% if (request.rejectReason) { %>
+                                <span class="tag tag--slip-bad"><i class="fa-solid fa-circle-xmark"></i> เหตุผลที่ปฏิเสธ: <%= request.rejectReason %></span>
                                 <% } %>
                                 <% if (request.paymentSlipImage && request.slipVerified === true) { %>
                                 <span class="tag tag--slip-ok"><i class="fa-solid fa-circle-check"></i> สลิปจริง ยอดตรง</span>

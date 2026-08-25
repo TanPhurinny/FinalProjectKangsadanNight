@@ -43,7 +43,7 @@ function navigateToBookingRequest(requestId) {
     window.location.href = `/admin/booking-stall?requestId=${encodeURIComponent(String(requestId || ''))}`;
 }
 
-function submitApproval(requestId, status) {
+function submitApproval(requestId, status, reason) {
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '/admin/approvals/confirm';
@@ -60,6 +60,15 @@ function submitApproval(requestId, status) {
 
     form.appendChild(requestField);
     form.appendChild(statusField);
+
+    if (reason) {
+        const reasonField = document.createElement('input');
+        reasonField.type = 'hidden';
+        reasonField.name = 'reason';
+        reasonField.value = reason;
+        form.appendChild(reasonField);
+    }
+
     document.body.appendChild(form);
     form.submit();
 }
@@ -288,7 +297,7 @@ if (searchInput) {
     });
 }
 
-function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, createdAtText, rawStatus, shopImage, assignedStallCode, paymentSlipImage, paymentConfirmed, isExtension, extendOfRequestId, cornerZoneNote, isFinalPrice, booking, slipVerified, slipVerifyReason) {
+function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, createdAtText, rawStatus, shopImage, assignedStallCode, paymentSlipImage, paymentConfirmed, isExtension, extendOfRequestId, cornerZoneNote, isFinalPrice, booking, slipVerified, slipVerifyReason, rejectReason) {
     const pageState = window.APPROVAL_PAGE_STATE || { isEditable: true };
     currentBooking = {
         shop,
@@ -320,6 +329,9 @@ function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, c
         }
         if (cornerZoneNote) {
             tagsHtml.push(`<span class="tag tag--corner"><i class="fa-solid fa-star"></i> สนใจล็อคเต็ง: ${cornerZoneNote}</span>`);
+        }
+        if (rejectReason) {
+            tagsHtml.push(`<span class="tag tag--slip-bad"><i class="fa-solid fa-circle-xmark"></i> เหตุผลที่ปฏิเสธ: ${rejectReason}</span>`);
         }
         if (paymentSlipImage && slipVerified === true) {
             tagsHtml.push('<span class="tag tag--slip-ok"><i class="fa-solid fa-circle-check"></i> สลิปจริง ยอดตรง</span>');
@@ -386,10 +398,11 @@ function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, c
     if (rejectBtn) {
         rejectBtn.onclick = () => window.showConfirmDialog({
             title: 'ปฏิเสธการจอง',
-            message: `ยืนยันปฏิเสธการจองร้าน "${currentBooking.shop}" ใช่ไหม?`,
+            message: `ระบุเหตุผลที่ปฏิเสธการจองร้าน "${currentBooking.shop}" (จะแสดงให้ผู้ขายเห็น ไม่ระบุก็ได้)`,
             tone: 'danger',
             confirmText: 'ปฏิเสธการจอง',
-            onConfirm: () => submitApproval(currentBooking.requestId, 'REJECTED')
+            inputPlaceholder: 'เหตุผลที่ปฏิเสธ (ไม่บังคับ)',
+            onConfirm: (reason) => submitApproval(currentBooking.requestId, 'REJECTED', String(reason || '').trim())
         });
     }
     if (confirmPaymentBtn) {

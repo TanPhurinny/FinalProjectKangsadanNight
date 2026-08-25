@@ -57,6 +57,12 @@ function extractCornerZoneNote(descriptionText) {
     return match ? String(match[1] || '').trim() : null;
 }
 
+// เหตุผลที่แอดมินปฏิเสธคำขอ (ไม่บังคับกรอก) — ฝังไว้หน้า description เหมือน tag อื่นๆ ในไฟล์นี้
+function extractRejectReason(descriptionText) {
+    const match = String(descriptionText || '').match(/\[REJECT_REASON:\s*([^\]]+)\]/);
+    return match ? String(match[1] || '').trim() : null;
+}
+
 // ตัด tag ภายในทั้งหมดออกจาก description ก่อนโชว์เป็นโน้ตจริงให้แอดมินอ่าน
 function stripInternalTags(descriptionText) {
     return String(descriptionText || '')
@@ -64,6 +70,7 @@ function stripInternalTags(descriptionText) {
         .replace(/\[EXTEND_OF:\d+\]\s*/gi, '')
         .replace(/\[ASSIGNED_STALL:[^\]]+\]\s*/gi, '')
         .replace(/\[สนใจแผงพิเศษ:[^\]]+\]\s*/g, '')
+        .replace(/\[REJECT_REASON:[^\]]+\]\s*/g, '')
         .trim();
 }
 
@@ -270,6 +277,7 @@ exports.getApprovalsPage = async (req, res) => {
             const linkedBooking = bookingByRequestId.get(request.id) || null;
             const extendOfRequestId = extractExtendOfRequestId(request.description);
             const cornerZoneNote = extractCornerZoneNote(request.description);
+            const rejectReason = extractRejectReason(request.description);
 
             if (zoneCode && zoneCounts[zoneCode] !== undefined) {
                 zoneCounts[zoneCode] += 1;
@@ -309,6 +317,7 @@ exports.getApprovalsPage = async (req, res) => {
                 isExtension: Boolean(extendOfRequestId),
                 extendOfRequestId,
                 cornerZoneNote,
+                rejectReason,
                 requestedStallCount: linkedBooking ? (linkedBooking.stallCount || 1) : 1,
                 isFinalPrice: Boolean(assignedStallCode),
                 booking: linkedBooking
@@ -397,7 +406,7 @@ exports.getApprovalsPage = async (req, res) => {
 };
 
 exports.confirmApproval = async (req, res) => {
-    const { requestId, status } = req.body;
+    const { requestId, status, reason } = req.body;
     try {
         const normalizedStatus = String(status || '').toUpperCase();
         if (!['PENDING', 'APPROVED', 'REJECTED'].includes(normalizedStatus)) {
@@ -425,9 +434,16 @@ exports.confirmApproval = async (req, res) => {
             return res.redirect('/admin/approvals?error=invalid_state_transition');
         }
 
+        const trimmedReason = String(reason || '').trim();
+        const updateData = { status: normalizedStatus };
+        if (normalizedStatus === 'REJECTED' && trimmedReason) {
+            const descriptionWithoutOldReason = String(requestRecord.description || '').replace(/\[REJECT_REASON:[^\]]+\]\s*/g, '');
+            updateData.description = `[REJECT_REASON: ${trimmedReason}] ${descriptionWithoutOldReason}`.trim();
+        }
+
         await prisma.bookingRequest.update({
             where: { id: parseInt(requestId) },
-            data: { status: normalizedStatus }
+            data: updateData
         });
         res.redirect('/admin/approvals?success=status_updated');
     } catch (err) {
