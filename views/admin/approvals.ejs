@@ -212,8 +212,10 @@
                     พบ <span id="visibleCount">0</span> ร้าน
                     <% if (!isEditable) { %>
                         <span class="readonly-hint">• เป็นประวัติการจอง รอบนี้ไม่สามารถแก้ไขได้</span>
-                    <% } else { %>
+                    <% } else if (isCurrentRound) { %>
                         <span class="readonly-hint">• กำลังเปิดรอบปัจจุบัน สามารถอนุมัติได้</span>
+                    <% } else { %>
+                        <span class="readonly-hint">• รอบยังไม่เริ่ม แต่สามารถอนุมัติคำขอที่จองล่วงหน้ามาได้</span>
                     <% } %>
                 </div>
 

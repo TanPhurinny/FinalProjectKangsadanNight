@@ -329,7 +329,9 @@ exports.getApprovalsPage = async (req, res) => {
         const previousRoundNumber = selectedRoundNumber - 1;
         const nextRoundNumber = selectedRoundNumber + 1;
         const isCurrentRound = selectedRoundNumber === currentRoundMeta.roundNumber;
-        const isEditable = isCurrentRound;
+        // แก้ไขได้ทั้งรอบปัจจุบันและรอบอนาคต (ผู้ขายส่งคำขอจองล่วงหน้าข้ามรอบได้) — ที่แก้ไม่ได้มีแค่รอบที่ผ่านไปแล้ว
+        // ใช้ isRoundEditable ตัวเดียวกับที่ confirmApproval/confirmBookingStall เช็คฝั่ง backend กันไม่ให้ front/back ไม่ตรงกัน
+        const isEditable = isRoundEditable(selectedRoundNumber);
         const roundSummary = {
             selectedRoundNumber,
             currentRoundNumber: currentRoundMeta.roundNumber,
