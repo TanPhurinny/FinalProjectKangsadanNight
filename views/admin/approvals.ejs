@@ -60,7 +60,8 @@
                     duplicate_stall_selected: 'เลือกแผงค้าซ้ำกัน กรุณาเลือกล็อกที่ต่างกัน',
                     stall_count_mismatch: 'จำนวนล็อกที่เลือกไม่ตรงกับจำนวนที่ผู้ขายขอมา กรุณาเลือกให้ครบ',
                     stall_not_found: 'ไม่พบแผงค้าที่เลือก',
-                    stall_unavailable: 'แผงค้าที่เลือกบางล็อกถูกจองไปแล้ว กรุณาเลือกล็อกอื่น'
+                    stall_unavailable: 'แผงค้าที่เลือกบางล็อกถูกจองไปแล้ว กรุณาเลือกล็อกอื่น',
+                    load_approvals_failed: 'เกิดข้อผิดพลาดขณะโหลดรายการอนุมัติ กรุณาลองใหม่'
                 };
                 const flashSuccessMessages = {
                     payment_confirmed: 'ยืนยันการชำระเงินเรียบร้อย เปิดเผยเลขล็อกให้ลูกค้าแล้ว',
@@ -97,37 +98,35 @@
                 </div>
                 <% } %>
 
-                <div class="round-navigation compact">
-                    <div class="round-nav-tools">
-                        <a class="round-nav-icon <%= selectedRoundNumber === previousRoundNumber ? 'active' : '' %>"
+                <%
+                const fmtRoundDate = (d) => new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
+                %>
+                <div class="round-navigation">
+                    <div class="round-switch">
+                        <a class="round-cell round-cell--prev"
                             href="/admin/approvals?round=<%= previousRoundNumber %>"
-                            title="รอบก่อนหน้า"
                             aria-label="ไปที่รอบก่อนหน้า">
-                            <i class="fa-solid fa-chevron-left"></i>
+                            <span class="round-cell-dir"><i class="fa-solid fa-chevron-left"></i> ก่อนหน้า</span>
+                            <span class="round-cell-number">รอบ #<%= previousRoundNumber %></span>
+                            <span class="round-cell-range"><%= fmtRoundDate(previousRoundMeta.cycleStart) %> - <%= fmtRoundDate(previousRoundMeta.cycleEnd) %></span>
                         </a>
 
-                        <a class="round-nav-current <%= isCurrentRound ? 'active' : '' %>"
-                            href="/admin/approvals?round=<%= currentRoundNumber %>"
-                            title="รอบปัจจุบัน">
-                            <span class="round-current-label">รอบปัจจุบัน</span>
-                            <span class="round-current-number">#<%= currentRoundNumber %></span>
-                        </a>
+                        <div class="round-cell round-cell--selected">
+                            <span class="round-cell-dir"><%= isCurrentRound ? 'รอบปัจจุบัน' : 'กำลังดูรอบ' %></span>
+                            <span class="round-cell-number">รอบ #<%= selectedRoundNumber %></span>
+                            <span class="round-cell-range"><%= fmtRoundDate(roundMeta.cycleStart) %> - <%= fmtRoundDate(roundMeta.cycleEnd) %></span>
+                            <% if (!isCurrentRound) { %>
+                            <a class="round-cell-back" href="/admin/approvals?round=<%= currentRoundNumber %>">กลับไปรอบปัจจุบัน (#<%= currentRoundNumber %>)</a>
+                            <% } %>
+                        </div>
 
-                        <a class="round-nav-icon <%= selectedRoundNumber === nextRoundNumber ? 'active' : '' %>"
+                        <a class="round-cell round-cell--next"
                             href="/admin/approvals?round=<%= nextRoundNumber %>"
-                            title="รอบถัดไป"
                             aria-label="ไปที่รอบถัดไป">
-                            <i class="fa-solid fa-chevron-right"></i>
+                            <span class="round-cell-dir">ถัดไป <i class="fa-solid fa-chevron-right"></i></span>
+                            <span class="round-cell-number">รอบ #<%= nextRoundNumber %></span>
+                            <span class="round-cell-range"><%= fmtRoundDate(nextRoundMeta.cycleStart) %> - <%= fmtRoundDate(nextRoundMeta.cycleEnd) %></span>
                         </a>
-                    </div>
-
-                    <div class="round-nav-detail">
-                        <span class="round-detail-label">รอบที่เลือก:</span>
-                        <strong>#<%= selectedRoundNumber %></strong>
-                        <span class="round-detail-separator">•</span>
-                        <span><%= new Date(roundMeta.cycleStart).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %></span>
-                        <span class="round-detail-separator">-</span>
-                        <span><%= new Date(roundMeta.cycleEnd).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %></span>
                     </div>
                 </div>
 
