@@ -1,7 +1,30 @@
 const { jwtVerify } = require('jose');
 const { getJwtSecretKey } = require('../config/authSecrets');
+const prisma = require('../config/prismaClient');
 
 const JWT_SECRET_KEY = getJwtSecretKey();
+
+// role ใน JWT/session เป็นค่าตอนล็อกอิน ไม่อัปเดตอัตโนมัติเมื่อแอดมินเปลี่ยน role ทีหลัง
+// (เช่น อนุมัติคำขอเป็นพ่อค้าแม่ค้า) จึงต้องดึง role ล่าสุดจาก DB มาทับทุกครั้งที่ระบุตัวตนผู้ใช้
+// เพื่อให้หน้าจอรีเซตเป็นข้อมูลพ่อค้าแม่ค้าได้ทันทีโดยไม่ต้อง logout/login ใหม่
+async function refreshUserRole(user) {
+    if (!user || !user.id) return user;
+
+    try {
+        const dbUser = await prisma.user.findUnique({
+            where: { id: Number(user.id) },
+            select: { role: true }
+        });
+
+        if (dbUser && dbUser.role !== user.role) {
+            return { ...user, role: dbUser.role };
+        }
+    } catch (error) {
+        // DB ใช้งานไม่ได้ชั่วคราว: ใช้ role เดิมจาก token/session ไปก่อน
+    }
+
+    return user;
+}
 
 async function verifyToken(token) {
     const { payload } = await jwtVerify(token, JWT_SECRET_KEY);
@@ -61,7 +84,7 @@ async function getCurrentUser(req) {
 
     if (token) {
         try {
-            const decoded = await verifyToken(token);
+            const decoded = await refreshUserRole(await verifyToken(token));
             req.authUser = decoded;
             req.user = decoded;
             return decoded;
@@ -71,7 +94,7 @@ async function getCurrentUser(req) {
     }
 
     if (req.session?.user) {
-        req.user = req.session.user;
+        req.user = await refreshUserRole(req.session.user);
         return req.user;
     }
 
@@ -83,7 +106,7 @@ exports.requireAuth = async (req, res, next) => {
 
     if (token) {
         try {
-            req.authUser = await verifyToken(token);
+            req.authUser = await refreshUserRole(await verifyToken(token));
             req.user = req.authUser;
             return next();
         } catch (error) {
@@ -92,7 +115,7 @@ exports.requireAuth = async (req, res, next) => {
     }
 
     if (req.session?.user) {
-        req.user = req.session.user;
+        req.user = await refreshUserRole(req.session.user);
         return next();
     }
 
