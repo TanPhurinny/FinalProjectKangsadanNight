@@ -293,8 +293,13 @@ exports.getSlotsPage = async (req, res) => {
 
         const bookingByStallCode = {};
         approvedRequests.forEach((request) => {
-            const stallCode = String(request.assignedStallCode || '').trim().toUpperCase();
-            if (!stallCode) return;
+            // assignedStallCode เก็บได้ทั้งล็อกเดียว ("A901") หรือหลายล็อกคั่นด้วย comma ("A901,A902")
+            // ต้องแตกออกเป็นรายล็อก ไม่งั้นล็อกที่ไม่ใช่ตัวแรกจะหาไม่เจอตอนคลิกดูรายละเอียดบนผัง
+            const stallCodes = String(request.assignedStallCode || '')
+                .split(',')
+                .map((code) => code.trim().toUpperCase())
+                .filter(Boolean);
+            if (!stallCodes.length) return;
 
             const fallbackShop = shopInfoByName[request.sellerName] || {};
             const product = request.seller?.productType?.name
@@ -303,16 +308,18 @@ exports.getSlotsPage = async (req, res) => {
             const productDetail = request.seller?.productDetail || fallbackShop.productDetail || request.description || '-';
             const shopImage = request.productImage || request.seller?.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
 
-            bookingByStallCode[stallCode] = {
-                shop: request.seller?.shopName || request.productName || '-',
-                product,
-                productDetail,
-                image: shopImage,
-                name: request.sellerName || '-',
-                phone: request.phone || '-',
-                date: toThaiDateShort(request.createdAt),
-                note: request.description || '-'
-            };
+            stallCodes.forEach((stallCode) => {
+                bookingByStallCode[stallCode] = {
+                    shop: request.seller?.shopName || request.productName || '-',
+                    product,
+                    productDetail,
+                    image: shopImage,
+                    name: request.sellerName || '-',
+                    phone: request.phone || '-',
+                    date: toThaiDateShort(request.createdAt),
+                    note: request.description || '-'
+                };
+            });
         });
 
         res.render('admin/slots', {
@@ -384,8 +391,13 @@ exports.getMarketMapPage = async (req, res) => {
 
         const bookingByStallCode = {};
         approvedRequests.forEach((request) => {
-            const stallCode = String(request.assignedStallCode || '').trim().toUpperCase();
-            if (!stallCode) return;
+            // assignedStallCode เก็บได้ทั้งล็อกเดียว ("A901") หรือหลายล็อกคั่นด้วย comma ("A901,A902")
+            // ต้องแตกออกเป็นรายล็อก ไม่งั้นล็อกที่ไม่ใช่ตัวแรกจะหาไม่เจอตอนคลิกดูรายละเอียดบนผัง
+            const stallCodes = String(request.assignedStallCode || '')
+                .split(',')
+                .map((code) => code.trim().toUpperCase())
+                .filter(Boolean);
+            if (!stallCodes.length) return;
 
             const fallbackShop = shopInfoByName[request.sellerName] || {};
             const product = request.seller?.productType?.name
@@ -394,12 +406,14 @@ exports.getMarketMapPage = async (req, res) => {
             const productDetail = request.seller?.productDetail || fallbackShop.productDetail || request.description || '-';
             const shopImage = request.productImage || request.seller?.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
 
-            bookingByStallCode[stallCode] = {
-                shop: request.seller?.shopName || request.productName || '-',
-                product,
-                productDetail,
-                image: shopImage
-            };
+            stallCodes.forEach((stallCode) => {
+                bookingByStallCode[stallCode] = {
+                    shop: request.seller?.shopName || request.productName || '-',
+                    product,
+                    productDetail,
+                    image: shopImage
+                };
+            });
         });
 
         res.render('marketMap', {

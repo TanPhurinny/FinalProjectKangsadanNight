@@ -133,8 +133,18 @@ async function getActiveStallCodesByUserId(userIds) {
         const userId = sellerIdToUserId.get(request.sellerId) ?? sellerNameToUserId.get(request.sellerName);
         if (!userId) return;
 
+        // assignedStallCode เก็บได้ทั้งล็อกเดียว ("A901") หรือหลายล็อกคั่นด้วย comma ("A901,A902")
+        // ต้องแตกออกเป็นรายล็อก ไม่งั้นได้ badge เดียวที่มีค่าเป็น "A901,A902" ซึ่งกดแล้วหาล็อกบนผังไม่เจอ
+        const codes = String(request.assignedStallCode)
+            .split(',')
+            .map((code) => code.trim().toUpperCase())
+            .filter(Boolean);
+        if (!codes.length) return;
+
         const list = stallCodesByUserId.get(userId) || [];
-        list.push(request.assignedStallCode);
+        codes.forEach((code) => {
+            if (!list.includes(code)) list.push(code);
+        });
         stallCodesByUserId.set(userId, list);
     });
 
