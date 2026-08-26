@@ -48,6 +48,8 @@
                 const currentProductDetail = fd.productDetail || shopRecord.productDetail || '';
                 const currentShopSummary = fd.shopSummary || shopRecord.shopSummary || '';
                 const currentShopTags = fd.shopTags || shopRecord.shopTags || '';
+                const currentProductImages = shopRecord.productImages || [];
+                const maxProductImagesCount = (typeof maxProductImages !== 'undefined' && maxProductImages) ? maxProductImages : 6;
                 %>
 
                 <% if (successMsg) { %>
@@ -109,36 +111,43 @@
                             placeholder="เพิ่มรายละเอียดสินค้าที่ขาย..."><%= currentProductDetail %></textarea>
                     </div>
 
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>รูปสินค้า/โลโก้ร้าน</label>
-                            <div class="upload-wrapper">
-                                <label for="productImageUpload" class="upload-box" id="productImageUploadLabel">
-                                    <img id="productImagePreview"
-                                        src="<%= shopRecord.productImage || '' %>"
-                                        style="<%= shopRecord.productImage ? 'display:block;' : '' %>"
-                                        alt="Preview">
-                                </label>
-                                <input type="file" name="productImage" id="productImageUpload"
-                                    class="upload-input" accept="image/*">
+                    <div class="form-group full-width">
+                        <label>รูปสินค้า/โลโก้ร้าน (สูงสุด <%= maxProductImagesCount %> รูป)</label>
+                        <div class="upload-wrapper" id="productImagesWrapper">
+                            <% currentProductImages.forEach(function (img) { %>
+                            <div class="upload-thumb-item existing-thumb" data-image-id="<%= img.id %>">
+                                <img src="<%= img.imageUrl %>" alt="รูปสินค้า">
+                                <button type="button" class="upload-thumb-remove existing-remove-btn"
+                                    data-image-id="<%= img.id %>" title="ลบรูปนี้">&times;</button>
                             </div>
+                            <% }); %>
+                            <label for="productImagesUpload" class="upload-box" id="productImagesUploadLabel"></label>
                         </div>
+                        <input type="file" name="productImages" id="productImagesUpload"
+                            class="upload-input" accept="image/*" multiple
+                            data-max="<%= maxProductImagesCount %>" data-existing="<%= currentProductImages.length %>">
+                        <input type="hidden" name="removeProductImageIds" id="removeProductImageIdsInput" value="">
+                    </div>
 
-                        <div class="form-group">
-                            <label>รูปหน้าปกร้าน</label>
-                            <div class="upload-wrapper">
-                                <label for="shopCoverImageUpload" class="upload-box" id="shopCoverImageUploadLabel">
+                    <div class="form-group full-width">
+                        <label>รูปหน้าปกร้าน</label>
+                        <div class="upload-wrapper">
+                            <div class="upload-box-frame upload-box-frame--cover<%= shopRecord.shopCoverImage ? ' has-image' : '' %>" id="shopCoverImageFrame">
+                                <label for="shopCoverImageUpload" class="upload-box upload-box--cover" id="shopCoverImageUploadLabel">
                                     <img id="shopCoverImagePreview"
                                         src="<%= shopRecord.shopCoverImage || '' %>"
                                         style="<%= shopRecord.shopCoverImage ? 'display:block;' : '' %>"
                                         alt="Preview">
                                 </label>
-                                <input type="file" name="shopCoverImage" id="shopCoverImageUpload"
-                                    class="upload-input" accept="image/*">
+                                <button type="button" class="upload-thumb-remove" id="shopCoverImageRemoveBtn"
+                                    style="<%= shopRecord.shopCoverImage ? '' : 'display:none;' %>" title="ลบรูป">&times;</button>
                             </div>
+                            <input type="file" name="shopCoverImage" id="shopCoverImageUpload"
+                                class="upload-input" accept="image/*">
+                            <input type="hidden" name="removeShopCoverImage" id="removeShopCoverImageFlag" value="">
                         </div>
                     </div>
-                    <p class="text-muted small mb-3">ไม่เลือกรูปใหม่ = ใช้รูปเดิมต่อ</p>
+                    <p class="text-muted small mb-3">ไม่เลือกรูปใหม่ = ใช้รูปเดิมต่อ, กดปุ่ม &times; เพื่อลบรูปที่ไม่ต้องการ</p>
 
                     <button type="submit" class="submit-btn" id="submitBtn">บันทึกข้อมูลร้านค้า</button>
                 </form>

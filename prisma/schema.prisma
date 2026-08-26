@@ -144,7 +144,7 @@ model ShopDetail {
   shopName      String?
   productType   String?
   productDetail String? @db.Text
-  productImage  String?
+  productImage  String? // รูปหลัก/รูปย่อของสินค้า อ้างอิงรูปแรกใน productImages เสมอ (ใช้แสดงในหน้าอื่นที่ยังอ้างอิงรูปเดียว เช่น ผังตลาด/คอมมูนิตี้)
   shopSummary   String? @db.Text
   shopCoverImage String?
   sellerTier    String?
@@ -153,6 +153,17 @@ model ShopDetail {
   isVerified    Boolean @default(false)
   userId        Int     @unique
   user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productImages ShopProductImage[]
+}
+
+model ShopProductImage {
+  id           Int        @id @default(autoincrement())
+  shopDetailId Int
+  imageUrl     String
+  createdAt    DateTime   @default(now())
+  shopDetail   ShopDetail @relation(fields: [shopDetailId], references: [id], onDelete: Cascade)
+
+  @@index([shopDetailId], map: "ShopProductImage_shopDetailId_fkey")
 }
 
 model BookingRequest {

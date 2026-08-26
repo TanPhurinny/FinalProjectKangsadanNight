@@ -73,15 +73,48 @@
     }
 }
 
-/* ── รูปโปรไฟล์ร้าน/หน้าปก: ใหญ่กว่ากล่องอัปโหลดทั่วไป ── */
-.form-grid .upload-box {
+/* ── รูปหน้าปกร้าน: กล่องอัปโหลดเดี่ยว ใหญ่กว่ากล่องอัปโหลดทั่วไป ── */
+.upload-box--cover {
     width: 100%;
     max-width: 220px;
     height: 140px;
+    overflow: hidden;
+    background-color: var(--soft-bg);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
+    position: relative;
+    transition: background 0.15s, border-color 0.15s;
+}
+.upload-box--cover:hover {
+    background-color: #eef3f4;
+    border-color: var(--primary);
+}
+.upload-box--cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+/* กล่องยังไม่มีรูป: แสดงเครื่องหมาย + แทนกล่องว่างเปล่า */
+.upload-box-frame:not(.has-image) .upload-box--cover::before,
+.upload-box-frame:not(.has-image) .upload-box--cover::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    background-color: var(--ink-soft);
+    border-radius: 2px;
+    transform: translate(-50%, -50%);
+}
+.upload-box-frame:not(.has-image) .upload-box--cover::before { width: 26px; height: 3px; }
+.upload-box-frame:not(.has-image) .upload-box--cover::after { width: 3px; height: 26px; }
+
+.upload-box-frame {
+    position: relative;
+    display: inline-block;
 }
 
 @media (max-width: 640px) {
-    .form-grid .upload-box {
+    .upload-box--cover {
         max-width: 100%;
     }
 }

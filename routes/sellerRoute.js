@@ -868,16 +868,20 @@ router.get('/booking-history', isAuthenticated, async (req, res) => {
     });
 });
 
+// จำนวนรูปสินค้าสูงสุดที่แกลเลอรีในหน้าโปรไฟล์ร้านค้ารับได้
+const MAX_SHOP_PRODUCT_IMAGES = 6;
+
 // --- หน้าแก้ไขโปรไฟล์ร้านค้า (เฉพาะผู้ขายที่ได้รับอนุมัติเป็น SELLER แล้ว) ---
 router.get('/shop-profile', isSellerOnly, async (req, res) => {
     const userRecord = await prisma.user.findUnique({
         where: { id: req.user.id },
-        include: { shop: true }
+        include: { shop: { include: { productImages: { orderBy: { createdAt: 'asc' } } } } }
     });
 
     res.render('seller/shopProfile', {
         user: req.user,
         shop: userRecord?.shop || null,
+        maxProductImages: MAX_SHOP_PRODUCT_IMAGES,
         error: req.query.error || null,
         success: req.query.success || null
     });
@@ -887,11 +891,12 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
     async function renderWithError(errorCode) {
         const userRecord = await prisma.user.findUnique({
             where: { id: req.user.id },
-            include: { shop: true }
+            include: { shop: { include: { productImages: { orderBy: { createdAt: 'asc' } } } } }
         });
         return res.render('seller/shopProfile', {
             user: req.user,
             shop: userRecord?.shop || null,
+            maxProductImages: MAX_SHOP_PRODUCT_IMAGES,
             error: errorCode,
             success: null,
             formData: req.body
@@ -899,7 +904,7 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
     }
 
     uploadShopProfile.fields([
-        { name: 'productImage', maxCount: 1 },
+        { name: 'productImages', maxCount: MAX_SHOP_PRODUCT_IMAGES },
         { name: 'shopCoverImage', maxCount: 1 }
     ])(req, res, async (err) => {
         if (err) {
@@ -913,16 +918,22 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
             }
 
             const { productDetail, shopSummary, shopTags } = parsed.data;
-            const productImage = req.files?.productImage?.[0]
-                ? `/uploads/shop-profile/${req.files.productImage[0].filename}`
-                : undefined;
+            const newProductImageFiles = req.files?.productImages || [];
             const shopCoverImage = req.files?.shopCoverImage?.[0]
                 ? `/uploads/shop-profile/${req.files.shopCoverImage[0].filename}`
                 : undefined;
+            const removeShopCoverImage = !shopCoverImage && req.body.removeShopCoverImage === '1';
+            const removeProductImageIds = String(req.body.removeProductImageIds || '')
+                .split(',')
+                .map((id) => parseInt(id, 10))
+                .filter((id) => Number.isInteger(id));
 
             // ชื่อร้าน/ประเภทสินค้าไม่รับจากฟอร์มนี้ (ดูเหตุผลใน utils/validationSchemas.js) — ถ้ายังไม่มี
             // ShopDetail มาก่อนเลย (กรณีข้อมูลเก่าก่อนมีการซิงก์อัตโนมัติ) ค่อย fallback ไปเอาจากใบสมัครล่าสุด
-            const existingShop = await prisma.shopDetail.findUnique({ where: { userId: req.user.id } });
+            const existingShop = await prisma.shopDetail.findUnique({
+                where: { userId: req.user.id },
+                include: { productImages: { orderBy: { createdAt: 'asc' } } }
+            });
             let fallbackShopName = existingShop?.shopName;
             let fallbackProductType = existingShop?.productType;
             if (!fallbackShopName || !fallbackProductType) {
@@ -934,14 +945,29 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
                 fallbackProductType = fallbackProductType || latestApplication?.productType || null;
             }
 
-            await prisma.shopDetail.upsert({
+            const existingProductImages = existingShop?.productImages || [];
+            const imagesToRemove = existingProductImages.filter((img) => removeProductImageIds.includes(img.id));
+            const keptProductImages = existingProductImages.filter((img) => !removeProductImageIds.includes(img.id));
+            const remainingSlots = Math.max(0, MAX_SHOP_PRODUCT_IMAGES - keptProductImages.length);
+            const acceptedNewFiles = newProductImageFiles.slice(0, remainingSlots);
+
+            // ลบไฟล์รูปเดิมออกจาก disk เมื่อมีการกดลบรูปทิ้ง หรืออัปโหลดรูปหน้าปกใหม่ทับ
+            const oldFilesToDelete = imagesToRemove.map((img) => img.imageUrl);
+            if ((shopCoverImage || removeShopCoverImage) && existingShop?.shopCoverImage) {
+                oldFilesToDelete.push(existingShop.shopCoverImage);
+            }
+            for (const relativePath of oldFilesToDelete) {
+                const absolutePath = path.join(__dirname, '../public', relativePath);
+                fs.unlink(absolutePath, () => {});
+            }
+
+            const shopDetail = await prisma.shopDetail.upsert({
                 where: { userId: req.user.id },
                 update: {
                     productDetail: productDetail || null,
                     shopSummary: shopSummary || null,
                     shopTags: shopTags || null,
-                    ...(productImage ? { productImage } : {}),
-                    ...(shopCoverImage ? { shopCoverImage } : {})
+                    ...(shopCoverImage ? { shopCoverImage } : removeShopCoverImage ? { shopCoverImage: null } : {})
                 },
                 create: {
                     userId: req.user.id,
@@ -950,10 +976,33 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
                     productDetail: productDetail || null,
                     shopSummary: shopSummary || null,
                     shopTags: shopTags || null,
-                    productImage: productImage || null,
                     shopCoverImage: shopCoverImage || null
                 }
             });
+
+            if (imagesToRemove.length) {
+                await prisma.shopProductImage.deleteMany({
+                    where: { id: { in: imagesToRemove.map((img) => img.id) }, shopDetailId: shopDetail.id }
+                });
+            }
+            if (acceptedNewFiles.length) {
+                await prisma.shopProductImage.createMany({
+                    data: acceptedNewFiles.map((file) => ({
+                        shopDetailId: shopDetail.id,
+                        imageUrl: `/uploads/shop-profile/${file.filename}`
+                    }))
+                });
+            }
+
+            // productImage (scalar) คงไว้เป็นรูปแรกของแกลเลอรีเสมอ เพื่อไม่ให้หน้าอื่นที่ยังอ้างอิงรูปเดียว (ผังตลาด/คอมมูนิตี้/แดชบอร์ด) พัง
+            const newPrimaryImage = keptProductImages[0]?.imageUrl
+                || (acceptedNewFiles[0] ? `/uploads/shop-profile/${acceptedNewFiles[0].filename}` : null);
+            if (newPrimaryImage !== existingShop?.productImage) {
+                await prisma.shopDetail.update({
+                    where: { id: shopDetail.id },
+                    data: { productImage: newPrimaryImage }
+                });
+            }
 
             return res.redirect('/shop-profile?success=profile_updated');
         } catch (dbErr) {
