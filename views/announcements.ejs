@@ -63,9 +63,9 @@
                         data-content="<%= encodeURIComponent(post.content) %>"
                         data-category="<%= encodeURIComponent(post.category) %>"
                         data-date="<%= encodeURIComponent(toThaiDate(post.createdAt)) %>"
-                        data-image="<%= post.image ? encodeURIComponent('/uploads/announcements/' + post.image) : '' %>">
+                        data-image="<%= post.image ? encodeURIComponent(imageUrl(post.image, 'announcements')) : '' %>">
                         <% if (post.image) { %>
-                        <img class="important-row-thumb" src="/uploads/announcements/<%= post.image %>" alt="<%= post.title %>">
+                        <img class="important-row-thumb" src="<%= imageUrl(post.image, 'announcements') %>" alt="<%= post.title %>">
                         <% } else { %>
                         <div class="important-row-thumb-empty"><i class="fas fa-bullhorn"></i></div>
                         <% } %>
@@ -101,10 +101,10 @@
                         data-content="<%= encodeURIComponent(post.content) %>"
                         data-category="<%= encodeURIComponent(post.category) %>"
                         data-date="<%= encodeURIComponent(toThaiDate(post.createdAt)) %>"
-                        data-image="<%= post.image ? encodeURIComponent('/uploads/announcements/' + post.image) : '' %>">
+                        data-image="<%= post.image ? encodeURIComponent(imageUrl(post.image, 'announcements')) : '' %>">
                         <div class="general-card-media">
                             <% if (post.image) { %>
-                            <img src="/uploads/announcements/<%= post.image %>" alt="<%= post.title %>">
+                            <img src="<%= imageUrl(post.image, 'announcements') %>" alt="<%= post.title %>">
                             <% } else { %>
                             <div class="general-card-media-empty"><i class="fas fa-bullhorn"></i></div>
                             <% } %>

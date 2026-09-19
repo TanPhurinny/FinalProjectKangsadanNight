@@ -1,26 +1,12 @@
 const express = require('express');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { createImageStorage } = require('../utils/imageStorage');
 const communityController = require('../controllers/communityController');
 const { requireAuth } = require('../middlewares/jwtAuth');
 
 const router = express.Router();
 
-const communityUploadDir = path.join(__dirname, '../public/uploads/community');
-if (!fs.existsSync(communityUploadDir)) {
-    fs.mkdirSync(communityUploadDir, { recursive: true });
-}
-
-const communityStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, communityUploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-        cb(null, `community-${uniqueSuffix}${path.extname(file.originalname)}`);
-    }
-});
+const communityStorage = createImageStorage({ folder: 'community', prefix: 'community' });
 
 const uploadCommunityImages = multer({
     storage: communityStorage,

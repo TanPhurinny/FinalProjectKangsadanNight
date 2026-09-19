@@ -12,7 +12,7 @@ There is no test suite, lint config, or build step in this project. To verify a 
 OPEN_BROWSER=false node -e "require('./app'); setTimeout(() => process.exit(0), 1500)"
 ```
 
-Required env vars (see `.env`): `DATABASE_URL` (MySQL), `JWT_SECRET`. Optional: `PORT`, `NODE_ENV`, `OPEN_BROWSER`, `GMAIL_USER`/`GMAIL_APP_PASSWORD` (Gmail App Password used to send password-reset emails via `config/mailer.js`; if unset, the reset link is logged to the console instead — fine for dev, must be set in production).
+Required env vars (see `.env`): `DATABASE_URL` (MySQL), `JWT_SECRET`. Optional: `PORT`, `NODE_ENV`, `OPEN_BROWSER`, `CLOUDINARY_URL` (required in production so uploads survive redeploys; `CLOUDINARY_FOLDER` overrides the root folder, default `kangsadan`), `GMAIL_USER`/`GMAIL_APP_PASSWORD` (Gmail App Password used to send password-reset emails via `config/mailer.js`; if unset, the reset link is logged to the console instead — fine for dev, must be set in production).
 
 ## Architecture
 
@@ -39,7 +39,7 @@ Routes that need JSON vs. HTML behavior (login/register/forgot-password) branch 
 
 **Controllers** (`controllers/`) hold the actual route logic; routers mostly just wire path + middleware + controller method. `controllers/auth.js` is an empty leftover file — `controllers/authController.js` is the real auth controller.
 
-**File uploads** use `multer`: disk storage for admin announcement images (`public/uploads/announcements`, 5MB limit, image-type filter) and in-memory storage (`multer()`) for registration's `productImage` field.
+**File uploads** use `multer` with the custom storage engine in `utils/imageStorage.js` (`createImageStorage({ folder, prefix })`). If `CLOUDINARY_URL` is set, files go to Cloudinary and the DB stores the full `https://res.cloudinary.com/...` URL; if unset (dev), it falls back to `public/uploads/<folder>/` and stores `/uploads/...`. Always read `file.url` (never build the path from `file.filename`), delete old images via `deleteImage(url)`, and read images back via `readImageBuffer(url)` (used by slip verification). Legacy announcement rows store only a filename — views use the global `imageUrl(value, 'announcements')` helper. `node scripts/migrate-uploads-to-cloudinary.js [--apply]` moves existing local files and DB values to Cloudinary. Registration's `productImage` field still uses in-memory `multer()`.
 
 **Localization:** UI copy, error messages, and code comments are primarily in Thai.
 

@@ -1,8 +1,6 @@
-const path = require('path');
-const fs = require('fs');
+const { deleteImage } = require('../utils/imageStorage');
 const prisma = require('../config/prismaClient');
 
-const uploadDir = path.join(__dirname, '..', 'public', 'uploads', 'community-banners');
 
 exports.getAdminBanners = async (req, res) => {
     try {
@@ -34,7 +32,7 @@ exports.createBanner = async (req, res) => {
 
         await prisma.communityBanner.create({
             data: {
-                imageUrl: `/uploads/community-banners/${req.file.filename}`,
+                imageUrl: req.file.url,
                 sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
                 isActive: true
             }
@@ -119,10 +117,7 @@ exports.deleteBanner = async (req, res) => {
 
         await prisma.communityBanner.delete({ where: { id: bannerId } });
 
-        if (banner.imageUrl.startsWith('/uploads/community-banners/')) {
-            const filePath = path.join(__dirname, '..', 'public', banner.imageUrl);
-            fs.unlink(filePath, () => {});
-        }
+        await deleteImage(banner.imageUrl);
 
         return res.redirect('/admin/community-banners?success=' + encodeURIComponent('ลบแบนเนอร์สำเร็จ'));
     } catch (error) {
@@ -131,4 +126,3 @@ exports.deleteBanner = async (req, res) => {
     }
 };
 
-exports.uploadDir = uploadDir;

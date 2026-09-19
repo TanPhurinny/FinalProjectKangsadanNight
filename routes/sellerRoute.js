@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prismaClient');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { createImageStorage, deleteImage } = require('../utils/imageStorage');
 const { getAnnouncementsForUser } = require('../controllers/announcementController');
 const { getMarketMapPage } = require('../controllers/marketController');
 const { repairReportSchema, bookingStallInputSchema, sellerApplicationSchema, shopProfileSchema, THAI_BANK_NAMES } = require('../utils/validationSchemas');
@@ -19,22 +18,8 @@ const {
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
 const { buildReceiptData } = require('../controllers/receiptController');
 
-// สร้างโฟลเดอร์ upload ถ้ายังไม่มี
-const uploadDir = path.join(__dirname, '../public/uploads/repairs');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// ตั้งค่า multer
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// รูปแจ้งซ่อม (เก็บที่ Cloudinary หรือดิสก์ตาม utils/imageStorage.js)
+const storage = createImageStorage({ folder: 'repairs' });
 
 const REPAIR_MAX_IMAGES = 5;
 
@@ -52,20 +37,7 @@ const upload = multer({
 });
 
 // โฟลเดอร์เก็บสลิปโอนเงินยืนยันการจอง
-const paymentSlipDir = path.join(__dirname, '../public/uploads/payment-slips');
-if (!fs.existsSync(paymentSlipDir)) {
-    fs.mkdirSync(paymentSlipDir, { recursive: true });
-}
-
-const paymentSlipStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, paymentSlipDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+const paymentSlipStorage = createImageStorage({ folder: 'payment-slips' });
 
 const uploadPaymentSlip = multer({
     storage: paymentSlipStorage,
@@ -81,20 +53,7 @@ const uploadPaymentSlip = multer({
 });
 
 // โฟลเดอร์เก็บรูปหน้าร้านตอนสมัครเปิดร้านค้า
-const shopApplicationDir = path.join(__dirname, '../public/uploads/shop-applications');
-if (!fs.existsSync(shopApplicationDir)) {
-    fs.mkdirSync(shopApplicationDir, { recursive: true });
-}
-
-const shopApplicationStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, shopApplicationDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+const shopApplicationStorage = createImageStorage({ folder: 'shop-applications' });
 
 const uploadShopApplication = multer({
     storage: shopApplicationStorage,
@@ -110,20 +69,7 @@ const uploadShopApplication = multer({
 });
 
 // โฟลเดอร์เก็บรูปโปรไฟล์ร้านค้า (ผู้ขายแก้ไขเองหลังได้รับอนุมัติเป็น SELLER แล้ว)
-const shopProfileDir = path.join(__dirname, '../public/uploads/shop-profile');
-if (!fs.existsSync(shopProfileDir)) {
-    fs.mkdirSync(shopProfileDir, { recursive: true });
-}
-
-const shopProfileStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, shopProfileDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+const shopProfileStorage = createImageStorage({ folder: 'shop-profile' });
 
 const uploadShopProfile = multer({
     storage: shopProfileStorage,
@@ -920,7 +866,7 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
             const { productDetail, shopSummary, shopTags } = parsed.data;
             const newProductImageFiles = req.files?.productImages || [];
             const shopCoverImage = req.files?.shopCoverImage?.[0]
-                ? `/uploads/shop-profile/${req.files.shopCoverImage[0].filename}`
+                ? req.files.shopCoverImage[0].url
                 : undefined;
             const removeShopCoverImage = !shopCoverImage && req.body.removeShopCoverImage === '1';
             const removeProductImageIds = String(req.body.removeProductImageIds || '')
@@ -951,15 +897,12 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
             const remainingSlots = Math.max(0, MAX_SHOP_PRODUCT_IMAGES - keptProductImages.length);
             const acceptedNewFiles = newProductImageFiles.slice(0, remainingSlots);
 
-            // ลบไฟล์รูปเดิมออกจาก disk เมื่อมีการกดลบรูปทิ้ง หรืออัปโหลดรูปหน้าปกใหม่ทับ
+            // ลบไฟล์รูปเดิมออกจากที่เก็บ (Cloudinary/disk) เมื่อมีการกดลบรูปทิ้ง หรืออัปโหลดรูปหน้าปกใหม่ทับ
             const oldFilesToDelete = imagesToRemove.map((img) => img.imageUrl);
             if ((shopCoverImage || removeShopCoverImage) && existingShop?.shopCoverImage) {
                 oldFilesToDelete.push(existingShop.shopCoverImage);
             }
-            for (const relativePath of oldFilesToDelete) {
-                const absolutePath = path.join(__dirname, '../public', relativePath);
-                fs.unlink(absolutePath, () => {});
-            }
+            await Promise.all(oldFilesToDelete.map((oldUrl) => deleteImage(oldUrl)));
 
             const shopDetail = await prisma.shopDetail.upsert({
                 where: { userId: req.user.id },
@@ -989,14 +932,14 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
                 await prisma.shopProductImage.createMany({
                     data: acceptedNewFiles.map((file) => ({
                         shopDetailId: shopDetail.id,
-                        imageUrl: `/uploads/shop-profile/${file.filename}`
+                        imageUrl: file.url
                     }))
                 });
             }
 
             // productImage (scalar) คงไว้เป็นรูปแรกของแกลเลอรีเสมอ เพื่อไม่ให้หน้าอื่นที่ยังอ้างอิงรูปเดียว (ผังตลาด/คอมมูนิตี้/แดชบอร์ด) พัง
             const newPrimaryImage = keptProductImages[0]?.imageUrl
-                || (acceptedNewFiles[0] ? `/uploads/shop-profile/${acceptedNewFiles[0].filename}` : null);
+                || (acceptedNewFiles[0] ? acceptedNewFiles[0].url : null);
             if (newPrimaryImage !== existingShop?.productImage) {
                 await prisma.shopDetail.update({
                     where: { id: shopDetail.id },
@@ -1099,7 +1042,7 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
                 district,
                 province
             } = parsed.data;
-            const shopCoverImage = req.file ? `/uploads/shop-applications/${req.file.filename}` : null;
+            const shopCoverImage = req.file ? req.file.url : null;
 
             await prisma.sellerApplication.create({
                 data: {
@@ -1208,7 +1151,7 @@ router.post("/repair", isAuthenticated, (req, res) => {
                     description,
                     userId: req.user.id,
                     images: {
-                        create: (req.files || []).map((f) => ({ imageUrl: `/uploads/repairs/${f.filename}` }))
+                        create: (req.files || []).map((f) => ({ imageUrl: f.url }))
                     }
                 }
             });
@@ -2112,7 +2055,7 @@ router.post('/booking-payment/confirm', isSellerOrApplicant, (req, res) => {
                 return res.redirect('/booking-status?error=slip_already_uploaded');
             }
 
-            const slipPath = `/uploads/payment-slips/${req.file.filename}`;
+            const slipPath = req.file.url;
 
             // ตรวจสลิปอัตโนมัติทันทีตอนอัปโหลด (ถ้าตั้งค่า SlipOK ไว้) แล้วเก็บผลไว้ในฐานข้อมูล
             // เพื่อโชว์ให้ทั้งผู้ขายและแอดมินเห็นทันที และแอดมินจะได้ไม่ต้องยิง API ซ้ำตอนกดยืนยัน

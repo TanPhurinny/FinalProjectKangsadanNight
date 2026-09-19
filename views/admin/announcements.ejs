@@ -107,9 +107,9 @@
                         onclick="viewAnnouncementDetail(decodeURIComponent('<%= encodeURIComponent(JSON.stringify(post)) %>'))">
                         <div class="card-img-container">
                             <% if (post.image) { %>
-                            <img src="/uploads/announcements/<%= post.image %>"
+                            <img src="<%= imageUrl(post.image, 'announcements') %>"
                                 class="announcement-card-image"
-                                onclick="event.stopPropagation(); openAnnouncementImage('/uploads/announcements/<%= encodeURIComponent(post.image) %>', '<%= encodeURIComponent(post.title) %>')"
+                                onclick="event.stopPropagation(); openAnnouncementImage('<%= imageUrl(post.image, 'announcements') %>', '<%= encodeURIComponent(post.title) %>')"
                                 alt="news">
                             <% } else { %>
                             <div class="img-placeholder"><i

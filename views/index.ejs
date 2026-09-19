@@ -328,10 +328,10 @@
                                 <div class="announcement-media">
                                     <% if (post.image) { %>
                                     <img
-                                        src="/uploads/announcements/<%= post.image %>"
+                                        src="<%= imageUrl(post.image, 'announcements') %>"
                                         class="announcement-img clickable"
                                         alt="news"
-                                        onclick="openAnnouncementImage('/uploads/announcements/<%= encodeURIComponent(post.image) %>', '<%= encodeURIComponent(post.title) %>')">
+                                        onclick="openAnnouncementImage('<%= imageUrl(post.image, 'announcements') %>', '<%= encodeURIComponent(post.title) %>')">
                                     <% } else { %>
                                     <div class="img-fallback"><i
                                             class="fas fa-bullhorn"></i></div>
@@ -357,7 +357,7 @@
                                         data-content="<%= post.content.replace(/"/g,
                                         '&quot;') %>"
                                         data-image="<%= post.image ?
-                                        `/uploads/announcements/${encodeURIComponent(post.image)}`
+                                        imageUrl(post.image, 'announcements')
                                         : '' %>"
                                         data-date="<%= new
                                         Date(post.createdAt).toLocaleDateString('th-TH')

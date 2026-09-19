@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
+const { createImageStorage } = require('../utils/imageStorage');
 const { isStaffOrAdmin, isAdminOnly } = require('../middlewares/auth');
 
 // --- 1. Import Controllers ---
@@ -16,19 +16,7 @@ const { buildReceiptData } = require('../controllers/receiptController');
 const bannerCtrl = require('../controllers/communityBannerController');
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
-const uploadDir = path.join(__dirname, '..', 'public', 'uploads', 'announcements');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, 'ann-' + Date.now() + path.extname(file.originalname));
-    }
-});
+const storage = createImageStorage({ folder: 'announcements', prefix: 'ann' });
 
 const upload = multer({ 
     storage: storage,
@@ -46,19 +34,7 @@ const upload = multer({
 });
 
 // --- 2.1 การตั้งค่า Multer สำหรับอัปโหลดรูปแบนเนอร์คอมมูนิตี้ ---
-const bannerUploadDir = path.join(__dirname, '..', 'public', 'uploads', 'community-banners');
-if (!fs.existsSync(bannerUploadDir)) {
-    fs.mkdirSync(bannerUploadDir, { recursive: true });
-}
-
-const bannerStorage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, bannerUploadDir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, 'banner-' + Date.now() + path.extname(file.originalname));
-    }
-});
+const bannerStorage = createImageStorage({ folder: 'community-banners', prefix: 'banner' });
 
 const uploadBanner = multer({
     storage: bannerStorage,

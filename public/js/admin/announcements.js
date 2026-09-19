@@ -81,7 +81,12 @@ function viewAnnouncementDetail(dataString) {
         timeStyle: 'short'
     });
 
-    const imagePath = data.image ? `/uploads/announcements/${encodeURIComponent(data.image)}` : '';
+    // ค่ารูปเก่าเป็นแค่ชื่อไฟล์ ส่วนรูปใหม่เป็น URL เต็มของ Cloudinary (หรือ /uploads/... ตอน dev)
+    const imagePath = !data.image
+        ? ''
+        : (/^https?:\/\//i.test(data.image) || data.image.startsWith('/'))
+            ? data.image
+            : `/uploads/announcements/${encodeURIComponent(data.image)}`;
     const encodedTitle = encodeURIComponent(data.title || 'รูปประกาศ');
 
     const imageHtml = data.image

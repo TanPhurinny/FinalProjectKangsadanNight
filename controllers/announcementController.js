@@ -6,10 +6,15 @@ const { buildRoundAnnouncement } = require('../utils/autoRoundAnnouncement');
 
 const uploadsDir = path.join(__dirname, '..', 'public', 'uploads', 'announcements');
 
-// ค่า existingImage มาจาก hidden input ฝั่ง client (แก้ผ่าน devtools ได้) — ยอมรับเฉพาะชื่อไฟล์
-// ที่มีอยู่จริงในโฟลเดอร์ uploads เท่านั้น กัน path traversal (../../etc/passwd เป็นต้น)
-function resolveExistingImage(rawValue) {
+// ค่า existingImage มาจาก hidden input ฝั่ง client (แก้ผ่าน devtools ได้) — ยอมรับเฉพาะ
+//  - ชื่อไฟล์เก่าที่มีอยู่จริงในโฟลเดอร์ uploads (กัน path traversal เช่น ../../etc/passwd)
+//  - URL ที่มีประกาศเดิมใช้อยู่แล้วใน DB (กันยัด URL ภายนอกเข้ามาเอง)
+async function resolveExistingImage(rawValue) {
     if (!rawValue) return null;
+    if (/^https?:\/\//i.test(rawValue)) {
+        const inUse = await prisma.announcement.findFirst({ where: { image: rawValue }, select: { id: true } });
+        return inUse ? rawValue : null;
+    }
     const safeName = path.basename(rawValue);
     return fs.existsSync(path.join(uploadsDir, safeName)) ? safeName : null;
 }
@@ -82,7 +87,7 @@ exports.createAnnouncement = async (req, res) => {
     try {
         const { title, content, category } = parsed.data;
         const { targetRoles } = req.body;
-        const imageName = req.file ? req.file.filename : resolveExistingImage(req.body.existingImage);
+        const imageName = req.file ? req.file.url : await resolveExistingImage(req.body.existingImage);
         const normalizedRoles = normalizeTargetRoles(targetRoles);
         const fallbackRole = normalizedRoles.includes('SELLER') ? 'SELLER' : 'CUSTOMER';
         const isImportant = req.body.isImportant === 'on' || req.body.isImportant === 'true';
@@ -114,7 +119,7 @@ exports.updateAnnouncement = async (req, res) => {
     }
     const { title, content, category } = parsed.data;
     const { targetRoles } = req.body;
-    const imageName = req.file ? req.file.filename : null;
+    const imageName = req.file ? req.file.url : null;
 
     try {
         const normalizedRoles = normalizeTargetRoles(targetRoles);

@@ -1,7 +1,6 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const path = require('path');
-const fs = require('fs');
+const { deleteImage } = require('../utils/imageStorage');
 const { SignJWT } = require('jose');
 const { z } = require('zod');
 const userModel = require('../models/userModel');
@@ -542,13 +541,12 @@ exports.uploadAvatar = async (req, res) => {
         }
 
         const currentUser = await userModel.findById(userId);
-        const newAvatarUrl = '/uploads/avatars/' + req.file.filename;
+        const newAvatarUrl = req.file.url;
 
         const updatedUser = await userModel.updateUser(userId, { avatarUrl: newAvatarUrl });
 
         if (currentUser?.avatarUrl) {
-            const oldAvatarPath = path.join(__dirname, '..', 'public', currentUser.avatarUrl);
-            fs.unlink(oldAvatarPath, () => {});
+            await deleteImage(currentUser.avatarUrl);
         }
 
         await syncSession(req, res, updatedUser);
@@ -589,8 +587,7 @@ exports.removeAvatar = async (req, res) => {
 
         const updatedUser = await userModel.updateUser(userId, { avatarUrl: null });
 
-        const oldAvatarPath = path.join(__dirname, '..', 'public', currentUser.avatarUrl);
-        fs.unlink(oldAvatarPath, () => {});
+        await deleteImage(currentUser.avatarUrl);
 
         await syncSession(req, res, updatedUser);
 

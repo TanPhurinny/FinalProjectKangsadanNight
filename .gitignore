@@ -3,3 +3,9 @@ node_modules
 .env
 
 /generated/prisma
+
+# รูปที่ผู้ใช้อัปโหลด (เก็บที่ Cloudinary ใน production) — ยกเว้นรูปปกมาตรฐานของประกาศรอบจองที่โค้ดอ้างชื่อไฟล์ตรง ๆ
+/public/uploads/*
+!/public/uploads/announcements/
+/public/uploads/announcements/*
+!/public/uploads/announcements/ann-1787476736984.JPG

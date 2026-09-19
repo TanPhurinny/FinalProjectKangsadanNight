@@ -1,4 +1,4 @@
-const fs = require('fs');
+const { readImageBuffer } = require('./imageStorage');
 const path = require('path');
 
 // ตรวจสลิปโอนเงินอัตโนมัติผ่าน SlipOK (https://slipok.com) — อ่าน QR บนสลิปแล้วเช็คกับธนาคารจริง
@@ -25,19 +25,21 @@ async function verifySlip(slipImagePath, expectedAmount) {
 
     const branchId = String(process.env.SLIPOK_BRANCH_ID).trim();
     const apiKey = String(process.env.SLIPOK_API_KEY).trim();
-    // path เก็บใน DB เป็น URL path แบบ '/uploads/payment-slips/xxx.jpg' (relative ต่อ public/)
-    // ไม่ใช่ absolute path ของเครื่อง แม้จะขึ้นต้นด้วย '/' ก็ตาม — ต่อกับ public/ เสมอ
-    const relativePath = String(slipImagePath || '').replace(/^\/+/, '');
-    const absolutePath = path.join(__dirname, '..', 'public', relativePath);
+    // ค่าที่เก็บใน DB เป็น URL เต็มของ Cloudinary หรือ path แบบ '/uploads/payment-slips/xxx.jpg' (ไฟล์ในเครื่อง)
+    let fileBuffer = null;
+    try {
+        fileBuffer = await readImageBuffer(slipImagePath);
+    } catch (error) {
+        console.error('อ่านไฟล์สลิปไม่สำเร็จ:', error.message);
+    }
 
-    if (!fs.existsSync(absolutePath)) {
+    if (!fileBuffer) {
         return { ok: false, reason: 'ไม่พบไฟล์สลิปในระบบ' };
     }
 
     try {
-        const fileBuffer = fs.readFileSync(absolutePath);
         const form = new FormData();
-        form.append('files', new Blob([fileBuffer]), path.basename(absolutePath));
+        form.append('files', new Blob([fileBuffer]), path.basename(String(slipImagePath).split('?')[0]));
 
         const response = await fetch(`${SLIPOK_ENDPOINT}/${branchId}`, {
             method: 'POST',

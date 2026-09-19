@@ -12,6 +12,7 @@ const { generalLimiter } = require('./middlewares/authRateLimit');
 const logger = require('./config/logger');
 const { ensureWeeklyRoundAnnouncement } = require('./utils/autoRoundAnnouncement');
 
+const { resolveImageUrl } = require('./utils/imageStorage');
 const app = express();
 
 // --- 1. การตั้งค่าพื้นฐาน ---
@@ -79,6 +80,8 @@ app.use(session({
 app.use((req, res, next) => {
   res.locals.path = req.path;
   res.locals.user = req.session?.user || null;
+  // แปลงค่ารูปใน DB (ชื่อไฟล์เก่า หรือ URL เต็มของ Cloudinary) ให้เป็น URL ที่ใช้ใน <img> ได้
+  res.locals.imageUrl = resolveImageUrl;
   next();
 });
 

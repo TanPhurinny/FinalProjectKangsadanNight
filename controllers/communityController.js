@@ -310,7 +310,7 @@ exports.createPost = async (req, res) => {
                 content,
                 images: {
                     create: uploadedImages.map((file) => ({
-                        imageUrl: `/uploads/community/${file.filename}`
+                        imageUrl: file.url
                     }))
                 }
             },
@@ -404,7 +404,7 @@ exports.updatePost = async (req, res) => {
                 await tx.communityPostImage.createMany({
                     data: uploadedImages.map((file) => ({
                         postId,
-                        imageUrl: `/uploads/community/${file.filename}`
+                        imageUrl: file.url
                     }))
                 });
             }

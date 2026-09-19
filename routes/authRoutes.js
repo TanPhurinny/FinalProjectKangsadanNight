@@ -1,25 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
+const { createImageStorage } = require('../utils/imageStorage');
 const authController = require('../controllers/authController');
 const { requireAuth } = require('../middlewares/jwtAuth');
 const { authLimiter, forgotPasswordLimiter, registerLimiter } = require('../middlewares/authRateLimit');
 
 // การตั้งค่า Multer สำหรับอัปโหลดรูปโปรไฟล์
-const avatarUploadDir = path.join(__dirname, '..', 'public', 'uploads', 'avatars');
-if (!fs.existsSync(avatarUploadDir)) {
-    fs.mkdirSync(avatarUploadDir, { recursive: true });
-}
-
-const avatarStorage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, avatarUploadDir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, 'avatar-' + req.authUser?.id + '-' + Date.now() + path.extname(file.originalname));
-    }
+const avatarStorage = createImageStorage({
+    folder: 'avatars',
+    prefix: (req) => 'avatar-' + req.authUser?.id
 });
 
 const uploadAvatar = multer({

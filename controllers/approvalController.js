@@ -1,5 +1,4 @@
-const fs = require('fs');
-const path = require('path');
+const { deleteImage } = require('../utils/imageStorage');
 const { PrismaClient, Prisma } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { buildZonesData } = require('./marketController');
@@ -652,10 +651,8 @@ exports.rejectPaymentSlip = async (req, res) => {
             return res.redirect('/admin/approvals?error=no_slip_to_confirm');
         }
 
-        // ลบไฟล์สลิปเดิมออกจากดิสก์ กันไฟล์ค้างไม่มีใครอ้างถึง
-        const relativePath = String(requestRecord.paymentSlipImage || '').replace(/^\/+/, '');
-        const absolutePath = path.join(__dirname, '..', 'public', relativePath);
-        fs.unlink(absolutePath, () => {});
+        // ลบไฟล์สลิปเดิมออกจากที่เก็บ กันไฟล์ค้างไม่มีใครอ้างถึง
+        await deleteImage(requestRecord.paymentSlipImage);
 
         await prisma.bookingRequest.update({
             where: { id: requestId },
