@@ -23,6 +23,7 @@
     <div class="booking-stall-page">
 
       <div id="adminTooltip" class="admin-tooltip">
+        <img id="tt-image" class="tt-image" alt="รูปสินค้า/ร้าน" hidden>
         <div class="tt-header" id="tt-header">แผง <span id="tt-stall-id"></span></div>
         <div class="tt-body">
           <div class="tt-group">
@@ -168,19 +169,19 @@
             </div>
 
             <div class="ov-zone-canvas" id="zoneOverviewCanvas" style="display:none;">
-              <div class="ov-zone-block ov-zone-E" data-zone="E">
+              <div class="ov-zone-block ov-zone-E" data-zone="E" title="โซน E — แฟชั่น">
                 <span class="ov-zone-title">โซน E</span></div>
-              <div class="ov-zone-block ov-zone-D" data-zone="D">
+              <div class="ov-zone-block ov-zone-D" data-zone="D" title="โซน D — ฟู้ดทรัค">
                 <span class="ov-zone-title">โซน D</span></div>
-              <div class="ov-zone-block ov-zone-X" data-zone="X">
+              <div class="ov-zone-block ov-zone-X" data-zone="X" title="โซน X — อาหาร">
                 <span class="ov-zone-title">โซน X</span></div>
               <div class="ov-zone-block ov-zone-A" data-zone="A">
-                <span class="ov-zone-title">โซน A</span></div>
+                <span class="ov-zone-title">โซน A</span><span class="ov-zone-sub">แฟชั่น/อาหาร</span></div>
               <div class="ov-zone-block ov-zone-F" data-zone="F">
-                <span class="ov-zone-title">โซน F</span></div>
+                <span class="ov-zone-title">โซน F</span><span class="ov-zone-sub">อาหาร</span></div>
               <div class="ov-zone-block ov-zone-B" data-zone="B">
-                <span class="ov-zone-title">โซน B</span></div>
-              <div class="ov-zone-block ov-zone-C" data-zone="C">
+                <span class="ov-zone-title">โซน B</span><span class="ov-zone-sub">อาหาร/แฟชั่น</span></div>
+              <div class="ov-zone-block ov-zone-C" data-zone="C" title="โซน C — แฟชั่น">
                 <span class="ov-zone-title">โซน C</span></div>
             </div>
 
@@ -196,6 +197,14 @@
                 <div class="legend-item"><div
                     class="color-box color-requested"></div>
                   แถวที่คำขอระบุ</div>
+                <div class="legend-item"><div class="color-box color-recommended"></div>
+                  แนะนำ (ห่างจากร้านขายของชนิดเดียวกันพอ)</div>
+                <div class="legend-item"><div class="color-box color-spacing-warning"></div>
+                  ใกล้ร้านขายของชนิดเดียวกัน (เลือกได้ตามดุลยพินิจ)</div>
+                <div class="legend-item"><div class="color-box color-occ-unpaid"></div>
+                  จองแล้วแต่ยังไม่จ่ายเงิน</div>
+                <div class="legend-item"><div class="color-box color-occ-new"></div>
+                  ลูกค้าใหม่ (ไม่เคยส่งคำขอมาก่อน)</div>
               </div>
               <div class="legend-divider"></div>
               <div class="legend-row">
@@ -576,10 +585,25 @@
       cell.classList.add('booked');
       if (stall && stall.expiryState === 'expired') cell.classList.add('expired');
       else if (stall && stall.expiryState === 'near') cell.classList.add('near-expiry');
+      // ป้ายสถานะร้าน (ไม่จ่ายเงิน/ลูกค้าใหม่) คำนวณไว้แล้วฝั่ง backend (ดู statusBadge ใน approvalController.js)
+      // ไม่จ่ายเงินสำคัญกว่า โชว์ได้ป้ายเดียวต่อล็อก
+      if (stall && stall.occupant && stall.occupant.statusBadge) {
+        cell.classList.add(stall.occupant.statusBadge === 'unpaid' ? 'occ-unpaid' : 'occ-new');
+      }
       cell.addEventListener('mouseenter', (e) => showTooltip(e, code, stall, true));
       cell.addEventListener('mouseleave', hideTooltip);
       cell.addEventListener('mousemove', moveTooltip);
+      // tooltip เป็น pointer-events:none (ลอยตามเมาส์) กดลิงก์ในนั้นไม่ได้ เลยให้คลิกที่ล็อกแทน
+      // เปิดหน้าอนุมัติที่ "รอบ" ของคำขอนี้ไปเลย (ไม่ auto-scroll ไปคำขอเจาะจง หน้านั้นยังไม่รองรับ)
+      if (stall && stall.occupant && stall.occupant.approvalsUrl) {
+        cell.addEventListener('click', () => window.open(stall.occupant.approvalsUrl, '_blank'));
+      }
     } else {
+      // แนะนำ/เตือนระยะห่างจากร้านขายสินค้า subtype เดียวกันเป๊ะ (คำนวณไว้แล้วฝั่ง backend ดู utils/stallSpacing.js)
+      // เป็นแค่คำแนะนำ ไม่ได้บล็อกไม่ให้เลือก
+      if (REQUEST_DATA.productSubtype) {
+        cell.classList.add(stall && stall.spacingWarning ? 'spacing-warning' : 'recommended');
+      }
       cell.addEventListener('mouseenter', (e) => showTooltip(e, code, stall, false));
       cell.addEventListener('mouseleave', hideTooltip);
       cell.addEventListener('mousemove', moveTooltip);
@@ -702,20 +726,44 @@
     tooltip.classList.toggle('tt-available', !isBooked);
 
     if (isBooked) {
+      // ข้อมูลร้านที่จองล็อกนี้จริง (ดึงจาก Slot->Booking->User->ShopDetail ฝั่ง backend
+      // ดู buildAdminBookingStallPageData ใน approvalController.js) — ถ้าไม่เจอข้อมูล (คำขอเก่า/หาไม่เจอ) โชว์ "-" แทน
+      const occ = stall && stall.occupant;
+      const badgeText = occ && occ.statusBadge === 'unpaid' ? ' 🟣 ยังไม่จ่ายเงิน'
+        : (occ && occ.statusBadge === 'new' ? ' 🟢 ลูกค้าใหม่' : '');
+      const ttImage = document.getElementById('tt-image');
+      if (occ && occ.productImage) {
+        ttImage.src = occ.productImage;
+        ttImage.hidden = false;
+      } else {
+        ttImage.hidden = true;
+        ttImage.removeAttribute('src');
+      }
       document.getElementById('tt-label-shop').textContent = 'ชื่อร้านค้า';
-      document.getElementById('tt-shop').textContent = 'มีผู้จองแล้ว';
-      document.getElementById('tt-label-lock').textContent = 'หมายเลขล็อก';
-      document.getElementById('tt-lock').textContent = code;
-      document.getElementById('tt-label-date').textContent = 'วันที่จอง';
-      document.getElementById('tt-date').textContent = '-';
+      document.getElementById('tt-shop').textContent = ((occ && occ.shopName) || 'มีผู้จองแล้ว (ไม่พบชื่อร้าน)') + badgeText;
+      // หมายเลขล็อกซ้ำกับหัว tooltip อยู่แล้ว ใช้ช่องนี้โชว์สถานะชำระเงินแทน
+      document.getElementById('tt-label-lock').textContent = 'สถานะชำระเงิน';
+      document.getElementById('tt-lock').textContent = (occ && occ.paymentStatusText) || '-';
+      document.getElementById('tt-label-date').textContent = 'ระยะเวลาเช่า';
+      document.getElementById('tt-date').textContent = (occ && occ.rentalPeriodText)
+        ? occ.rentalPeriodText + (occ.daysUntilExpiry != null ? ` (เหลือ ${occ.daysUntilExpiry} วัน)` : '')
+        : '-';
       document.getElementById('tt-label-name').textContent = 'ผู้จอง';
-      document.getElementById('tt-name').textContent = '-';
+      document.getElementById('tt-name').textContent = (occ && occ.renterName) || '-';
       document.getElementById('tt-phone-group').style.display = '';
       document.getElementById('tt-label-phone').textContent = 'เบอร์โทรศัพท์';
-      document.getElementById('tt-phone').textContent = '-';
-      document.getElementById('tt-label-note').textContent = 'หมายเหตุ';
-      document.getElementById('tt-note').textContent = 'ล็อกนี้ไม่ว่าง';
+      document.getElementById('tt-phone').textContent = (occ && occ.phone) || '-';
+      document.getElementById('tt-label-note').textContent = 'ขายสินค้า';
+      if (occ) {
+        const priceText = occ.dailyStallPrice != null ? `${Number(occ.dailyStallPrice).toLocaleString('th-TH')} บาท/วัน` : null;
+        const stallCountText = occ.stallCountForShop > 1 ? `ถือรวม ${occ.stallCountForShop} ล็อก` : null;
+        document.getElementById('tt-note').textContent =
+          [occ.productTypeText, occ.productSubtype, priceText, stallCountText, 'คลิกล็อกนี้เพื่อไปดูคำขอที่หน้าอนุมัติ'].filter(Boolean).join(' · ');
+      } else {
+        document.getElementById('tt-note').textContent = 'ล็อกนี้ไม่ว่าง';
+      }
     } else {
+      document.getElementById('tt-image').hidden = true;
       const colorText = stall && stall.lotColor && stall.lotColor !== 'ไม่มี' ? `สี${stall.lotColor}` : '-';
       document.getElementById('tt-label-shop').textContent = 'สถานะ';
       document.getElementById('tt-shop').textContent = 'ว่าง — พร้อมให้จอง';
@@ -729,7 +777,14 @@
       document.getElementById('tt-name').textContent = colorText;
       document.getElementById('tt-phone-group').style.display = 'none';
       document.getElementById('tt-label-note').textContent = 'หมายเหตุ';
-      document.getElementById('tt-note').textContent = 'คลิกที่ล็อกนี้เพื่อเลือก';
+      if (stall && stall.spacingWarning) {
+        document.getElementById('tt-note').textContent =
+          `⚠ ห่างจากล็อก ${stall.spacingWarning.nearestCode} (ขายสินค้าชนิดเดียวกัน) แค่ ${stall.spacingWarning.distance} ล็อก — แนะนำเว้น ≥ ${REQUEST_DATA.minStallSpacing} ล็อก (เลือกได้ตามดุลยพินิจ)`;
+      } else if (REQUEST_DATA.productSubtype && stall) {
+        document.getElementById('tt-note').textContent = 'แนะนำ — ไม่มีร้านขายสินค้าชนิดเดียวกันอยู่ใกล้ ๆ · คลิกเพื่อเลือก';
+      } else {
+        document.getElementById('tt-note').textContent = 'คลิกที่ล็อกนี้เพื่อเลือก';
+      }
     }
 
     tooltip.style.display = 'block';
@@ -769,11 +824,15 @@
       });
       return;
     }
+    // ไม่บังคับเลือกให้ครบตามที่ขอมาอีกต่อไป (แอดมินอาจมีล็อกจริงให้แค่บางส่วน) — เตือนเฉย ๆ ก่อนยืนยัน
+    // แถวคำขอส่วนที่เกินจากล็อกที่จัดให้จะถูกยกเลิกอัตโนมัติฝั่ง backend (ดู confirmBookingStall)
     if (currentSelectedStalls.length < REQUESTED_STALL_COUNT) {
-      window.showAlertDialog({
-        title: 'เลือกล็อกยังไม่ครบ',
-        message: `คำขอนี้ขอมา ${REQUESTED_STALL_COUNT} ล็อก แต่เลือกไว้แค่ ${currentSelectedStalls.length} ล็อก กรุณาเลือกให้ครบก่อนยืนยัน`,
-        tone: 'warning'
+      window.showConfirmDialog({
+        title: 'เลือกล็อกน้อยกว่าที่ขอ',
+        message: `คำขอนี้ขอมา ${REQUESTED_STALL_COUNT} ล็อก แต่เลือกไว้แค่ ${currentSelectedStalls.length} ล็อก ส่วนที่เหลือจะถูกยกเลิกอัตโนมัติ ยืนยันจัดเท่านี้หรือไม่?`,
+        tone: 'warning',
+        confirmText: 'ยืนยันจัดเท่านี้',
+        onConfirm: () => openConfirmSummary()
       });
       return;
     }

@@ -3,6 +3,7 @@ const { PrismaClient, Prisma } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { buildZonesData } = require('./marketController');
 const zoneAccess = require('../utils/zoneAccess');
+const stallSpacing = require('../utils/stallSpacing');
 
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable } = require('../utils/bookingRound');
 const { verifySlip } = require('../utils/slipVerification');
@@ -105,6 +106,139 @@ async function buildAdminBookingStallPageData(requestId) {
         });
     });
 
+    // ข้อมูลร้านที่จองล็อกแล้วแต่ละล็อก (ไว้โชว์ tooltip ให้ครบ + เช็คระยะห่าง subtype เดียวกัน ดู utils/stallSpacing.js)
+    // หาผ่าน Slot.slotNumber(=stallCode) -> Booking ล่าสุดที่ยังไม่ถูกปฏิเสธ -> User -> ShopDetail
+    // (ShopDetail อาจยังไม่ถูกสร้างถ้าร้านนั้นก็ยังไม่จ่ายเงิน จึง fallback ไปดูใบสมัครล่าสุดเช่นเดียวกับผู้สมัครคำขอนี้)
+    const occupantSubtypeByCode = {};
+    const occupantInfoByCode = {};
+    if (bookedStalls.length) {
+        const occupiedSlots = await prisma.slot.findMany({
+            where: { slotNumber: { in: bookedStalls } },
+            select: {
+                slotNumber: true,
+                bookings: {
+                    where: { status: { in: ['IN_PROGRESS', 'SUCCESS', 'APPROVED'] } },
+                    orderBy: { id: 'desc' },
+                    take: 1,
+                    select: {
+                        id: true,
+                        userId: true,
+                        status: true,
+                        rentalStartDate: true,
+                        rentalEndDate: true,
+                        dailyStallPrice: true,
+                        storeDetailSnapshot: true,
+                        user: {
+                            select: {
+                                name: true,
+                                phoneNumber: true,
+                                shop: { select: { shopName: true, productType: true, productSubtype: true, productImage: true, shopCoverImage: true } }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const missingUserIds = [];
+        occupiedSlots.forEach((slot) => {
+            const occupantBooking = slot.bookings[0];
+            if (!occupantBooking) return;
+            const shop = occupantBooking.user?.shop || null;
+            const requestIdMatch = String(occupantBooking.storeDetailSnapshot || '').match(/^\[BOOKING_REQUEST_ID:(\d+)\]/);
+            const info = {
+                userId: occupantBooking.userId,
+                bookingId: occupantBooking.id,
+                bookingStatus: occupantBooking.status,
+                shopName: shop?.shopName || null,
+                productType: shop?.productType || null,
+                productSubtype: shop?.productSubtype || null,
+                productImage: shop?.productImage || shop?.shopCoverImage || null,
+                renterName: occupantBooking.user?.name || null,
+                phone: occupantBooking.user?.phoneNumber || null,
+                rentalStartDate: occupantBooking.rentalStartDate,
+                rentalEndDate: occupantBooking.rentalEndDate,
+                dailyStallPrice: occupantBooking.dailyStallPrice,
+                requestId: requestIdMatch ? Number.parseInt(requestIdMatch[1], 10) : null
+            };
+            occupantInfoByCode[slot.slotNumber] = info;
+            if (info.productSubtype) {
+                occupantSubtypeByCode[slot.slotNumber] = info.productSubtype;
+            } else {
+                missingUserIds.push({ code: slot.slotNumber, userId: occupantBooking.userId });
+            }
+        });
+
+        // ร้านที่จองแล้วแต่ยังไม่มี ShopDetail (ยังไม่จ่ายเงิน) — ย้อนไปดูใบสมัครล่าสุดแทน เหมือนที่ทำกับผู้สมัครคำขอนี้
+        await Promise.all(missingUserIds.map(async ({ code, userId }) => {
+            const latestApplication = await prisma.sellerApplication.findFirst({
+                where: { userId },
+                orderBy: { createdAt: 'desc' },
+                select: { shopName: true, productType: true, productSubtype: true, shopCoverImage: true }
+            });
+            if (!latestApplication) return;
+            occupantInfoByCode[code].shopName = occupantInfoByCode[code].shopName || latestApplication.shopName;
+            occupantInfoByCode[code].productType = occupantInfoByCode[code].productType || latestApplication.productType;
+            occupantInfoByCode[code].productSubtype = occupantInfoByCode[code].productSubtype || latestApplication.productSubtype;
+            occupantInfoByCode[code].productImage = occupantInfoByCode[code].productImage || latestApplication.shopCoverImage;
+            if (occupantInfoByCode[code].productSubtype) {
+                occupantSubtypeByCode[code] = occupantInfoByCode[code].productSubtype;
+            }
+        }));
+    }
+
+    // "ลูกค้าใหม่" (ไม่เคยมีคำขอมาก่อนเลย) กับ "จำนวนล็อกที่ร้านนี้ถือรวม" — เช็คจาก Booking ทุกแถวของ userId นี้
+    // (ทุกโซน ไม่ใช่แค่โซนที่กำลังดู) นับ requestId ที่ต่างกัน (parse จาก storeDetailSnapshot tag [BOOKING_REQUEST_ID:n])
+    // เป็นตัวแทน "จำนวนครั้งที่เคยส่งคำขอ" — ถ้ามีแค่ครั้งเดียว (ครั้งนี้ครั้งเดียว) ถือว่าลูกค้าใหม่
+    const occupantUserIds = Array.from(new Set(Object.values(occupantInfoByCode).map((info) => info.userId).filter(Boolean)));
+    const requestIdsByUserId = new Map();
+    const activeStallCountByUserId = new Map();
+    if (occupantUserIds.length) {
+        const allBookingsForOccupants = await prisma.booking.findMany({
+            where: { userId: { in: occupantUserIds } },
+            select: { userId: true, status: true, storeDetailSnapshot: true }
+        });
+        allBookingsForOccupants.forEach((b) => {
+            const requestIdMatch = String(b.storeDetailSnapshot || '').match(/^\[BOOKING_REQUEST_ID:(\d+)\]/);
+            if (requestIdMatch) {
+                const set = requestIdsByUserId.get(b.userId) || new Set();
+                set.add(requestIdMatch[1]);
+                requestIdsByUserId.set(b.userId, set);
+            }
+            if (['IN_PROGRESS', 'SUCCESS', 'APPROVED'].includes(String(b.status || '').toUpperCase())) {
+                activeStallCountByUserId.set(b.userId, (activeStallCountByUserId.get(b.userId) || 0) + 1);
+            }
+        });
+    }
+
+    const BOOKING_STATUS_LABEL = { IN_PROGRESS: 'รอชำระเงิน', SUCCESS: 'ชำระเงินแล้ว', APPROVED: 'อนุมัติแล้ว' };
+    const now = new Date();
+
+    // เตรียมข้อความไทยให้พร้อมโชว์ (วันที่/ประเภทสินค้า/สถานะจ่ายเงิน) ฝั่ง frontend จะได้ไม่ต้อง format เอง
+    Object.values(occupantInfoByCode).forEach((info) => {
+        info.productTypeText = PRODUCT_TYPE_LABEL[info.productType] || info.productType || null;
+        info.rentalPeriodText = info.rentalStartDate && info.rentalEndDate
+            ? `${toThaiDate(info.rentalStartDate)} - ${toThaiDate(info.rentalEndDate)}`
+            : null;
+        info.paymentStatusText = BOOKING_STATUS_LABEL[info.bookingStatus] || info.bookingStatus || null;
+        info.isUnpaid = info.bookingStatus === 'IN_PROGRESS';
+        info.daysUntilExpiry = info.rentalEndDate
+            ? Math.ceil((new Date(info.rentalEndDate).getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+            : null;
+        info.stallCountForShop = activeStallCountByUserId.get(info.userId) || 1;
+        // นับจำนวนคำขอ (BookingRequest) ที่ต่างกันของ userId นี้เท่าที่หาเจอ — ถ้าเจอแค่ 1 (คำขอปัจจุบัน) ถือว่าใหม่
+        // (ถ้าหา requestId จาก tag ไม่เจอเลยสักแถว ถือว่าข้อมูลไม่พอ ไม่ฟันธงว่าใหม่ กันขึ้นป้ายผิด)
+        const requestIds = requestIdsByUserId.get(info.userId);
+        info.isNewCustomer = !!requestIds && requestIds.size <= 1;
+        // ป้ายสถานะที่จะโชว์บนผัง (ไม่จ่ายเงินสำคัญกว่าลูกค้าใหม่ — โชว์ได้แค่ป้ายเดียวต่อล็อก)
+        info.statusBadge = info.isUnpaid ? 'unpaid' : (info.isNewCustomer ? 'new' : null);
+        // ลิงก์ไปหน้าอนุมัติ — เปิดไปที่ "รอบ" ของคำขอนี้เลย (หน้า /admin/approvals รองรับ query ?round=N อยู่แล้ว)
+        // ไม่ได้ auto-scroll ไปเจาะจงคำขอ (หน้านั้นยังไม่รองรับ) แค่พาไปถูกรอบ แอดมินหาชื่อร้านต่อเอง
+        info.approvalsUrl = info.rentalStartDate
+            ? `/admin/approvals?round=${getBookingRoundMetaForDate(info.rentalStartDate).roundNumber}`
+            : '/admin/approvals';
+    });
+
     const requestedZone = normalizeZone(bookingRequest.zone);
     const assignedStallCode = String(bookingRequest.assignedStallCode || extractAssignedStallFromDescription(bookingRequest.description) || '').trim().toUpperCase();
     const assignedStallCodes = parseStallCodes(assignedStallCode);
@@ -132,12 +266,14 @@ async function buildAdminBookingStallPageData(requestId) {
     // ใช้ตอน "จัดล็อก" ซึ่งเกิดก่อนจ่ายเงินเสมอ — ถ้ายังไม่มี ShopDetail ต้องย้อนไปดูใบสมัคร (SellerApplication)
     // ล่าสุดของผู้ใช้แทน ไม่งั้นประเภทสินค้าจะว่างเปล่าทุกคำขอที่ยังไม่เคยจ่ายเงินมาก่อน
     let applicantProductType = applicantUser?.shop?.productType || null;
-    if (!applicantProductType) {
+    let applicantProductSubtype = applicantUser?.shop?.productSubtype || null;
+    if (!applicantProductType || !applicantProductSubtype) {
         const latestApplication = await prisma.sellerApplication.findFirst({
             where: applicantUser?.id ? { userId: applicantUser.id } : { phoneNumber: bookingRequest.phone },
             orderBy: { createdAt: 'desc' }
         });
-        applicantProductType = latestApplication?.productType || null;
+        applicantProductType = applicantProductType || latestApplication?.productType || null;
+        applicantProductSubtype = applicantProductSubtype || latestApplication?.productSubtype || null;
     }
     // ถ้าไม่มีข้อมูลประเภทสินค้า (คำขอเก่า/หาผู้ใช้ที่ตรงเบอร์ไม่เจอ) ไม่จำกัด ให้เลือกได้ทุกโซนเหมือนเดิมเพื่อไม่บล็อกแอดมินผิดที่
     let allowedZones = applicantProductType
@@ -166,6 +302,30 @@ async function buildAdminBookingStallPageData(requestId) {
     // ล็อกที่เคยจัดให้คำขอนี้แล้วไม่ถือว่า "จองแล้ว" ในสายตาแอดมินคนนี้ (จะได้เลือกซ้ำ/ยืนยันใหม่ได้)
     const bookedStallsExcludingOwn = bookedStalls.filter((code) => !assignedStallCodes.includes(code));
 
+    // ติด occupant (ข้อมูลร้านที่จองแล้ว ไว้โชว์ tooltip ให้ครบ) และ spacingWarning (คำแนะนำระยะห่าง
+    // ดู utils/stallSpacing.js — ไม่บล็อกการเลือก แค่ให้แอดมินเห็น) ไว้ที่แต่ละล็อกในทุกโซน
+    zonesData.forEach((zone) => {
+        zone.columns.forEach((column) => {
+            column.stalls.forEach((stall) => {
+                if (stall.status !== 'AVAILABLE' && stall.status !== 'PLACEHOLDER') {
+                    if (occupantInfoByCode[stall.code]) stall.occupant = occupantInfoByCode[stall.code];
+                    return;
+                }
+                if (stall.status !== 'AVAILABLE' || !applicantProductSubtype) return;
+                const conflicts = stallSpacing.findConflicts({
+                    zoneColumns: zone.columns,
+                    candidateCode: stall.code,
+                    productSubtype: applicantProductSubtype,
+                    productType: applicantProductType,
+                    occupantSubtypeByCode
+                });
+                if (conflicts.length) {
+                    stall.spacingWarning = { distance: conflicts[0].distance, nearestCode: conflicts[0].code };
+                }
+            });
+        });
+    });
+
     return {
         bookingRequest: {
             id: bookingRequest.id,
@@ -180,6 +340,8 @@ async function buildAdminBookingStallPageData(requestId) {
             // productType เก็บได้ทั้งค่า enum (FOOD/FASHION) หรือข้อความไทยดิบ เช่น "อื่นๆ" (ตัวเลือกในฟอร์มสมัคร)
             // หรือค่าเก่าที่เคยเป็นข้อความไทยตรงๆ อยู่แล้ว ("อาหาร") ถ้าไม่เจอใน map ให้ใช้ค่าดิบแทนที่จะโชว์ "-" ทั้งที่มีข้อมูลจริง
             productTypeText: PRODUCT_TYPE_LABEL[applicantProductType] || applicantProductType || '-',
+            productSubtype: applicantProductSubtype,
+            minStallSpacing: stallSpacing.getMinSpacing(applicantProductType),
             dateText: toThaiDate(bookingRequest.createdAt),
             status: String(bookingRequest.status || 'PENDING').toUpperCase(),
             rentalDays: bookingDetail?.rentalDays ?? null,
@@ -726,7 +888,9 @@ exports.confirmBookingStall = async (req, res) => {
             : [];
         const requestedStallCount = Math.max(1, linkedBookings.length);
 
-        if (selectedStalls.length !== requestedStallCount) {
+        // ไม่บังคับให้เลือกครบตามจำนวนที่ขอมาอีกต่อไป (แอดมินอาจจัดให้แค่บางล็อกตามที่มีจริง) — เลือกได้ตั้งแต่
+        // 1 ล็อก ไปจนถึงจำนวนที่ขอมาสูงสุด แถวคำขอ (Booking) ส่วนที่เกินจากล็อกที่จัดให้จริงจะถูกยกเลิกด้านล่าง
+        if (selectedStalls.length < 1 || selectedStalls.length > requestedStallCount) {
             return res.redirect('/admin/approvals?error=stall_count_mismatch');
         }
 
@@ -807,9 +971,21 @@ exports.confirmBookingStall = async (req, res) => {
             // Booking (ตัวที่หน้า seller dashboard/booking-status/booking-history อ่าน) ต้อง
             // ตามสถานะจริงของ BookingRequest ไปด้วย — เดิมโค้ดจุดนี้อัปเดตแค่ราคา ทำให้ Booking.status
             // ค้างที่ PENDING ตลอดแม้แอดมินจะจัดล็อกและยืนยันจ่ายเงินแล้วจริงๆ ก็ตาม
-            for (let i = 0; i < linkedBookings.length; i += 1) {
-                const booking = linkedBookings[i];
-                const code = selectedStalls[i % selectedStalls.length];
+            // จับคู่แถวละ 1 ล็อก (ห้าม wrap ซ้ำ) — ถ้าแอดมินจัดล็อกน้อยกว่าที่ขอมา (เช่น ขอ 2 จัดแค่ 1)
+            // แถว Booking ที่เหลือซึ่งไม่ได้ล็อกจริงจะถูกยกเลิก (REJECTED) ไปเลย ไม่ค้างเป็น PENDING/ทับล็อกซ้ำกัน
+            const bookingsToAssign = linkedBookings.slice(0, selectedStalls.length);
+            const bookingsToReject = linkedBookings.slice(selectedStalls.length);
+
+            if (bookingsToReject.length) {
+                await tx.booking.updateMany({
+                    where: { id: { in: bookingsToReject.map((b) => b.id) } },
+                    data: { status: 'REJECTED' }
+                });
+            }
+
+            for (let i = 0; i < bookingsToAssign.length; i += 1) {
+                const booking = bookingsToAssign[i];
+                const code = selectedStalls[i];
 
                 const assignedSlot = await tx.slot.upsert({
                     where: { slotNumber: code },
