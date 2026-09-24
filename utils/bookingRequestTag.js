@@ -1,6 +1,6 @@
 // Tag ที่ฝังไว้ใน Booking.storeDetailSnapshot เพื่อผูก Booking กลับไปหา BookingRequest
 // ที่มันเกิดมาจาก (ไม่มี FK ตรง เพราะ 1 BookingRequest สร้าง Booking ได้หลายแถว — 1 แถวต่อ 1 ล็อกที่ขอ)
-// ใช้ร่วมกันระหว่าง routes/sellerRoute.js, controllers/approvalController.js, controllers/receiptController.js
+// ใช้ร่วมกันระหว่าง routes/sellerRoute.js, controllers/approvalController.js, controllers/quotationController.js
 const BOOKING_REQUEST_TAG_PREFIX = '[BOOKING_REQUEST_ID:';
 
 function buildBookingRequestTag(requestId) {

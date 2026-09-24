@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const visibleCountEl = document.getElementById('visibleCount');
     const vacantCountEl = document.getElementById('vacantCount');
     const flaggedCountEl = document.getElementById('flaggedCount');
-    const inspectedCountEl = document.getElementById('inspectedCount');
     const rows = Array.from(document.querySelectorAll('.inspection-row'));
     const noResults = document.getElementById('noResults');
     const smallPrice = Number(document.body.dataset.smallAppliancePrice || 20);
@@ -27,11 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function isElectricExcessActive(row) {
         const button = row.querySelector('.electric-excess-btn');
         return button ? button.dataset.active === 'true' : false;
-    }
-
-    function isInspectedChecked(row) {
-        const checkbox = row.querySelector('input[data-role="inspected"]');
-        return checkbox ? checkbox.checked : false;
     }
 
     function getAnyIssueChecked(row) {
@@ -57,13 +51,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const visibleCount = visibleRows.length;
         const vacantCount = visibleRows.filter((row) => row.classList.contains('is-vacant')).length;
         const flaggedCount = visibleRows.filter((row) => getAnyIssueChecked(row)).length;
-        const inspectedCount = visibleRows.filter(isInspectedChecked).length;
 
         if (totalCountEl) totalCountEl.textContent = String(totalCount);
         if (visibleCountEl) visibleCountEl.textContent = String(visibleCount);
         if (vacantCountEl) vacantCountEl.textContent = String(vacantCount);
         if (flaggedCountEl) flaggedCountEl.textContent = String(flaggedCount);
-        if (inspectedCountEl) inspectedCountEl.textContent = String(inspectedCount);
     }
 
     function updateIssueMode(issue) {
@@ -90,7 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const shouldShow = passSearch && passZone && passIssue;
             row.style.display = shouldShow ? '' : 'none';
-            row.classList.toggle('is-inspected', isInspectedChecked(row));
             if (shouldShow) {
                 visibleRows.push(row);
                 const checkedForIssue = getIssueChecked(row, issue);
@@ -122,59 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
             checkbox.addEventListener('change', () => {
                 applyFilter();
             });
-        });
-    });
-
-    // --- ล็อค/ปลดล็อคหัวข้อปัญหา (no-show/sublease/other-market/wrong-seller/เครื่องใช้ไฟฟ้าเกิน/ปัญหาอื่นๆ)
-    // เมื่อติ๊ก "ตรวจสอบแล้ว" กันแก้ไขข้อมูลย้อนหลังโดยไม่ตั้งใจ ต้องกดปุ่ม "แก้ไข" เพื่อปลดล็อคก่อน ---
-    function lockRowFields(row, locked) {
-        if (!row) return;
-        row.querySelectorAll('[data-role="issue-field"]').forEach((field) => {
-            field.disabled = locked;
-        });
-        const excessBtn = row.querySelector('.electric-excess-btn');
-        if (excessBtn) excessBtn.disabled = locked;
-        const editBtn = row.querySelector('.row-edit-btn');
-        if (editBtn) editBtn.classList.toggle('d-none', !locked);
-    }
-
-    document.querySelectorAll('.row-edit-btn').forEach((button) => {
-        button.addEventListener('click', () => {
-            lockRowFields(button.closest('.inspection-row'), false);
-        });
-    });
-
-    document.querySelectorAll('input[data-role="inspected"]').forEach((checkbox) => {
-        checkbox.addEventListener('change', async () => {
-            const row = checkbox.closest('.inspection-row');
-            const stallId = checkbox.dataset.stallId;
-            const isInspected = checkbox.checked;
-
-            checkbox.disabled = true;
-
-            try {
-                const response = await fetch('/staff/marketinspection/inspection-check', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ stallId, isInspected })
-                });
-                const payload = await response.json();
-
-                if (!response.ok || !payload.success) {
-                    throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
-                }
-            } catch (error) {
-                checkbox.checked = !isInspected; // การบันทึกล้มเหลว: คืนค่าเดิมให้ตรงกับสิ่งที่บันทึกจริงใน DB
-                console.error(error);
-                if (window.showAlertDialog) {
-                    window.showAlertDialog({ title: 'บันทึกไม่สำเร็จ', message: error.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่', tone: 'danger' });
-                }
-            } finally {
-                checkbox.disabled = false;
-                if (row) row.classList.toggle('is-inspected', checkbox.checked);
-                lockRowFields(row, checkbox.checked);
-                applyFilter();
-            }
         });
     });
 
@@ -382,17 +320,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     applyFilter();
 
-    // --- ปุ่ม "ส่งงาน" ตรวจตลาดรายวัน — popup ยืนยันสรุปยอดตรวจแล้ว/ทั้งหมด ก่อนส่งจริง ---
+    // --- ปุ่ม "ส่งงาน" ตรวจตลาดรายวัน — popup ยืนยันสรุปยอดร้านที่พบปัญหา/ทั้งหมด ก่อนส่งจริง ---
     const submitDayBtn = document.getElementById('submitDayBtn');
     if (submitDayBtn) {
         submitDayBtn.addEventListener('click', () => {
-            const inspectedCount = inspectedCountEl ? inspectedCountEl.textContent : '0';
+            const flaggedCount = flaggedCountEl ? flaggedCountEl.textContent : '0';
             const totalCount = totalCountEl ? totalCountEl.textContent : '0';
 
             if (!window.showConfirmDialog) return;
             window.showConfirmDialog({
                 title: 'ยืนยันส่งงาน',
-                message: `ตรวจสำเร็จไปแล้ว ${inspectedCount} ร้าน / ทั้งหมด ${totalCount} ร้าน ยืนยันส่งงานตรวจตลาดวันนี้?`,
+                message: `พบปัญหา ${flaggedCount} ร้าน จากทั้งหมด ${totalCount} ร้าน ยืนยันส่งงานตรวจตลาดวันนี้?`,
                 tone: 'success',
                 confirmText: 'ยืนยัน',
                 cancelText: 'ยกเลิก',
@@ -407,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (window.showAlertDialog) {
                             window.showAlertDialog({
                                 title: 'ส่งงานสำเร็จ',
-                                message: `บันทึกยอดตรวจวันนี้แล้ว: ${payload.inspectedCount} จาก ${payload.totalCount} ร้าน`,
+                                message: `บันทึกงานตรวจวันนี้แล้ว: พบปัญหา ${payload.flaggedCount} จากทั้งหมด ${payload.totalCount} ร้าน`,
                                 tone: 'success'
                             });
                         }

@@ -72,8 +72,7 @@
 }
 
 .legend-swatch.legend-issue { background: var(--danger-color); }
-.legend-swatch.legend-inspected { background: var(--success-color); }
-.legend-swatch.legend-pending { background: var(--warning-color); }
+.legend-swatch.legend-normal { background: var(--success-color); }
 .legend-swatch.legend-vacant { background: var(--muted-color); }
 
 /* ── ZONE OVERVIEW (มินิแผนผังตำแหน่งโซนจริง — ค่า % คัดลอกจาก admin/bookingStall.css .ov-zone-*) ── */
@@ -347,7 +346,7 @@
     pointer-events: none;
 }
 
-/* สถานะตรวจ — ลำดับสีสำคัญ: มีปัญหา > ตรวจแล้ว > ยังไม่ตรวจ > ว่าง (ดู resolveStatus ใน marketinspection-map.js) */
+/* สถานะตรวจ — ลำดับสีสำคัญ: มีปัญหา > ปกติ > ว่าง (ดู resolveStatus ใน marketinspection-map.js) */
 .insp-stall-cell.status-vacant {
     background: var(--muted-color);
     opacity: 0.55;
@@ -355,11 +354,7 @@
     pointer-events: none;
 }
 
-.insp-stall-cell.status-pending {
-    background: var(--warning-color);
-}
-
-.insp-stall-cell.status-inspected {
+.insp-stall-cell.status-normal {
     background: var(--success-color);
 }
 

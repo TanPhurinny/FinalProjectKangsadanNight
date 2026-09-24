@@ -576,8 +576,8 @@ exports.confirmPayment = async (req, res) => {
             data: {
                 status: 'SUCCESS',
                 paymentConfirmedAt: new Date(),
-                // เก็บชื่อแอดมิน/พนักงานที่กดยืนยันสลิปไว้ ให้ใบเสร็จ (controllers/receiptController.js) แสดง
-                // "พนักงานและผู้พิมพ์" เป็นคนที่ยืนยันจริง ไม่ใช่คนที่บังเอิญล็อกอินอยู่ตอนเปิดดูใบเสร็จ
+                // เก็บชื่อแอดมิน/พนักงานที่กดยืนยันสลิปไว้ ให้ใบเสนอราคา (controllers/quotationController.js) แสดง
+                // "พนักงานและผู้พิมพ์" เป็นคนที่ยืนยันจริง ไม่ใช่คนที่บังเอิญล็อกอินอยู่ตอนเปิดดูใบเสนอราคา
                 confirmedByName: req.user?.name || null
             }
         });

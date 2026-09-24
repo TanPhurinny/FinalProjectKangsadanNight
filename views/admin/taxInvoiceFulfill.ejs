@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>กรอกข้อมูลใบกำกับภาษี | Kangsadan Night Market</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/taxInvoiceRequests.css">
+    </head>
+    <body class="tax-invoice-page">
+        <%- include('../partials/navbar') %>
+
+        <header class="site-header">
+            <a href="javascript:history.back()" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+            <h2 class="header-title"><%= taxRequest.status === 'ISSUED' ? 'ยกเลิก & ออกใบกำกับภาษีใหม่' : 'กรอกข้อมูล & ออกใบกำกับภาษี' %></h2>
+            <div class="header-spacer"></div>
+        </header>
+
+        <div class="container">
+            <%
+            const flashError = {
+                'missing_profile_data': 'กรุณากรอกข้อมูลผู้เสียภาษีให้ครบถ้วน (ชื่อ/เลขผู้เสียภาษี/ที่อยู่)',
+                'invalid_state_transition': 'คำขอนี้ไม่อยู่ในสถานะที่ดำเนินการได้'
+            }[typeof error !== 'undefined' ? error : null] || null;
+            const isReissue = taxRequest.status === 'ISSUED';
+            const p = taxRequest.profile || {};
+            %>
+            <% if (flashError) { %>
+            <div class="flash-banner flash-banner--error"><i class="fas fa-triangle-exclamation"></i><span><%= flashError %></span></div>
+            <% } %>
+
+            <div class="fulfill-card">
+                <div class="card-header">
+                    <h3 class="shop-name">คำขอ #<%= taxRequest.id %> — <%= taxRequest.quotationCount %> ใบเสนอราคา · <%= Number(taxRequest.netTotal).toLocaleString('th-TH', { minimumFractionDigits: 2 }) %> บาท</h3>
+                    <span class="badge <%= taxRequest.status.toLowerCase() %>"><%= taxRequest.statusLabel %></span>
+                </div>
+                <% if (isReissue) { %>
+                <div class="reissue-notice">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    ใบกำกับภาษีนี้ออกไปแล้ว — การบันทึกด้านล่างจะ<b>ยกเลิกเอกสารเดิม</b>และออกฉบับใหม่แทนที่ (เก็บประวัติฉบับเดิมไว้ตรวจสอบย้อนหลัง)
+                </div>
+                <% } %>
+
+                <form action="/admin/tax-invoice-requests/<%= taxRequest.id %>/<%= isReissue ? 'reissue' : 'issue' %>" method="POST" class="fulfill-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>ประเภทผู้เสียภาษี</label>
+                            <select name="taxpayerType" class="input-white">
+                                <option value="COMPANY" <%= p.taxpayerType !== 'INDIVIDUAL' ? 'selected' : '' %>>นิติบุคคล (บริษัท/ห้างหุ้นส่วน)</option>
+                                <option value="INDIVIDUAL" <%= p.taxpayerType === 'INDIVIDUAL' ? 'selected' : '' %>>บุคคลธรรมดา</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>เลขประจำตัวผู้เสียภาษี (13 หลัก)</label>
+                            <input type="text" name="taxId" class="input-white" value="<%= p.taxId || '' %>" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>ชื่อที่จะขึ้นในใบกำกับภาษี</label>
+                            <input type="text" name="taxpayerName" class="input-white" value="<%= p.taxpayerName || '' %>" required>
+                        </div>
+                        <div class="form-group">
+                            <label>สาขา</label>
+                            <input type="text" name="branch" class="input-white" value="<%= p.branch || '' %>" placeholder="สำนักงานใหญ่ / สาขาเลขที่...">
+                        </div>
+                        <div class="form-group">
+                            <label>เบอร์โทร</label>
+                            <input type="text" name="phoneNumber" class="input-white" value="<%= p.phoneNumber || '' %>">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>ที่อยู่สำหรับออกใบกำกับภาษี</label>
+                            <textarea name="address" class="input-white" rows="3" required><%= p.address || '' %></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-action btn-approve fulfill-submit">
+                        <i class="fa-solid <%= isReissue ? 'fa-rotate' : 'fa-check' %>"></i>&nbsp;
+                        <%= isReissue ? 'ยกเลิกฉบับเดิม & ออกใหม่' : 'ยืนยันออกใบกำกับภาษี' %>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </body>
+</html>

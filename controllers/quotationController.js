@@ -16,7 +16,7 @@ const COMPANY_INFO = {
 function formatDateThai(dateValue) {
     if (!dateValue) return '-';
     try {
-        // ใช้ปี ค.ศ. (calendar: 'gregory') ให้ตรงกับตัวอย่างใบเสร็จที่ผู้ใช้ให้มา (23 มีนาคม 2026)
+        // ใช้ปี ค.ศ. (calendar: 'gregory') ให้ตรงกับตัวอย่างใบเสนอราคาที่ผู้ใช้ให้มา (23 มีนาคม 2026)
         // ไม่ใช่ปี พ.ศ. ที่ toLocaleDateString('th-TH') คืนให้เป็นค่าเริ่มต้น
         return new Date(dateValue).toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric', calendar: 'gregory' });
     } catch (_) {
@@ -33,16 +33,16 @@ function formatTimeThai(dateValue) {
     }
 }
 
-function buildReceiptNumber(requestId, issuedAt) {
+function buildQuotationNumber(requestId, issuedAt) {
     const date = issuedAt ? new Date(issuedAt) : new Date();
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     return `R${yyyy}${mm}/${String(requestId).padStart(5, '0')}`;
 }
 
-// คืนข้อมูลใบเสร็จของ BookingRequest หนึ่งใบ หรือ null ถ้ายังไม่ผ่านการยืนยันชำระเงิน (SUCCESS)
-// ใช้ร่วมกันทั้งฝั่งแอดมิน (controllers/receiptController.js -> routes/adminRoutes.js) และฝั่งผู้ขาย (routes/sellerRoute.js)
-async function buildReceiptData(requestId, printedByName) {
+// คืนข้อมูลใบเสนอราคาของ BookingRequest หนึ่งใบ หรือ null ถ้ายังไม่ผ่านการยืนยันชำระเงิน (SUCCESS)
+// ใช้ร่วมกันทั้งฝั่งแอดมิน (controllers/quotationController.js -> routes/adminRoutes.js) และฝั่งผู้ขาย (routes/sellerRoute.js)
+async function buildQuotationData(requestId, printedByName) {
     const parsedId = Number.parseInt(requestId, 10);
     if (!Number.isInteger(parsedId) || parsedId <= 0) return null;
 
@@ -115,7 +115,7 @@ async function buildReceiptData(requestId, printedByName) {
 
     return {
         company: COMPANY_INFO,
-        receiptNumber: buildReceiptNumber(parsedId, bookingRequest.paymentConfirmedAt),
+        quotationNumber: buildQuotationNumber(parsedId, bookingRequest.paymentConfirmedAt),
         issuedDateLabel: formatDateThai(bookingRequest.paymentConfirmedAt),
         issuedTimeLabel: formatTimeThai(bookingRequest.paymentConfirmedAt),
         // "พนักงานและผู้พิมพ์" ต้องเป็นชื่อแอดมินที่ยืนยันสลิปจริง (บันทึกไว้ตอน confirmPayment)
@@ -137,4 +137,4 @@ async function buildReceiptData(requestId, printedByName) {
     };
 }
 
-module.exports = { buildReceiptData };
+module.exports = { buildQuotationData };

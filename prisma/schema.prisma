@@ -25,12 +25,15 @@ model User {
   sellerProfile Seller?
   sellerApplications SellerApplication[]
   passwordResetTokens PasswordResetToken[]
+  taxInvoiceProfiles TaxInvoiceProfile[]
+  taxInvoiceRequests TaxInvoiceRequest[]
   communityPosts CommunityPost[]
   communityLikes CommunityLike[]
   communityComments CommunityComment[]
   recordedElectricExcess StallElectricExcessRecord[]
   recordedInspectionChecks StallInspectionCheckRecord[]
   recordedIssues StallIssueRecord[]
+  recordedCleanlinessInspections StallCleanlinessInspection[]
   assignedRepairReports MaintenanceReport[] @relation("MaintenanceReportAssignedTo")
   dailyInspectionSubmissions DailyInspectionSubmission[]
   // Blacklist จากคะแนนตรวจตลาด — อยู่บน User (ไม่ใช่ Seller model ที่ไม่มีที่ไหนในระบบสร้างข้อมูลจริงเลย)
@@ -192,6 +195,7 @@ model BookingRequest {
   slipVerifiedAmount Float?
   confirmedByName    String?
   seller       Seller?  @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  taxInvoiceRequestItems TaxInvoiceRequestItem[]
 
   @@index([sellerId], map: "BookingRequest_sellerId_fkey")
 }
@@ -362,6 +366,7 @@ model Stall {
   electricExcessRecords StallElectricExcessRecord[]
   inspectionCheckRecords StallInspectionCheckRecord[]
   issueRecords         StallIssueRecord[]
+  cleanlinessInspections StallCleanlinessInspection[]
 
   @@index([rowId], map: "Stall_rowId_fkey")
 }
@@ -443,6 +448,27 @@ model StallIssueRecord {
 
   @@index([stallId], map: "StallIssueRecord_stallId_fkey")
   @@index([recordedById], map: "StallIssueRecord_recordedById_fkey")
+}
+
+// เช็คลิสต์ตรวจสอบคุณภาพร้านค้า (ความสะอาด/สุขอนามัย) — เฉพาะร้านค้าประเภทอาหาร
+// itemResults เก็บผลราย 17 ข้อเป็น JSON เดียว (คีย์ = item id เช่น "1.1", ค่า = true/false)
+// เพราะเช็คลิสต์เป็น config คงที่ในโค้ด (utils/cleanlinessChecklist.js) ไม่ต้อง query แยกรายข้อที่ไหนอีก
+// event log แบบเดียวกับ StallIssueRecord — สร้างแถวใหม่ทุกครั้งที่บันทึก แถวล่าสุด = ค่าปัจจุบัน
+model StallCleanlinessInspection {
+  id            Int      @id @default(autoincrement())
+  stallId       Int
+  stallCode     String
+  itemResults   Json
+  overallPassed Boolean
+  note          String?  @db.Text
+  recordedById  Int
+  createdAt     DateTime @default(now())
+
+  stall         Stall    @relation(fields: [stallId], references: [id], onDelete: Cascade)
+  recordedBy    User     @relation(fields: [recordedById], references: [id], onDelete: Cascade)
+
+  @@index([stallId], map: "StallCleanlinessInspection_stallId_fkey")
+  @@index([recordedById], map: "StallCleanlinessInspection_recordedById_fkey")
 }
 
 model ProductType {
@@ -552,6 +578,75 @@ model CommunityBanner {
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+}
+
+// โปรไฟล์ผู้เสียภาษีสำหรับออกใบกำกับภาษี — แยกจากข้อมูลผู้จอง (User/SellerApplication) เพราะนามที่ขอ
+// ออกใบกำกับภาษีมักเป็นคนละนามกับคนจอง (เช่น จองในนามตัวเอง ขอใบกำกับภาษีในนามบริษัท)
+// 1 user มีได้หลายโปรไฟล์ เผื่อขอในนามบริษัทคนละอันในแต่ละครั้ง reuse ได้ไม่ต้องกรอกซ้ำ
+model TaxInvoiceProfile {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  taxpayerType TaxpayerType @default(COMPANY)
+  taxpayerName String
+  taxId        String
+  branch       String?  // สำนักงานใหญ่ / สาขาเลขที่... (บังคับตามกฎหมายถ้าเป็นนิติบุคคล)
+  address      String   @db.Text
+  phoneNumber  String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requests     TaxInvoiceRequest[]
+
+  @@index([userId], map: "TaxInvoiceProfile_userId_fkey")
+}
+
+// คำขอใบกำกับภาษี 1 คำขอ = 1 เอกสาร รวมได้หลายใบเสนอราคา (BookingRequest) — ต่างจากใบเสนอราคาที่
+// gen อัตโนมัติทันทีที่ยืนยันสลิป ใบกำกับภาษีต้องมีคนขอเข้ามาก่อน แอดมินเป็นคนกรอก/ยืนยันข้อมูลแล้วออกจริง
+model TaxInvoiceRequest {
+  id                  Int      @id @default(autoincrement())
+  taxInvoiceProfileId Int
+  requestedByUserId   Int
+  status              TaxInvoiceStatus @default(PENDING)
+  documentNumber      String?  @unique
+  requestedAt         DateTime @default(now())
+  issuedAt            DateTime?
+  issuedByName        String?
+  rejectReason        String?  @db.Text
+  // ชี้ไปคำขอเดิมที่ถูกยกเลิกเมื่อออกใหม่แทน (แก้ข้อมูลผิดหลังออกไปแล้ว) — เก็บไว้ไล่ประวัติทั้งสายเพื่อตรวจสอบภาษีย้อนหลัง
+  replacesRequestId   Int?     @unique
+  createdAt           DateTime @default(now())
+
+  taxInvoiceProfile   TaxInvoiceProfile @relation(fields: [taxInvoiceProfileId], references: [id], onDelete: Restrict)
+  requestedBy         User     @relation(fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  replaces            TaxInvoiceRequest? @relation("TaxInvoiceReissue", fields: [replacesRequestId], references: [id], onDelete: SetNull)
+  replacedBy          TaxInvoiceRequest? @relation("TaxInvoiceReissue")
+  items               TaxInvoiceRequestItem[]
+
+  @@index([taxInvoiceProfileId], map: "TaxInvoiceRequest_taxInvoiceProfileId_fkey")
+  @@index([requestedByUserId], map: "TaxInvoiceRequest_requestedByUserId_fkey")
+}
+
+// ตัวเชื่อม many-to-many ระหว่างคำขอใบกำกับภาษีกับใบเสนอราคา (BookingRequest) ที่รวมอยู่ในคำขอนั้น
+// ไม่เก็บยอดเงินซ้ำที่นี่ — คำนวณสดจาก BookingRequest/Booking ผ่าน buildQuotationData เสมอ (เหมือนใบเสนอราคา)
+model TaxInvoiceRequestItem {
+  id                  Int      @id @default(autoincrement())
+  taxInvoiceRequestId Int
+  bookingRequestId    Int
+  taxInvoiceRequest   TaxInvoiceRequest @relation(fields: [taxInvoiceRequestId], references: [id], onDelete: Cascade)
+  bookingRequest      BookingRequest    @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([taxInvoiceRequestId, bookingRequestId])
+  @@index([bookingRequestId], map: "TaxInvoiceRequestItem_bookingRequestId_fkey")
+}
+
+enum TaxpayerType {
+  INDIVIDUAL
+  COMPANY
+}
+
+enum TaxInvoiceStatus {
+  PENDING
+  ISSUED
+  CANCELLED
 }
 
 enum Role {

@@ -42,20 +42,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return !!(stall && stall.small && stall.groupSize === 2);
     }
 
-    // ลำดับความสำคัญของสี: มีปัญหา > ตรวจแล้ว > ยังไม่ตรวจ > ว่าง
-    // (ล็อคที่ตรวจแล้วแต่ยังมีปัญหาค้างอยู่ ให้ขึ้นแดงเสมอ เพื่อให้พนักงานเห็นว่าต้องติดตามต่อ)
+    // ลำดับความสำคัญของสี: มีปัญหา > ปกติ > ว่าง
     function resolveStatus(code) {
         const info = STATUS_BY_CODE[code];
         if (!info || info.isVacant || !info.inspectionEnabled) return 'vacant';
         if (info.hasIssue) return 'issue';
-        if (info.isInspected) return 'inspected';
-        return 'pending';
+        return 'normal';
     }
 
     function statusLabel(status) {
         if (status === 'issue') return 'มีปัญหา';
-        if (status === 'inspected') return 'ตรวจแล้ว';
-        if (status === 'pending') return 'ยังไม่ตรวจ';
+        if (status === 'normal') return 'ปกติ';
         return 'ว่าง';
     }
 

@@ -12,6 +12,7 @@ router.get('/marketinspection', staffInspectionCtrl.getMarketInspectionPage);
 router.post('/marketinspection/electric-excess', staffInspectionCtrl.saveElectricExcess);
 router.post('/marketinspection/inspection-check', staffInspectionCtrl.saveInspectionCheck);
 router.post('/marketinspection/issue', staffInspectionCtrl.saveStallIssue);
+router.post('/marketinspection/cleanliness', staffInspectionCtrl.saveCleanlinessInspection);
 router.post('/marketinspection/submit-day', staffInspectionCtrl.submitDay);
 router.get('/marketinspection/report', scoreReportCtrl.getStaffReportPage);
 router.get('/marketinspection/report/export', scoreReportCtrl.exportStaffReportExcel);

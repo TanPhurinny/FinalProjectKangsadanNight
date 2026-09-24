@@ -20,7 +20,8 @@ const {
     BOOKING_ROUND_LENGTH_DAYS
 } = require('../utils/bookingRound');
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
-const { buildReceiptData } = require('../controllers/receiptController');
+const { buildQuotationData } = require('../controllers/quotationController');
+const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
 
 // รูปแจ้งซ่อม (เก็บที่ Cloudinary หรือดิสก์ตาม utils/imageStorage.js)
 const storage = createImageStorage({ folder: 'repairs' });
@@ -582,18 +583,18 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
             time: formatTimeThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             status: 'SUCCESS'
         },
-        // การ์ดแจ้งว่าใบเสร็จ/ใบกำกับภาษีพร้อมแล้ว — โผล่เฉพาะตอนจ่ายเงินสำเร็จจริง (มีใบเสร็จให้ดูที่ /receipts/:id แล้ว)
+        // การ์ดแจ้งว่าใบเสร็จ/ใบกำกับภาษีพร้อมแล้ว — โผล่เฉพาะตอนจ่ายเงินสำเร็จจริง (มีใบเสร็จให้ดูที่ /quotations/:id แล้ว)
         // type: 'success-receipt' ตรงกับไอคอน bi-file-earmark-text ที่ map ไว้ใน public/js/seller/statusbook.js อยู่แล้ว
         // ลิงก์ต้องใช้ BookingRequest.id (คนละ sequence กับ Booking.id) เหมือนที่หน้าประวัติการจองดึงผ่าน extractBookingRequestId
         ...(status === 'SUCCESS' && receiptRequestId ? [{
             id: 4,
             type: 'success-receipt',
-            title: 'ใบเสร็จพร้อมแล้ว',
-            desc: 'ใบเสร็จ/ใบกำกับภาษีของคุณพร้อมให้ดูและดาวน์โหลดแล้ว',
+            title: 'ใบเสนอราคาพร้อมแล้ว',
+            desc: 'ใบเสนอราคาของคุณพร้อมให้ดูและดาวน์โหลดแล้ว',
             date: formatDateThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             time: formatTimeThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             status: 'SUCCESS',
-            link: `/receipts/${receiptRequestId}`
+            link: `/quotations/${receiptRequestId}`
         }] : [])
     ];
 
@@ -603,6 +604,31 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
         isRead: typeof item.isRead === 'boolean' ? item.isRead : index < stage,
         isNew: typeof item.isNew === 'boolean' ? item.isNew : index + 1 === stage
     }));
+}
+
+// สร้างการ์ดแจ้งเตือนตอนคำขอใบกำกับภาษีมีความคืบหน้า (แอดมินออกให้แล้ว/ปฏิเสธ) — pattern เดียวกับ
+// buildRepairNotifications ไม่แจ้งตอนยัง PENDING (รอแอดมินดำเนินการ ยังไม่มีความคืบหน้าให้แจ้ง)
+function buildTaxInvoiceNotifications(taxInvoiceRequests) {
+    return (taxInvoiceRequests || [])
+        .filter((request) => request.status === 'ISSUED' || (request.status === 'CANCELLED' && !request.replacedBy))
+        .map((request) => {
+            const isIssued = request.status === 'ISSUED';
+            const taxpayerName = request.taxInvoiceProfile?.taxpayerName || '-';
+            return {
+                id: `tax-invoice-${request.id}`,
+                type: isIssued ? 'tax-invoice-issued' : 'tax-invoice-cancelled',
+                title: isIssued ? 'ใบกำกับภาษีได้รับการอนุมัติแล้ว' : 'คำขอใบกำกับภาษีถูกปฏิเสธ',
+                desc: isIssued
+                    ? `ใบกำกับภาษีในนาม "${taxpayerName}" เลขที่ ${request.documentNumber} พร้อมให้ดูและดาวน์โหลดแล้ว`
+                    : `คำขอใบกำกับภาษีในนาม "${taxpayerName}" ถูกปฏิเสธ${request.rejectReason ? ` เหตุผล: ${request.rejectReason}` : ''}`,
+                date: formatDateThai(request.issuedAt || request.requestedAt),
+                time: formatTimeThai(request.issuedAt || request.requestedAt),
+                status: isIssued ? 'SUCCESS' : 'REJECTED',
+                isRead: false,
+                isNew: true,
+                ...(isIssued ? { link: `/tax-invoices/${request.id}` } : {})
+            };
+        });
 }
 
 // สร้างการ์ดแจ้งเตือนตอนสถานะแจ้งซ่อมของผู้ใช้เปลี่ยน (รับเรื่อง/เสร็จ/ปฏิเสธ) ให้ขึ้นในหน้า
@@ -860,10 +886,20 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
         include: { shop: { include: { productImages: { orderBy: { createdAt: 'asc' } } } } }
     });
 
+    // ขอใบกำกับภาษี — รวมมาไว้ในหน้าร้านค้าของฉันแทนที่จะแยกเป็นหน้าเมนูของตัวเอง (ดู taxInvoiceController.js)
+    const [eligibleQuotations, taxInvoiceProfiles, taxInvoiceRequests] = await Promise.all([
+        taxInvoiceCtrl.getEligibleQuotationsForUser(req.user.id),
+        taxInvoiceCtrl.getTaxInvoiceProfilesForUser(req.user.id),
+        taxInvoiceCtrl.buildTaxInvoiceListRows({ requestedByUserId: req.user.id })
+    ]);
+
     res.render('seller/shopProfile', {
         user: req.user,
         shop: userRecord?.shop || null,
         maxProductImages: MAX_SHOP_PRODUCT_IMAGES,
+        eligibleQuotations,
+        taxInvoiceProfiles,
+        taxInvoiceRequests,
         error: req.query.error || null,
         success: req.query.success || null
     });
@@ -2115,11 +2151,18 @@ async function loadSellerBookingStatus(userId) {
         orderBy: { updatedAt: 'desc' }
     });
 
+    const taxInvoiceRequests = await prisma.taxInvoiceRequest.findMany({
+        where: { requestedByUserId: userId },
+        include: { taxInvoiceProfile: true, replacedBy: true },
+        orderBy: { requestedAt: 'desc' }
+    });
+
     return {
         userRecord,
         bookingView,
         notifications: [
             ...buildRepairNotifications(repairReports),
+            ...buildTaxInvoiceNotifications(taxInvoiceRequests),
             ...buildBookingNotifications(notificationBooking, awaitingPaymentVerification, extendInfo)
         ]
     };
@@ -2222,15 +2265,56 @@ router.get('/notifications', isAuthenticated, async (req, res) => {
     });
 });
 
-router.get('/receipts/:requestId', isAuthenticated, async (req, res) => {
+router.get('/quotations/:requestId', isAuthenticated, async (req, res) => {
     try {
-        const receipt = await buildReceiptData(req.params.requestId, req.user?.name);
-        if (!receipt || receipt.ownerUserId !== req.user.id) {
+        const quotation = await buildQuotationData(req.params.requestId, req.user?.name);
+        if (!quotation || quotation.ownerUserId !== req.user.id) {
             return res.redirect('/booking-status?error=receipt_not_found');
         }
-        return res.render('seller/receipt', { receipt, error: null });
+        return res.render('seller/quotation', { quotation, error: null });
     } catch (err) {
-        return res.status(500).render('seller/receipt', { error: 'เกิดข้อผิดพลาดในการโหลดใบเสร็จ', receipt: null });
+        return res.status(500).render('seller/quotation', { error: 'เกิดข้อผิดพลาดในการโหลดใบเสนอราคา', quotation: null });
+    }
+});
+
+// ย้ายฟีเจอร์ขอใบกำกับภาษีไปรวมกับหน้า "ร้านค้าของฉัน" แล้ว (ดู GET /shop-profile) — คง route นี้ไว้
+// เป็นแค่ทางเชื่อมสำหรับลิงก์/บุ๊กมาร์กเก่าที่อาจยังชี้มาที่นี่
+router.get('/tax-invoice-requests', isAuthenticated, (req, res) => {
+    res.redirect('/shop-profile');
+});
+
+router.post('/tax-invoice-requests', isAuthenticated, async (req, res) => {
+    const bookingRequestIds = Array.isArray(req.body.bookingRequestIds)
+        ? req.body.bookingRequestIds
+        : [req.body.bookingRequestIds].filter(Boolean);
+
+    const result = await taxInvoiceCtrl.createTaxInvoiceRequest({
+        requestedByUserId: req.user.id,
+        bookingRequestIds,
+        taxInvoiceProfileId: req.body.taxInvoiceProfileId,
+        newProfileData: req.body.taxInvoiceProfileId ? null : {
+            taxpayerType: req.body.taxpayerType,
+            taxpayerName: req.body.taxpayerName,
+            taxId: req.body.taxId,
+            branch: req.body.branch,
+            address: req.body.address,
+            phoneNumber: req.body.phoneNumber
+        }
+    });
+
+    if (result.error) return res.redirect(`/shop-profile?error=${result.error}`);
+    res.redirect('/shop-profile?success=tax_invoice_requested');
+});
+
+router.get('/tax-invoices/:id', isAuthenticated, async (req, res) => {
+    try {
+        const taxInvoice = await taxInvoiceCtrl.buildTaxInvoiceData(req.params.id);
+        if (!taxInvoice || taxInvoice.ownerUserId !== req.user.id) {
+            return res.redirect('/shop-profile?error=tax_invoice_not_found');
+        }
+        return res.render('seller/taxInvoice', { taxInvoice, error: null });
+    } catch (err) {
+        return res.status(500).render('seller/taxInvoice', { error: 'เกิดข้อผิดพลาดในการโหลดใบกำกับภาษี', taxInvoice: null });
     }
 });
 

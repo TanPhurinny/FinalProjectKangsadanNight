@@ -21,6 +21,25 @@
         <%- include('./partials/navbar') %>
 
         <section class="inspection-page container-fluid px-2 px-md-3 py-4">
+            <div class="view-toggle inspection-mode-tabs mb-2" id="inspectionModeTabs">
+                <button type="button" class="view-toggle-btn active" id="modeTabIssue" data-inspection-mode="issue">
+                    <i class="fas fa-clipboard-list"></i> งานตรวจปัญหา</button>
+                <button type="button" class="view-toggle-btn" id="modeTabCleanliness" data-inspection-mode="cleanliness">
+                    <i class="fas fa-broom"></i> งานตรวจความสะอาด</button>
+            </div>
+
+            <div class="inspection-round-nav">
+                <a class="hero-btn" href="/staff/marketinspection?round=<%= roundNumber - 1 %>"><i class="fas fa-arrow-left"></i> รอบก่อนหน้า</a>
+                <a class="hero-btn" href="/staff/marketinspection?round=<%= currentRoundNumber %>">รอบปัจจุบัน</a>
+                <a class="hero-btn" href="/staff/marketinspection?round=<%= roundNumber + 1 %>">รอบถัดไป <i class="fas fa-arrow-right"></i></a>
+            </div>
+            <% if (!isCurrentRound) { %>
+            <div class="alert alert-warning mt-2">
+                <i class="fas fa-eye"></i> กำลังดูรอบที่ <%= roundNumber %> แบบย้อนหลัง (ดูได้อย่างเดียว บันทึก/แก้ไขไม่ได้)
+            </div>
+            <% } %>
+
+            <div id="issueModePanel">
             <div class="inspection-header row g-3 align-items-end">
                 <div class="col-12 col-lg-6">
                     <h1 class="inspection-title"><%= inspectionRoundLabel %></h1>
@@ -68,10 +87,11 @@
                             <span class="stats-chip">ที่แสดง <b id="visibleCount">0</b></span>
                             <span class="stats-chip">ล็อคว่าง <b id="vacantCount">0</b></span>
                             <span class="stats-chip">มีปัญหา <b id="flaggedCount">0</b></span>
-                            <span class="stats-chip">ตรวจแล้ว <b id="inspectedCount">0</b></span>
+                            <% if (isCurrentRound) { %>
                             <button type="button" class="btn-submit-day" id="submitDayBtn">
                                 <i class="fas fa-paper-plane"></i> ส่งงาน
                             </button>
+                            <% } %>
                         </div>
                     </div>
                 </div>
@@ -94,16 +114,14 @@
                             <th data-issue="wrong-seller">ขายไม่ตรง(แจ้งเจ้าของล็อค)</th>
                             <th data-issue="electric-overuse">เครื่องใช้ไฟฟ้าเกิน</th>
                             <th data-issue="other-issue">ปัญหาอื่นๆ</th>
-                            <th>ตรวจสอบแล้ว</th>
                         </tr>
                     </thead>
                     <tbody>
                         <% stalls.forEach((stall, index) => {
-                            const fieldsLocked = stall.inspectionEnabled && stall.isInspected;
-                            const fieldsDisabled = !stall.inspectionEnabled || fieldsLocked;
+                            const fieldsDisabled = !stall.inspectionEnabled;
                         %>
                         <tr
-                            class="inspection-row <%= stall.isVacant ? 'is-vacant' : '' %> <%= stall.isInspected ? 'is-inspected' : '' %>"
+                            class="inspection-row <%= stall.isVacant ? 'is-vacant' : '' %>"
                             data-zone="<%= stall.zoneCode %>"
                             data-stall-id="<%= stall.id %>"
                             data-stall-code="<%= stall.stallCode %>"
@@ -156,23 +174,6 @@
                                 <span class="issue-placeholder">ล็อคว่าง (ไม่ต้องให้คะแนน)</span>
                                 <% } %>
                             </td>
-                            <td data-label="ตรวจสอบแล้ว">
-                                <div class="inspected-cell-actions">
-                                    <input
-                                        type="checkbox"
-                                        data-role="inspected"
-                                        data-stall-id="<%= stall.id %>"
-                                        <%= stall.isInspected ? 'checked' : '' %>
-                                        <%= stall.inspectionEnabled ? '' : 'disabled' %>
-                                    >
-                                    <button
-                                        type="button"
-                                        class="row-edit-btn <%= fieldsLocked ? '' : 'd-none' %>"
-                                        data-role="row-edit"
-                                        data-stall-id="<%= stall.id %>"
-                                    >แก้ไข</button>
-                                </div>
-                            </td>
                         </tr>
                         <% }) %>
                     </tbody>
@@ -183,8 +184,7 @@
             <div class="inspection-map-wrap d-none" id="inspectionMapWrap">
                 <div class="inspection-map-legend">
                     <span class="map-legend-item"><span class="legend-swatch legend-issue"></span> มีปัญหา</span>
-                    <span class="map-legend-item"><span class="legend-swatch legend-inspected"></span> ตรวจแล้ว</span>
-                    <span class="map-legend-item"><span class="legend-swatch legend-pending"></span> ยังไม่ตรวจ</span>
+                    <span class="map-legend-item"><span class="legend-swatch legend-normal"></span> ปกติ</span>
                     <span class="map-legend-item"><span class="legend-swatch legend-vacant"></span> ว่าง</span>
                 </div>
 
@@ -226,12 +226,89 @@
                     </div>
                 </div>
             </div>
+            </div>
+
+            <div id="cleanlinessModePanel" class="d-none">
+                <div class="inspection-header row g-3 align-items-end">
+                    <div class="col-12 col-lg-6">
+                        <h1 class="inspection-title">งานตรวจความสะอาด (เฉพาะร้านอาหาร)</h1>
+                        <p class="inspection-subtitle">วันที่: <%= inspectionDateLabel %></p>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="inspection-toolbar">
+                            <div class="search-box-wrapper">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="cleanlinessSearch" placeholder="ค้นหาชื่อล็อค/เลขล็อค">
+                            </div>
+                            <div class="inspection-stats" id="cleanlinessStats">
+                                <span class="stats-chip">ร้านอาหารทั้งหมด <b id="cleanTotalCount">0</b></span>
+                                <span class="stats-chip">ผ่าน <b id="cleanPassedCount">0</b></span>
+                                <span class="stats-chip">ไม่ผ่าน <b id="cleanFailedCount">0</b></span>
+                                <span class="stats-chip">ยังไม่ตรวจ <b id="cleanPendingCount">0</b></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="inspection-table-wrap mt-3" id="cleanlinessTableWrap">
+                    <table class="inspection-table" id="cleanlinessTable">
+                        <thead>
+                            <tr>
+                                <th>ร้านค้า</th>
+                                <th>สถานะล่าสุด</th>
+                                <th>ตรวจล่าสุดเมื่อ</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% const foodStalls = stalls.filter((stall) => stall.isFoodStall); %>
+                            <% foodStalls.forEach((stall, index) => {
+                                const cleanliness = stall.cleanliness || null;
+                                const statusClass = !cleanliness ? 'pending' : (cleanliness.overallPassed ? 'passed' : 'failed');
+                                const statusLabel = !cleanliness ? 'ยังไม่ตรวจ' : (cleanliness.overallPassed ? 'ผ่าน' : 'ไม่ผ่าน');
+                            %>
+                            <tr
+                                class="inspection-row cleanliness-row"
+                                data-stall-id="<%= stall.id %>"
+                                data-search="<%= String(`${stall.stallCode} ${stall.shopName} ${stall.sellerName}`).toLowerCase() %>"
+                            >
+                                <td>
+                                    <div class="stall-main">#<%= index + 1 %> <%= stall.stallCode %> (โซน <%= stall.zoneCode %>)</div>
+                                    <div class="stall-meta">แถว <%= stall.rowCode %> | ร้าน <%= stall.shopName %></div>
+                                    <div class="stall-meta">ชื่อผู้ขาย <%= stall.sellerName %> | โทร <%= stall.sellerPhone %></div>
+                                    <div class="stall-meta">สินค้าหลัก <%= stall.productDetail %></div>
+                                </td>
+                                <td><span class="cleanliness-status-badge status-<%= statusClass %>" data-role="cleanliness-status"><%= statusLabel %></span></td>
+                                <td data-role="cleanliness-checked-at">
+                                    <%= cleanliness ? new Date(cleanliness.checkedAt).toLocaleString('th-TH') : '-' %>
+                                </td>
+                                <td>
+                                    <% if (isCurrentRound) { %>
+                                    <button type="button" class="btn-cleanliness-inspect" data-role="open-cleanliness-form" data-stall-id="<%= stall.id %>" data-stall-code="<%= stall.stallCode %>">
+                                        ตรวจสอบ
+                                    </button>
+                                    <% } else { %>
+                                    <span class="issue-placeholder">ดูอย่างเดียว</span>
+                                    <% } %>
+                                </td>
+                            </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                    <% if (!foodStalls.length) { %>
+                    <div class="no-results">ไม่พบร้านค้าประเภทอาหารที่จองอยู่ในขณะนี้</div>
+                    <% } %>
+                    <div id="cleanlinessNoResults" class="no-results d-none">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
+                </div>
+            </div>
         </section>
 
         <div class="inspection-map-tooltip" id="inspectionMapTooltip"></div>
 
         <script type="application/json" id="inspectionZonesDataJson"><%- JSON.stringify(zoneByCode || {}).replace(/</g, '\\u003c') %></script>
         <script type="application/json" id="inspectionStatusByCodeJson"><%- JSON.stringify(inspectionByStallCode || {}).replace(/</g, '\\u003c') %></script>
+        <script type="application/json" id="cleanlinessChecklistJson"><%- JSON.stringify(cleanlinessChecklist || []).replace(/</g, '\\u003c') %></script>
+        <script type="application/json" id="cleanlinessByStallIdJson"><%- JSON.stringify(cleanlinessByStallId || {}).replace(/</g, '\\u003c') %></script>
 
         <div class="excess-panel-backdrop d-none" id="excessPanelBackdrop"></div>
         <div class="excess-panel d-none" id="excessPanel" role="dialog" aria-modal="true" aria-labelledby="excessPanelTitle">
@@ -273,8 +350,27 @@
             </div>
         </div>
 
+        <div class="excess-panel-backdrop d-none" id="cleanlinessFormBackdrop"></div>
+        <div class="excess-panel cleanliness-panel d-none" id="cleanlinessFormModal" role="dialog" aria-modal="true" aria-labelledby="cleanlinessFormTitle">
+            <div class="excess-panel-header cleanliness-form-header">
+                <div>
+                    <h3 id="cleanlinessFormTitle">เช็คลิสต์ตรวจสอบคุณภาพร้านค้า</h3>
+                    <div id="cleanlinessFormSubtitle" class="cleanliness-form-subtitle"></div>
+                </div>
+                <button type="button" class="excess-panel-close" id="cleanlinessFormClose" aria-label="ปิด"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="excess-panel-body cleanliness-panel-body" id="cleanlinessFormBody">
+                <!-- render ด้วย JS จาก cleanlinessChecklistJson -->
+            </div>
+            <div class="excess-panel-footer">
+                <button type="button" class="btn-excess-cancel" id="cleanlinessFormCancel">ยกเลิก</button>
+                <button type="button" class="btn-excess-save" id="cleanlinessFormSave">บันทึกผลตรวจ</button>
+            </div>
+        </div>
+
         <script src="/js/common/dialogs.js"></script>
         <script src="/js/staff/marketinspection.js"></script>
         <script src="/js/staff/marketinspection-map.js"></script>
+        <script src="/js/staff/marketinspection-cleanliness.js"></script>
     </body>
 </html>
