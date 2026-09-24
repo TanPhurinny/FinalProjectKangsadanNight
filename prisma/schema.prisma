@@ -31,6 +31,7 @@ model User {
   recordedElectricExcess StallElectricExcessRecord[]
   recordedInspectionChecks StallInspectionCheckRecord[]
   recordedIssues StallIssueRecord[]
+  recordedCleanlinessInspections StallCleanlinessInspection[]
   assignedRepairReports MaintenanceReport[] @relation("MaintenanceReportAssignedTo")
   dailyInspectionSubmissions DailyInspectionSubmission[]
   // Blacklist จากคะแนนตรวจตลาด — อยู่บน User (ไม่ใช่ Seller model ที่ไม่มีที่ไหนในระบบสร้างข้อมูลจริงเลย)
@@ -355,6 +356,7 @@ model Stall {
   electricExcessRecords StallElectricExcessRecord[]
   inspectionCheckRecords StallInspectionCheckRecord[]
   issueRecords         StallIssueRecord[]
+  cleanlinessInspections StallCleanlinessInspection[]
 
   @@index([rowId], map: "Stall_rowId_fkey")
 }
@@ -436,6 +438,27 @@ model StallIssueRecord {
 
   @@index([stallId], map: "StallIssueRecord_stallId_fkey")
   @@index([recordedById], map: "StallIssueRecord_recordedById_fkey")
+}
+
+// เช็คลิสต์ตรวจสอบคุณภาพร้านค้า (ความสะอาด/สุขอนามัย) — เฉพาะร้านค้าประเภทอาหาร
+// itemResults เก็บผลราย 17 ข้อเป็น JSON เดียว (คีย์ = item id เช่น "1.1", ค่า = true/false)
+// เพราะเช็คลิสต์เป็น config คงที่ในโค้ด (utils/cleanlinessChecklist.js) ไม่ต้อง query แยกรายข้อที่ไหนอีก
+// event log แบบเดียวกับ StallIssueRecord — สร้างแถวใหม่ทุกครั้งที่บันทึก แถวล่าสุด = ค่าปัจจุบัน
+model StallCleanlinessInspection {
+  id            Int      @id @default(autoincrement())
+  stallId       Int
+  stallCode     String
+  itemResults   Json
+  overallPassed Boolean
+  note          String?  @db.Text
+  recordedById  Int
+  createdAt     DateTime @default(now())
+
+  stall         Stall    @relation(fields: [stallId], references: [id], onDelete: Cascade)
+  recordedBy    User     @relation(fields: [recordedById], references: [id], onDelete: Cascade)
+
+  @@index([stallId], map: "StallCleanlinessInspection_stallId_fkey")
+  @@index([recordedById], map: "StallCleanlinessInspection_recordedById_fkey")
 }
 
 model ProductType {

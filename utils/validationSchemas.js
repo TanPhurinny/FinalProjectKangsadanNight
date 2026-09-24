@@ -1,4 +1,5 @@
 const { z } = require('zod');
+const { CLEANLINESS_ITEM_IDS } = require('./cleanlinessChecklist');
 
 const USER_ROLE_VALUES = ['ADMIN', 'STAFF', 'SELLER', 'CUSTOMER'];
 const REPAIR_STATUS_VALUES = ['PENDING', 'IN_PROGRESS', 'SUCCESS', 'REJECTED'];
@@ -149,6 +150,14 @@ const stallIssueInputSchema = z.object({
     otherIssueNote: z.string().trim().max(1000).optional()
 });
 
+// บันทึกผลตรวจเช็คลิสต์ความสะอาด (5 หมวด/17 ข้อ) — ต้องตอบครบทุกข้อในคราวเดียว (กดบันทึกทั้งชุด ไม่ auto-save ทีละข้อ)
+const cleanlinessInspectionInputSchema = z.object({
+    stallId: z.coerce.number().int().positive(),
+    itemResults: z.record(z.string(), strictBoolean())
+        .refine((obj) => CLEANLINESS_ITEM_IDS.every((id) => id in obj), { message: 'กรุณาตรวจครบทุกข้อ' }),
+    note: z.string().trim().max(1000).optional()
+});
+
 module.exports = {
     USER_ROLE_VALUES,
     REPAIR_STATUS_VALUES,
@@ -164,5 +173,6 @@ module.exports = {
     electricExcessInputSchema,
     inspectionCheckInputSchema,
     stallIssueInputSchema,
+    cleanlinessInspectionInputSchema,
     THAI_BANK_NAMES
 };
