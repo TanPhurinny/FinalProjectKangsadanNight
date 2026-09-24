@@ -1,73 +1,474 @@
-.tax-invoice-page .container { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; }
+/* ========================================
+   คำขอใบกำกับภาษี (Admin) — gridgeist
+   โครงสร้าง/คลาสอิงจาก admin/approvals.css (list หน้าเดียวกันของระบบ) ให้หน้าตาเป็นชุดเดียวกัน:
+   sharp corners, navy card header, badge/tag ปุ่มขอบคม, summary-strip เป็นตัวกรองในตัว
+   ======================================== */
 
+.tax-invoice-page,
+.tax-invoice-page *,
+.tax-invoice-page *::before,
+.tax-invoice-page *::after {
+    box-sizing: border-box;
+}
+
+.tax-invoice-page {
+    background: #fff;
+    color: var(--ink);
+    min-height: 100vh;
+    font-family: 'Kanit', sans-serif;
+}
+
+.tax-invoice-page .site-header {
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    box-shadow: none;
+}
+
+.tax-invoice-page .btn-back {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--navy);
+    text-decoration: none;
+    font-size: 18px;
+    background: #fff;
+    border: 1px solid var(--line);
+    transition: var(--transition);
+}
+
+.tax-invoice-page .btn-back:hover {
+    background: var(--soft-bg);
+    border-color: var(--primary-color);
+}
+
+.tax-invoice-page .header-title {
+    flex: 1;
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    margin: 0;
+    color: var(--navy);
+}
+
+.tax-invoice-page .header-spacer {
+    width: 40px;
+}
+
+.tax-invoice-page .container {
+    max-width: 920px;
+    margin: 28px auto 56px;
+    padding: 0 16px;
+}
+
+/* ── แจ้งเตือนผลลัพธ์ ── */
 .tax-invoice-page .flash-banner {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 12px 16px;
-    border: 1px solid var(--line, #d7e3e6);
-    border-radius: var(--border-radius-sm, 3px);
-    margin-bottom: 18px;
-    font-weight: 500;
+    margin-bottom: 16px;
+    border-radius: var(--border-radius-sm);
     font-size: 0.9rem;
+    font-weight: 500;
 }
-.tax-invoice-page .flash-banner--success { background: rgba(39, 174, 96, 0.07); border-left: 3px solid var(--success-color, #27AE60); color: #1E8449; }
-.tax-invoice-page .flash-banner--error { background: rgba(192, 57, 43, 0.07); border-left: 3px solid var(--danger-color, #c0392b); color: #922B21; }
+.tax-invoice-page .flash-banner--error {
+    background: rgba(192, 57, 43, 0.08);
+    color: var(--danger-color);
+    border: 1px solid rgba(192, 57, 43, 0.3);
+}
+.tax-invoice-page .flash-banner--success {
+    background: rgba(39, 174, 96, 0.08);
+    color: var(--success-color);
+    border: 1px solid rgba(39, 174, 96, 0.3);
+}
 
-.tax-invoice-page .tax-list { border: 1px solid var(--line, #d7e3e6); border-radius: var(--border-radius-sm, 3px); overflow: hidden; }
-.tax-invoice-page .tax-row {
+/* ── สรุปสถานะ (ตัวกรองในตัว — คลิกได้เหมือนหน้ารายการอนุมัติ) ── */
+.tax-invoice-page .filter-section {
+    background: #fff;
+    padding: 20px 20px 18px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--primary-color);
+    margin-bottom: 20px;
+}
+
+.tax-invoice-page .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.tax-invoice-page .summary-card {
+    border: 1px solid var(--line);
+    border-radius: var(--border-radius-sm);
+    background: #fff;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    width: 100%;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.tax-invoice-page .summary-card:hover {
+    border-color: var(--primary-color);
+    background: #f3f6f8;
+}
+
+.tax-invoice-page .summary-card.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.tax-invoice-page .summary-card.active .summary-label,
+.tax-invoice-page .summary-card.active .summary-value {
+    color: #fff;
+}
+
+.tax-invoice-page .summary-label {
+    font-size: 0.76rem;
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-family: var(--mono);
+}
+
+.tax-invoice-page .summary-value {
+    font-family: var(--mono);
+    font-size: 1.05rem;
+    color: var(--navy);
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.tax-invoice-page .search-box {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--line, #d7e3e6);
-    font-size: 0.9rem;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--border-radius-sm);
+    padding: 10px 12px;
 }
-.tax-invoice-page .tax-row:last-child { border-bottom: none; }
-.tax-invoice-page .tax-row-main { display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; }
-.tax-invoice-page .tax-row-title { font-weight: 600; color: var(--navy, #12303a); }
-.tax-invoice-page .tax-row-meta { color: var(--ink-soft, #5b7a84); font-size: 0.8rem; }
-.tax-invoice-page .tax-row-actions { display: flex; gap: 8px; flex: 0 0 auto; }
-.tax-invoice-page .tax-empty { padding: 24px; text-align: center; color: var(--ink-soft, #5b7a84); }
+
+.tax-invoice-page .search-box i {
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+}
+
+.tax-invoice-page .search-box input {
+    border: none;
+    outline: none;
+    background: transparent;
+    flex: 1;
+    font-size: 0.92rem;
+    color: var(--navy);
+    font-family: 'Kanit', sans-serif;
+}
+
+.tax-invoice-page .search-box input::placeholder {
+    color: var(--ink-soft);
+}
+
+.tax-invoice-page .list-meta {
+    color: var(--ink-soft);
+    font-size: 0.88rem;
+    font-weight: 600;
+    margin: 2px 4px 10px;
+}
+
+/* ── รายการคำขอ ── */
+.tax-invoice-page .card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.tax-invoice-page .empty-state {
+    border: 1px dashed var(--line);
+    border-radius: var(--border-radius);
+    padding: 40px 16px;
+    text-align: center;
+    color: var(--ink-soft);
+}
+
+.tax-invoice-page .tax-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--border-radius);
+    padding: 18px 18px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.tax-invoice-page .tax-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--line);
+}
+
+.tax-invoice-page .tax-card[data-status='PENDING']::before { background: var(--warning-color); }
+.tax-invoice-page .tax-card[data-status='ISSUED']::before { background: var(--success-color); }
+.tax-invoice-page .tax-card[data-status='CANCELLED']::before { background: var(--danger-color); }
+
+.tax-invoice-page .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: var(--border-radius-sm);
+    background: var(--navy);
+}
+
+.tax-invoice-page .shop-name {
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin: 0;
+    color: #ffffff;
+}
 
 .tax-invoice-page .badge {
-    border-radius: 3px;
+    border-radius: var(--border-radius-sm);
     padding: 5px 10px;
     font-size: 0.72rem;
-    font-family: var(--mono, 'IBM Plex Mono', monospace);
+    font-family: var(--mono);
     font-weight: 600;
     border: 1px solid transparent;
     white-space: nowrap;
+    flex-shrink: 0;
 }
-.tax-invoice-page .badge.pending { background: var(--warning-color, #c98a2e); color: #fff; border-color: var(--warning-color, #c98a2e); }
-.tax-invoice-page .badge.issued { background: var(--success-color, #27AE60); color: #fff; border-color: var(--success-color, #27AE60); }
-.tax-invoice-page .badge.cancelled { background: var(--danger-color, #c0392b); color: #fff; border-color: var(--danger-color, #c0392b); }
+.tax-invoice-page .badge.pending { background: var(--warning-color); color: #fff; border-color: var(--warning-color); }
+.tax-invoice-page .badge.issued { background: var(--success-color); color: #fff; border-color: var(--success-color); }
+.tax-invoice-page .badge.cancelled { background: var(--danger-color); color: #fff; border-color: var(--danger-color); }
 
-.tax-invoice-page .btn-action {
+.tax-invoice-page .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.tax-invoice-page .tag {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 7px 12px;
-    border: 1px solid var(--line, #d7e3e6);
-    border-radius: var(--border-radius-sm, 3px);
-    background: #fff;
-    color: var(--navy, #12303a);
-    font-size: 0.8rem;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.72rem;
     font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
+    font-family: var(--mono);
+    border: 1px solid transparent;
 }
-.tax-invoice-page .btn-action:hover { border-color: var(--primary-color, #2C93A8); color: var(--primary-color, #2C93A8); }
-.tax-invoice-page .btn-action.btn-danger:hover { border-color: var(--danger-color, #c0392b); color: var(--danger-color, #c0392b); }
+.tax-invoice-page .tag--tax-id { background: rgba(44, 147, 168, 0.1); color: var(--primary-dark); border-color: rgba(44, 147, 168, 0.3); }
+.tax-invoice-page .tag--doc-number { background: rgba(39, 174, 96, 0.1); color: var(--success-color); border-color: rgba(39, 174, 96, 0.3); }
+.tax-invoice-page .tag--reason { background: rgba(192, 57, 43, 0.1); color: var(--danger-color); border-color: rgba(192, 57, 43, 0.3); }
+.tax-invoice-page .tag--replaces { background: rgba(107, 138, 138, 0.1); color: var(--ink-soft); border-color: rgba(107, 138, 138, 0.3); }
 
-.tax-invoice-page .filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-.tax-invoice-page .filter-tabs a {
-    padding: 8px 14px;
-    border: 1px solid var(--line, #d7e3e6);
-    border-radius: var(--border-radius-sm, 3px);
-    color: var(--navy, #12303a);
-    font-size: 0.85rem;
+.tax-invoice-page .card-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--border-radius-sm);
+    overflow: hidden;
+}
+
+.tax-invoice-page .card-body p {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 9px 11px;
+    background: #fff;
+    border: none;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+}
+
+.tax-invoice-page .card-body p:nth-child(2n) { border-right: none; }
+.tax-invoice-page .card-body p:nth-last-child(-n+2) { border-bottom: none; }
+
+.tax-invoice-page .card-body i {
+    width: 16px;
+    text-align: center;
+    color: var(--primary-color);
+}
+
+.tax-invoice-page .card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+}
+
+.tax-invoice-page .btn-action {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.86rem;
     font-weight: 600;
+    font-family: inherit;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: var(--transition);
     text-decoration: none;
 }
-.tax-invoice-page .filter-tabs a.active { background: var(--primary-color, #2C93A8); border-color: var(--primary-color, #2C93A8); color: #fff; }
+
+.tax-invoice-page .btn-neutral {
+    background: #fff;
+    border-color: var(--line);
+    color: var(--navy);
+}
+.tax-invoice-page .btn-neutral:hover { border-color: var(--primary-color); color: var(--primary-color); background: var(--soft-bg); }
+
+.tax-invoice-page .btn-approve {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
+}
+.tax-invoice-page .btn-approve:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+
+.tax-invoice-page .btn-reject {
+    background: #fff;
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+}
+.tax-invoice-page .btn-reject:hover { background: var(--danger-color); color: #fff; }
+
+/* ── หน้ากรอกข้อมูล/ออกใบกำกับภาษี (fulfill) — การ์ดเดียว หัวการ์ดสีกรมแบบเดียวกับ list ── */
+.tax-invoice-page .fulfill-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--border-radius);
+    padding: 18px 20px 20px;
+}
+
+.tax-invoice-page .fulfill-card .card-header {
+    margin-bottom: 0;
+}
+
+.tax-invoice-page .fulfill-card .shop-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.tax-invoice-page .reissue-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: var(--border-radius-sm);
+    background: rgba(201, 138, 46, 0.08);
+    border: 1px solid rgba(201, 138, 46, 0.3);
+    color: var(--warning-dark, #a06c1f);
+    font-size: 0.85rem;
+}
+
+.tax-invoice-page .reissue-notice i {
+    margin-top: 2px;
+}
+
+.tax-invoice-page .fulfill-form {
+    margin-top: 20px;
+}
+
+/* ── ฟอร์มกรอกข้อมูลผู้เสียภาษี — หน้านี้ไม่โหลด repair.css (ฝั่ง seller เท่านั้น) จึงประกาศ
+   .form-grid/.form-group/.input-white ของตัวเองไว้ที่นี่ ไม่งั้นฟอร์มจะไม่มีสไตล์เลย (ค่า default ของเบราว์เซอร์) */
+.tax-invoice-page .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px 20px;
+}
+
+.tax-invoice-page .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.tax-invoice-page .form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.tax-invoice-page .form-group label {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--navy);
+}
+
+.tax-invoice-page .input-white,
+.tax-invoice-page select.input-white {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--border-radius-sm);
+    padding: 11px 14px;
+    font-family: inherit;
+    font-size: 0.92rem;
+    color: var(--ink);
+    outline: none;
+    transition: var(--transition);
+}
+
+.tax-invoice-page .input-white:hover {
+    border-color: #c3d3d6;
+}
+
+.tax-invoice-page .input-white:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(44, 147, 168, 0.12);
+}
+
+.tax-invoice-page textarea.input-white {
+    resize: vertical;
+    min-height: 90px;
+}
+
+.tax-invoice-page .fulfill-submit {
+    width: 100%;
+    padding: 13px;
+    font-size: 0.92rem;
+    margin-top: 22px;
+}
+
+@media (max-width: 640px) {
+    .tax-invoice-page .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .tax-invoice-page .site-header { padding: 12px 16px; }
+    .tax-invoice-page .container { margin-top: 18px; }
+    .tax-invoice-page .filter-section { padding: 16px; }
+    .tax-invoice-page .summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tax-invoice-page .card-body { grid-template-columns: 1fr; }
+    .tax-invoice-page .card-body p { border-right: none; }
+    .tax-invoice-page .card-body p:last-child { border-bottom: none; }
+    .tax-invoice-page .tax-card { padding: 16px; }
+    .tax-invoice-page .card-actions { flex-direction: column; }
+}

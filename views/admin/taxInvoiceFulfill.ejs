@@ -13,7 +13,6 @@
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/admin/taxInvoiceRequests.css">
-        <link rel="stylesheet" href="/stylesheets/seller/taxInvoiceRequest.css">
     </head>
     <body class="tax-invoice-page">
         <%- include('../partials/navbar') %>
@@ -37,20 +36,19 @@
             <div class="flash-banner flash-banner--error"><i class="fas fa-triangle-exclamation"></i><span><%= flashError %></span></div>
             <% } %>
 
-            <div class="form-card">
-                <div class="section-title">
-                    สรุปคำขอ #<%= taxRequest.id %> —
-                    <%= taxRequest.quotationCount %> ใบเสนอราคา ·
-                    <%= Number(taxRequest.netTotal).toLocaleString('th-TH', { minimumFractionDigits: 2 }) %> บาท
+            <div class="fulfill-card">
+                <div class="card-header">
+                    <h3 class="shop-name">คำขอ #<%= taxRequest.id %> — <%= taxRequest.quotationCount %> ใบเสนอราคา · <%= Number(taxRequest.netTotal).toLocaleString('th-TH', { minimumFractionDigits: 2 }) %> บาท</h3>
                     <span class="badge <%= taxRequest.status.toLowerCase() %>"><%= taxRequest.statusLabel %></span>
                 </div>
                 <% if (isReissue) { %>
-                <p style="color: var(--ink-soft); font-size: 0.85rem; margin-top: 8px;">
+                <div class="reissue-notice">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
                     ใบกำกับภาษีนี้ออกไปแล้ว — การบันทึกด้านล่างจะ<b>ยกเลิกเอกสารเดิม</b>และออกฉบับใหม่แทนที่ (เก็บประวัติฉบับเดิมไว้ตรวจสอบย้อนหลัง)
-                </p>
+                </div>
                 <% } %>
 
-                <form action="/admin/tax-invoice-requests/<%= taxRequest.id %>/<%= isReissue ? 'reissue' : 'issue' %>" method="POST" style="margin-top: 20px;">
+                <form action="/admin/tax-invoice-requests/<%= taxRequest.id %>/<%= isReissue ? 'reissue' : 'issue' %>" method="POST" class="fulfill-form">
                     <div class="form-grid">
                         <div class="form-group">
                             <label>ประเภทผู้เสียภาษี</label>
@@ -80,7 +78,8 @@
                             <textarea name="address" class="input-white" rows="3" required><%= p.address || '' %></textarea>
                         </div>
                     </div>
-                    <button type="submit" class="btn-submit" style="margin-top: 12px;">
+                    <button type="submit" class="btn-action btn-approve fulfill-submit">
+                        <i class="fa-solid <%= isReissue ? 'fa-rotate' : 'fa-check' %>"></i>&nbsp;
                         <%= isReissue ? 'ยกเลิกฉบับเดิม & ออกใหม่' : 'ยืนยันออกใบกำกับภาษี' %>
                     </button>
                 </form>

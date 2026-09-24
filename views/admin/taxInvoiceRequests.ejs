@@ -27,13 +27,19 @@
             <%
             const flashSuccess = {
                 'issued': 'ออกใบกำกับภาษีเรียบร้อยแล้ว',
-                'cancelled': 'ยกเลิกคำขอเรียบร้อยแล้ว'
+                'cancelled': 'ยกเลิกคำขอเรียบร้อยแล้ว',
+                'reissued': 'ยกเลิกฉบับเดิมและออกใบกำกับภาษีใหม่เรียบร้อยแล้ว'
             }[typeof success !== 'undefined' ? success : null] || null;
             const flashError = {
                 'request_not_found': 'ไม่พบคำขอนี้',
                 'load_failed': 'เกิดข้อผิดพลาดในการโหลดข้อมูล'
             }[typeof error !== 'undefined' ? error : null] || null;
             const rows = Array.isArray(requests) ? requests : [];
+            const pendingCount = rows.filter((r) => r.status === 'PENDING').length;
+            const issuedCount = rows.filter((r) => r.status === 'ISSUED').length;
+            const cancelledCount = rows.filter((r) => r.status === 'CANCELLED').length;
+            const fmtDate = (d) => new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' });
+            const fmtMoney = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 });
             %>
 
             <% if (flashSuccess) { %>
@@ -43,40 +49,82 @@
             <div class="flash-banner flash-banner--error"><i class="fas fa-triangle-exclamation"></i><span><%= flashError %></span></div>
             <% } %>
 
-            <div class="filter-tabs">
-                <a href="#" class="active" data-filter="ALL">ทั้งหมด (<%= rows.length %>)</a>
-                <a href="#" data-filter="PENDING">รอดำเนินการ (<%= rows.filter(r => r.status === 'PENDING').length %>)</a>
-                <a href="#" data-filter="ISSUED">ออกแล้ว (<%= rows.filter(r => r.status === 'ISSUED').length %>)</a>
-                <a href="#" data-filter="CANCELLED">ยกเลิกแล้ว (<%= rows.filter(r => r.status === 'CANCELLED').length %>)</a>
+            <div class="filter-section">
+                <div class="summary-strip" id="statusFilters">
+                    <button type="button" class="summary-card active" data-status="ALL">
+                        <span class="summary-label">ทั้งหมด</span>
+                        <span class="summary-value"><%= rows.length %></span>
+                    </button>
+                    <button type="button" class="summary-card" data-status="PENDING">
+                        <span class="summary-label">รอดำเนินการ</span>
+                        <span class="summary-value"><%= pendingCount %></span>
+                    </button>
+                    <button type="button" class="summary-card" data-status="ISSUED">
+                        <span class="summary-label">ออกแล้ว</span>
+                        <span class="summary-value"><%= issuedCount %></span>
+                    </button>
+                    <button type="button" class="summary-card" data-status="CANCELLED">
+                        <span class="summary-label">ยกเลิกแล้ว</span>
+                        <span class="summary-value"><%= cancelledCount %></span>
+                    </button>
+                </div>
+
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="taxSearch" placeholder="ค้นหาชื่อผู้เสียภาษี / ผู้ขอ / เลขผู้เสียภาษี...">
+                </div>
             </div>
 
-            <div class="tax-list" id="taxList">
+            <div class="list-meta">พบ <span id="visibleCount"><%= rows.length %></span> คำขอ</div>
+
+            <div class="card-list" id="taxList">
                 <% if (!rows.length) { %>
-                <div class="tax-empty">ยังไม่มีคำขอใบกำกับภาษี</div>
+                <div class="empty-state">
+                    <i class="fa-solid fa-file-invoice fa-2x mb-3"></i>
+                    <div class="fw-semibold">ยังไม่มีคำขอใบกำกับภาษี</div>
+                    <div class="small">เมื่อผู้ขายส่งคำขอเข้ามา ระบบจะแสดงรายการที่นี่</div>
+                </div>
                 <% } %>
+
                 <% rows.forEach(function(r) { %>
-                <div class="tax-row" data-status="<%= r.status %>">
-                    <div class="tax-row-main">
-                        <span class="tax-row-title"><%= r.taxpayerName %> — <%= r.taxId %></span>
-                        <span class="tax-row-meta">
-                            ผู้ขอ: <%= r.requestedByName %> ·
-                            <%= r.quotationCount %> ใบเสนอราคา ·
-                            <%= Number(r.netTotal).toLocaleString('th-TH', { minimumFractionDigits: 2 }) %> บาท
-                            <% if (r.documentNumber) { %> · เลขที่ <%= r.documentNumber %><% } %>
-                            <% if (r.rejectReason) { %> · เหตุผล: <%= r.rejectReason %><% } %>
-                        </span>
+                <div class="tax-card"
+                    data-status="<%= r.status %>"
+                    data-search="<%= String(`${r.taxpayerName} ${r.requestedByName} ${r.taxId}`).toLowerCase() %>">
+                    <div class="card-header">
+                        <h3 class="shop-name"><%= r.taxpayerName %></h3>
+                        <span class="badge <%= r.status.toLowerCase() %>"><%= r.statusLabel %></span>
                     </div>
-                    <span class="badge <%= r.status.toLowerCase() %>"><%= r.statusLabel %></span>
-                    <div class="tax-row-actions">
+
+                    <div class="card-tags">
+                        <span class="tag tag--tax-id"><i class="fa-solid fa-id-card"></i> เลขผู้เสียภาษี <%= r.taxId %></span>
+                        <% if (r.documentNumber) { %>
+                        <span class="tag tag--doc-number"><i class="fa-solid fa-hashtag"></i> เลขที่ <%= r.documentNumber %></span>
+                        <% } %>
+                        <% if (r.replacesRequestId) { %>
+                        <span class="tag tag--replaces"><i class="fa-solid fa-rotate"></i> ออกใหม่แทนคำขอ #<%= r.replacesRequestId %></span>
+                        <% } %>
+                        <% if (r.rejectReason) { %>
+                        <span class="tag tag--reason"><i class="fa-solid fa-circle-xmark"></i> <%= r.rejectReason %></span>
+                        <% } %>
+                    </div>
+
+                    <div class="card-body">
+                        <p><i class="fa-solid fa-user"></i> ผู้ขอ: <%= r.requestedByName %></p>
+                        <p><i class="fa-solid fa-calendar-check"></i> ยื่นคำขอ: <%= fmtDate(r.requestedAt) %></p>
+                        <p><i class="fa-solid fa-receipt"></i> <%= r.quotationCount %> ใบเสนอราคา</p>
+                        <p><i class="fa-solid fa-coins"></i> ยอดรวม: <%= fmtMoney(r.netTotal) %> บาท</p>
+                    </div>
+
+                    <div class="card-actions">
                         <% if (r.status === 'PENDING') { %>
-                        <a class="btn-action" href="/admin/tax-invoice-requests/<%= r.id %>/fulfill">กรอกข้อมูล & ออก</a>
-                        <form action="/admin/tax-invoice-requests/<%= r.id %>/cancel" method="POST" style="display:inline;" onsubmit="return confirm('ยืนยันปฏิเสธคำขอนี้?');">
+                        <a class="btn-action btn-approve" href="/admin/tax-invoice-requests/<%= r.id %>/fulfill"><i class="fa-solid fa-pen"></i>&nbsp; กรอกข้อมูล &amp; ออก</a>
+                        <form action="/admin/tax-invoice-requests/<%= r.id %>/cancel" method="POST" onsubmit="return confirm('ยืนยันปฏิเสธคำขอนี้?');">
                             <input type="hidden" name="reason" value="แอดมินปฏิเสธคำขอ">
-                            <button type="submit" class="btn-action btn-danger">ปฏิเสธ</button>
+                            <button type="submit" class="btn-action btn-reject">ปฏิเสธ</button>
                         </form>
                         <% } else if (r.status === 'ISSUED') { %>
-                        <a class="btn-action" href="/admin/tax-invoices/<%= r.id %>">ดู/พิมพ์</a>
-                        <a class="btn-action" href="/admin/tax-invoice-requests/<%= r.id %>/fulfill">ยกเลิก & ออกใหม่</a>
+                        <a class="btn-action btn-neutral" href="/admin/tax-invoices/<%= r.id %>"><i class="fa-solid fa-print"></i>&nbsp; ดู/พิมพ์</a>
+                        <a class="btn-action btn-neutral" href="/admin/tax-invoice-requests/<%= r.id %>/fulfill"><i class="fa-solid fa-rotate"></i>&nbsp; ยกเลิก &amp; ออกใหม่</a>
                         <% } %>
                     </div>
                 </div>
@@ -85,17 +133,36 @@
         </div>
 
         <script>
-            document.querySelectorAll('.filter-tabs a').forEach((tab) => {
-                tab.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    document.querySelectorAll('.filter-tabs a').forEach((t) => t.classList.remove('active'));
-                    tab.classList.add('active');
-                    const filter = tab.dataset.filter;
-                    document.querySelectorAll('#taxList .tax-row').forEach((row) => {
-                        row.style.display = (filter === 'ALL' || row.dataset.status === filter) ? '' : 'none';
+            const statusFilters = document.getElementById('statusFilters');
+            const taxSearch = document.getElementById('taxSearch');
+            const taxCards = Array.from(document.querySelectorAll('#taxList .tax-card'));
+            const visibleCountEl = document.getElementById('visibleCount');
+            let activeStatus = 'ALL';
+
+            function applyFilters() {
+                const search = String(taxSearch?.value || '').trim().toLowerCase();
+                let visible = 0;
+                taxCards.forEach((card) => {
+                    const statusMatch = activeStatus === 'ALL' || card.dataset.status === activeStatus;
+                    const searchMatch = !search || String(card.dataset.search || '').includes(search);
+                    const show = statusMatch && searchMatch;
+                    card.style.display = show ? '' : 'none';
+                    if (show) visible += 1;
+                });
+                if (visibleCountEl) visibleCountEl.textContent = String(visible);
+            }
+
+            if (statusFilters) {
+                statusFilters.querySelectorAll('.summary-card').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        statusFilters.querySelectorAll('.summary-card').forEach((b) => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        activeStatus = btn.dataset.status;
+                        applyFilters();
                     });
                 });
-            });
+            }
+            if (taxSearch) taxSearch.addEventListener('input', applyFilters);
         </script>
     </body>
 </html>
