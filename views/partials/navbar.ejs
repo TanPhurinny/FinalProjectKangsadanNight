@@ -41,26 +41,35 @@ const isStaff = user && user.role === 'STAFF';
                 class="nav-item <%= currentPath.includes('approvals') ? 'active' : '' %>">
                 <i class="fas fa-check-circle"></i> รายการอนุมัติ
             </a>
-            <a href="/admin/announcements"
-                class="nav-item <%= currentPath.includes('announcements') ? 'active' : '' %>">
-                <i class="fas fa-bullhorn"></i> จัดการประกาศ
-            </a>
             <a href="/community"
                 class="nav-item <%= currentPath.includes('/community') || currentPath.includes('/comunity') ? 'active' : '' %>">
                 <i class="fas fa-comments"></i> คอมมูนิตี้
-            </a>
-            <a href="/admin/community-banners"
-                class="nav-item <%= currentPath.includes('/community-banners') ? 'active' : '' %>">
-                <i class="fas fa-images"></i> แบนเนอร์คอมมูนิตี้
             </a>
             <a href="/admin/users"
                 class="nav-item <%= currentPath.includes('users') ? 'active' : '' %>">
                 <i class="fas fa-users"></i> จัดการผู้ใช้
             </a>
-            <a href="/admin/sellers/scores"
-                class="nav-item <%= currentPath.includes('/sellers/scores') ? 'active' : '' %>">
-                <i class="fas fa-star"></i> คะแนนร้านค้า
-            </a>
+            <%
+                const moreLinks = [
+                    { href: '/admin/tax-invoice-requests', icon: 'fa-file-invoice', label: 'คำขอใบกำกับภาษี', match: 'tax-invoice-requests' },
+                    { href: '/admin/announcements', icon: 'fa-bullhorn', label: 'จัดการประกาศ', match: 'announcements' },
+                    { href: '/admin/community-banners', icon: 'fa-images', label: 'แบนเนอร์คอมมูนิตี้', match: '/community-banners' },
+                    { href: '/admin/sellers/scores', icon: 'fa-star', label: 'คะแนนร้านค้า', match: '/sellers/scores' }
+                ];
+                const isMoreActive = moreLinks.some(function(link) { return currentPath.includes(link.match); });
+            %>
+            <details class="nav-dropdown">
+                <summary class="nav-item <%= isMoreActive ? 'active' : '' %>">
+                    <i class="fas fa-ellipsis-h"></i> เพิ่มเติม
+                </summary>
+                <div class="nav-dropdown__panel">
+                    <% moreLinks.forEach(function(link) { %>
+                    <a href="<%= link.href %>" class="<%= currentPath.includes(link.match) ? 'active' : '' %>">
+                        <i class="fas <%= link.icon %>"></i> <%= link.label %>
+                    </a>
+                    <% }) %>
+                </div>
+            </details>
             <% } %>
 
             <div class="nav-actions d-flex align-items-center">
