@@ -541,3 +541,46 @@ body[data-page="booking-status"] .timeline-node p {
         padding: 1.15rem 0 2rem;
     }
 }
+
+/* ── ใบเสนอราคา (quote-card) — สไตล์ ticket มุมคม ── */
+.quote-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    background: #fff;
+}
+.quote-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--navy);
+}
+.quote-card__round {
+    font-size: 0.8rem;
+    color: var(--ink-soft, #5b7a84);
+    margin-top: 2px;
+}
+.quote-card__rule {
+    border-top: 1px dashed var(--line);
+    margin: 10px 0;
+}
+.quote-card__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.86rem;
+    line-height: 1.9;
+    color: var(--navy);
+}
+.quote-card__row span { color: var(--ink-soft, #5b7a84); flex-shrink: 0; }
+.quote-card__row strong { text-align: right; font-weight: 600; }
+.quote-card__row--note strong {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--ink-soft, #5b7a84);
+}

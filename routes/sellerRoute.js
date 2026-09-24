@@ -16,6 +16,7 @@ const {
     getBookingRoundStatusDetails,
     getBookingPhaseForRound,
     getPaymentDeadlineForRound,
+    getRoundWindow,
     BOOKING_ROUND_LENGTH_DAYS
 } = require('../utils/bookingRound');
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
@@ -415,6 +416,21 @@ function getRepairStatusClass(status) {
     }
 }
 
+// รายการ "วันที่ขาย" แบบแจกแจงทีละวัน (เอาเฉพาะเลขวันที่ ไม่เอาเดือน) ตามฟอร์แมตใบเสนอราคาเดิม
+// เช่น จอง 29 ส.ค. - 10 ก.ย. -> "29,30,31,1,2,3,4,5,6,7,8,9,10"
+function buildSellDaysList(startDate, endDate) {
+    if (!startDate || !endDate) return '';
+    const days = [];
+    const cursor = new Date(startDate);
+    const end = new Date(endDate);
+    if (Number.isNaN(cursor.getTime()) || Number.isNaN(end.getTime())) return '';
+    while (cursor.getTime() <= end.getTime()) {
+        days.push(cursor.getDate());
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    return days.join(',');
+}
+
 function buildBookingView(latestBooking) {
     if (!latestBooking) return null;
 
@@ -422,6 +438,7 @@ function buildBookingView(latestBooking) {
     const roundNumber = latestBooking.rentalStartDate
         ? getBookingRoundMetaForDate(latestBooking.rentalStartDate).roundNumber
         : null;
+    const roundWindow = roundNumber ? getRoundWindow(roundNumber) : null;
 
     return {
         id: latestBooking.id,
@@ -429,6 +446,10 @@ function buildBookingView(latestBooking) {
         statusText: getBookingStatusText(latestBooking.status),
         stage: getBookingStep(latestBooking.status),
         roundNumber,
+        roundDateRangeText: roundWindow
+            ? `${formatDateThai(roundWindow.cycleStart)} ถึง ${formatDateThai(roundWindow.cycleEnd)}`
+            : '-',
+        sellDaysList: buildSellDaysList(latestBooking.rentalStartDate, latestBooking.rentalEndDate),
         zoneLabel,
         // ไม่เปิดเผยเลขล็อก (ทั้งเลขจริงและ placeholder ภายใน) จนกว่าจะยืนยันสลิปโอนเงินเสร็จ
         // ป้องกันลูกค้าเห็นตำแหน่งล็อกโดยยังไม่ต้องจ่ายเงิน — ดูการ merge สถานะจริงที่ loadSellerBookingStatus
@@ -1982,6 +2003,16 @@ async function loadSellerBookingStatus(userId) {
             statusText: getBookingStatusText(String(latestRequest.status || 'PENDING').toUpperCase(), awaitingPaymentVerification),
             stage: getBookingStep(String(latestRequest.status || 'PENDING').toUpperCase()),
             roundNumber: getBookingRoundMetaForDate(latestRequest.createdAt).roundNumber,
+            roundDateRangeText: (() => {
+                const meta = getBookingRoundMetaForDate(latestRequest.createdAt);
+                const window = getRoundWindow(meta.roundNumber);
+                return `${formatDateThai(window.cycleStart)} ถึง ${formatDateThai(window.cycleEnd)}`;
+            })(),
+            sellDaysList: '',
+            shopName: userRecord?.shop?.shopName || latestRequest.productName || '-',
+            productType: userRecord?.shop?.productType || '-',
+            customerName: userRecord?.name || latestRequest.sellerName || '-',
+            customerPhone: userRecord?.phoneNumber || latestRequest.phone || '-',
             // ไม่เปิดเผยโซน/เลขล็อกจนกว่าจะยืนยันสลิปโอนเงินเสร็จ (ดูจุด merge ด้านล่างด้วย)
             zoneLabel: latestRequest.paymentConfirmedAt ? (latestRequest.zone ? `โซน ${latestRequest.zone}` : '-') : null,
             slotLabel: latestRequest.paymentConfirmedAt ? (latestRequest.assignedStallCode || null) : null,
@@ -2015,6 +2046,11 @@ async function loadSellerBookingStatus(userId) {
         bookingView.slotLabel = latestRequest.paymentConfirmedAt ? (latestRequest.assignedStallCode || null) : null;
         bookingView.paymentSlipImage = latestRequest.paymentSlipImage || null;
         bookingView.awaitingPaymentVerification = awaitingPaymentVerification;
+        // ชื่อร้าน/ประเภทสินค้า สำหรับการ์ดใบเสนอราคา — เอาจากโปรไฟล์ร้าน ถ้าไม่มีใช้ชื่อจากคำขอจองแทน
+        bookingView.shopName = userRecord?.shop?.shopName || latestRequest.productName || '-';
+        bookingView.productType = userRecord?.shop?.productType || '-';
+        bookingView.customerName = userRecord?.name || latestRequest.sellerName || '-';
+        bookingView.customerPhone = userRecord?.phoneNumber || latestRequest.phone || '-';
         // ผลตรวจสลิปอัตโนมัติ (SlipOK) ที่เก็บไว้ตอนอัปโหลด — null = ยังไม่ตรวจ/ไม่ได้ตั้งค่า SlipOK
         bookingView.slipVerified = typeof latestRequest.slipVerified === 'boolean' ? latestRequest.slipVerified : null;
         bookingView.slipVerifyReason = latestRequest.slipVerifyReason || null;

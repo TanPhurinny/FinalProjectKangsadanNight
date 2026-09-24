@@ -197,31 +197,23 @@
     }
 
     scenarioContent.innerHTML = `
-      <div class="booking-summary-grid">
-        <div class="summary-pill">
-          <small>เลขที่การจอง</small>
-          <strong>#BK-${String(booking.id).padStart(6, '0')}</strong>
+      <div class="quote-card">
+        <div class="quote-card__head">
+          <span>ใบเสนอราคา</span>
+          <span>#BK-${String(booking.id).padStart(6, '0')}</span>
         </div>
-        <div class="summary-pill">
-          <small>โซน / แผง</small>
-          <strong>${booking.slotLabel ? `${booking.zoneLabel} / ${booking.slotLabel}` : 'รอยืนยันการชำระเงิน'}</strong>
-        </div>
-        <div class="summary-pill">
-          <small>วันที่เช่า</small>
-          <strong>${booking.rentalStartDate} - ${booking.rentalEndDate}</strong>
-        </div>
-        <div class="summary-pill">
-          <small>จำนวนวันเช่า</small>
-          <strong>${booking.rentalDays} วัน</strong>
-        </div>
-        <div class="summary-pill">
-          <small>จำนวนล็อก</small>
-          <strong>${booking.stallCount} ล็อก</strong>
-        </div>
-        <div class="summary-pill">
-          <small>รอบการจอง</small>
-          <strong>${booking.roundNumber ? `รอบที่ ${booking.roundNumber}` : '-'}</strong>
-        </div>
+        <div class="quote-card__round">${booking.roundNumber ? `รอบที่ ${booking.roundNumber}` : '-'} · ${booking.roundDateRangeText || '-'}</div>
+        <div class="quote-card__rule"></div>
+        <div class="quote-card__row"><span>ผู้จอง</span><strong>${booking.customerName || '-'}</strong></div>
+        <div class="quote-card__row"><span>เบอร์</span><strong>${booking.customerPhone || '-'}</strong></div>
+        <div class="quote-card__row"><span>ร้าน</span><strong>${booking.shopName || '-'}</strong></div>
+        <div class="quote-card__row"><span>ขาย</span><strong>${booking.storeDetailSnapshot || '-'}</strong></div>
+        <div class="quote-card__row"><span>ประเภท</span><strong>${booking.productType || '-'}</strong></div>
+        <div class="quote-card__rule"></div>
+        <div class="quote-card__row"><span>จำนวนล็อค</span><strong>${booking.stallCount} ล็อค</strong></div>
+        <div class="quote-card__row"><span>ราคา/ล็อค</span><strong>${formatMoney(booking.dailyStallPrice)}/วัน</strong></div>
+        <div class="quote-card__row"><span>โซน / แผง</span><strong>${booking.slotLabel ? `${booking.zoneLabel} / ${booking.slotLabel}` : 'รอยืนยันการชำระเงิน'}</strong></div>
+        ${booking.sellDaysList ? `<div class="quote-card__row quote-card__row--note"><span>วันที่ขาย (${booking.rentalDays} วัน)</span><strong>${booking.sellDaysList}</strong></div>` : ''}
       </div>
 
       <div class="details-box">
@@ -238,7 +230,7 @@
         <div class="details-row"><span>ค่าไฟสว่าง</span><strong>${formatMoney(booking.lightTotal)}</strong></div>
         <div class="details-row"><span>เครื่องใช้ไฟฟ้าที่แจ้ง</span><strong>${booking.smallApplianceCount} เครื่องเล็ก / ${booking.largeApplianceCount} เครื่องใหญ่</strong></div>
         <div class="details-row"><span>ค่าเครื่องใช้ไฟฟ้า</span><strong>${formatMoney(booking.applianceTotal)}</strong></div>
-        <div class="details-row"><span>${booking.isFinalPrice ? 'รวมทั้งสิ้น (ราคาจริง)' : 'รวมทั้งสิ้น (ประเมิน)'}</span><strong>${formatMoney(booking.grandTotal)}</strong></div>
+        <div class="details-row"><span>${booking.isFinalPrice ? 'ยอดชำระรวม (รวม VAT)' : 'ยอดประเมินรวม (รวม VAT)'}</span><strong>${formatMoney(booking.grandTotal)}</strong></div>
         <div class="details-row details-row--note"><span>รายละเอียดร้านค้าที่แจ้งไว้</span><strong>${booking.storeDetailSnapshot || '-'}</strong></div>
       </div>
 
