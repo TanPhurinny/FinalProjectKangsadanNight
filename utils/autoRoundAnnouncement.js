@@ -104,8 +104,73 @@ async function ensureWeeklyRoundAnnouncement(prisma, { now = new Date(), logger 
     return created;
 }
 
+// สร้างประกาศ "ล็อคเต็งหลุด/ว่างเพิ่ม" อัตโนมัติทุกวันพุธ (ช่วงที่ 2 — กลุ่มจองสั้นขั้นต่ำ 3 วัน
+// เริ่มจองได้) เช็คจาก Stall.extraPrice > 0 (ล็อคเต็ง/แผงพิเศษ) และ isAvailable = true (ยังไม่มีคนจอง)
+async function ensureWeeklyCornerLockAnnouncement(prisma, { now = new Date(), logger = console } = {}) {
+    const today = toStartOfDay(now);
+    if (today.getDay() !== 3) return null; // เฉพาะวันพุธ
+
+    const meta = getBookingRoundMetaForDate(now);
+    const title = `ประกาศล็อคเต็ง (แผงพิเศษ) ที่ว่าง — ${formatThaiDate(today)}`;
+
+    const alreadyPostedToday = await prisma.announcement.findFirst({
+        where: {
+            category: ANNOUNCEMENT_CATEGORY,
+            title,
+            createdAt: { gte: today }
+        }
+    });
+    if (alreadyPostedToday) return null;
+
+    const freeCornerStalls = await prisma.stall.findMany({
+        where: { extraPrice: { gt: 0 }, isAvailable: true },
+        orderBy: { stallCode: 'asc' },
+        select: { stallCode: true, extraPrice: true }
+    });
+
+    const content = freeCornerStalls.length
+        ? `เรียน ร้านค้าที่น่ารักทุกท่าน❤️
+
+📍 วันนี้มีล็อคเต็ง (แผงพิเศษ) ที่หลุด/ว่างอยู่ สำหรับรอบที่ ${meta.roundNumber} ดังนี้:
+
+${freeCornerStalls.map((s) => `• ${s.stallCode} (ค่าธรรมเนียมเพิ่ม +${s.extraPrice} บาท/ล็อก/วัน)`).join('\n')}
+
+✅ ร้านค้าที่จองสั้นขั้นต่ำ 3 วันขึ้นไป (หรือจองทีละวัน) แจ้งความสนใจล็อคเหล่านี้ได้ตั้งแต่วันนี้ เวลา 13.00 น. เป็นต้นไป
+⚠️ กรุณาชำระเงินให้เสร็จก่อนวันที่จะเริ่มขายจริง
+ขอบคุณค่ะ`
+        : `เรียน ร้านค้าที่น่ารักทุกท่าน❤️
+
+📍 วันนี้ยังไม่มีล็อคเต็ง (แผงพิเศษ) หลุด/ว่างเพิ่มเติมสำหรับรอบที่ ${meta.roundNumber}
+
+✅ ร้านค้าที่จองสั้นขั้นต่ำ 3 วันขึ้นไป (หรือจองทีละวัน) ยังจองล็อคปกติได้ตามปกติตั้งแต่วันนี้ เวลา 13.00 น. เป็นต้นไป
+⚠️ กรุณาชำระเงินให้เสร็จก่อนวันที่จะเริ่มขายจริง
+ขอบคุณค่ะ`;
+
+    const author = await prisma.user.findFirst({ where: { role: 'ADMIN' }, orderBy: { id: 'asc' } });
+    if (!author) {
+        logger.error?.('ensureWeeklyCornerLockAnnouncement: ไม่พบผู้ใช้ ADMIN สำหรับตั้งเป็นผู้ประกาศ');
+        return null;
+    }
+
+    const created = await prisma.announcement.create({
+        data: {
+            title,
+            content,
+            category: ANNOUNCEMENT_CATEGORY,
+            targetRole: 'SELLER',
+            targetRoles: ['SELLER'],
+            isImportant: true,
+            authorId: author.id
+        }
+    });
+
+    logger.info?.(`ประกาศล็อคเต็งว่าง (${freeCornerStalls.length} ล็อก) รอบที่ ${meta.roundNumber} อัตโนมัติแล้ว (id ${created.id})`);
+    return created;
+}
+
 module.exports = {
     getNextRoundPlan,
     buildRoundAnnouncement,
-    ensureWeeklyRoundAnnouncement
+    ensureWeeklyRoundAnnouncement,
+    ensureWeeklyCornerLockAnnouncement
 };

@@ -10,7 +10,7 @@ const { getCurrentUser } = require('./middlewares/jwtAuth');
 const { isProduction } = require('./config/authSecrets');
 const { generalLimiter } = require('./middlewares/authRateLimit');
 const logger = require('./config/logger');
-const { ensureWeeklyRoundAnnouncement } = require('./utils/autoRoundAnnouncement');
+const { ensureWeeklyRoundAnnouncement, ensureWeeklyCornerLockAnnouncement } = require('./utils/autoRoundAnnouncement');
 
 const { resolveImageUrl } = require('./utils/imageStorage');
 const app = express();
@@ -194,9 +194,15 @@ function scheduleAutoRoundAnnouncement() {
   ensureWeeklyRoundAnnouncement(prisma).catch((error) => {
     logger.error({ error: error.message }, 'ensureWeeklyRoundAnnouncement failed');
   });
+  ensureWeeklyCornerLockAnnouncement(prisma).catch((error) => {
+    logger.error({ error: error.message }, 'ensureWeeklyCornerLockAnnouncement failed');
+  });
   setInterval(() => {
     ensureWeeklyRoundAnnouncement(prisma).catch((error) => {
       logger.error({ error: error.message }, 'ensureWeeklyRoundAnnouncement failed');
+    });
+    ensureWeeklyCornerLockAnnouncement(prisma).catch((error) => {
+      logger.error({ error: error.message }, 'ensureWeeklyCornerLockAnnouncement failed');
     });
   }, 60 * 60 * 1000);
 }
