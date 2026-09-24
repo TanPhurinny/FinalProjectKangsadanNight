@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>คำขอใบกำกับภาษี | Kangsadan Night Market</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/taxInvoiceRequests.css">
+    </head>
+    <body class="tax-invoice-page">
+        <%- include('../partials/navbar') %>
+
+        <header class="site-header">
+            <a href="javascript:history.back()" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+            <h2 class="header-title">คำขอใบกำกับภาษี</h2>
+            <div class="header-spacer"></div>
+        </header>
+
+        <div class="container">
+            <%
+            const flashSuccess = {
+                'issued': 'ออกใบกำกับภาษีเรียบร้อยแล้ว',
+                'cancelled': 'ยกเลิกคำขอเรียบร้อยแล้ว'
+            }[typeof success !== 'undefined' ? success : null] || null;
+            const flashError = {
+                'request_not_found': 'ไม่พบคำขอนี้',
+                'load_failed': 'เกิดข้อผิดพลาดในการโหลดข้อมูล'
+            }[typeof error !== 'undefined' ? error : null] || null;
+            const rows = Array.isArray(requests) ? requests : [];
+            %>
+
+            <% if (flashSuccess) { %>
+            <div class="flash-banner flash-banner--success"><i class="fas fa-circle-check"></i><span><%= flashSuccess %></span></div>
+            <% } %>
+            <% if (flashError) { %>
+            <div class="flash-banner flash-banner--error"><i class="fas fa-triangle-exclamation"></i><span><%= flashError %></span></div>
+            <% } %>
+
+            <div class="filter-tabs">
+                <a href="#" class="active" data-filter="ALL">ทั้งหมด (<%= rows.length %>)</a>
+                <a href="#" data-filter="PENDING">รอดำเนินการ (<%= rows.filter(r => r.status === 'PENDING').length %>)</a>
+                <a href="#" data-filter="ISSUED">ออกแล้ว (<%= rows.filter(r => r.status === 'ISSUED').length %>)</a>
+                <a href="#" data-filter="CANCELLED">ยกเลิกแล้ว (<%= rows.filter(r => r.status === 'CANCELLED').length %>)</a>
+            </div>
+
+            <div class="tax-list" id="taxList">
+                <% if (!rows.length) { %>
+                <div class="tax-empty">ยังไม่มีคำขอใบกำกับภาษี</div>
+                <% } %>
+                <% rows.forEach(function(r) { %>
+                <div class="tax-row" data-status="<%= r.status %>">
+                    <div class="tax-row-main">
+                        <span class="tax-row-title"><%= r.taxpayerName %> — <%= r.taxId %></span>
+                        <span class="tax-row-meta">
+                            ผู้ขอ: <%= r.requestedByName %> ·
+                            <%= r.quotationCount %> ใบเสนอราคา ·
+                            <%= Number(r.netTotal).toLocaleString('th-TH', { minimumFractionDigits: 2 }) %> บาท
+                            <% if (r.documentNumber) { %> · เลขที่ <%= r.documentNumber %><% } %>
+                            <% if (r.rejectReason) { %> · เหตุผล: <%= r.rejectReason %><% } %>
+                        </span>
+                    </div>
+                    <span class="badge <%= r.status.toLowerCase() %>"><%= r.statusLabel %></span>
+                    <div class="tax-row-actions">
+                        <% if (r.status === 'PENDING') { %>
+                        <a class="btn-action" href="/admin/tax-invoice-requests/<%= r.id %>/fulfill">กรอกข้อมูล & ออก</a>
+                        <form action="/admin/tax-invoice-requests/<%= r.id %>/cancel" method="POST" style="display:inline;" onsubmit="return confirm('ยืนยันปฏิเสธคำขอนี้?');">
+                            <input type="hidden" name="reason" value="แอดมินปฏิเสธคำขอ">
+                            <button type="submit" class="btn-action btn-danger">ปฏิเสธ</button>
+                        </form>
+                        <% } else if (r.status === 'ISSUED') { %>
+                        <a class="btn-action" href="/admin/tax-invoices/<%= r.id %>">ดู/พิมพ์</a>
+                        <a class="btn-action" href="/admin/tax-invoice-requests/<%= r.id %>/fulfill">ยกเลิก & ออกใหม่</a>
+                        <% } %>
+                    </div>
+                </div>
+                <% }) %>
+            </div>
+        </div>
+
+        <script>
+            document.querySelectorAll('.filter-tabs a').forEach((tab) => {
+                tab.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelectorAll('.filter-tabs a').forEach((t) => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    const filter = tab.dataset.filter;
+                    document.querySelectorAll('#taxList .tax-row').forEach((row) => {
+                        row.style.display = (filter === 'ALL' || row.dataset.status === filter) ? '' : 'none';
+                    });
+                });
+            });
+        </script>
+    </body>
+</html>

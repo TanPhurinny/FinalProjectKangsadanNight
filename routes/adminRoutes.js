@@ -14,6 +14,7 @@ const announceCtrl = require('../controllers/announcementController');
 const scoreReportCtrl = require('../controllers/scoreReportController');
 const { buildQuotationData } = require('../controllers/quotationController');
 const bannerCtrl = require('../controllers/communityBannerController');
+const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
 const storage = createImageStorage({ folder: 'announcements', prefix: 'ann' });
@@ -105,6 +106,66 @@ router.get('/quotations/:requestId', async (req, res) => {
 });
 router.get('/requests', requestCtrl.getRequestsPage);
 router.post('/requests/update-status', requestCtrl.updateStatus);
+
+// --- 7b. คำขอใบกำกับภาษี ---
+router.get('/tax-invoice-requests', async (req, res) => {
+    try {
+        const requests = await taxInvoiceCtrl.buildTaxInvoiceListRows({});
+        res.render('admin/taxInvoiceRequests', {
+            user: req.user,
+            requests,
+            error: req.query.error || null,
+            success: req.query.success || null
+        });
+    } catch (err) {
+        res.render('admin/taxInvoiceRequests', { user: req.user, requests: [], error: 'load_failed', success: null });
+    }
+});
+router.get('/tax-invoice-requests/:id/fulfill', async (req, res) => {
+    try {
+        const taxRequest = await taxInvoiceCtrl.getTaxInvoiceRequestForFulfill(req.params.id);
+        if (!taxRequest) {
+            return res.redirect('/admin/tax-invoice-requests?error=request_not_found');
+        }
+        res.render('admin/taxInvoiceFulfill', { user: req.user, taxRequest, error: req.query.error || null });
+    } catch (err) {
+        res.redirect('/admin/tax-invoice-requests?error=load_fulfill_failed');
+    }
+});
+router.post('/tax-invoice-requests/:id/issue', async (req, res) => {
+    const result = await taxInvoiceCtrl.issueTaxInvoiceRequest({
+        taxInvoiceRequestId: req.params.id,
+        issuedByName: req.user?.name,
+        profileEdits: req.body
+    });
+    if (result.error) return res.redirect(`/admin/tax-invoice-requests/${req.params.id}/fulfill?error=${result.error}`);
+    res.redirect('/admin/tax-invoice-requests?success=issued');
+});
+router.post('/tax-invoice-requests/:id/cancel', async (req, res) => {
+    const result = await taxInvoiceCtrl.cancelTaxInvoiceRequest({ taxInvoiceRequestId: req.params.id, reason: req.body.reason });
+    if (result.error) return res.redirect(`/admin/tax-invoice-requests?error=${result.error}`);
+    res.redirect('/admin/tax-invoice-requests?success=cancelled');
+});
+router.post('/tax-invoice-requests/:id/reissue', async (req, res) => {
+    const result = await taxInvoiceCtrl.reissueTaxInvoiceRequest({
+        taxInvoiceRequestId: req.params.id,
+        issuedByName: req.user?.name,
+        profileEdits: req.body
+    });
+    if (result.error) return res.redirect(`/admin/tax-invoice-requests/${req.params.id}/fulfill?error=${result.error}`);
+    res.redirect(`/admin/tax-invoices/${result.taxInvoiceRequestId}?success=reissued`);
+});
+router.get('/tax-invoices/:id', async (req, res) => {
+    try {
+        const taxInvoice = await taxInvoiceCtrl.buildTaxInvoiceData(req.params.id);
+        if (!taxInvoice) {
+            return res.status(404).render('admin/taxInvoice', { error: 'ไม่พบใบกำกับภาษี หรือคำขอนี้ยังไม่ได้ออกจริง', taxInvoice: null });
+        }
+        return res.render('admin/taxInvoice', { taxInvoice, error: null });
+    } catch (err) {
+        return res.status(500).render('admin/taxInvoice', { error: 'เกิดข้อผิดพลาดในการโหลดใบกำกับภาษี', taxInvoice: null });
+    }
+});
 
 // --- 8. Booking Management (แก้ไข Path ไฟล์ EJS) ---
 

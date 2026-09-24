@@ -1,0 +1,102 @@
+<%
+    const moneyFmt = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const intFmt = (n) => Number(n || 0).toLocaleString('th-TH');
+    const taxItemRows = Array.from({ length: Math.max(10, data.items.length) }, (_, i) => data.items[i] || null);
+%>
+<div id="quotationPrintArea" class="quotation-doc" data-quotation-number="<%= data.documentNumber %>">
+    <% if (data.status === 'CANCELLED') { %>
+    <div class="quotation-status-banner quotation-status-banner--cancelled">
+        ใบกำกับภาษีฉบับนี้ถูกยกเลิกแล้ว<% if (data.replacedByDocumentNumber) { %> — ออกใหม่แทนที่ด้วยเลขที่ <%= data.replacedByDocumentNumber %><% } %>
+        <% if (data.rejectReason) { %> (<%= data.rejectReason %>)<% } %>
+    </div>
+    <% } %>
+    <% if (data.replacesDocumentNumber) { %>
+    <div class="quotation-status-banner quotation-status-banner--replaces">
+        ออกใหม่แทนที่ใบกำกับภาษีเลขที่เดิม <%= data.replacesDocumentNumber %> (ยกเลิกแล้ว)
+    </div>
+    <% } %>
+
+    <div class="quotation-header">
+        <img src="<%= data.company.logo %>" class="quotation-logo" alt="โลโก้">
+        <div class="quotation-company">
+            <div class="quotation-company-th"><%= data.company.nameTh %></div>
+            <div class="quotation-company-en"><%= data.company.nameEn %></div>
+            <div class="quotation-company-meta"><%= data.company.address %></div>
+            <div class="quotation-company-meta">Tax ID: <%= data.company.taxId %> &nbsp; โทร <%= data.company.phone %></div>
+        </div>
+        <div class="quotation-title">
+            <div class="quotation-title-th">ใบกำกับภาษี</div>
+            <div class="quotation-title-en">(Tax Invoice)</div>
+        </div>
+    </div>
+
+    <div class="quotation-meta-row">
+        <div class="quotation-meta-col">
+            <div class="quotation-field"><span>ชื่อผู้เสียภาษี</span><b><%= data.taxpayerName %></b></div>
+            <div class="quotation-field"><span>เลขประจำตัวผู้เสียภาษี</span><b><%= data.taxId %></b></div>
+            <div class="quotation-field"><span>สาขา</span><b><%= data.branch %></b></div>
+            <div class="quotation-field"><span>ที่อยู่</span><b><%= data.address %></b></div>
+            <div class="quotation-field"><span>โทร</span><b><%= data.phoneNumber %></b></div>
+        </div>
+        <div class="quotation-meta-col quotation-meta-col-right">
+            <div class="quotation-field"><span>เลขที่</span><b><%= data.documentNumber %></b></div>
+            <div class="quotation-field"><span>วันที่</span><b><%= data.issuedDateLabel %></b></div>
+            <div class="quotation-field"><span>เวลา</span><b><%= data.issuedTimeLabel %></b></div>
+            <div class="quotation-field"><span>พนักงานและผู้พิมพ์</span><b><%= data.printedByName %></b></div>
+        </div>
+    </div>
+
+    <table class="quotation-items-table">
+        <thead>
+            <tr>
+                <th class="col-no">ลำดับ</th>
+                <th class="col-name">รายการ</th>
+                <th>จำนวน</th>
+                <th>หน่วย</th>
+                <th>จำนวนวันต่อหน่วย</th>
+                <th>ส่วนลด</th>
+                <th>ราคารวม</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% taxItemRows.forEach((item, i) => { %>
+            <tr>
+                <td class="col-no"><%= i + 1 %></td>
+                <% if (item) { %>
+                <td class="col-name"><%= item.name %></td>
+                <td><%= intFmt(item.qty) %></td>
+                <td><%= item.unit %></td>
+                <td><%= intFmt(item.days) %></td>
+                <td><%= moneyFmt(item.discount) %></td>
+                <td><%= moneyFmt(item.total) %></td>
+                <% } else { %>
+                <td class="col-name">&nbsp;</td>
+                <td></td><td></td><td></td><td></td><td></td>
+                <% } %>
+            </tr>
+            <% }) %>
+        </tbody>
+    </table>
+
+    <div class="quotation-summary-row">
+        <div class="quotation-note-box">
+            หมายเหตุ:
+        </div>
+        <div class="quotation-totals">
+            <div class="quotation-total-line"><span>ราคารวม</span><b><%= moneyFmt(data.totalBeforeDiscount) %></b></div>
+            <div class="quotation-total-line"><span>ส่วนลดท้ายบิล</span><b><%= moneyFmt(data.discount) %></b></div>
+            <div class="quotation-total-line"><span>ยอดก่อนภาษีมูลค่าเพิ่ม</span><b><%= moneyFmt(data.amountBeforeVat) %></b></div>
+            <div class="quotation-total-line"><span>ภาษีมูลค่าเพิ่ม (<%= (data.vatRate * 100).toFixed(0) %>%)</span><b><%= moneyFmt(data.vatAmount) %></b></div>
+            <div class="quotation-total-line quotation-total-net"><span>ยอดรวมสุทธิ</span><b><%= moneyFmt(data.netTotal) %></b></div>
+        </div>
+    </div>
+
+    <div class="quotation-amount-text">
+        <span>จำนวนเงินตัวอักษร</span>
+        <b><%= data.netTotalText %></b>
+    </div>
+
+    <div class="quotation-footnote">
+        *หมายเหตุ ใบกำกับภาษีนี้ออกอ้างอิงจากใบเสนอราคา/การชำระเงินที่ยืนยันแล้ว โปรดเก็บไว้เป็นหลักฐาน สอบถามเพิ่มเติมได้ที่ Facebook KangsadanNight
+    </div>
+</div>

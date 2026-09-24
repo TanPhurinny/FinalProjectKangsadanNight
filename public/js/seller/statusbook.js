@@ -309,7 +309,9 @@
         'cancelled': ['bi-x-circle-fill', 'border-type-cancelled', 'text-danger'],
         'repair-in_progress': ['bi-tools', 'border-type-pending-payment', 'text-warning'],
         'repair-success': ['bi-tools', 'border-type-success', 'text-success-custom'],
-        'repair-rejected': ['bi-tools', 'border-type-cancelled', 'text-danger']
+        'repair-rejected': ['bi-tools', 'border-type-cancelled', 'text-danger'],
+        'tax-invoice-issued': ['bi-file-earmark-text', 'border-type-success', 'text-success-custom'],
+        'tax-invoice-cancelled': ['bi-file-earmark-text', 'border-type-cancelled', 'text-danger']
       };
       const [iconClass, borderClass, iconColor] = iconMap[item.type] || ['bi-bell', 'border-type-pending-review', 'text-warning'];
 
@@ -331,7 +333,7 @@
                 </div>
               </div>
               <div class="d-flex gap-2 ms-auto align-self-center">
-                ${item.link ? `<a href="${item.link}" class="btn btn-sm btn-custom-primary text-white px-3 text-nowrap"><i class="bi bi-receipt me-1"></i>ดูใบเสนอราคา</a>` : ''}
+                ${item.link ? `<a href="${item.link}" class="btn btn-sm btn-custom-primary text-white px-3 text-nowrap"><i class="bi bi-receipt me-1"></i>${item.type === 'tax-invoice-issued' ? 'ดูใบกำกับภาษี' : 'ดูใบเสนอราคา'}</a>` : ''}
                 <button class="btn btn-sm btn-light border hover-lift px-3 text-nowrap" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
               </div>
             </div>
@@ -418,7 +420,9 @@
         'cancelled': ['bi-x-circle-fill', 'border-type-cancelled', 'text-danger'],
         'repair-in_progress': ['bi-tools', 'border-type-pending-payment', 'text-warning'],
         'repair-success': ['bi-tools', 'border-type-success', 'text-success-custom'],
-        'repair-rejected': ['bi-tools', 'border-type-cancelled', 'text-danger']
+        'repair-rejected': ['bi-tools', 'border-type-cancelled', 'text-danger'],
+        'tax-invoice-issued': ['bi-file-earmark-text', 'border-type-success', 'text-success-custom'],
+        'tax-invoice-cancelled': ['bi-file-earmark-text', 'border-type-cancelled', 'text-danger']
       };
       const [iconClass, borderClass, iconColor] = iconMap[item.type] || ['bi-bell', 'border-type-pending-review', 'text-warning'];
       return `
@@ -437,7 +441,7 @@
                 </div>
               </div>
               <div class="d-flex gap-2 ms-auto align-self-center">
-                ${item.link ? `<a href="${item.link}" class="btn btn-sm btn-custom-primary text-white px-3 text-nowrap"><i class="bi bi-receipt me-1"></i>ดูใบเสนอราคา</a>` : ''}
+                ${item.link ? `<a href="${item.link}" class="btn btn-sm btn-custom-primary text-white px-3 text-nowrap"><i class="bi bi-receipt me-1"></i>${item.type === 'tax-invoice-issued' ? 'ดูใบกำกับภาษี' : 'ดูใบเสนอราคา'}</a>` : ''}
                 <button class="btn btn-sm btn-light border hover-lift px-3 text-nowrap" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
               </div>
             </div>

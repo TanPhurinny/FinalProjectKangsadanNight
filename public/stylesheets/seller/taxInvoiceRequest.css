@@ -1,0 +1,95 @@
+/* ── ส่วนขอใบกำกับภาษีในหน้าร้านค้าของฉัน ──
+   ไฟล์นี้โหลดคู่กับ repair.css เสมอ (ดู shopProfile.ejs) จึงมีแค่คลาสที่ repair.css ยังไม่มี
+   ไม่ประกาศ :root/container/form-card/form-group/input-white/form-alert ซ้ำ เพราะ repair.css
+   มีอยู่แล้วและ shopProfile.css ปรับ .container/.form-card เฉพาะหน้านี้ไว้ต่างหาก — ถ้าประกาศซ้ำที่นี่
+   จะไปทับความกว้าง/ระยะห่างที่ shopProfile.css ตั้งใจปรับไว้โดยไม่ได้ตั้งใจ */
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--navy, #12303a);
+    margin-bottom: 14px;
+}
+
+.quotation-pick-list { border: 1px solid var(--line, #d7e3e6); border-radius: var(--radius-sm, 3px); overflow: hidden; margin-bottom: 20px; }
+.quotation-pick-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line, #d7e3e6);
+    font-size: 0.9rem;
+}
+.quotation-pick-row:last-child { border-bottom: none; }
+.quotation-pick-row input[type="checkbox"] { width: 18px; height: 18px; flex: 0 0 auto; }
+.quotation-pick-row .qn { font-family: var(--mono, 'IBM Plex Mono', monospace); color: var(--navy, #12303a); font-weight: 600; flex: 1 1 auto; }
+.quotation-pick-row .qa { color: var(--ink-soft, #5b7a84); }
+.quotation-pick-empty { padding: 20px; text-align: center; color: var(--ink-soft, #5b7a84); font-size: 0.9rem; }
+
+.profile-toggle { display: flex; gap: 10px; margin-bottom: 16px; }
+.profile-toggle button {
+    flex: 1 1 auto;
+    padding: 10px 14px;
+    border: 1px solid var(--line, #d7e3e6);
+    border-radius: var(--radius-sm, 3px);
+    background: #fff;
+    color: var(--navy, #12303a);
+    font-weight: 600;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+.profile-toggle button.active { background: var(--primary, #2C93A8); border-color: var(--primary, #2C93A8); color: #fff; }
+
+.btn-submit {
+    width: 100%;
+    padding: 13px;
+    background: var(--primary, #2C93A8);
+    border: 1px solid var(--primary, #2C93A8);
+    border-radius: var(--radius-sm, 3px);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+.btn-submit:hover { background: var(--primary-dark, #1f6f80); border-color: var(--primary-dark, #1f6f80); }
+
+.request-list { border: 1px solid var(--line, #d7e3e6); border-radius: var(--radius-sm, 3px); overflow: hidden; }
+.request-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px;
+    border-bottom: 1px solid var(--line, #d7e3e6);
+    font-size: 0.9rem;
+}
+.request-row:last-child { border-bottom: none; }
+.request-row-main { display: flex; flex-direction: column; gap: 3px; }
+.request-row-title { font-weight: 600; color: var(--navy, #12303a); }
+.request-row-meta { color: var(--ink-soft, #5b7a84); font-size: 0.8rem; }
+
+.badge {
+    border-radius: var(--radius-sm, 3px);
+    padding: 4px 10px;
+    font-size: 0.72rem;
+    font-family: var(--mono, 'IBM Plex Mono', monospace);
+    font-weight: 600;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+.badge.pending { background: var(--warning, #c98a2e); color: #fff; border-color: var(--warning, #c98a2e); }
+.badge.issued { background: var(--success, #27AE60); color: #fff; border-color: var(--success, #27AE60); }
+.badge.cancelled { background: var(--danger, #c0392b); color: #fff; border-color: var(--danger, #c0392b); }
+
+.link-view {
+    color: var(--primary, #2C93A8);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.link-view:hover { text-decoration: underline; }
+
+@media (max-width: 640px) {
+    .request-row { flex-direction: column; align-items: flex-start; }
+}

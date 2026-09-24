@@ -271,6 +271,26 @@
     max-width: 340px;
 }
 
+/* แบนเนอร์สถานะบนใบกำกับภาษี (ยกเลิกแล้ว / ออกใหม่แทนที่เลขที่เดิม) — ใช้คู่กับ taxInvoiceDocument.ejs */
+.quotation-status-banner {
+    border: 1px solid var(--quotation-grid-line, #7c98a0);
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    margin-bottom: 14px;
+    color: var(--navy, #12303a);
+}
+
+.quotation-status-banner--cancelled {
+    background: #fdecec;
+    border-color: var(--danger-color, #c0392b);
+    color: var(--danger-color, #c0392b);
+    font-weight: 600;
+}
+
+.quotation-status-banner--replaces {
+    background: var(--soft-bg, #f6f8f8);
+}
+
 @media print {
     .d-print-none {
         display: none !important;

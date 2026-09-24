@@ -1,0 +1,73 @@
+.tax-invoice-page .container { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; }
+
+.tax-invoice-page .flash-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border: 1px solid var(--line, #d7e3e6);
+    border-radius: var(--border-radius-sm, 3px);
+    margin-bottom: 18px;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+.tax-invoice-page .flash-banner--success { background: rgba(39, 174, 96, 0.07); border-left: 3px solid var(--success-color, #27AE60); color: #1E8449; }
+.tax-invoice-page .flash-banner--error { background: rgba(192, 57, 43, 0.07); border-left: 3px solid var(--danger-color, #c0392b); color: #922B21; }
+
+.tax-invoice-page .tax-list { border: 1px solid var(--line, #d7e3e6); border-radius: var(--border-radius-sm, 3px); overflow: hidden; }
+.tax-invoice-page .tax-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line, #d7e3e6);
+    font-size: 0.9rem;
+}
+.tax-invoice-page .tax-row:last-child { border-bottom: none; }
+.tax-invoice-page .tax-row-main { display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; }
+.tax-invoice-page .tax-row-title { font-weight: 600; color: var(--navy, #12303a); }
+.tax-invoice-page .tax-row-meta { color: var(--ink-soft, #5b7a84); font-size: 0.8rem; }
+.tax-invoice-page .tax-row-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.tax-invoice-page .tax-empty { padding: 24px; text-align: center; color: var(--ink-soft, #5b7a84); }
+
+.tax-invoice-page .badge {
+    border-radius: 3px;
+    padding: 5px 10px;
+    font-size: 0.72rem;
+    font-family: var(--mono, 'IBM Plex Mono', monospace);
+    font-weight: 600;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+.tax-invoice-page .badge.pending { background: var(--warning-color, #c98a2e); color: #fff; border-color: var(--warning-color, #c98a2e); }
+.tax-invoice-page .badge.issued { background: var(--success-color, #27AE60); color: #fff; border-color: var(--success-color, #27AE60); }
+.tax-invoice-page .badge.cancelled { background: var(--danger-color, #c0392b); color: #fff; border-color: var(--danger-color, #c0392b); }
+
+.tax-invoice-page .btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border: 1px solid var(--line, #d7e3e6);
+    border-radius: var(--border-radius-sm, 3px);
+    background: #fff;
+    color: var(--navy, #12303a);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+}
+.tax-invoice-page .btn-action:hover { border-color: var(--primary-color, #2C93A8); color: var(--primary-color, #2C93A8); }
+.tax-invoice-page .btn-action.btn-danger:hover { border-color: var(--danger-color, #c0392b); color: var(--danger-color, #c0392b); }
+
+.tax-invoice-page .filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tax-invoice-page .filter-tabs a {
+    padding: 8px 14px;
+    border: 1px solid var(--line, #d7e3e6);
+    border-radius: var(--border-radius-sm, 3px);
+    color: var(--navy, #12303a);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+.tax-invoice-page .filter-tabs a.active { background: var(--primary-color, #2C93A8); border-color: var(--primary-color, #2C93A8); color: #fff; }
