@@ -193,6 +193,14 @@ async function loadZoneDetailsMap() {
         }
     });
 
+    // เช็คแค่ "มีล็อกว่างไหม" (boolean) ไม่บอกจำนวนเหลือ — ดึงล็อกว่างทั้งหมดมาครั้งเดียว
+    // แล้ว map เป็น zoneId ที่มีล็อกว่างอย่างน้อย 1 ล็อก ไม่ query ทีละโซน
+    const availableStalls = await prisma.stall.findMany({
+        where: { isAvailable: true, status: 'AVAILABLE' },
+        select: { row: { select: { zoneId: true } } }
+    });
+    const zoneIdsWithAvailability = new Set(availableStalls.map((s) => s.row.zoneId));
+
     const map = {};
     for (const zone of zones) {
         const zoneCode = String(zone.code || '').toLowerCase();
@@ -205,7 +213,8 @@ async function loadZoneDetailsMap() {
             description: zone.description || `พื้นที่ขายสำหรับโซน ${zone.code}`,
             size,
             dailyPrice: dominantRowPrice(zone.rows),
-            electricityFee: Number(zone.electricityFee || LIGHT_UNIT_PRICE)
+            electricityFee: Number(zone.electricityFee || LIGHT_UNIT_PRICE),
+            hasAvailableStalls: zoneIdsWithAvailability.has(zone.id)
         };
     }
 

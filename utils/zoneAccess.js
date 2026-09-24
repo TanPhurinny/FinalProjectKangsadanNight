@@ -1,7 +1,7 @@
 // Helper to determine which zones a seller may book based on productType.
 // Keeps normalization and zone mapping in one place.
 const ZONE_MAP = {
-  FASHION: ['e', 'c', 'a'],
+  FASHION: ['e', 'c', 'a', 'b'],
   FOOD: ['f', 'b', 'a', 'x', 'd', 't'],
   EVENT_BOOTH: [],
 };

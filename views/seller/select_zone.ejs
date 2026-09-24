@@ -120,9 +120,9 @@
           </div>
         </div>
 
-        <div class="zone zone--b <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('b')) ? 'is-disabled' : '' %>" data-zone="b" role="button" tabindex="0" aria-label="โซน B - อาหาร">
+        <div class="zone zone--b <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('b')) ? 'is-disabled' : '' %>" data-zone="b" role="button" tabindex="0" aria-label="โซน B - อาหาร/แฟชั่น">
           <span class="zone__name">โซน B</span>
-          <span class="zone__category">อาหาร</span>
+          <span class="zone__category">อาหาร/แฟชั่น</span>
         </div>
 
         <div class="zone zone--c <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('c')) ? 'is-disabled' : '' %>" data-zone="c" role="button" tabindex="0" aria-label="โซน C - แฟชั่น">
@@ -180,6 +180,7 @@
       <button type="button" class="stall-modal__close" id="modalCloseBtn" aria-label="ปิด">&times;</button>
       <h3 id="modalTitle">รายละเอียดแผง</h3>
       <p id="modalZoneText" class="stall-modal__zone"></p>
+      <span id="modalAvailability" class="stall-modal__availability"></span>
       <ul class="stall-modal__list">
         <li id="modalSize"></li>
         <li id="modalPrice"></li>
@@ -187,27 +188,7 @@
         <li>อยู่ในตำแหน่งที่มองเห็นง่าย</li>
       </ul>
 
-      <div class="stall-modal__corner">
-        <p class="stall-modal__corner-title">สนใจแผงหัวมุม/แผงพิเศษไหม? <span class="stall-modal__corner-note">(มีค่าใช้จ่ายเพิ่ม เลือกได้ 1 ระดับ)</span></p>
-        <div class="stall-modal__corner-options" id="cornerZoneOptions">
-          <label class="stall-modal__corner-option">
-            <input type="radio" name="cornerZoneModal" value="0" checked>
-            <span class="stall-modal__corner-option-text">
-              <strong>ไม่สนใจ</strong>
-              <small>แผงมาตรฐาน ไม่มีค่าใช้จ่ายเพิ่ม</small>
-            </span>
-          </label>
-          <% (typeof cornerZoneOptions !== 'undefined' ? cornerZoneOptions : []).forEach(function(opt) { %>
-            <label class="stall-modal__corner-option">
-              <input type="radio" name="cornerZoneModal" value="<%= opt.value %>">
-              <span class="stall-modal__corner-option-text">
-                <strong><%= opt.label %> <span class="stall-modal__corner-option-tag">+<%= opt.value %> บาท/ล็อก/วัน</span></strong>
-                <small><%= opt.desc %></small>
-              </span>
-            </label>
-          <% }) %>
-        </div>
-      </div>
+      <!-- เลือกแผงหัวมุม/แผงพิเศษ (ล็อคเต็ง) ย้ายไปเลือกในหน้าฟอร์มจองแผง (booking_stall) แทน — ไม่ต้องมีซ้ำสองที่ -->
 
       <button type="button" class="stall-modal__btn" id="bookStallBtn">จองแถวนี้</button>
     </div>

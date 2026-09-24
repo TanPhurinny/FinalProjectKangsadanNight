@@ -8,9 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalSize = document.getElementById('modalSize');
   const modalPrice = document.getElementById('modalPrice');
   const modalTitle = document.getElementById('modalTitle');
+  const modalAvailability = document.getElementById('modalAvailability');
   const facilityButtons = document.querySelectorAll('.facility-btn');
-  const cornerZoneBlock = document.querySelector('.stall-modal__corner');
-  const cornerZoneRadios = document.querySelectorAll('input[name="cornerZoneModal"]');
 
   const fallbackDetailsByZone = {
     a: {
@@ -84,7 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
       label: fromServer.label || fallback.label,
       size: fromServer.size || fallback.size,
       price: `ราคา ${dailyPrice.toLocaleString('th-TH')} บาท /วัน`,
-      description: fromServer.description || fallback.description
+      description: fromServer.description || fallback.description,
+      hasAvailableStalls: typeof fromServer.hasAvailableStalls === 'boolean' ? fromServer.hasAvailableStalls : null
     };
   }
 
@@ -100,8 +100,16 @@ document.addEventListener('DOMContentLoaded', () => {
     modalZoneText.textContent = details.description;
     modalSize.textContent = details.size;
     modalPrice.textContent = details.price;
-    cornerZoneRadios.forEach((radio) => { radio.checked = radio.value === '0'; });
-    if (cornerZoneBlock) cornerZoneBlock.style.display = '';
+    if (modalAvailability) {
+      // บอกแค่ "ว่าง/เต็ม" ไม่บอกจำนวนล็อกที่เหลือ
+      if (details.hasAvailableStalls === null) {
+        modalAvailability.textContent = '';
+        modalAvailability.className = 'stall-modal__availability';
+      } else {
+        modalAvailability.textContent = details.hasAvailableStalls ? 'ยังมีล็อกว่าง จองได้' : 'ล็อกเต็มแล้ว';
+        modalAvailability.className = 'stall-modal__availability ' + (details.hasAvailableStalls ? 'is-available' : 'is-full');
+      }
+    }
     modal.classList.add('is-open');
     modal.setAttribute('aria-hidden', 'false');
   }
@@ -117,6 +125,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ALLOWED_ZONES.length && !ALLOWED_ZONES.includes(key)) {
       z.classList.add('is-disabled');
     }
+  });
+
+  // บอกแค่ "ว่าง/เต็ม" ไม่บอกจำนวนล็อกที่เหลือ (ดู hasAvailableStalls จาก ZONE_DETAILS ฝั่งเซิร์ฟเวอร์)
+  zones.forEach((z) => {
+    const key = String(z.dataset.zone || '').toLowerCase();
+    const details = ZONE_DETAILS[key];
+    if (!details || typeof details.hasAvailableStalls === 'undefined') return;
+    z.classList.add(details.hasAvailableStalls ? 'zone--available' : 'zone--full');
+    const label = document.createElement('span');
+    label.className = 'zone__availability';
+    label.textContent = details.hasAvailableStalls ? 'ว่าง' : 'เต็ม';
+    z.appendChild(label);
   });
 
   zones.forEach((zone) => {
@@ -167,7 +187,6 @@ document.addEventListener('DOMContentLoaded', () => {
       modalSize.textContent = 'ใกล้ทางเดินหลักและเข้าถึงง่าย';
       modalPrice.textContent = 'บริการใช้ได้ฟรี';
       selectedZoneKey = null;
-      if (cornerZoneBlock) cornerZoneBlock.style.display = 'none';
       modal.classList.add('is-open');
       modal.setAttribute('aria-hidden', 'false');
     });
@@ -188,9 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const selectedCornerRadio = Array.from(cornerZoneRadios).find((radio) => radio.checked);
-    const cornerValue = selectedCornerRadio ? Number(selectedCornerRadio.value) : 0;
-    const cornerParam = cornerValue > 0 ? `&corner=${cornerValue}` : '';
-    window.location.href = `/booking-stall?zone=${encodeURIComponent(String(selectedZoneKey).toUpperCase())}${cornerParam}`;
+    // เลือกแผงหัวมุม/แผงพิเศษ (ล็อคเต็ง) ย้ายไปเลือกในหน้าฟอร์มจองแผงแทน ไม่ส่ง corner param มาจากตรงนี้แล้ว
+    window.location.href = `/booking-stall?zone=${encodeURIComponent(String(selectedZoneKey).toUpperCase())}`;
   });
 });
