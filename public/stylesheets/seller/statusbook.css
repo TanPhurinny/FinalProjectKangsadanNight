@@ -584,3 +584,109 @@ body[data-page="booking-status"] .timeline-node p {
     font-weight: 500;
     color: var(--ink-soft, #5b7a84);
 }
+
+.quote-card__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+}
+.quote-card__tag--estimate { background: rgba(201, 138, 46, 0.1); color: var(--warning); }
+.quote-card__tag--final { background: rgba(39, 174, 96, 0.1); color: var(--success); }
+.quote-card__tag--corner { background: rgba(201, 138, 46, 0.1); color: var(--warning); }
+
+.quote-card__total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--navy);
+}
+.quote-card__total span:first-child { font-size: 0.82rem; font-weight: 500; color: var(--ink-soft, #5b7a84); }
+.quote-card__total strong { font-family: var(--mono); }
+
+/* ── การ์ดขั้นตอนชำระเงิน — คุมสไตล์เดียวกับ quote-card แทน bootstrap alert ดิบๆ ── */
+.pay-box {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-top: 16px;
+    background: #fff;
+}
+.pay-box__title {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--navy);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.pay-box__note {
+    font-size: 0.82rem;
+    color: var(--ink-soft, #5b7a84);
+    margin-bottom: 12px;
+    line-height: 1.6;
+}
+.pay-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--line);
+    font-size: 0.82rem;
+    margin-bottom: 10px;
+    line-height: 1.55;
+}
+.pay-alert--info { background: rgba(44, 147, 168, 0.06); border-left-color: var(--primary); color: var(--navy); }
+.pay-alert--success { background: rgba(39, 174, 96, 0.08); border-left-color: var(--success); color: #1f7a45; }
+.pay-alert--warning { background: rgba(201, 138, 46, 0.08); border-left-color: var(--warning); color: #8a5f1e; }
+.pay-alert--danger { background: rgba(192, 57, 43, 0.06); border-left-color: var(--danger); color: #922b21; }
+
+.pay-qr {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--soft-bg);
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 14px;
+}
+.pay-qr img { max-width: 200px; width: 100%; }
+.pay-qr__row { display: flex; justify-content: center; gap: 6px; font-size: 0.82rem; margin-top: 4px; }
+.pay-qr__row span { color: var(--ink-soft, #5b7a84); }
+.pay-qr__row strong { color: var(--navy); font-family: var(--mono); }
+.pay-qr__total { font-size: 1.1rem; font-weight: 700; color: var(--navy); font-family: var(--mono); margin-top: 6px; }
+
+.pay-slip-preview {
+    max-width: 220px;
+    width: 100%;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    display: block;
+}
+
+.pay-upload-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+@media (min-width: 480px) {
+    .pay-upload-form { flex-direction: row; }
+}
+.pay-upload-form input[type="file"] {
+    flex: 1;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: 0.85rem;
+    font-family: 'Kanit', sans-serif;
+}

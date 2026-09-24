@@ -15,7 +15,7 @@ const {
     getBookingRoundMetaForDate,
     getBookingRoundStatusDetails,
     getBookingPhaseForRound,
-    getPaymentDeadlineForRound,
+    getPaymentDeadlineFromLockAssignedAt,
     getRoundWindow,
     BOOKING_ROUND_LENGTH_DAYS
 } = require('../utils/bookingRound');
@@ -2075,25 +2075,15 @@ async function loadSellerBookingStatus(userId) {
             }
         }
 
-        // กำหนดชำระเงินก่อนวันพุธ เฉพาะกลุ่ม "จองยาว 14 วัน" หรือ "ล็อคเต็ง" เท่านั้น
-        // (ตามเงื่อนไขธุรกิจ ไม่บังคับกับคนจองสั้นทั่วไป)
+        // กำหนดชำระเงินภายใน 6 ชม. นับจากเวลาที่แอดมินจัดล็อกให้ (lockAssignedAt) — เกินแล้วแค่ขึ้นเตือน
+        // ในหน้า ไม่ auto-ยกเลิก แอดมินแยกดำเนินการเอง (ดู PAYMENT_WINDOW_HOURS ใน utils/bookingRound.js)
         bookingView.paymentDeadline = null;
         bookingView.paymentDeadlineOverdue = false;
-        const isLongOrCornerBooking = Number(bookingView.rentalDays) >= BOOKING_ROUND_LENGTH_DAYS
-            || Boolean(bookingView.cornerZoneNote)
-            || bookingView.isSpecialCornerLot;
         if (normalizedRequestStatus === 'IN_PROGRESS' && !awaitingPaymentVerification) {
-            let deadlineDate = null;
-            if (isLongOrCornerBooking) {
-                const roundMeta = getBookingRoundMetaForDate(latestBooking?.rentalStartDate || latestRequest.createdAt);
-                deadlineDate = getPaymentDeadlineForRound(roundMeta);
-            } else if (latestBooking?.rentalStartDate) {
-                // กลุ่มจองสั้น (ขั้นต่ำ 3 วัน เริ่มพุธ หรือจองทีละวัน) ต้องชำระเงินก่อนวันที่จะเริ่มขายเอง
-                deadlineDate = addDays(toStartOfDay(latestBooking.rentalStartDate), -1);
-            }
+            const deadlineDate = getPaymentDeadlineFromLockAssignedAt(latestRequest.lockAssignedAt);
             if (deadlineDate) {
-                bookingView.paymentDeadline = formatDateThai(deadlineDate);
-                bookingView.paymentDeadlineOverdue = toStartOfDay(new Date()).getTime() > deadlineDate.getTime();
+                bookingView.paymentDeadline = `${formatDateThai(deadlineDate)} เวลา ${formatTimeThai(deadlineDate)} น.`;
+                bookingView.paymentDeadlineOverdue = new Date().getTime() > deadlineDate.getTime();
             }
         }
 

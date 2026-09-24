@@ -178,6 +178,9 @@ model BookingRequest {
   sellerId     Int?
   status       Status   @default(PENDING)
   createdAt    DateTime @default(now())
+  // เวลาที่แอดมินจัดล็อกให้ (ตั้งสถานะเป็น IN_PROGRESS) — ใช้คำนวณกำหนดชำระเงินภายใน 6 ชม.
+  // (ดู getPaymentDeadlineHours ใน utils/bookingRound.js) รีเซ็ตใหม่ทุกครั้งที่จัดล็อกซ้ำ
+  lockAssignedAt DateTime?
   paymentConfirmedAt DateTime?
   paymentSlipImage   String?
   slipVerified       Boolean?

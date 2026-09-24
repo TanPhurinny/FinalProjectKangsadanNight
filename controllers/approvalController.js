@@ -783,7 +783,9 @@ exports.confirmBookingStall = async (req, res) => {
                     // IN_PROGRESS ก่อนถึงจะอัปโหลดสลิปได้ ไม่มีทางถูกเข้าถึงเลย
                     status: 'IN_PROGRESS',
                     assignedStallCode: joinedAssignedStallCode,
-                    description: cleanedDescription
+                    description: cleanedDescription,
+                    // เริ่มนับกำหนดชำระเงินใหม่ (ภายใน 6 ชม.) ทุกครั้งที่จัดล็อก แม้เป็นการจัดซ้ำ
+                    lockAssignedAt: new Date()
                 }
             });
 

@@ -141,60 +141,63 @@
 
     let paymentSection = '';
     if (booking.status === 'IN_PROGRESS' && booking.awaitingPaymentVerification) {
-      let slipVerifyBadge = '';
+      let slipVerifyAlert = '';
       if (booking.slipVerified === true) {
-        slipVerifyBadge = `<div class="alert alert-success py-2 px-3 mb-3 d-flex align-items-center gap-2"><i class="bi bi-patch-check-fill"></i><span>ระบบตรวจสอบสลิปอัตโนมัติแล้ว: <strong>สลิปจริง ยอดถูกต้อง</strong> รอแอดมินยืนยันขั้นสุดท้าย</span></div>`;
+        slipVerifyAlert = `<div class="pay-alert pay-alert--success"><i class="bi bi-patch-check-fill"></i><span>ระบบตรวจสอบสลิปอัตโนมัติแล้ว: <strong>สลิปจริง ยอดถูกต้อง</strong> รอแอดมินยืนยันขั้นสุดท้าย</span></div>`;
       } else if (booking.slipVerified === false) {
-        slipVerifyBadge = `<div class="alert alert-danger py-2 px-3 mb-3 d-flex align-items-center gap-2"><i class="bi bi-exclamation-triangle-fill"></i><span>ระบบตรวจสอบสลิปอัตโนมัติแล้วพบปัญหา: <strong>${booking.slipVerifyReason || 'ตรวจสอบไม่ผ่าน'}</strong> — ถ้ามั่นใจว่าโอนถูกต้องแล้ว กรุณาติดต่อแอดมิน</span></div>`;
+        slipVerifyAlert = `<div class="pay-alert pay-alert--danger"><i class="bi bi-exclamation-triangle-fill"></i><span>ระบบตรวจสอบสลิปอัตโนมัติแล้วพบปัญหา: <strong>${booking.slipVerifyReason || 'ตรวจสอบไม่ผ่าน'}</strong> — ถ้ามั่นใจว่าโอนถูกต้องแล้ว กรุณาติดต่อแอดมิน</span></div>`;
       }
       paymentSection = `
-        <div class="payment-upload-box mt-4 p-3 border rounded-3 bg-light">
-          <button type="button" class="btn btn-warning btn-custom disabled mb-2" disabled><i class="bi bi-hourglass-split me-1"></i>ชำระเงินแล้ว รอตรวจ</button>
-          ${slipVerifyBadge}
-          <p class="text-muted small mb-3">แอดมินกำลังตรวจสอบสลิปโอนเงินของคุณสำหรับ<strong>${lockMention(booking.slotLabel)}</strong> เมื่อยืนยันแล้ว ระบบจะแจ้งเลขล็อกและยืนยันว่าเป็นของคุณอย่างเป็นทางการ</p>
-          <img src="${booking.paymentSlipImage}" alt="สลิปโอนเงินที่ส่งไปแล้ว" class="img-fluid rounded" style="max-width:260px;" />
+        <div class="pay-box">
+          <div class="pay-box__title"><i class="bi bi-hourglass-split"></i>ชำระเงินแล้ว รอแอดมินตรวจสลิป</div>
+          ${slipVerifyAlert}
+          <p class="pay-box__note">แอดมินกำลังตรวจสอบสลิปโอนเงินของคุณสำหรับ<strong>${lockMention(booking.slotLabel)}</strong> เมื่อยืนยันแล้ว ระบบจะแจ้งเลขล็อกและยืนยันว่าเป็นของคุณอย่างเป็นทางการ</p>
+          <img src="${booking.paymentSlipImage}" alt="สลิปโอนเงินที่ส่งไปแล้ว" class="pay-slip-preview" />
         </div>
       `;
     } else if (booking.status === 'IN_PROGRESS') {
-      const slipRejectedBanner = (booking.slipVerifyReason || '').startsWith('[แอดมินปฏิเสธสลิป]')
-        ? `<div class="alert alert-danger py-2 px-3 mb-3 d-flex align-items-center gap-2"><i class="bi bi-x-octagon-fill"></i><span>สลิปที่ส่งไปไม่ผ่านการตรวจสอบ: <strong>${booking.slipVerifyReason.replace('[แอดมินปฏิเสธสลิป]', '').trim()}</strong> กรุณาอัปโหลดสลิปใหม่</span></div>`
+      const slipRejectedAlert = (booking.slipVerifyReason || '').startsWith('[แอดมินปฏิเสธสลิป]')
+        ? `<div class="pay-alert pay-alert--danger"><i class="bi bi-x-octagon-fill"></i><span>สลิปที่ส่งไปไม่ผ่านการตรวจสอบ: <strong>${booking.slipVerifyReason.replace('[แอดมินปฏิเสธสลิป]', '').trim()}</strong> กรุณาอัปโหลดสลิปใหม่</span></div>`
         : '';
-      // กำหนดชำระเงินก่อนวันพุธ เฉพาะกลุ่มจองยาว 14 วัน / ล็อคเต็ง
-      const paymentDeadlineBanner = booking.paymentDeadline
-        ? `<div class="alert ${booking.paymentDeadlineOverdue ? 'alert-danger' : 'alert-warning'} py-2 px-3 mb-3 d-flex align-items-center gap-2"><i class="bi bi-alarm-fill"></i><span>${booking.paymentDeadlineOverdue ? 'เลยกำหนดชำระเงินแล้ว' : 'กำหนดชำระเงิน'} สำหรับผู้จองยาว/ล็อคเต็ง: <strong>ก่อนวันที่ ${booking.paymentDeadline}</strong> กรุณาชำระและแนบสลิปโดยเร็ว</span></div>`
+      // กำหนดชำระเงินภายใน 6 ชม. นับจากเวลาที่แอดมินจัดล็อกให้
+      const paymentDeadlineAlert = booking.paymentDeadline
+        ? `<div class="pay-alert ${booking.paymentDeadlineOverdue ? 'pay-alert--danger' : 'pay-alert--warning'}"><i class="bi bi-alarm-fill"></i><span>${booking.paymentDeadlineOverdue ? 'ใบเสนอราคาหมดอายุแล้ว (เกิน 6 ชม. หลังจัดล็อก)' : 'กำหนดชำระเงินภายใน 6 ชม. หลังจัดล็อก'}: <strong>${booking.paymentDeadline}</strong></span></div>`
         : '';
       paymentSection = `
-        <div class="payment-upload-box mt-4 p-3 border rounded-3 bg-light">
-          <h6 class="fw-bold mb-2 text-dark-custom"><i class="bi bi-wallet2 me-2"></i>อัปโหลดสลิปโอนเงินเพื่อยืนยันการชำระเงิน</h6>
-          ${slipRejectedBanner}
-          ${paymentDeadlineBanner}
-          <p class="text-muted small mb-3">แอดมินจัดล็อกให้คุณแล้ว กรุณาชำระเงินและแนบสลิปโอนเงินเพื่อยืนยัน แอดมินจะตรวจสอบสลิปก่อนยืนยันล็อกให้เป็นของคุณ (เลขล็อกจะแจ้งให้ทราบหลังยืนยันการชำระเงิน)</p>
-          <div class="bank-transfer-box mb-3 p-3 border rounded-3 bg-white text-center">
-            <h6 class="fw-bold mb-2 text-dark-custom"><i class="bi bi-qr-code me-2"></i>สแกนจ่ายด้วยพร้อมเพย์</h6>
-            ${booking.promptPayQr ? `<img src="${booking.promptPayQr}" alt="PromptPay QR" class="img-fluid" style="max-width:220px;" />` : ''}
-            <div class="mt-2">
-              <span class="text-muted small">พร้อมเพย์</span>
-              <div class="fw-semibold">${booking.promptPayId || '-'}</div>
-            </div>
-            <div class="mt-1">
-              <span class="text-muted small">ยอดที่ต้องชำระ</span>
-              <div class="fw-bold fs-5 text-success-custom">${formatMoney(booking.grandTotal)}</div>
-            </div>
+        <div class="pay-box">
+          <div class="pay-box__title"><i class="bi bi-wallet2"></i>อัปโหลดสลิปโอนเงินเพื่อยืนยันการชำระเงิน</div>
+          ${slipRejectedAlert}
+          ${paymentDeadlineAlert}
+          <p class="pay-box__note">แอดมินจัดล็อกให้คุณแล้ว กรุณาชำระเงินและแนบสลิปโอนเงินเพื่อยืนยัน แอดมินจะตรวจสอบสลิปก่อนยืนยันล็อกให้เป็นของคุณ (เลขล็อกจะแจ้งให้ทราบหลังยืนยันการชำระเงิน)</p>
+          <div class="pay-qr">
+            ${booking.promptPayQr ? `<img src="${booking.promptPayQr}" alt="PromptPay QR" />` : ''}
+            <div class="pay-qr__row"><span>พร้อมเพย์</span><strong>${booking.promptPayId || '-'}</strong></div>
+            <div class="pay-qr__total">${formatMoney(booking.grandTotal)}</div>
           </div>
-          <form action="/booking-payment/confirm" method="POST" enctype="multipart/form-data" class="d-flex flex-column flex-sm-row gap-2">
-            <input type="file" name="paymentSlip" accept="image/*" class="form-control" required />
+          <form action="/booking-payment/confirm" method="POST" enctype="multipart/form-data" class="pay-upload-form">
+            <input type="file" name="paymentSlip" accept="image/*" required />
             <button type="submit" class="btn btn-custom-primary btn-custom text-nowrap px-4"><i class="bi bi-upload me-1"></i>ส่งสลิปโอนเงิน</button>
           </form>
         </div>
       `;
     } else if (booking.status === 'SUCCESS' && booking.paymentSlipImage) {
       paymentSection = `
-        <div class="payment-upload-box mt-4 p-3 border rounded-3 bg-light">
-          <h6 class="fw-bold mb-2 text-success-custom"><i class="bi bi-check-circle-fill me-2"></i>ชำระเงินแล้ว ${lockMention(booking.slotLabel)} เป็นของคุณเรียบร้อย</h6>
-          <img src="${booking.paymentSlipImage}" alt="สลิปโอนเงิน" class="img-fluid rounded" style="max-width:260px;" />
+        <div class="pay-box">
+          <div class="pay-box__title text-success-custom"><i class="bi bi-check-circle-fill"></i>ชำระเงินแล้ว ${lockMention(booking.slotLabel)} เป็นของคุณเรียบร้อย</div>
+          <img src="${booking.paymentSlipImage}" alt="สลิปโอนเงิน" class="pay-slip-preview" />
         </div>
       `;
     }
+
+    const priceStatusTag = booking.isFinalPrice
+      ? `<span class="quote-card__tag quote-card__tag--final"><i class="bi bi-check-circle-fill"></i>ราคาจริงหลังแอดมินจัดล็อกให้แล้ว</span>`
+      : `<span class="quote-card__tag quote-card__tag--estimate"><i class="bi bi-info-circle-fill"></i>ราคาประเมิน (ราคาต่ำสุดของโซน) อาจสูงกว่านี้</span>`;
+    const cornerInterestRow = booking.cornerZoneNote
+      ? `<div class="quote-card__row"><span><i class="bi bi-star-fill text-warning me-1"></i>สนใจแผงพิเศษ</span><strong>${booking.cornerZoneNote}</strong></div>`
+      : '';
+    const cornerAssignedTag = booking.isSpecialCornerLot
+      ? `<span class="quote-card__tag quote-card__tag--corner"><i class="bi bi-star-fill"></i>ล็อกที่ได้เป็นแผงพิเศษ +${formatMoney(booking.cornerExtraPerDay)}/ล็อก/วัน (รวมในค่าเช่าแล้ว)</span>`
+      : '';
 
     scenarioContent.innerHTML = `
       <div class="quote-card">
@@ -214,24 +217,18 @@
         <div class="quote-card__row"><span>ราคา/ล็อค</span><strong>${formatMoney(booking.dailyStallPrice)}/วัน</strong></div>
         <div class="quote-card__row"><span>โซน / แผง</span><strong>${booking.slotLabel ? `${booking.zoneLabel} / ${booking.slotLabel}` : 'รอยืนยันการชำระเงิน'}</strong></div>
         ${booking.sellDaysList ? `<div class="quote-card__row quote-card__row--note"><span>วันที่ขาย (${booking.rentalDays} วัน)</span><strong>${booking.sellDaysList}</strong></div>` : ''}
-      </div>
-
-      <div class="details-box">
-        ${booking.isFinalPrice
-          ? `<div class="price-status-note price-status-note--final"><i class="bi bi-check-circle-fill me-1"></i>ราคาจริงหลังแอดมินจัดล็อกให้แล้ว</div>`
-          : `<div class="price-status-note price-status-note--estimate"><i class="bi bi-info-circle-fill me-1"></i>ราคาประเมิน (ราคาต่ำสุดของโซน) ราคาจริงขึ้นกับตำแหน่งล็อกที่แอดมินจัดให้ อาจสูงกว่านี้</div>`}
-        ${booking.cornerZoneNote
-          ? `<div class="details-row"><span><i class="bi bi-star-fill text-warning me-1"></i>สนใจแผงหัวมุม/แผงพิเศษ</span><strong>${booking.cornerZoneNote}</strong></div>`
-          : ''}
-        ${booking.isSpecialCornerLot
-          ? `<div class="alert alert-warning py-2 px-3 my-2 d-flex align-items-center gap-2"><i class="bi bi-star-fill"></i><span>ล็อกที่แอดมินจัดให้เป็น<strong>แผงหัวมุม/แผงพิเศษ</strong> มีค่าธรรมเนียมเพิ่ม ${formatMoney(booking.cornerExtraPerDay)}/ล็อก/วัน ซึ่งรวมอยู่ในค่าเช่าแผงด้านล่างแล้ว</span></div>`
-          : ''}
-        <div class="details-row"><span>ค่าเช่าแผง</span><strong>${formatMoney(booking.rentTotal)}</strong></div>
-        <div class="details-row"><span>ค่าไฟสว่าง</span><strong>${formatMoney(booking.lightTotal)}</strong></div>
-        <div class="details-row"><span>เครื่องใช้ไฟฟ้าที่แจ้ง</span><strong>${booking.smallApplianceCount} เครื่องเล็ก / ${booking.largeApplianceCount} เครื่องใหญ่</strong></div>
-        <div class="details-row"><span>ค่าเครื่องใช้ไฟฟ้า</span><strong>${formatMoney(booking.applianceTotal)}</strong></div>
-        <div class="details-row"><span>${booking.isFinalPrice ? 'ยอดชำระรวม (รวม VAT)' : 'ยอดประเมินรวม (รวม VAT)'}</span><strong>${formatMoney(booking.grandTotal)}</strong></div>
-        <div class="details-row details-row--note"><span>รายละเอียดร้านค้าที่แจ้งไว้</span><strong>${booking.storeDetailSnapshot || '-'}</strong></div>
+        ${cornerInterestRow}
+        <div class="quote-card__row"><span>เครื่องใช้ไฟฟ้า</span><strong>${booking.smallApplianceCount} เครื่องเล็ก / ${booking.largeApplianceCount} เครื่องใหญ่</strong></div>
+        <div class="quote-card__rule"></div>
+        ${priceStatusTag}
+        ${cornerAssignedTag}
+        <div class="quote-card__row"><span>ค่าเช่าแผง</span><strong>${formatMoney(booking.rentTotal)}</strong></div>
+        <div class="quote-card__row"><span>ค่าไฟสว่าง</span><strong>${formatMoney(booking.lightTotal)}</strong></div>
+        <div class="quote-card__row"><span>ค่าเครื่องใช้ไฟฟ้า</span><strong>${formatMoney(booking.applianceTotal)}</strong></div>
+        <div class="quote-card__total">
+          <span>${booking.isFinalPrice ? 'ยอดชำระรวม (รวม VAT)' : 'ยอดประเมินรวม (รวม VAT)'}</span>
+          <strong>${formatMoney(booking.grandTotal)}</strong>
+        </div>
       </div>
 
       ${paymentSection}
