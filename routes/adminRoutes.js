@@ -57,6 +57,8 @@ router.use(isStaffOrAdmin);
 // --- 4. Market & Dashboard ---
 router.get('/dashboard', marketCtrl.getDashboardPage);
 router.get('/slots', marketCtrl.getSlotsPage);
+router.post('/slots/release-stall', approvalCtrl.releaseExpiredStall);
+router.post('/slots/notify-expiring', approvalCtrl.notifyStallExpiring);
 
 // --- 5. Announcements (จัดการประกาศ) ---
 // ดึงข้อมูลหน้าประกาศ

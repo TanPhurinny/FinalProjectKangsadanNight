@@ -36,6 +36,41 @@
 
         <div class="slots-page">
 
+            <div id="adminTooltip" class="admin-tooltip">
+                <img id="tt-image" class="tt-image" alt="รูปสินค้า/ร้าน" hidden>
+                <div class="tt-header" id="tt-header">แผง <span id="tt-stall-id"></span></div>
+                <div class="tt-body">
+                    <div class="tt-group">
+                        <span class="tt-label" id="tt-label-shop">ชื่อร้านค้า</span>
+                        <span class="tt-value" id="tt-shop"></span>
+                    </div>
+
+                    <div class="tt-row" style="margin-bottom:0;">
+                        <div class="tt-group">
+                            <span class="tt-label" id="tt-label-lock">หมายเลขล็อก</span>
+                            <span class="tt-value" id="tt-lock"></span>
+                        </div>
+                        <div class="tt-group">
+                            <span class="tt-label" id="tt-label-date">วันที่จอง</span>
+                            <span class="tt-value" id="tt-date"></span>
+                        </div>
+                    </div>
+
+                    <div class="tt-group" style="margin-top: 14px;">
+                        <span class="tt-label" id="tt-label-name">ผู้จอง</span>
+                        <span class="tt-value" id="tt-name"></span>
+                    </div>
+                    <div class="tt-group" id="tt-phone-group">
+                        <span class="tt-label" id="tt-label-phone">เบอร์โทรศัพท์</span>
+                        <span class="tt-value" id="tt-phone"></span>
+                    </div>
+                    <div class="tt-group" style="margin-top: 14px;">
+                        <span class="tt-label" id="tt-label-note">หมายเหตุ</span>
+                        <span class="tt-value" id="tt-note" style="font-size: 13px;"></span>
+                    </div>
+                </div>
+            </div>
+
             <!-- TOP BAR -->
             <div class="top-bar">
                 <div class="bar-title"><i class="fa-solid fa-map fa-sm me-1"
@@ -216,6 +251,10 @@
                             style="background:#38bdf8;border-color:#0ea5e9;"></div>มุมพิเศษ สีฟ้า (+29 / A9 +20)</div>
                     <div class="leg"><div class="leg-box"
                             style="background:#facc15;border-color:#eab308;"></div>มุมพิเศษ สีเหลือง (+89)</div>
+                    <div class="leg"><div class="leg-box"
+                            style="background:#a855f7;border-color:#9333ea;"></div>จองแล้วแต่ยังไม่จ่ายเงิน</div>
+                    <div class="leg"><div class="leg-box"
+                            style="background:#27AE60;border-color:#1E8449;"></div>ลูกค้าใหม่ (ไม่เคยส่งคำขอมาก่อน)</div>
                 </div>
 
                 <div class="info-card-backdrop" id="infoCardBackdrop" onclick="hideInfo()"></div>
@@ -234,12 +273,33 @@
                                 id="ic-detail"></span></div>
                         <div class="ig"><label>วันที่จอง</label><span
                                 id="ic-date"></span></div>
+                        <div class="ig"><label>สถานะชำระเงิน</label><span
+                                id="ic-payment"></span></div>
                         <div class="ig"><label>ผู้จอง</label><span
                                 id="ic-name"></span></div>
                         <div class="ig"><label>เบอร์โทรศัพท์</label><span
                                 id="ic-phone"></span></div>
                         <div class="ig ic-span2"><label>หมายเหตุ</label><span
                                 id="ic-note"></span></div>
+                    </div>
+                    <div class="ic-approvals-link-wrap d-none" id="icApprovalsLinkWrap">
+                        <a id="icApprovalsLink" href="#" target="_blank" rel="noopener" class="ic-approvals-link">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> ดูคำขอนี้ที่หน้าอนุมัติ
+                        </a>
+                    </div>
+                    <div class="ic-expiring-actions d-none" id="icExpiringActions">
+                        <p class="ic-expiring-note"><i class="fa-solid fa-clock"></i>
+                            <span id="icExpiringNote">ล็อกนี้ใกล้หมดสัญญา</span></p>
+                        <button type="button" class="btn-notify-expiring" onclick="notifyExpiring()">
+                            <i class="fa-solid fa-envelope"></i> แจ้งเตือนร้านค้าให้ต่อสัญญา
+                        </button>
+                    </div>
+                    <div class="ic-expired-actions d-none" id="icExpiredActions">
+                        <p class="ic-expired-note"><i class="fa-solid fa-triangle-exclamation"></i>
+                            ล็อกนี้หมดสัญญาแล้ว — เช็คหน้างานว่าร้านออกจริงก่อนกดปล่อย</p>
+                        <button type="button" class="btn-release-stall" onclick="releaseStall()">
+                            <i class="fa-solid fa-door-open"></i> ปล่อยล็อกนี้
+                        </button>
                     </div>
                 </div>
 
@@ -255,6 +315,37 @@
         <script type="application/json" id="bookingByStallJson"><%- JSON.stringify(locals.bookingByStallCode || {}).replace(/</g, '\\u003c') %></script>
         <script
             src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+        <script src="/js/common/dialogs.js"></script>
         <script src="/js/admin/slots.js"></script>
+        <script>
+            // แจ้งผลลัพธ์ปุ่ม "ปล่อยล็อก"/"แจ้งเตือนร้านค้า" (ดู releaseStall()/notifyExpiring() ใน slots.js)
+            // หลัง redirect กลับมาที่หน้านี้ แล้วล้าง query ทิ้ง
+            (function () {
+                const params = new URLSearchParams(window.location.search);
+                const success = params.get('success');
+                const error = params.get('error');
+                if (success === 'stall_released') {
+                    window.showAlertDialog({ title: 'ปล่อยล็อกแล้ว', message: 'ล็อกนี้กลับมาว่างพร้อมให้จองใหม่แล้ว', tone: 'success' });
+                } else if (success === 'notify_sent') {
+                    window.showAlertDialog({ title: 'ส่งแจ้งเตือนแล้ว', message: 'ส่งอีเมลแจ้งร้านค้าให้ต่อสัญญาเรียบร้อยแล้ว', tone: 'success' });
+                } else if (error === 'stall_not_expired') {
+                    window.showAlertDialog({ title: 'ปล่อยล็อกไม่ได้', message: 'ล็อกนี้ยังไม่หมดสัญญา หรือถูกจัดการไปแล้ว กรุณารีเฟรชหน้าแล้วลองใหม่', tone: 'warning' });
+                } else if (error === 'stall_not_expiring') {
+                    window.showAlertDialog({ title: 'แจ้งเตือนไม่ได้', message: 'ล็อกนี้ไม่ได้อยู่ในสถานะจองแล้ว/มีกำหนดหมดสัญญา กรุณารีเฟรชหน้าแล้วลองใหม่', tone: 'warning' });
+                } else if (error === 'notify_no_email') {
+                    window.showAlertDialog({ title: 'ส่งแจ้งเตือนไม่ได้', message: 'ไม่พบอีเมลของร้านค้าที่เช่าล็อกนี้ในระบบ', tone: 'warning' });
+                } else if (error === 'notify_failed') {
+                    window.showAlertDialog({ title: 'ส่งแจ้งเตือนไม่สำเร็จ', message: 'เกิดข้อผิดพลาดตอนส่งอีเมล กรุณาลองใหม่อีกครั้ง', tone: 'danger' });
+                } else if (error === 'release_stall_failed' || error === 'stall_not_found' || error === 'missing_stall_code') {
+                    window.showAlertDialog({ title: 'ทำรายการไม่สำเร็จ', message: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง', tone: 'danger' });
+                }
+                if (success || error) {
+                    params.delete('success');
+                    params.delete('error');
+                    const qs = params.toString();
+                    history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
+                }
+            })();
+        </script>
     </body>
 </html>

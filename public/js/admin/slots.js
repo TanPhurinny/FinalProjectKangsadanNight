@@ -12,6 +12,125 @@ function readJsonScript(id) {
 const ZONES_DATA = readJsonScript('zonesDataJson');
 const BOOKING_BY_STALL = readJsonScript('bookingByStallJson');
 
+// หารายละเอียดล็อก (มี expiryState) จาก ZONES_DATA ด้วยรหัสล็อก ไม่สนใจว่ากำลังดูโซนไหนอยู่บนจอตอนนี้
+function findStallByCode(code) {
+    for (const zoneCode of Object.keys(ZONES_DATA)) {
+        for (const column of (ZONES_DATA[zoneCode].columns || [])) {
+            const found = column.stalls.find((s) => s.code === code);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+// ==========================================
+// TOOLTIP ลอยตามเมาส์ (hover ดูรายละเอียดไว) — เหมือนหน้า /admin/booking-stall
+// คลิกล็อกที่จองแล้วยังเปิด info-card แบบเดิม (ดูรายละเอียดครบ + ปุ่มปล่อยล็อก), อันนี้แค่ hover ดูไวๆ
+// ==========================================
+const adminTooltip = document.getElementById('adminTooltip');
+
+function showStallTooltip(e, code, stall, status) {
+    document.getElementById('tt-stall-id').textContent = code;
+    adminTooltip.classList.toggle('tt-available', status !== 'BOOKED');
+
+    const ttImage = document.getElementById('tt-image');
+
+    if (status === 'BOOKED') {
+        // ข้อมูลจริงจาก Slot->Booking->User->ShopDetail (ดู utils/stallOccupancy.js)
+        // ถ้าไม่เจอข้อมูล (คำขอเก่า/หาไม่เจอ) โชว์ "-" แทน
+        const occ = stall && stall.occupant;
+        const badgeText = occ && occ.statusBadge === 'unpaid' ? ' 🟣 ยังไม่จ่ายเงิน'
+            : (occ && occ.statusBadge === 'new' ? ' 🟢 ลูกค้าใหม่' : '');
+        if (occ && occ.productImage) {
+            ttImage.src = occ.productImage;
+            ttImage.hidden = false;
+        } else {
+            ttImage.hidden = true;
+            ttImage.removeAttribute('src');
+        }
+        document.getElementById('tt-label-shop').textContent = 'ชื่อร้านค้า';
+        document.getElementById('tt-shop').textContent = ((occ && occ.shopName) || 'มีผู้จองแล้ว (ไม่พบชื่อร้าน)') + badgeText;
+        // หมายเลขล็อกซ้ำกับหัว tooltip อยู่แล้ว ใช้ช่องนี้โชว์สถานะชำระเงินแทน
+        document.getElementById('tt-label-lock').textContent = 'สถานะชำระเงิน';
+        document.getElementById('tt-lock').textContent = (occ && occ.paymentStatusText) || '-';
+        document.getElementById('tt-label-date').textContent = 'ระยะเวลาเช่า';
+        document.getElementById('tt-date').textContent = (occ && occ.rentalPeriodText)
+            ? occ.rentalPeriodText + (occ.daysUntilExpiry != null ? ` (เหลือ ${occ.daysUntilExpiry} วัน)` : '')
+            : '-';
+        document.getElementById('tt-label-name').textContent = 'ผู้จอง';
+        document.getElementById('tt-name').textContent = (occ && occ.renterName) || '-';
+        document.getElementById('tt-phone-group').style.display = '';
+        document.getElementById('tt-label-phone').textContent = 'เบอร์โทรศัพท์';
+        document.getElementById('tt-phone').textContent = (occ && occ.phone) || '-';
+        document.getElementById('tt-label-note').textContent = 'ขายสินค้า';
+        if (occ) {
+            const priceText = occ.dailyStallPrice != null ? `${Number(occ.dailyStallPrice).toLocaleString('th-TH')} บาท/วัน` : null;
+            const stallCountText = occ.stallCountForShop > 1 ? `ถือรวม ${occ.stallCountForShop} ล็อก` : null;
+            document.getElementById('tt-note').textContent =
+                [occ.productTypeText, occ.productSubtype, priceText, stallCountText, 'คลิกล็อกนี้เพื่อดูรายละเอียด'].filter(Boolean).join(' · ');
+        } else {
+            document.getElementById('tt-note').textContent = 'ล็อกนี้ไม่ว่าง · คลิกเพื่อดูรายละเอียด';
+        }
+    } else if (status === 'MAINTENANCE') {
+        ttImage.hidden = true;
+        document.getElementById('tt-label-shop').textContent = 'สถานะ';
+        document.getElementById('tt-shop').textContent = 'อยู่ระหว่างซ่อมบำรุง';
+        document.getElementById('tt-label-lock').textContent = 'ประเภท/ขนาด';
+        document.getElementById('tt-lock').textContent = (stall && stall.lotType) || '-';
+        document.getElementById('tt-label-date').textContent = 'ราคา/วัน';
+        document.getElementById('tt-date').textContent = stall && stall.pricePerDay != null
+            ? `${stall.pricePerDay.toLocaleString('th-TH')} บาท`
+            : '-';
+        document.getElementById('tt-label-name').textContent = 'มุมพิเศษ';
+        document.getElementById('tt-name').textContent = '-';
+        document.getElementById('tt-phone-group').style.display = 'none';
+        document.getElementById('tt-label-note').textContent = 'หมายเหตุ';
+        document.getElementById('tt-note').textContent = 'ปิดซ่อมบำรุงอยู่ ยังจองไม่ได้';
+    } else {
+        ttImage.hidden = true;
+        const colorText = stall && stall.lotColor && stall.lotColor !== 'ไม่มี' ? `สี${stall.lotColor}` : '-';
+        document.getElementById('tt-label-shop').textContent = 'สถานะ';
+        document.getElementById('tt-shop').textContent = 'ว่าง — พร้อมให้จอง';
+        document.getElementById('tt-label-lock').textContent = 'ประเภท/ขนาด';
+        document.getElementById('tt-lock').textContent = (stall && stall.lotType) || '-';
+        document.getElementById('tt-label-date').textContent = 'ราคา/วัน';
+        document.getElementById('tt-date').textContent = stall && stall.pricePerDay != null
+            ? `${stall.pricePerDay.toLocaleString('th-TH')} บาท`
+            : '-';
+        document.getElementById('tt-label-name').textContent = 'มุมพิเศษ';
+        document.getElementById('tt-name').textContent = colorText;
+        document.getElementById('tt-phone-group').style.display = 'none';
+        document.getElementById('tt-label-note').textContent = 'หมายเหตุ';
+        document.getElementById('tt-note').textContent = 'ล็อกว่าง';
+    }
+
+    adminTooltip.style.display = 'block';
+    moveStallTooltip(e);
+}
+
+function hideStallTooltip() {
+    adminTooltip.style.display = 'none';
+}
+
+function moveStallTooltip(e) {
+    // ให้ tooltip โผล่ด้านข้างเมาส์ (แนวนอน) แทนบน/ล่าง กันไม่ให้ทับแถวล็อกที่อยู่ติดกัน
+    let x = e.clientX + 20;
+    let y = e.clientY - (adminTooltip.offsetHeight / 2);
+
+    if (x + adminTooltip.offsetWidth > window.innerWidth) {
+        x = e.clientX - adminTooltip.offsetWidth - 20;
+    }
+    if (x < 0) x = 4;
+
+    if (y < 0) y = 4;
+    if (y + adminTooltip.offsetHeight > window.innerHeight) {
+        y = window.innerHeight - adminTooltip.offsetHeight - 4;
+    }
+
+    adminTooltip.style.left = `${x}px`;
+    adminTooltip.style.top = `${y}px`;
+}
+
 let activeZone = null;
 let selectedStall = null;
 let currentQuery = '';
@@ -24,7 +143,7 @@ function stallMatchesFilter(id, stall) {
             return stall.status !== 'BOOKED' && stall.status !== 'MAINTENANCE';
         }
         if (currentStatusFilter === 'NEAR_EXPIRY') {
-            return stall.expiryState === 'near' || stall.expiryState === 'expired';
+            return stall.expiryState === 'near' || stall.expiryState === 'critical' || stall.expiryState === 'expired';
         }
         if (currentStatusFilter === 'SPECIAL') {
             return !!stall.lotColor && stall.lotColor !== 'ไม่มี';
@@ -131,16 +250,20 @@ function renderDZoneGrid(z, stallByCode) {
         const lotClass = lotColorClass(stall.lotColor);
         if (lotClass) cell.classList.add(lotClass);
 
-        const bk = BOOKING_BY_STALL[pos.code];
+        cell.addEventListener('mouseenter', (e) => showStallTooltip(e, pos.code, stall, stall.status));
+        cell.addEventListener('mouseleave', hideStallTooltip);
+        cell.addEventListener('mousemove', moveStallTooltip);
+
         if (stall.status === 'BOOKED') {
             booked += 1;
             cell.classList.add('booked');
             if (stall.expiryState === 'expired') cell.classList.add('expired');
-            else if (stall.expiryState === 'near') cell.classList.add('near-expiry');
-            const expiryNote = stall.expiryState === 'expired'
-                ? '\n⚠ หมดอายุแล้ว'
-                : stall.expiryState === 'near' ? '\n⚠ ใกล้หมดอายุ' : '';
-            cell.dataset.tooltip = `แผง ${pos.code}\n${bk ? `${bk.shop}\nขาย: ${bk.product}\n(คลิกดูรายละเอียด)` : 'จองแล้ว'}${expiryNote}`;
+            else if (stall.expiryState === 'critical') cell.classList.add('expiry-critical');
+            else if (stall.expiryState === 'near') cell.classList.add('expiry-near');
+            // ป้ายสถานะร้าน (ไม่จ่ายเงิน/ลูกค้าใหม่) คำนวณไว้แล้วฝั่ง backend (ดู utils/stallOccupancy.js)
+            if (stall.occupant && stall.occupant.statusBadge) {
+                cell.classList.add(stall.occupant.statusBadge === 'unpaid' ? 'occ-unpaid' : 'occ-new');
+            }
             cell.addEventListener('click', (e) => {
                 e.stopPropagation();
                 showInfo(pos.code);
@@ -148,13 +271,11 @@ function renderDZoneGrid(z, stallByCode) {
         } else if (stall.status === 'MAINTENANCE') {
             maintenance += 1;
             cell.classList.add('maintenance');
-            cell.dataset.tooltip = `แผง ${pos.code}\nอยู่ระหว่างซ่อมบำรุง`;
             cell.addEventListener('click', (e) => {
                 e.stopPropagation();
                 selectEmpty(pos.code, cell);
             });
         } else {
-            cell.dataset.tooltip = `แผง ${pos.code}\nว่าง\n${lotPriceLabel(stall)}`;
             cell.addEventListener('click', (e) => {
                 e.stopPropagation();
                 selectEmpty(pos.code, cell);
@@ -242,17 +363,20 @@ function renderGrid(z) {
             const lotClass = lotColorClass(stall.lotColor);
             if (lotClass) cell.classList.add(lotClass);
 
-            const bk = BOOKING_BY_STALL[id];
+            cell.addEventListener('mouseenter', (e) => showStallTooltip(e, id, stall, stall.status));
+            cell.addEventListener('mouseleave', hideStallTooltip);
+            cell.addEventListener('mousemove', moveStallTooltip);
 
             if (stall.status === 'BOOKED') {
                 booked += 1;
                 cell.classList.add('booked');
                 if (stall.expiryState === 'expired') cell.classList.add('expired');
-                else if (stall.expiryState === 'near') cell.classList.add('near-expiry');
-                const expiryNote = stall.expiryState === 'expired'
-                    ? '\n⚠ หมดอายุแล้ว'
-                    : stall.expiryState === 'near' ? '\n⚠ ใกล้หมดอายุ' : '';
-                cell.dataset.tooltip = `แผง ${id}\n${bk ? `${bk.shop}\nขาย: ${bk.product}\n(คลิกดูรายละเอียด)` : 'จองแล้ว'}${expiryNote}`;
+                else if (stall.expiryState === 'critical') cell.classList.add('expiry-critical');
+                else if (stall.expiryState === 'near') cell.classList.add('expiry-near');
+                // ป้ายสถานะร้าน (ไม่จ่ายเงิน/ลูกค้าใหม่) คำนวณไว้แล้วฝั่ง backend (ดู utils/stallOccupancy.js)
+                if (stall.occupant && stall.occupant.statusBadge) {
+                    cell.classList.add(stall.occupant.statusBadge === 'unpaid' ? 'occ-unpaid' : 'occ-new');
+                }
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     showInfo(id);
@@ -260,13 +384,11 @@ function renderGrid(z) {
             } else if (stall.status === 'MAINTENANCE') {
                 maintenance += 1;
                 cell.classList.add('maintenance');
-                cell.dataset.tooltip = `แผง ${id}\nอยู่ระหว่างซ่อมบำรุง`;
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     selectEmpty(id, cell);
                 });
             } else {
-                cell.dataset.tooltip = `แผง ${id}\nว่าง\n${lotPriceLabel(stall)}`;
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     selectEmpty(id, cell);
@@ -292,37 +414,69 @@ function selectEmpty(id, cell) {
     hideInfo();
 }
 
-function lotPriceLabel(stall) {
-    if (!stall.lotType || stall.pricePerDay == null) return 'ยังไม่ระบุราคา';
-    const colorText = stall.lotColor && stall.lotColor !== 'ไม่มี' ? ` (สี ${stall.lotColor})` : '';
-    return `${stall.lotType}${colorText} — ${stall.pricePerDay.toLocaleString('th-TH')} บาท/วัน`;
-}
-
 function showInfo(id) {
+    const stallInfo = findStallByCode(id);
+    // occ = ข้อมูลจริงจาก Slot->Booking->User->ShopDetail (ดู utils/stallOccupancy.js) ครบกว่า มี
+    // subtype/สถานะจ่ายเงิน/ลูกค้าใหม่/ลิงก์อนุมัติ — d (เก่ากว่า) มีแค่ตอนคำขอมี assignedStallCode ตรงกัน
+    // และมี productDetail (ขายอะไรบ้าง แบบข้อความอิสระ) ที่ occ ไม่มี จึงใช้ทั้งคู่ ผสมกันเลือกที่มีข้อมูลจริง
+    const occ = stallInfo && stallInfo.occupant;
     const d = BOOKING_BY_STALL[id];
-    if (!d) return;
+    if (!occ && !d) return;
 
     document.querySelectorAll('.stall-cell.selected').forEach((c) => c.classList.remove('selected'));
     const cell = document.querySelector(`[data-stall="${id}"]`);
     if (cell) cell.classList.add('selected');
     selectedStall = id;
 
-    document.getElementById('ic-head').textContent = `แผง ${id} — ${d.shop}`;
-    document.getElementById('ic-shop').textContent = d.shop;
-    document.getElementById('ic-product').textContent = d.product;
-    document.getElementById('ic-detail').textContent = d.productDetail || '-';
-    document.getElementById('ic-date').textContent = d.date;
-    document.getElementById('ic-name').textContent = d.name;
-    document.getElementById('ic-phone').textContent = d.phone;
-    document.getElementById('ic-note').textContent = d.note;
+    const shopName = (occ && occ.shopName) || (d && d.shop) || 'ไม่พบชื่อร้าน';
+    const badgeText = occ && occ.statusBadge === 'unpaid' ? ' 🟣 ยังไม่จ่ายเงิน'
+        : (occ && occ.statusBadge === 'new' ? ' 🟢 ลูกค้าใหม่' : '');
+
+    document.getElementById('ic-head').textContent = `แผง ${id} — ${shopName}`;
+    document.getElementById('ic-shop').textContent = shopName + badgeText;
+    document.getElementById('ic-product').textContent = occ
+        ? ([occ.productTypeText, occ.productSubtype].filter(Boolean).join(' · ') || '-')
+        : (d ? d.product : '-');
+    const stallCountText = occ && occ.stallCountForShop > 1 ? `ถือรวม ${occ.stallCountForShop} ล็อก` : null;
+    document.getElementById('ic-detail').textContent = (d && d.productDetail) || stallCountText || '-';
+    document.getElementById('ic-date').textContent = occ && occ.rentalPeriodText
+        ? occ.rentalPeriodText + (occ.daysUntilExpiry != null ? ` (เหลือ ${occ.daysUntilExpiry} วัน)` : '')
+        : ((d && d.date) || '-');
+    document.getElementById('ic-payment').textContent = (occ && occ.paymentStatusText) || '-';
+    document.getElementById('ic-name').textContent = (occ && occ.renterName) || (d && d.name) || '-';
+    document.getElementById('ic-phone').textContent = (occ && occ.phone) || (d && d.phone) || '-';
+    const priceText = occ && occ.dailyStallPrice != null ? `${Number(occ.dailyStallPrice).toLocaleString('th-TH')} บาท/วัน` : null;
+    document.getElementById('ic-note').textContent = (d && d.note) || priceText || '-';
 
     const icImage = document.getElementById('ic-image');
-    if (d.image) {
-        icImage.src = d.image;
+    const imageUrl = (occ && occ.productImage) || (d && d.image);
+    if (imageUrl) {
+        icImage.src = imageUrl;
         icImage.classList.remove('d-none');
     } else {
         icImage.classList.add('d-none');
         icImage.removeAttribute('src');
+    }
+
+    // ลิงก์ไปหน้าอนุมัติ (เปิดที่ "รอบ" ของคำขอนี้เลย ไม่ auto-scroll ไปเจาะจงคำขอ หน้านั้นยังไม่รองรับ)
+    const approvalsWrap = document.getElementById('icApprovalsLinkWrap');
+    if (occ && occ.approvalsUrl) {
+        document.getElementById('icApprovalsLink').href = occ.approvalsUrl;
+        approvalsWrap.classList.remove('d-none');
+    } else {
+        approvalsWrap.classList.add('d-none');
+    }
+
+    // ล็อกที่หมดสัญญาแล้ว (expiryState === 'expired') โชว์ปุ่ม "ปล่อยล็อก" ให้แอดมินกดเอง ไม่มี auto-release
+    document.getElementById('icExpiredActions').classList.toggle('d-none', !(stallInfo && stallInfo.expiryState === 'expired'));
+
+    // ใกล้หมดสัญญา (near/critical แต่ยังไม่ expired) โชว์ปุ่ม "แจ้งเตือนร้านค้า" ให้แอดมินกดส่งอีเมลเตือนเอง
+    const isExpiring = stallInfo && (stallInfo.expiryState === 'near' || stallInfo.expiryState === 'critical');
+    document.getElementById('icExpiringActions').classList.toggle('d-none', !isExpiring);
+    if (isExpiring) {
+        document.getElementById('icExpiringNote').textContent = occ && occ.daysUntilExpiry != null
+            ? `ล็อกนี้เหลืออีก ${occ.daysUntilExpiry} วันจะหมดสัญญา`
+            : 'ล็อกนี้ใกล้หมดสัญญา';
     }
 
     document.getElementById('infoCard').classList.add('show');
@@ -334,6 +488,58 @@ function hideInfo() {
     document.getElementById('infoCardBackdrop').classList.remove('show');
 }
 window.hideInfo = hideInfo;
+
+// ปล่อยล็อกที่หมดสัญญาแล้วกลับเป็นว่าง (ดู releaseExpiredStall ใน approvalController.js — เช็คซ้ำฝั่ง
+// server ว่าหมดสัญญาจริงก่อนปล่อยเสมอ ไม่เชื่อฝั่ง client เฉยๆ)
+function releaseStall() {
+    if (!selectedStall) return;
+    const code = selectedStall;
+    window.showConfirmDialog({
+        title: 'ปล่อยล็อกนี้?',
+        message: `ล็อก ${code} จะกลับมาว่างพร้อมให้จองใหม่ทันที ตรวจสอบหน้างานแล้วว่าร้านเดิมออกจริงหรือยัง?`,
+        tone: 'danger',
+        confirmText: 'ปล่อยล็อก',
+        onConfirm: () => {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/admin/slots/release-stall';
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'stallCode';
+            input.value = code;
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+window.releaseStall = releaseStall;
+
+// แจ้งเตือนร้านค้าทางอีเมลว่าล็อกใกล้หมดสัญญา (ดู notifyStallExpiring ใน approvalController.js) —
+// แอดมินกดเองเป็นครั้งๆ ไป ไม่มีระบบส่งอัตโนมัติ
+function notifyExpiring() {
+    if (!selectedStall) return;
+    const code = selectedStall;
+    window.showConfirmDialog({
+        title: 'แจ้งเตือนร้านค้า?',
+        message: `ส่งอีเมลแจ้งร้านค้าที่เช่าล็อก ${code} ว่าใกล้หมดสัญญา ให้มาต่อสัญญา?`,
+        tone: 'neutral',
+        confirmText: 'ส่งแจ้งเตือน',
+        onConfirm: () => {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/admin/slots/notify-expiring';
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'stallCode';
+            input.value = code;
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+window.notifyExpiring = notifyExpiring;
 
 const STATUS_LABELS = { EMPTY: 'แผงว่าง', BOOKED: 'แผงที่จองแล้ว', MAINTENANCE: 'แผงซ่อมบำรุง', SPECIAL: 'แผงมุมพิเศษ' };
 

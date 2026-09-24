@@ -129,10 +129,37 @@ async function sendSellerApplicationRejectedEmail(toEmail, reason) {
     });
 }
 
+// แจ้งร้านค้าว่าใกล้หมดสัญญาเช่าล็อก ให้เข้ามาต่อสัญญาก่อนจะโดนปล่อยล็อกคืน (ดูปุ่ม "แจ้งเตือนร้านค้า"
+// ที่หน้า /admin/slots — แอดมินกดเองเป็นครั้งๆ ไป ไม่มีระบบส่งอัตโนมัติ)
+async function sendStallExpiringSoonEmail(toEmail, stallCode, daysLeft) {
+    const transporter = getTransporter();
+
+    if (!transporter) {
+        console.warn(`Stall expiring email not sent (mailer not configured). ${toEmail}: ล็อก ${stallCode} เหลือ ${daysLeft} วัน`);
+        return;
+    }
+
+    const urgencyText = daysLeft <= 0
+        ? 'วันนี้เป็นวันสุดท้ายของสัญญาเช่า'
+        : `เหลืออีก ${daysLeft} วันสัญญาเช่าจะหมดอายุ`;
+
+    await transporter.sendMail({
+        from: `"Kangsadan Night Market" <${process.env.GMAIL_USER}>`,
+        to: toEmail,
+        subject: `แจ้งเตือน: ล็อก ${stallCode} ใกล้หมดสัญญาเช่า`,
+        html: `
+            <p>${urgencyText} — ล็อก <strong>${stallCode}</strong> ของร้านคุณ</p>
+            <p>หากต้องการเช่าต่อ กรุณาติดต่อแอดมินหรือดำเนินการต่อสัญญาก่อนวันหมดอายุ</p>
+            <p>หากไม่ต่อสัญญาภายในกำหนด ล็อกนี้อาจถูกปล่อยให้ร้านค้าอื่นจองแทนได้</p>
+        `
+    });
+}
+
 module.exports = {
     sendPasswordResetEmail,
     sendStallAssignedEmail,
     sendPaymentConfirmedEmail,
     sendSellerApplicationApprovedEmail,
-    sendSellerApplicationRejectedEmail
+    sendSellerApplicationRejectedEmail,
+    sendStallExpiringSoonEmail
 };

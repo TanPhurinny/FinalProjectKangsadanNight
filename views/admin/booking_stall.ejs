@@ -205,6 +205,10 @@
                   จองแล้วแต่ยังไม่จ่ายเงิน</div>
                 <div class="legend-item"><div class="color-box color-occ-new"></div>
                   ลูกค้าใหม่ (ไม่เคยส่งคำขอมาก่อน)</div>
+                <div class="legend-item"><div class="color-box color-expiry-near"></div>
+                  ใกล้หมดอายุ (≤7 วัน)</div>
+                <div class="legend-item"><div class="color-box color-expiry-critical"></div>
+                  ใกล้หมดอายุมาก (≤1 วัน)</div>
               </div>
               <div class="legend-divider"></div>
               <div class="legend-row">
@@ -584,7 +588,8 @@
     if (isBooked) {
       cell.classList.add('booked');
       if (stall && stall.expiryState === 'expired') cell.classList.add('expired');
-      else if (stall && stall.expiryState === 'near') cell.classList.add('near-expiry');
+      else if (stall && stall.expiryState === 'critical') cell.classList.add('expiry-critical');
+      else if (stall && stall.expiryState === 'near') cell.classList.add('expiry-near');
       // ป้ายสถานะร้าน (ไม่จ่ายเงิน/ลูกค้าใหม่) คำนวณไว้แล้วฝั่ง backend (ดู statusBadge ใน approvalController.js)
       // ไม่จ่ายเงินสำคัญกว่า โชว์ได้ป้ายเดียวต่อล็อก
       if (stall && stall.occupant && stall.occupant.statusBadge) {

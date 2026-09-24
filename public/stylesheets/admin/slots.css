@@ -761,6 +761,103 @@
     color: var(--text);
 }
 
+/* ลิงก์ไปหน้าอนุมัติ — โชว์เฉพาะล็อกที่หาข้อมูล occupant เจอ (มี requestId/รอบ ให้เปิดได้) */
+.ic-approvals-link-wrap {
+    margin-top: 12px;
+}
+
+.ic-approvals-link {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary, #2C93A8);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ic-approvals-link:hover {
+    text-decoration: underline;
+}
+
+/* ปุ่ม "แจ้งเตือนร้านค้า" — โชว์เฉพาะล็อกที่ใกล้หมดสัญญา (near/critical แต่ยังไม่ expired, ดู showInfo() ใน slots.js) */
+.ic-expiring-actions {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.ic-expiring-note {
+    font-size: 12px;
+    color: #a06c1f;
+    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-notify-expiring {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 3px;
+    border: 1px solid var(--primary, #2C93A8);
+    background: #fff;
+    color: var(--primary, #2C93A8);
+    font-family: 'Kanit', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: 0.15s;
+}
+
+.btn-notify-expiring:hover {
+    background: var(--primary, #2C93A8);
+    color: #fff;
+}
+
+/* ปุ่ม "ปล่อยล็อก" — โชว์เฉพาะล็อกที่หมดสัญญาแล้ว (expiryState === 'expired', ดู showInfo() ใน slots.js) */
+.ic-expired-actions {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.ic-expired-note {
+    font-size: 12px;
+    color: #a32b1d;
+    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-release-stall {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 3px;
+    border: 1px solid #c0392b;
+    background: #fff;
+    color: #c0392b;
+    font-family: 'Kanit', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: 0.15s;
+}
+
+.btn-release-stall:hover {
+    background: #c0392b;
+    color: #fff;
+}
+
 .drawer-grid {
     flex: 1;
     overflow: auto;
@@ -872,6 +969,26 @@
 
 .stall-cell.expired:hover {
     background: #e4f2f5;
+}
+
+/* ป้ายสถานะร้านที่จองแล้ว (ดู statusBadge ใน utils/stallOccupancy.js) — ไม่จ่ายเงินสำคัญกว่า near-expiry/expired
+   เรื่องกำหนดวันหมดอายุ จึงเขียนไว้หลังเพื่อให้สีนี้ทับ ให้แอดมินสังเกตสถานะจ่ายเงินก่อน (เหมือนหน้า booking-stall) */
+.stall-cell.occ-unpaid {
+    background: #a855f7;
+    color: #fff;
+}
+
+.stall-cell.occ-unpaid:hover {
+    background: #9333ea;
+}
+
+.stall-cell.occ-new {
+    background: #27AE60;
+    color: #fff;
+}
+
+.stall-cell.occ-new:hover {
+    background: #1E8449;
 }
 
 /* ล็อค T บางคู่ในผังจริงวางซ้อนกันแบ่งครึ่งบน-ล่างของล็อคปกติ 1 ล็อก (.small-lot-pair)
@@ -1156,3 +1273,49 @@
         grid-template-columns: 1fr 1fr;
     }
 }
+
+/* ==========================================
+   📍 TOOLTIP ลอยตามเมาส์ (hover ดูรายละเอียดไว — เหมือนหน้า /admin/booking-stall)
+   คลิกยังเปิด info-card แบบเดิม (ดูรายละเอียดครบ + ปุ่มปล่อยล็อก) — อันนี้แค่ดูไวๆ ตอน hover
+   ========================================== */
+.admin-tooltip {
+    position: fixed;
+    z-index: 9999;
+    background: #fff;
+    width: 320px;
+    border-radius: 4px;
+    box-shadow: 0 8px 24px rgba(18, 48, 58, 0.18);
+    border: 1px solid var(--border);
+    display: none;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.tt-image {
+    display: block;
+    width: 100%;
+    height: 130px;
+    object-fit: cover;
+}
+
+.tt-header {
+    background: var(--navy, #12303a);
+    color: #fff;
+    padding: 12px 16px;
+    font-family: 'Kanit', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    transition: background .1s;
+}
+
+/* ล็อกว่าง — ใช้สีหลักของหน้าแทนสีเข้ม ให้แยกออกจากล็อกที่จองแล้วตั้งแต่แวบแรก */
+.admin-tooltip.tt-available .tt-header {
+    background: var(--primary);
+}
+
+.tt-body { padding: 16px; }
+.tt-row { display: flex; gap: 16px; margin-bottom: 14px; }
+.tt-group { flex: 1; margin-bottom: 14px; }
+.tt-group:last-child { margin-bottom: 0; }
+.tt-label { display: block; font-size: 13px; color: var(--text); font-weight: 700; margin-bottom: 2px; }
+.tt-value { display: block; font-size: 14px; color: var(--sub); }

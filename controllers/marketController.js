@@ -1,5 +1,6 @@
 const prisma = require('../config/prismaClient');
 const { getLotPricing } = require('../utils/lotPricing');
+const stallOccupancy = require('../utils/stallOccupancy');
 
 const ZONE_CATEGORY_META = {
     FASHION: { icon: 'fa-shirt', description: 'โซนแฟชั่น' },
@@ -102,10 +103,12 @@ const ZONE_CATEGORY_LABEL = {
 };
 
 // จำนวนวันก่อนหมดสัญญาที่ถือว่า "ใกล้หมดอายุ" (ใช้ไฮไลต์แผงที่จองแล้วบนผังให้แอดมินตามงานต่อสัญญา)
+// CRITICAL แยกออกมาจาก NEAR เพราะ "เหลืออีก 7 วัน" กับ "เหลือวันเดียว/วันนี้" ควรเร่งด่วนไม่เท่ากัน
 const NEAR_EXPIRY_DAYS = 7;
+const CRITICAL_EXPIRY_DAYS = 1;
 
 // ล็อกที่จองแล้ว (BOOKED) เทียบวันหมดสัญญา (bookingEndDate) กับวันนี้ เพื่อแยกสีบนผัง:
-// 'expired' = เลยกำหนดแล้วแต่ยังไม่ได้ปลดสถานะ, 'near' = จะหมดอายุใน 7 วัน, null = ปกติ
+// 'expired' = เลยกำหนดแล้วแต่ยังไม่ได้ปลดสถานะ, 'critical' = เหลือ ≤1 วัน, 'near' = จะหมดอายุใน 7 วัน, null = ปกติ
 function computeExpiryState(status, bookingEndDate) {
     if (status !== 'BOOKED' || !bookingEndDate) return null;
     const endDate = new Date(bookingEndDate);
@@ -117,6 +120,7 @@ function computeExpiryState(status, bookingEndDate) {
 
     const daysLeft = Math.round((endDate - today) / (24 * 60 * 60 * 1000));
     if (daysLeft < 0) return 'expired';
+    if (daysLeft <= CRITICAL_EXPIRY_DAYS) return 'critical';
     if (daysLeft <= NEAR_EXPIRY_DAYS) return 'near';
     return null;
 }
@@ -252,6 +256,10 @@ exports.buildZonesData = buildZonesData;
 exports.getSlotsPage = async (req, res) => {
     try {
         const zonesData = await buildZonesData();
+
+        // ติด stall.occupant (ชื่อร้าน/รูป/ระยะเวลาเช่า/สถานะจ่ายเงิน/ลูกค้าใหม่ ฯลฯ) ให้ทุกล็อกที่จองแล้ว
+        // ใช้ util เดียวกับหน้า /admin/booking-stall (utils/stallOccupancy.js) ให้ข้อมูลตรงกันทั้งสองหน้า
+        await stallOccupancy.attachOccupantDetails(zonesData);
 
         const approvedRequests = await prisma.bookingRequest.findMany({
             where: { status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] }, assignedStallCode: { not: null } },
