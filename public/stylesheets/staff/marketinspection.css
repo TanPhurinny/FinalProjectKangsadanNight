@@ -589,12 +589,14 @@ body {
     position: fixed;
     inset: 0;
     background: rgba(18, 48, 58, 0.4);
-    z-index: 900;
+    /* ต้องสูงกว่า .management-nav (z-index:1000 ใน navbar.css) ไม่งั้น navbar สีกรม (--navy) เดียวกับ
+       หัว modal นี้จะทับบัง header (ชื่อร้าน/ปุ่มปิด) ให้ดูเหมือนชนกัน มองไม่เห็นหัวฟอร์มเลย */
+    z-index: 1100;
 }
 
 .excess-panel {
     position: fixed;
-    z-index: 901;
+    z-index: 1101;
     width: 320px;
     max-width: calc(100vw - 24px);
     max-height: calc(100vh - 24px);
@@ -950,6 +952,48 @@ body.excess-panel-open {
 .cleanliness-form-error {
     color: var(--danger-color);
     font-size: 0.8rem;
+}
+
+/* หัวฟอร์ม: ชื่อร้าน/เลขแผง + ข้อมูลผู้ขายสรุปสั้นๆ ให้ staff เห็นว่ากำลังตรวจร้านไหนอยู่โดยไม่ต้อง
+   เลื่อนกลับไปดูตารางด้านหลัง (สำคัญตอนเด้งไปร้านถัดไปอัตโนมัติหลังบันทึก) */
+.cleanliness-form-header {
+    align-items: flex-start;
+}
+
+.cleanliness-form-subtitle {
+    margin-top: 4px;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    line-height: 1.5;
+}
+
+.cleanliness-form-subtitle div {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* แจ้งเตือนสั้นๆ ตอนเด้งไปร้านถัดไปอัตโนมัติหลังบันทึก — ไม่บล็อกการทำงานเหมือน alert dialog
+   (ให้ staff ตรวจต่อร้านถัดไปได้ทันทีโดยไม่ต้องกดปิดอะไรเพิ่ม) จางหายไปเองด้วย CSS animation */
+.cleanliness-form-flash {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    border-radius: var(--border-radius-sm, 3px);
+    background: rgba(39, 174, 96, 0.1);
+    border: 1px solid var(--success-color);
+    color: var(--success-color);
+    font-size: 0.82rem;
+    font-weight: 600;
+    animation: cleanlinessFlashFade 2.2s ease forwards;
+}
+
+@keyframes cleanlinessFlashFade {
+    0% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { opacity: 0; }
 }
 
 @media (max-width: 768px) {

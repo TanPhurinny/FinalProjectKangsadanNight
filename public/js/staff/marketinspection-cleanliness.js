@@ -84,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const formBackdrop = document.getElementById('cleanlinessFormBackdrop');
     const formModal = document.getElementById('cleanlinessFormModal');
     const formTitle = document.getElementById('cleanlinessFormTitle');
+    const formSubtitle = document.getElementById('cleanlinessFormSubtitle');
     const formBody = document.getElementById('cleanlinessFormBody');
     const formCancelBtn = document.getElementById('cleanlinessFormCancel');
     const formCloseBtn = document.getElementById('cleanlinessFormClose');
@@ -148,14 +149,44 @@ document.addEventListener('DOMContentLoaded', () => {
         return { allAnswered, itemResults, note };
     }
 
-    function openCleanlinessForm(row) {
+    // หาแถวถัดไปที่ยังมองเห็นอยู่ (เคารพการค้นหา) ต่อจาก currentRow ในลำดับที่แสดงบนตาราง
+    function findNextVisibleRow(currentRow) {
+        const currentIndex = cleanlinessRows.indexOf(currentRow);
+        if (currentIndex === -1) return null;
+        for (let i = currentIndex + 1; i < cleanlinessRows.length; i += 1) {
+            if (cleanlinessRows[i].style.display !== 'none') return cleanlinessRows[i];
+        }
+        return null;
+    }
+
+    function openCleanlinessForm(row, options = {}) {
         activeStallId = row.dataset.stallId;
         activeRow = row;
 
+        // ดึงข้อมูลล็อก/ร้านค้าจากแถวในตารางมาโชว์บนหัวฟอร์มเลย (เลขล็อก, แถว+ชื่อร้าน, ผู้ขาย+เบอร์,
+        // สินค้าหลัก) กันไม่ให้ staff ต้องปิดฟอร์มแล้วเลื่อนกลับไปดูตารางว่ากำลังตรวจร้านไหนอยู่
+        // — สำคัญมากตอนเด้งไปร้านถัดไปอัตโนมัติหลังบันทึก (ดู saveCleanlinessForm)
         const stallCode = row.querySelector('.stall-main')?.textContent?.trim() || '';
+        const metaLines = Array.from(row.querySelectorAll('.stall-meta')).map((el) => el.textContent.trim());
         formTitle.textContent = `เช็คลิสต์ตรวจสอบคุณภาพร้านค้า - ${stallCode}`;
+        if (formSubtitle) {
+            // ใช้ textContent ต่อบรรทัด ไม่ใช่ innerHTML — ชื่อร้าน/ผู้ขาย/สินค้ามาจากข้อมูลที่ผู้ใช้กรอกเอง
+            // (seller ฝั่งสมัคร) ถ้าใส่ innerHTML ตรงๆ แล้วมีอักขระ HTML ปนอยู่ เสี่ยง stored XSS ได้
+            formSubtitle.replaceChildren(...metaLines.map((line) => {
+                const div = document.createElement('div');
+                div.textContent = line;
+                return div;
+            }));
+        }
 
         renderChecklistForm(RESULTS_BY_STALL_ID[activeStallId] || null);
+
+        if (options.flashSaved && formBody) {
+            const flash = document.createElement('div');
+            flash.className = 'cleanliness-form-flash';
+            flash.innerHTML = '<i class="fas fa-check-circle"></i> บันทึกร้านก่อนหน้าแล้ว — ตรวจร้านนี้ต่อได้เลย';
+            formBody.prepend(flash);
+        }
 
         formBackdrop.classList.remove('d-none');
         formModal.classList.remove('d-none');
@@ -224,14 +255,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             syncCleanlinessStats();
-            closeCleanlinessForm();
 
-            if (window.showAlertDialog) {
-                window.showAlertDialog({
-                    title: 'บันทึกสำเร็จ',
-                    message: `บันทึกผลตรวจความสะอาดแล้ว: ${payload.inspection.overallPassed ? 'ผ่าน' : 'ไม่ผ่าน'}`,
-                    tone: payload.inspection.overallPassed ? 'success' : 'danger'
-                });
+            // ตรวจ+บันทึกเสร็จแล้วเด้งไปร้านถัดไปในลิสต์ที่มองเห็นอยู่ (เคารพคำค้นหา) ทันที
+            // ไม่ต้องปิดฟอร์มแล้วกดเปิดร้านถัดไปเอง — ปิดฟอร์มเฉพาะตอนตรวจครบร้านสุดท้ายแล้วเท่านั้น
+            const savedRow = activeRow;
+            const nextRow = findNextVisibleRow(savedRow);
+
+            if (nextRow) {
+                openCleanlinessForm(nextRow, { flashSaved: true });
+            } else {
+                closeCleanlinessForm();
+                if (window.showAlertDialog) {
+                    window.showAlertDialog({
+                        title: 'ตรวจครบทุกร้านแล้ว',
+                        message: `บันทึกผลตรวจความสะอาดร้านสุดท้ายแล้ว: ${payload.inspection.overallPassed ? 'ผ่าน' : 'ไม่ผ่าน'}`,
+                        tone: payload.inspection.overallPassed ? 'success' : 'danger'
+                    });
+                }
             }
         } catch (error) {
             console.error(error);

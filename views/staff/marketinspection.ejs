@@ -276,6 +276,7 @@
                                     <div class="stall-main">#<%= index + 1 %> <%= stall.stallCode %> (โซน <%= stall.zoneCode %>)</div>
                                     <div class="stall-meta">แถว <%= stall.rowCode %> | ร้าน <%= stall.shopName %></div>
                                     <div class="stall-meta">ชื่อผู้ขาย <%= stall.sellerName %> | โทร <%= stall.sellerPhone %></div>
+                                    <div class="stall-meta">สินค้าหลัก <%= stall.productDetail %></div>
                                 </td>
                                 <td><span class="cleanliness-status-badge status-<%= statusClass %>" data-role="cleanliness-status"><%= statusLabel %></span></td>
                                 <td data-role="cleanliness-checked-at">
@@ -351,8 +352,11 @@
 
         <div class="excess-panel-backdrop d-none" id="cleanlinessFormBackdrop"></div>
         <div class="excess-panel cleanliness-panel d-none" id="cleanlinessFormModal" role="dialog" aria-modal="true" aria-labelledby="cleanlinessFormTitle">
-            <div class="excess-panel-header">
-                <h3 id="cleanlinessFormTitle">เช็คลิสต์ตรวจสอบคุณภาพร้านค้า</h3>
+            <div class="excess-panel-header cleanliness-form-header">
+                <div>
+                    <h3 id="cleanlinessFormTitle">เช็คลิสต์ตรวจสอบคุณภาพร้านค้า</h3>
+                    <div id="cleanlinessFormSubtitle" class="cleanliness-form-subtitle"></div>
+                </div>
                 <button type="button" class="excess-panel-close" id="cleanlinessFormClose" aria-label="ปิด"><i class="fas fa-times"></i></button>
             </div>
             <div class="excess-panel-body cleanliness-panel-body" id="cleanlinessFormBody">
