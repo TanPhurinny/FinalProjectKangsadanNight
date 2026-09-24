@@ -41,15 +41,12 @@ exports.getSellerApplicationsPage = async (req, res) => {
                 productType: application.productType || '-',
                 productDetail: application.productDetail || '-',
                 sellerName: application.sellerName || application.user?.name || '-',
-                idCardNumber: application.idCardNumber || '-',
+                productSubtype: application.productSubtype || '-',
+                productSubtypeOther: application.productSubtypeOther || '',
                 bankName: application.bankName || '-',
                 bankAccountNumber: application.bankAccountNumber || '-',
                 bankAccountName: application.bankAccountName || '-',
                 phoneNumber: application.phoneNumber || application.user?.phoneNumber || '-',
-                houseNumber: application.houseNumber || '-',
-                subdistrict: application.subdistrict || '-',
-                district: application.district || '-',
-                province: application.province || '-',
                 shopCoverImage: application.shopCoverImage || null,
                 applicantName: application.user?.name || '-',
                 phoneNumber: application.user?.phoneNumber || '-',
@@ -95,7 +92,7 @@ exports.approveSellerApplication = async (req, res) => {
 
         const application = await prisma.sellerApplication.findUnique({
             where: { id: applicationId },
-            select: { id: true, userId: true, shopName: true, productType: true, productDetail: true, shopCoverImage: true, status: true }
+            select: { id: true, userId: true, shopName: true, productType: true, productSubtype: true, productSubtypeOther: true, productDetail: true, shopCoverImage: true, status: true }
         });
 
         if (!application) {
@@ -117,6 +114,8 @@ exports.approveSellerApplication = async (req, res) => {
                 update: {
                     shopName: application.shopName,
                     productType: application.productType,
+                    productSubtype: application.productSubtype,
+                    productSubtypeOther: application.productSubtypeOther,
                     productDetail: application.productDetail,
                     shopCoverImage: application.shopCoverImage,
                     isVerified: true
@@ -125,6 +124,8 @@ exports.approveSellerApplication = async (req, res) => {
                     userId: application.userId,
                     shopName: application.shopName,
                     productType: application.productType,
+                    productSubtype: application.productSubtype,
+                    productSubtypeOther: application.productSubtypeOther,
                     productDetail: application.productDetail,
                     shopCoverImage: application.shopCoverImage,
                     isVerified: true

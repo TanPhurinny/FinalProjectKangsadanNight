@@ -1,4 +1,5 @@
 const { z } = require('zod');
+const { ALL_PRODUCT_SUBTYPES } = require('./productSubtypes');
 
 const USER_ROLE_VALUES = ['ADMIN', 'STAFF', 'SELLER', 'CUSTOMER'];
 const REPAIR_STATUS_VALUES = ['PENDING', 'IN_PROGRESS', 'SUCCESS', 'REJECTED'];
@@ -78,7 +79,6 @@ const announcementSchema = z.object({
     category: z.string().trim().max(100).optional()
 });
 
-const thaiIdRegex = /^\d{13}$/;
 const thaiPhoneRegex = /^0\d{9,10}$/;
 
 const THAI_BANK_NAMES = [
@@ -97,19 +97,29 @@ const THAI_BANK_NAMES = [
     'ธนาคารอิสลามแห่งประเทศไทย'
 ];
 
+// checkbox หลายตัวชื่อเดียวกัน (productSubtype) — HTML ส่งมาเป็น string เดี่ยวถ้าติ๊กอันเดียว,
+// array ถ้าติ๊กหลายอัน, undefined ถ้าไม่ติ๊กเลย แปลงให้เป็น array เสมอก่อน validate แต่ละค่า
+// กับลิสต์ที่อนุญาต (utils/productSubtypes.js) กันส่งค่ามั่วมาจากนอกฟอร์ม แล้ว join คืนเป็น
+// comma-separated string ให้ตรงกับที่เก็บใน DB (ดู utils/stallSpacing.js ตอนเทียบระยะห่างล็อก)
+const productSubtypeField = z.preprocess((value) => {
+    if (value === undefined || value === null || value === '') return [];
+    return Array.isArray(value) ? value : [value];
+}, z.array(z.string().trim().min(1).max(100)).max(20))
+    .refine((values) => values.every((v) => ALL_PRODUCT_SUBTYPES.includes(v)), {
+        message: 'ประเภทสินค้าเฉพาะที่เลือกไม่ถูกต้อง'
+    })
+    .transform((values) => Array.from(new Set(values)).join(','));
+
 const sellerApplicationSchema = z.object({
     shopName: z.string().trim().min(1).max(200),
     sellerName: z.string().trim().min(1).max(200),
-    idCardNumber: z.string().trim().regex(thaiIdRegex, 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก'),
     phoneNumber: z.string().trim().regex(thaiPhoneRegex, 'เบอร์โทรศัพท์ต้องเป็นตัวเลขไทยที่ถูกต้อง'),
     bankName: z.enum(THAI_BANK_NAMES, { errorMap: () => ({ message: 'กรุณาเลือกธนาคาร' }) }),
     bankAccountNumber: z.string().trim().min(4).max(30),
     bankAccountName: z.string().trim().min(2).max(200),
-    houseNumber: z.string().trim().min(1).max(200),
-    subdistrict: z.string().trim().min(1).max(200),
-    district: z.string().trim().min(1).max(200),
-    province: z.string().trim().min(1).max(200),
     productType: z.string().trim().min(1, 'กรุณาเลือกประเภทสินค้า').max(100),
+    productSubtype: productSubtypeField,
+    productSubtypeOther: z.string().trim().max(200).optional(),
     productDetail: z.string().trim().min(1, 'กรุณากรอกรายละเอียดสินค้า').max(2000),
     termsAccepted: z.literal('true', { errorMap: () => ({ message: 'กรุณายอมรับกฎระเบียบร้านค้าก่อนสมัคร' }) })
 });

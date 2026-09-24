@@ -28,6 +28,177 @@ select.input-white {
     }
 }
 
+/* ── รูปหน้าร้าน: กล่องอัปโหลดเดี่ยว มี placeholder ไอคอน + ให้รู้ว่ากดอัปโหลดได้ ── */
+.upload-box--cover {
+    width: 100%;
+    max-width: 260px;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background-color: var(--soft-bg);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
+    position: relative;
+    transition: background 0.15s, border-color 0.15s;
+}
+.upload-box--cover:hover {
+    background-color: #eef3f4;
+    border-color: var(--primary);
+}
+.upload-box--cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.upload-box__placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--ink-soft);
+    pointer-events: none;
+}
+.upload-box__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--primary);
+    font-size: 1.3rem;
+    font-weight: 700;
+    line-height: 1;
+}
+.upload-box--cover:hover .upload-box__icon {
+    border-color: var(--primary);
+}
+.upload-box__text {
+    font-size: 0.8rem;
+}
+
+/* ── ประเภทสินค้าเฉพาะ (checkbox หลายตัว ต่อ productType) ── */
+#productSubtypeSection {
+    border: 1px solid var(--line);
+    padding: 16px;
+    background: var(--soft-bg);
+}
+.subtype-section__head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+.subtype-section__head label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+.subtype-section__head p {
+    flex-basis: 100%;
+}
+.subtype-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.subtype-group {
+    border: 1px solid var(--line);
+    background: #fff;
+    margin-bottom: 8px;
+}
+.subtype-group:last-child {
+    margin-bottom: 0;
+}
+.subtype-group__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--navy);
+    padding: 10px 12px;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+.subtype-group__title::-webkit-details-marker {
+    display: none;
+}
+.subtype-group__title::before {
+    content: '+';
+    display: inline-block;
+    width: 14px;
+    color: var(--ink-soft);
+    font-weight: 700;
+}
+.subtype-group[open] > .subtype-group__title::before {
+    content: '−';
+}
+.subtype-group__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: var(--soft-bg);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+.subtype-group__items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 12px 12px;
+}
+.subtype-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--line);
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    color: var(--ink);
+    cursor: pointer;
+    background: #fff;
+    transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.subtype-checkbox:hover {
+    border-color: var(--primary);
+}
+.subtype-checkbox:has(input:checked) {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+.subtype-checkbox input {
+    accent-color: var(--primary);
+}
+.subtype-group--other .subtype-group__items {
+    flex-direction: column;
+    align-items: flex-start;
+}
+.subtype-group--other input[type="text"] {
+    width: 100%;
+    margin-top: 4px;
+}
+
 /* ── กฎระเบียบร้านค้า (modal) ── */
 .rules-overlay {
     position: fixed;

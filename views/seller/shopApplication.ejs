@@ -105,14 +105,6 @@
                         </div>
 
                         <div class="form-group">
-                            <label>เลขบัตรประชาชน</label>
-                            <input type="text" name="idCardNumber" class="input-white"
-                                value="<%= fd.idCardNumber || '' %>"
-                                inputmode="numeric" maxlength="13" pattern="[0-9]{13}"
-                                placeholder="กรอกเลข 13 หลัก" required>
-                        </div>
-
-                        <div class="form-group">
                             <label>เบอร์โทรศัพท์</label>
                             <input type="tel" name="phoneNumber" class="input-white"
                                 value="<%= fd.phoneNumber || (user && user.phoneNumber ? user.phoneNumber : '') %>"
@@ -145,34 +137,6 @@
                         </div>
 
                         <div class="form-group">
-                            <label>บ้านเลขที่</label>
-                            <input type="text" name="houseNumber" class="input-white"
-                                value="<%= fd.houseNumber || '' %>"
-                                placeholder="เช่น 123/45" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>ตำบล</label>
-                            <input type="text" name="subdistrict" class="input-white"
-                                value="<%= fd.subdistrict || '' %>"
-                                placeholder="ตำบล..." required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>อำเภอ</label>
-                            <input type="text" name="district" class="input-white"
-                                value="<%= fd.district || '' %>"
-                                placeholder="อำเภอ..." required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>จังหวัด</label>
-                            <input type="text" name="province" class="input-white"
-                                value="<%= fd.province || '' %>"
-                                placeholder="จังหวัด..." required>
-                        </div>
-
-                        <div class="form-group">
                             <label>ประเภทสินค้า</label>
                             <select name="productType" class="input-white" required>
                                 <option value="" <%= !fd.productType ? 'selected' : '' %>>เลือกประเภท...</option>
@@ -183,6 +147,54 @@
                         </div>
                     </div>
 
+                    <div class="form-group full-width" id="productSubtypeSection">
+                        <div class="subtype-section__head">
+                            <label>ประเภทสินค้าเฉพาะ <span class="subtype-count" id="subtypeCount" hidden>0</span></label>
+                            <p class="text-muted small mb-0">เลือกได้มากกว่า 1 รายการ — ใช้จัดระยะห่างล็อกไม่ให้ร้านขายของซ้ำกันอยู่ติดกัน</p>
+                        </div>
+                        <%
+                        const selectedSubtypes = (fd.productSubtype || '').split(',').map((s) => s.trim()).filter(Boolean);
+                        const subtypeGroupsByType = (typeof productSubtypeGroups !== 'undefined' && productSubtypeGroups) ? productSubtypeGroups : {};
+                        %>
+                        <% Object.keys(subtypeGroupsByType).forEach((typeKey) => { %>
+                        <div class="subtype-panel" data-product-type="<%= typeKey %>" hidden>
+                            <% subtypeGroupsByType[typeKey].forEach((groupEntry) => {
+                                const groupCheckedCount = groupEntry.items.filter((item) => selectedSubtypes.includes(item)).length;
+                            %>
+                            <details class="subtype-group" <%= groupCheckedCount > 0 ? 'open' : '' %>>
+                                <summary class="subtype-group__title">
+                                    <%= groupEntry.group %>
+                                    <span class="subtype-group__count" <%= groupCheckedCount > 0 ? '' : 'hidden' %>><%= groupCheckedCount %></span>
+                                </summary>
+                                <div class="subtype-group__items">
+                                    <% groupEntry.items.forEach((item) => { %>
+                                    <label class="subtype-checkbox">
+                                        <input type="checkbox" name="productSubtype" value="<%= item %>"
+                                            <%= selectedSubtypes.includes(item) ? 'checked' : '' %>>
+                                        <span><%= item %></span>
+                                    </label>
+                                    <% }) %>
+                                </div>
+                            </details>
+                            <% }) %>
+                        </div>
+                        <% }) %>
+                        <details class="subtype-group subtype-group--other" <%= (fd.productSubtypeOther || '') ? 'open' : '' %>>
+                            <summary class="subtype-group__title">อื่นๆ (ระบุเอง)</summary>
+                            <div class="subtype-group__items">
+                                <label class="subtype-checkbox subtype-checkbox--other">
+                                    <input type="checkbox" id="subtypeOtherToggle" <%= (fd.productSubtypeOther || '') ? 'checked' : '' %>>
+                                    <span>มีสินค้าอื่นนอกลิสต์ด้านบน</span>
+                                </label>
+                                <input type="text" name="productSubtypeOther" id="subtypeOtherInput" class="input-white"
+                                    value="<%= fd.productSubtypeOther || '' %>"
+                                    placeholder="เช่น หมูสะเต๊ะ" maxlength="200"
+                                    <%= (fd.productSubtypeOther || '') ? '' : 'hidden' %>>
+                            </div>
+                        </details>
+                        <p class="text-muted small mb-0" id="productSubtypeHint">กรุณาเลือกประเภทสินค้าด้านบนก่อน</p>
+                    </div>
+
                     <div class="form-group full-width">
                         <label>รายละเอียดสินค้า</label>
                         <textarea name="productDetail" class="input-white"
@@ -191,10 +203,14 @@
 
                     <div class="form-group full-width">
                         <label>รูปหน้าร้าน (ถ้ามี)</label>
-                        <div class="upload-wrapper">
-                            <label for="imageUpload" class="upload-box"
+                        <div class="upload-wrapper" id="coverUploadWrapper">
+                            <label for="imageUpload" class="upload-box upload-box--cover"
                                 id="uploadLabel">
-                                <img id="imagePreview" src alt="Preview">
+                                <img id="imagePreview" src alt="Preview" hidden>
+                                <span class="upload-box__placeholder" id="uploadPlaceholder">
+                                    <span class="upload-box__icon" aria-hidden="true">+</span>
+                                    <span class="upload-box__text">คลิกเพื่ออัปโหลดรูป</span>
+                                </span>
                             </label>
                             <input type="file" name="shopCoverImage" id="imageUpload"
                                 class="upload-input" accept="image/*">

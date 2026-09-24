@@ -164,13 +164,14 @@ function openDetail(payload) {
     document.getElementById('m-product-type').innerText = payload.productType;
     document.getElementById('m-product-detail').innerText = payload.productDetail;
     document.getElementById('m-seller-name').innerText = payload.sellerName;
-    document.getElementById('m-id-card').innerText = payload.idCardNumber;
+    document.getElementById('m-subtype').innerText = payload.productSubtypeOther
+        ? [payload.productSubtype !== '-' ? payload.productSubtype : null, `อื่นๆ: ${payload.productSubtypeOther}`].filter(Boolean).join(', ')
+        : payload.productSubtype;
     document.getElementById('m-name').innerText = payload.applicantName;
     document.getElementById('m-phone').innerText = payload.phoneNumber;
     document.getElementById('m-bank-provider').innerText = payload.bankName;
     document.getElementById('m-bank-account').innerText = payload.bankAccountNumber;
     document.getElementById('m-bank-name').innerText = payload.bankAccountName;
-    document.getElementById('m-address').innerText = [payload.houseNumber, payload.subdistrict, payload.district, payload.province].filter(Boolean).join(' ');
     document.getElementById('m-email').innerText = payload.email;
     document.getElementById('m-start').innerText = payload.createdAtText;
     document.getElementById('m-status').innerText = payload.statusLabel

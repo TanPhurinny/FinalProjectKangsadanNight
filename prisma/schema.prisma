@@ -117,6 +117,8 @@ model SellerApplication {
   userId            Int
   shopName          String
   productType       String?
+  productSubtype    String?
+  productSubtypeOther String? // "อื่นๆ (ระบุ)" พิมพ์เอง — เก็บไว้เฉยๆ ไม่เอาเข้ากฎเว้นระยะล็อก (ดู utils/productSubtypes.js)
   productDetail     String?   @db.Text
   sellerName        String?
   idCardNumber      String?
@@ -143,6 +145,8 @@ model ShopDetail {
   id            Int     @id @default(autoincrement())
   shopName      String?
   productType   String?
+  productSubtype String? // ประเภทสินค้าเฉพาะ (เช่น "ลูกชิ้นทอด") ใช้เทียบระยะห่างล็อกตอนแอดมินจัดล็อก ดู utils/stallSpacing.js
+  productSubtypeOther String? // "อื่นๆ (ระบุ)" พิมพ์เอง — ไม่เอาเข้ากฎเว้นระยะล็อก
   productDetail String? @db.Text
   productImage  String? // รูปหลัก/รูปย่อของสินค้า อ้างอิงรูปแรกใน productImages เสมอ (ใช้แสดงในหน้าอื่นที่ยังอ้างอิงรูปเดียว เช่น ผังตลาด/คอมมูนิตี้)
   shopSummary   String? @db.Text
