@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ล็อกใกล้หมดอายุ — Admin</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+            rel="stylesheet" />
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet" />
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/expiringStalls.css">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body class="bg-light">
+        <script src="/js/common/tabSession.js"></script>
+        <%- include('../partials/navbar') %>
+
+        <div class="expiring-page">
+            <header class="page-header">
+                <a href="/admin/slots" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+                <h2 class="header-title">ล็อกใกล้หมดอายุ</h2>
+                <div class="header-spacer"></div>
+            </header>
+
+            <div class="container">
+                <p class="page-sub">รวมล็อกที่ใกล้หมดอายุ/หมดอายุแล้วทุกโซนไว้ที่เดียว เรียงเร่งด่วนสุดก่อน — ไม่ต้องไล่ดูทีละโซนในผังตลาด</p>
+
+                <div class="summary-cards">
+                    <div class="summary-card summary-expired">
+                        <div class="summary-count"><%= counts.expired %></div>
+                        <div class="summary-label">หมดอายุแล้ว</div>
+                    </div>
+                    <div class="summary-card summary-critical">
+                        <div class="summary-count"><%= counts.critical %></div>
+                        <div class="summary-label">ใกล้หมดอายุมาก (≤1 วัน)</div>
+                    </div>
+                    <div class="summary-card summary-near">
+                        <div class="summary-count"><%= counts.near %></div>
+                        <div class="summary-label">ใกล้หมดอายุ (≤7 วัน)</div>
+                    </div>
+                </div>
+
+                <% if (!rows.length) { %>
+                    <div class="empty-state">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <p>ตอนนี้ไม่มีล็อกใกล้หมดอายุหรือหมดอายุแล้วเลย</p>
+                    </div>
+                <% } else { %>
+                    <div class="table-wrap">
+                        <table class="expiring-table">
+                            <thead>
+                                <tr>
+                                    <th>สถานะ</th>
+                                    <th>ล็อก</th>
+                                    <th>โซน</th>
+                                    <th>ร้านค้า</th>
+                                    <th>ผู้จอง</th>
+                                    <th>เบอร์โทร</th>
+                                    <th>สถานะจ่ายเงิน</th>
+                                    <th>วันหมดอายุ</th>
+                                    <th>จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% rows.forEach((row) => {
+                                    const occ = row.occupant;
+                                    const stateLabel = row.expiryState === 'expired' ? 'หมดอายุแล้ว'
+                                        : row.expiryState === 'critical' ? 'ใกล้มาก'
+                                        : 'ใกล้หมดอายุ';
+                                    const daysText = row.daysLeft == null ? '-'
+                                        : row.daysLeft < 0 ? `เกินมาแล้ว ${Math.abs(row.daysLeft)} วัน`
+                                        : row.daysLeft === 0 ? 'วันนี้'
+                                        : `เหลือ ${row.daysLeft} วัน`;
+                                %>
+                                <tr class="row-<%= row.expiryState %>">
+                                    <td><span class="state-badge state-<%= row.expiryState %>"><%= stateLabel %></span></td>
+                                    <td class="cell-code"><%= row.code %></td>
+                                    <td><%= row.zoneCode %> <small class="zone-desc"><%= row.zoneDescription %></small></td>
+                                    <td><%= (occ && occ.shopName) || '-' %></td>
+                                    <td><%= (occ && occ.renterName) || '-' %></td>
+                                    <td><%= (occ && occ.phone) || '-' %></td>
+                                    <td><%= (occ && occ.paymentStatusText) || '-' %></td>
+                                    <td><%= daysText %></td>
+                                    <td class="cell-actions">
+                                        <% if (row.expiryState === 'expired') { %>
+                                            <button type="button" class="btn-row-action btn-row-release"
+                                                onclick="releaseStall('<%= row.code %>')">
+                                                <i class="fa-solid fa-door-open"></i> ปล่อยล็อก
+                                            </button>
+                                        <% } else { %>
+                                            <button type="button" class="btn-row-action btn-row-notify"
+                                                onclick="notifyExpiring('<%= row.code %>')">
+                                                <i class="fa-solid fa-envelope"></i> แจ้งเตือน
+                                            </button>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
+        <script src="/js/common/dialogs.js"></script>
+        <script src="/js/admin/slots.js"></script>
+        <script>
+            // แจ้งผลลัพธ์ปุ่ม "ปล่อยล็อก"/"แจ้งเตือนร้านค้า" หลัง redirect กลับมาที่หน้านี้ แล้วล้าง query ทิ้ง
+            // (ใช้ error/success code เดียวกับหน้า /admin/slots — ดู resolveReturnPath ใน approvalController.js)
+            (function () {
+                const params = new URLSearchParams(window.location.search);
+                const success = params.get('success');
+                const error = params.get('error');
+                if (success === 'stall_released') {
+                    window.showAlertDialog({ title: 'ปล่อยล็อกแล้ว', message: 'ล็อกนี้กลับมาว่างพร้อมให้จองใหม่แล้ว', tone: 'success' });
+                } else if (success === 'notify_sent') {
+                    window.showAlertDialog({ title: 'ส่งแจ้งเตือนแล้ว', message: 'ส่งอีเมลแจ้งร้านค้าให้ต่อสัญญาเรียบร้อยแล้ว', tone: 'success' });
+                } else if (error === 'stall_not_expired') {
+                    window.showAlertDialog({ title: 'ปล่อยล็อกไม่ได้', message: 'ล็อกนี้ยังไม่หมดสัญญา หรือถูกจัดการไปแล้ว กรุณารีเฟรชหน้าแล้วลองใหม่', tone: 'warning' });
+                } else if (error === 'stall_not_expiring') {
+                    window.showAlertDialog({ title: 'แจ้งเตือนไม่ได้', message: 'ล็อกนี้ไม่ได้อยู่ในสถานะจองแล้ว/มีกำหนดหมดสัญญา กรุณารีเฟรชหน้าแล้วลองใหม่', tone: 'warning' });
+                } else if (error === 'notify_no_email') {
+                    window.showAlertDialog({ title: 'ส่งแจ้งเตือนไม่ได้', message: 'ไม่พบอีเมลของร้านค้าที่เช่าล็อกนี้ในระบบ', tone: 'warning' });
+                } else if (error === 'notify_failed') {
+                    window.showAlertDialog({ title: 'ส่งแจ้งเตือนไม่สำเร็จ', message: 'เกิดข้อผิดพลาดตอนส่งอีเมล กรุณาลองใหม่อีกครั้ง', tone: 'danger' });
+                } else if (error === 'release_stall_failed' || error === 'stall_not_found' || error === 'missing_stall_code') {
+                    window.showAlertDialog({ title: 'ทำรายการไม่สำเร็จ', message: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง', tone: 'danger' });
+                }
+                if (success || error) {
+                    params.delete('success');
+                    params.delete('error');
+                    const qs = params.toString();
+                    history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
+                }
+            })();
+        </script>
+    </body>
+</html>

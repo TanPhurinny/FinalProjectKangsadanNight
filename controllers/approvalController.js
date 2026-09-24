@@ -829,18 +829,25 @@ exports.confirmBookingStall = async (req, res) => {
                 }
             });
 
+            // บั๊กเดิม: จุดนี้เคยอัปเดตแค่ isAvailable/status ไม่เคยเขียน bookingStartDate/bookingEndDate ลง Stall
+            // เลย ทำให้ทุกล็อกที่จัดผ่านหน้านี้ expiryState เป็น null ตลอด (ระบบเตือนใกล้หมดอายุ/ปุ่มปล่อยล็อกที่
+            // /admin/slots มองไม่เห็นเลยสักล็อก) ใช้ระยะเวลาเช่าจริงจาก linkedBookings[0] (ทุกแถวของคำขอนี้
+            // ระยะเวลาเท่ากันหมด ต่างกันแค่ล็อก ดูคอมเมนต์จุดคำนวณราคาด้านบน)
+            const rentalStartDate = linkedBookings[0]?.rentalStartDate || null;
+            const rentalEndDate = linkedBookings[0]?.rentalEndDate || null;
+
             for (const code of selectedStalls) {
                 const stall = stallByCode.get(code);
                 await tx.stall.update({
                     where: { id: stall.id },
-                    data: { isAvailable: false, status: 'BOOKED' }
+                    data: { isAvailable: false, status: 'BOOKED', bookingStartDate: rentalStartDate, bookingEndDate: rentalEndDate }
                 });
             }
 
             if (stallsToRelease.length) {
                 await tx.stall.updateMany({
                     where: { stallCode: { in: stallsToRelease } },
-                    data: { isAvailable: true, status: 'AVAILABLE' }
+                    data: { isAvailable: true, status: 'AVAILABLE', bookingStartDate: null, bookingEndDate: null }
                 });
             }
 
@@ -955,26 +962,34 @@ exports.rejectBookingStall = async (req, res) => {
     }
 };
 
+// หน้าที่อนุญาตให้ redirect กลับหลังกด "ปล่อยล็อก"/"แจ้งเตือนร้านค้า" — whitelist ไว้กันเป็น open redirect
+// (ไม่รับ URL จาก client ตรงๆ, req.body.returnTo ต้องตรงกับค่าใดค่าหนึ่งในนี้เท่านั้น ไม่งั้น fallback ไป /admin/slots)
+const STALL_ACTION_RETURN_PATHS = ['/admin/slots', '/admin/slots/expiring'];
+function resolveReturnPath(returnTo) {
+    return STALL_ACTION_RETURN_PATHS.includes(returnTo) ? returnTo : '/admin/slots';
+}
+
 // ปล่อยล็อกที่หมดสัญญาแล้ว (bookingEndDate เลยมาแล้ว) กลับเป็นว่างด้วยตนเอง — ไม่มี auto-release อัตโนมัติ
 // ในระบบ เพราะหมดสัญญาในระบบไม่ได้แปลว่าร้านออกจากพื้นที่จริงแล้วเสมอไป (อาจกำลังต่อ/รอจ่ายเพิ่ม) จึงให้
-// แอดมินเป็นคนตัดสินใจกดปล่อยเองหลังเช็คหน้างานแล้วว่าร้านออกจริง (ดูปุ่ม "ปล่อยล็อก" ที่หน้า /admin/slots)
-// ไม่แตะสถานะ Booking/BookingRequest เดิม (ยังคงเป็นประวัติการจองที่จบสมบูรณ์แล้ว) แค่ปลดล็อกให้จองใหม่ได้
+// แอดมินเป็นคนตัดสินใจกดปล่อยเองหลังเช็คหน้างานแล้วว่าร้านออกจริง (ดูปุ่ม "ปล่อยล็อก" ที่หน้า /admin/slots
+// และ /admin/slots/expiring) ไม่แตะสถานะ Booking/BookingRequest เดิม แค่ปลดล็อกให้จองใหม่ได้
 exports.releaseExpiredStall = async (req, res) => {
+    const returnPath = resolveReturnPath(req.body.returnTo);
     try {
         const stallCode = String(req.body.stallCode || '').trim().toUpperCase();
         if (!stallCode) {
-            return res.redirect('/admin/slots?error=missing_stall_code');
+            return res.redirect(`${returnPath}?error=missing_stall_code`);
         }
 
         const stall = await prisma.stall.findUnique({ where: { stallCode } });
         if (!stall) {
-            return res.redirect('/admin/slots?error=stall_not_found');
+            return res.redirect(`${returnPath}?error=stall_not_found`);
         }
 
         // เช็คซ้ำฝั่ง server ว่าหมดสัญญาจริง ไม่เชื่อ client เฉยๆ — กันปล่อยล็อกที่ยังจองอยู่จริงผิดพลาด/ตั้งใจ
         const isExpired = stall.status === 'BOOKED' && stall.bookingEndDate && new Date(stall.bookingEndDate).getTime() < Date.now();
         if (!isExpired) {
-            return res.redirect('/admin/slots?error=stall_not_expired');
+            return res.redirect(`${returnPath}?error=stall_not_expired`);
         }
 
         await prisma.$transaction([
@@ -982,24 +997,26 @@ exports.releaseExpiredStall = async (req, res) => {
             prisma.slot.updateMany({ where: { slotNumber: stallCode }, data: { isAvailable: true } })
         ]);
 
-        return res.redirect('/admin/slots?success=stall_released');
+        return res.redirect(`${returnPath}?success=stall_released`);
     } catch (err) {
-        return res.redirect('/admin/slots?error=release_stall_failed');
+        return res.redirect(`${returnPath}?error=release_stall_failed`);
     }
 };
 
 // แจ้งเตือนร้านค้าทางอีเมลว่าล็อกใกล้หมดสัญญา ให้มาต่อสัญญาก่อนโดนปล่อยล็อกคืน — แอดมินกดเองเป็นครั้งๆ ไป
-// (ดูปุ่ม "แจ้งเตือนร้านค้า" ที่หน้า /admin/slots) ไม่มีระบบส่งอัตโนมัติ/ตามรอบ เพราะยังไม่มี cron ในระบบ
+// (ดูปุ่ม "แจ้งเตือนร้านค้า" ที่หน้า /admin/slots และ /admin/slots/expiring) ไม่มีระบบส่งอัตโนมัติ/ตามรอบ
+// เพราะยังไม่มี cron ในระบบ
 exports.notifyStallExpiring = async (req, res) => {
+    const returnPath = resolveReturnPath(req.body.returnTo);
     try {
         const stallCode = String(req.body.stallCode || '').trim().toUpperCase();
         if (!stallCode) {
-            return res.redirect('/admin/slots?error=missing_stall_code');
+            return res.redirect(`${returnPath}?error=missing_stall_code`);
         }
 
         const stall = await prisma.stall.findUnique({ where: { stallCode } });
         if (!stall || stall.status !== 'BOOKED' || !stall.bookingEndDate) {
-            return res.redirect('/admin/slots?error=stall_not_expiring');
+            return res.redirect(`${returnPath}?error=stall_not_expiring`);
         }
 
         const daysLeft = Math.round((new Date(stall.bookingEndDate).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / (24 * 60 * 60 * 1000));
@@ -1018,12 +1035,12 @@ exports.notifyStallExpiring = async (req, res) => {
         });
         const email = slot?.bookings[0]?.user?.email;
         if (!email) {
-            return res.redirect('/admin/slots?error=notify_no_email');
+            return res.redirect(`${returnPath}?error=notify_no_email`);
         }
 
         await sendStallExpiringSoonEmail(email, stallCode, daysLeft);
-        return res.redirect('/admin/slots?success=notify_sent');
+        return res.redirect(`${returnPath}?success=notify_sent`);
     } catch (err) {
-        return res.redirect('/admin/slots?error=notify_failed');
+        return res.redirect(`${returnPath}?error=notify_failed`);
     }
 };

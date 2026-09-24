@@ -491,52 +491,47 @@ window.hideInfo = hideInfo;
 
 // ปล่อยล็อกที่หมดสัญญาแล้วกลับเป็นว่าง (ดู releaseExpiredStall ใน approvalController.js — เช็คซ้ำฝั่ง
 // server ว่าหมดสัญญาจริงก่อนปล่อยเสมอ ไม่เชื่อฝั่ง client เฉยๆ)
-function releaseStall() {
-    if (!selectedStall) return;
-    const code = selectedStall;
+// returnTo ส่งกลับ path หน้าปัจจุบันไปด้วย เพื่อให้ redirect กลับมาหน้าเดิมได้ถูก (ใช้ได้ทั้งจาก /admin/slots
+// และ /admin/slots/expiring — ฝั่ง server whitelist ไว้แล้ว ดู resolveReturnPath ใน approvalController.js)
+function submitStallActionForm(action, stallCode) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = action;
+    [['stallCode', stallCode], ['returnTo', window.location.pathname]].forEach(([name, value]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function releaseStall(code) {
+    const stallCode = code || selectedStall;
+    if (!stallCode) return;
     window.showConfirmDialog({
         title: 'ปล่อยล็อกนี้?',
-        message: `ล็อก ${code} จะกลับมาว่างพร้อมให้จองใหม่ทันที ตรวจสอบหน้างานแล้วว่าร้านเดิมออกจริงหรือยัง?`,
+        message: `ล็อก ${stallCode} จะกลับมาว่างพร้อมให้จองใหม่ทันที ตรวจสอบหน้างานแล้วว่าร้านเดิมออกจริงหรือยัง?`,
         tone: 'danger',
         confirmText: 'ปล่อยล็อก',
-        onConfirm: () => {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/admin/slots/release-stall';
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'stallCode';
-            input.value = code;
-            form.appendChild(input);
-            document.body.appendChild(form);
-            form.submit();
-        }
+        onConfirm: () => submitStallActionForm('/admin/slots/release-stall', stallCode)
     });
 }
 window.releaseStall = releaseStall;
 
 // แจ้งเตือนร้านค้าทางอีเมลว่าล็อกใกล้หมดสัญญา (ดู notifyStallExpiring ใน approvalController.js) —
 // แอดมินกดเองเป็นครั้งๆ ไป ไม่มีระบบส่งอัตโนมัติ
-function notifyExpiring() {
-    if (!selectedStall) return;
-    const code = selectedStall;
+function notifyExpiring(code) {
+    const stallCode = code || selectedStall;
+    if (!stallCode) return;
     window.showConfirmDialog({
         title: 'แจ้งเตือนร้านค้า?',
-        message: `ส่งอีเมลแจ้งร้านค้าที่เช่าล็อก ${code} ว่าใกล้หมดสัญญา ให้มาต่อสัญญา?`,
+        message: `ส่งอีเมลแจ้งร้านค้าที่เช่าล็อก ${stallCode} ว่าใกล้หมดสัญญา ให้มาต่อสัญญา?`,
         tone: 'neutral',
         confirmText: 'ส่งแจ้งเตือน',
-        onConfirm: () => {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/admin/slots/notify-expiring';
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'stallCode';
-            input.value = code;
-            form.appendChild(input);
-            document.body.appendChild(form);
-            form.submit();
-        }
+        onConfirm: () => submitStallActionForm('/admin/slots/notify-expiring', stallCode)
     });
 }
 window.notifyExpiring = notifyExpiring;

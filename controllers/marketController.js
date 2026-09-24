@@ -153,6 +153,7 @@ async function buildZonesData() {
                     code: stall.stallCode,
                     status: stall.status,
                     expiryState: computeExpiryState(stall.status, stall.bookingEndDate),
+                    bookingEndDate: stall.bookingEndDate,
                     lotType: pricing.type,
                     lotColor: pricing.color,
                     pricePerDay: pricing.pricePerDay
@@ -338,6 +339,56 @@ exports.getSlotsPage = async (req, res) => {
     } catch (error) {
         console.error("Slots Page Error:", error);
         res.status(500).send("Error loading slots map");
+    }
+};
+
+// รวมล็อกที่ "ใกล้หมดอายุ/หมดอายุแล้ว" ทุกโซนไว้ตารางเดียว (ก่อนหน้านี้ต้องเข้าไปดูทีละโซนในผัง /admin/slots
+// เอง ไม่มีที่ไหนเห็นภาพรวมทั้งตลาดพร้อมกัน) เรียงเร่งด่วนสุดก่อน: หมดอายุแล้ว > ใกล้มาก (≤1 วัน) > ใกล้ (≤7 วัน)
+// ปุ่มแจ้งเตือน/ปล่อยล็อกในตารางยิงไป route เดิมที่มีอยู่แล้ว (release-stall / notify-expiring)
+const EXPIRY_URGENCY_ORDER = { expired: 0, critical: 1, near: 2 };
+
+exports.getExpiringStallsPage = async (req, res) => {
+    try {
+        const zonesData = await buildZonesData();
+        await stallOccupancy.attachOccupantDetails(zonesData);
+
+        const now = new Date();
+        const rows = [];
+        zonesData.forEach((zone) => {
+            zone.columns.forEach((column) => {
+                column.stalls.forEach((stall) => {
+                    if (!stall.expiryState) return;
+                    const daysLeft = stall.bookingEndDate
+                        ? Math.round((new Date(stall.bookingEndDate).setHours(0, 0, 0, 0) - new Date(now).setHours(0, 0, 0, 0)) / (24 * 60 * 60 * 1000))
+                        : null;
+                    rows.push({
+                        code: stall.code,
+                        zoneCode: zone.code,
+                        zoneDescription: zone.description,
+                        expiryState: stall.expiryState,
+                        daysLeft,
+                        occupant: stall.occupant || null
+                    });
+                });
+            });
+        });
+
+        rows.sort((a, b) => {
+            const orderDiff = EXPIRY_URGENCY_ORDER[a.expiryState] - EXPIRY_URGENCY_ORDER[b.expiryState];
+            if (orderDiff !== 0) return orderDiff;
+            return (a.daysLeft ?? 0) - (b.daysLeft ?? 0);
+        });
+
+        const counts = {
+            expired: rows.filter((r) => r.expiryState === 'expired').length,
+            critical: rows.filter((r) => r.expiryState === 'critical').length,
+            near: rows.filter((r) => r.expiryState === 'near').length
+        };
+
+        res.render('admin/expiringStalls', { rows, counts, user: req.user });
+    } catch (error) {
+        console.error('Expiring Stalls Page Error:', error);
+        res.status(500).send('Error loading expiring stalls page');
     }
 };
 

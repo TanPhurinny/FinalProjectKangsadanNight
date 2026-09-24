@@ -131,6 +131,28 @@
     animation: fadeUp .2s ease;
 }
 
+.btn-expiring-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 3px;
+    border: 1px solid #c0392b;
+    color: #c0392b;
+    background: #fff;
+    font-family: 'Kanit', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: 0.15s;
+}
+
+.btn-expiring-link:hover {
+    background: #c0392b;
+    color: #fff;
+}
+
 .tag-bar {
     background: var(--card);
     border-bottom: 1px solid var(--border);
