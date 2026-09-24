@@ -12,7 +12,7 @@ const requestCtrl = require('../controllers/requestController');
 const marketCtrl = require('../controllers/marketController');
 const announceCtrl = require('../controllers/announcementController');
 const scoreReportCtrl = require('../controllers/scoreReportController');
-const { buildReceiptData } = require('../controllers/receiptController');
+const { buildQuotationData } = require('../controllers/quotationController');
 const bannerCtrl = require('../controllers/communityBannerController');
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
@@ -92,15 +92,15 @@ router.get('/approvals', approvalCtrl.getApprovalsPage);
 router.post('/approvals/confirm', approvalCtrl.confirmApproval);
 router.post('/approvals/confirm-payment', approvalCtrl.confirmPayment);
 router.post('/approvals/reject-slip', approvalCtrl.rejectPaymentSlip);
-router.get('/receipts/:requestId', async (req, res) => {
+router.get('/quotations/:requestId', async (req, res) => {
     try {
-        const receipt = await buildReceiptData(req.params.requestId, req.user?.name);
-        if (!receipt) {
-            return res.status(404).render('admin/receipt', { error: 'ไม่พบใบเสร็จ หรือคำขอนี้ยังไม่ได้ยืนยันการชำระเงิน', receipt: null });
+        const quotation = await buildQuotationData(req.params.requestId, req.user?.name);
+        if (!quotation) {
+            return res.status(404).render('admin/quotation', { error: 'ไม่พบใบเสนอราคา หรือคำขอนี้ยังไม่ได้ยืนยันการชำระเงิน', quotation: null });
         }
-        return res.render('admin/receipt', { receipt, error: null });
+        return res.render('admin/quotation', { quotation, error: null });
     } catch (err) {
-        return res.status(500).render('admin/receipt', { error: 'เกิดข้อผิดพลาดในการโหลดใบเสร็จ', receipt: null });
+        return res.status(500).render('admin/quotation', { error: 'เกิดข้อผิดพลาดในการโหลดใบเสนอราคา', quotation: null });
     }
 });
 router.get('/requests', requestCtrl.getRequestsPage);

@@ -6,20 +6,20 @@
    ถ้า custom property ต้นทางไม่ถูกโหลด (เคยเกิดปัญหานี้มาแล้ว — ตารางรายการไม่มีเส้นกรอบเลย)
    ======================================== */
 
-.receipt-page {
+.quotation-page {
     max-width: 900px;
     margin: 0 auto;
     padding: 24px 16px 60px;
 }
 
-.receipt-toolbar {
+.quotation-toolbar {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
     margin-bottom: 16px;
 }
 
-.receipt-btn {
+.quotation-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -35,31 +35,31 @@
     transition: var(--transition, all 0.15s ease);
 }
 
-.receipt-btn:hover {
+.quotation-btn:hover {
     border-color: var(--primary-color, #2C93A8);
     color: var(--primary-color, #2C93A8);
 }
 
-.receipt-btn-primary {
+.quotation-btn-primary {
     background: var(--primary-color, #2C93A8);
     border-color: var(--primary-color, #2C93A8);
     color: #fff;
 }
 
-.receipt-btn-primary:hover {
+.quotation-btn-primary:hover {
     background: var(--primary-dark, #1f6f80);
     border-color: var(--primary-dark, #1f6f80);
     color: #fff;
 }
 
-.receipt-doc {
+.quotation-doc {
     background: #fff;
     border: 1px solid var(--line, #d7e3e6);
     padding: 28px;
     color: var(--ink, #16333c);
 }
 
-.receipt-header {
+.quotation-header {
     display: flex;
     align-items: flex-start;
     gap: 16px;
@@ -68,97 +68,97 @@
     margin-bottom: 14px;
 }
 
-.receipt-logo {
+.quotation-logo {
     width: 56px;
     height: 56px;
     object-fit: contain;
     flex: 0 0 auto;
 }
 
-.receipt-company {
+.quotation-company {
     flex: 1 1 auto;
 }
 
-.receipt-company-th {
+.quotation-company-th {
     font-weight: 700;
     font-size: 1.05rem;
     color: var(--navy, #12303a);
 }
 
-.receipt-company-en {
+.quotation-company-en {
     font-size: 0.85rem;
     color: var(--ink-soft, #5b7a84);
     font-family: var(--mono, 'IBM Plex Mono', 'Courier New', monospace);
 }
 
-.receipt-company-meta {
+.quotation-company-meta {
     font-size: 0.78rem;
     color: var(--ink-soft, #5b7a84);
     margin-top: 2px;
 }
 
-.receipt-title {
+.quotation-title {
     flex: 0 0 auto;
     text-align: right;
 }
 
-.receipt-title-th {
+.quotation-title-th {
     font-weight: 700;
     font-size: 1.1rem;
     color: var(--navy, #12303a);
 }
 
-.receipt-title-en {
+.quotation-title-en {
     font-size: 0.85rem;
     color: var(--ink-soft, #5b7a84);
     font-family: var(--mono, 'IBM Plex Mono', 'Courier New', monospace);
 }
 
-.receipt-meta-row {
+.quotation-meta-row {
     display: flex;
     justify-content: space-between;
     gap: 20px;
     margin-bottom: 14px;
 }
 
-.receipt-meta-col {
+.quotation-meta-col {
     flex: 1 1 50%;
 }
 
-.receipt-meta-col-right {
+.quotation-meta-col-right {
     text-align: right;
 }
 
-.receipt-field {
+.quotation-field {
     font-size: 0.85rem;
     margin-bottom: 3px;
 }
 
-.receipt-field span {
+.quotation-field span {
     color: var(--ink-soft, #5b7a84);
     margin-right: 6px;
 }
 
-.receipt-field b {
+.quotation-field b {
     color: var(--navy, #12303a);
 }
 
-.receipt-items-table {
+.quotation-items-table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 12px;
     font-size: 0.82rem;
 }
 
-.receipt-items-table th,
-.receipt-items-table td {
+.quotation-items-table th,
+.quotation-items-table td {
     /* เข้มกว่า --line ปกติเจตนา — เส้นกรอบตารางต้องเห็นชัดแบบใบเสร็จจริง ไม่ใช่เส้นบางจางแบบ UI ทั่วไป */
-    border: 1px solid var(--receipt-grid-line, #7c98a0);
+    border: 1px solid var(--quotation-grid-line, #7c98a0);
     padding: 6px 8px;
     text-align: center;
 }
 
-.receipt-items-table thead th {
+.quotation-items-table thead th {
     background: var(--navy, #12303a);
     color: #fff;
     font-family: var(--mono, 'IBM Plex Mono', 'Courier New', monospace);
@@ -166,34 +166,34 @@
     font-size: 0.74rem;
 }
 
-.receipt-items-table td.col-no {
+.quotation-items-table td.col-no {
     width: 44px;
 }
 
-.receipt-items-table td.col-name,
-.receipt-items-table th.col-name {
+.quotation-items-table td.col-name,
+.quotation-items-table th.col-name {
     text-align: left;
 }
 
-.receipt-summary-row {
+.quotation-summary-row {
     display: flex;
     justify-content: space-between;
     gap: 20px;
     margin-bottom: 12px;
 }
 
-.receipt-note-box {
+.quotation-note-box {
     flex: 1 1 55%;
     font-size: 0.78rem;
     color: var(--ink-soft, #5b7a84);
 }
 
-.receipt-totals {
+.quotation-totals {
     flex: 0 0 320px;
-    border: 1px solid var(--receipt-grid-line, #7c98a0);
+    border: 1px solid var(--quotation-grid-line, #7c98a0);
 }
 
-.receipt-total-line {
+.quotation-total-line {
     display: flex;
     justify-content: space-between;
     padding: 6px 12px;
@@ -201,41 +201,41 @@
     border-bottom: 1px solid var(--line-soft, #e7eeef);
 }
 
-.receipt-total-line:last-child {
+.quotation-total-line:last-child {
     border-bottom: none;
 }
 
-.receipt-total-line span {
+.quotation-total-line span {
     color: var(--ink-soft, #5b7a84);
 }
 
-.receipt-total-net {
+.quotation-total-net {
     background: var(--soft-bg, #f6f8f8);
     font-weight: 700;
 }
 
-.receipt-total-net span,
-.receipt-total-net b {
+.quotation-total-net span,
+.quotation-total-net b {
     color: var(--navy, #12303a);
 }
 
-.receipt-amount-text {
-    border: 1px solid var(--receipt-grid-line, #7c98a0);
+.quotation-amount-text {
+    border: 1px solid var(--quotation-grid-line, #7c98a0);
     padding: 8px 12px;
     font-size: 0.85rem;
     margin-bottom: 24px;
 }
 
-.receipt-amount-text span {
+.quotation-amount-text span {
     color: var(--ink-soft, #5b7a84);
     margin-right: 8px;
 }
 
-.receipt-amount-text b {
+.quotation-amount-text b {
     color: var(--navy, #12303a);
 }
 
-.receipt-signature-row {
+.quotation-signature-row {
     display: flex;
     justify-content: space-around;
     gap: 20px;
@@ -243,29 +243,29 @@
     text-align: center;
 }
 
-.receipt-signature-box {
+.quotation-signature-box {
     flex: 1 1 240px;
 }
 
-.receipt-sig-line {
+.quotation-sig-line {
     height: 50px;
     border-bottom: 1px solid var(--ink-soft, #5b7a84);
     margin-bottom: 6px;
 }
 
-.receipt-sig-label {
+.quotation-sig-label {
     font-size: 0.85rem;
     color: var(--navy, #12303a);
     font-weight: 600;
 }
 
-.receipt-sig-date {
+.quotation-sig-date {
     font-size: 0.75rem;
     color: var(--ink-soft, #5b7a84);
     margin-top: 4px;
 }
 
-.receipt-footnote {
+.quotation-footnote {
     font-size: 0.68rem;
     color: var(--ink-soft, #5b7a84);
     max-width: 340px;
@@ -276,38 +276,38 @@
         display: none !important;
     }
 
-    .receipt-page {
+    .quotation-page {
         padding: 0;
         max-width: none;
     }
 
-    .receipt-doc {
+    .quotation-doc {
         border: none;
         padding: 0;
     }
 }
 
 @media (max-width: 767px) {
-    .receipt-header,
-    .receipt-meta-row,
-    .receipt-summary-row,
-    .receipt-signature-row {
+    .quotation-header,
+    .quotation-meta-row,
+    .quotation-summary-row,
+    .quotation-signature-row {
         flex-direction: column;
     }
 
-    .receipt-title {
+    .quotation-title {
         text-align: left;
     }
 
-    .receipt-meta-col-right {
+    .quotation-meta-col-right {
         text-align: left;
     }
 
-    .receipt-totals {
+    .quotation-totals {
         flex: 1 1 auto;
     }
 
-    .receipt-items-table {
+    .quotation-items-table {
         font-size: 0.7rem;
     }
 }

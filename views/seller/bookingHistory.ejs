@@ -55,7 +55,7 @@
                   <th>ยอดชำระรวม</th>
                   <th>สถานะ</th>
                   <th>วันที่ทำรายการ</th>
-                  <th>ใบเสร็จ</th>
+                  <th>ใบเสนอราคา</th>
                 </tr>
               </thead>
               <tbody>
@@ -77,7 +77,7 @@
                     <td><%= b.createdAt %></td>
                     <td>
                       <% if (b.receiptRequestId) { %>
-                      <a href="/receipts/<%= b.receiptRequestId %>" class="btn btn-sm btn-outline-primary"><i class="bi bi-receipt"></i> ดูใบเสร็จ</a>
+                      <a href="/quotations/<%= b.receiptRequestId %>" class="btn btn-sm btn-outline-primary"><i class="bi bi-receipt"></i> ดูใบเสนอราคา</a>
                       <% } else { %>
                       <span class="text-muted small">-</span>
                       <% } %>

@@ -16,7 +16,7 @@ const {
     getBookingPhaseForRound
 } = require('../utils/bookingRound');
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
-const { buildReceiptData } = require('../controllers/receiptController');
+const { buildQuotationData } = require('../controllers/quotationController');
 
 // รูปแจ้งซ่อม (เก็บที่ Cloudinary หรือดิสก์ตาม utils/imageStorage.js)
 const storage = createImageStorage({ folder: 'repairs' });
@@ -546,18 +546,18 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
             time: formatTimeThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             status: 'SUCCESS'
         },
-        // การ์ดแจ้งว่าใบเสร็จ/ใบกำกับภาษีพร้อมแล้ว — โผล่เฉพาะตอนจ่ายเงินสำเร็จจริง (มีใบเสร็จให้ดูที่ /receipts/:id แล้ว)
+        // การ์ดแจ้งว่าใบเสร็จ/ใบกำกับภาษีพร้อมแล้ว — โผล่เฉพาะตอนจ่ายเงินสำเร็จจริง (มีใบเสร็จให้ดูที่ /quotations/:id แล้ว)
         // type: 'success-receipt' ตรงกับไอคอน bi-file-earmark-text ที่ map ไว้ใน public/js/seller/statusbook.js อยู่แล้ว
         // ลิงก์ต้องใช้ BookingRequest.id (คนละ sequence กับ Booking.id) เหมือนที่หน้าประวัติการจองดึงผ่าน extractBookingRequestId
         ...(status === 'SUCCESS' && receiptRequestId ? [{
             id: 4,
             type: 'success-receipt',
-            title: 'ใบเสร็จพร้อมแล้ว',
-            desc: 'ใบเสร็จ/ใบกำกับภาษีของคุณพร้อมให้ดูและดาวน์โหลดแล้ว',
+            title: 'ใบเสนอราคาพร้อมแล้ว',
+            desc: 'ใบเสนอราคาของคุณพร้อมให้ดูและดาวน์โหลดแล้ว',
             date: formatDateThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             time: formatTimeThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             status: 'SUCCESS',
-            link: `/receipts/${receiptRequestId}`
+            link: `/quotations/${receiptRequestId}`
         }] : [])
     ];
 
@@ -2095,15 +2095,15 @@ router.get('/notifications', isAuthenticated, async (req, res) => {
     });
 });
 
-router.get('/receipts/:requestId', isAuthenticated, async (req, res) => {
+router.get('/quotations/:requestId', isAuthenticated, async (req, res) => {
     try {
-        const receipt = await buildReceiptData(req.params.requestId, req.user?.name);
-        if (!receipt || receipt.ownerUserId !== req.user.id) {
+        const quotation = await buildQuotationData(req.params.requestId, req.user?.name);
+        if (!quotation || quotation.ownerUserId !== req.user.id) {
             return res.redirect('/booking-status?error=receipt_not_found');
         }
-        return res.render('seller/receipt', { receipt, error: null });
+        return res.render('seller/quotation', { quotation, error: null });
     } catch (err) {
-        return res.status(500).render('seller/receipt', { error: 'เกิดข้อผิดพลาดในการโหลดใบเสร็จ', receipt: null });
+        return res.status(500).render('seller/quotation', { error: 'เกิดข้อผิดพลาดในการโหลดใบเสนอราคา', quotation: null });
     }
 });
 

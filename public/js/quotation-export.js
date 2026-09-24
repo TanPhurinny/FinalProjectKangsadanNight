@@ -1,10 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const printArea = document.getElementById('receiptPrintArea');
-    const savePdfBtn = document.getElementById('receiptSavePdf');
-    const saveImageBtn = document.getElementById('receiptSaveImage');
+    const printArea = document.getElementById('quotationPrintArea');
+    const savePdfBtn = document.getElementById('quotationSavePdf');
+    const saveImageBtn = document.getElementById('quotationSaveImage');
     if (!printArea) return;
 
-    const fileBaseName = () => `receipt-${printArea.dataset.receiptNumber || Date.now()}`.replace(/[^a-zA-Z0-9-_]/g, '');
+    const fileBaseName = () => `quotation-${printArea.dataset.quotationNumber || Date.now()}`.replace(/[^a-zA-Z0-9-_]/g, '');
 
     async function captureCanvas() {
         return window.html2canvas(printArea, { scale: 2, backgroundColor: '#ffffff' });
