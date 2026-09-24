@@ -3,13 +3,46 @@ const PRICE_PER_STALL_PER_DAY = Number(PRICING_DATA.zonePrice || 0);
 const LIGHT_UNIT_PRICE = Number(PRICING_DATA.lightUnitPrice || 15);
 const SMALL_PRICE = Number(PRICING_DATA.smallAppliancePrice || 20);
 const LARGE_PRICE = Number(PRICING_DATA.largeAppliancePrice || 40);
+const MAX_STALLS_PER_SELLER = Number(PRICING_DATA.maxStallsPerSeller || 2);
+const IS_FASHION_SELLER = Boolean(PRICING_DATA.isFashionSeller);
 
 const dateStartInput = document.getElementById('dateStart');
 const dateEndInput = document.getElementById('dateEnd');
 const stallCountInput = document.getElementById('stallCount');
+const stallCountNote = document.getElementById('stallCountNote');
 const smallApplianceInput = document.getElementById('smallApplianceCount');
 const largeApplianceInput = document.getElementById('largeApplianceCount');
 const bookingForm = document.getElementById('bookingForm');
+const submitBtn = bookingForm ? bookingForm.querySelector('.btn-confirm') : null;
+
+const EXISTING_LOCK_COUNT = parseInt(stallCountInput.dataset.existingLocks, 10) || 0;
+const stallCountNoteDefault = stallCountNote ? stallCountNote.textContent : '';
+
+function isStallCountValid() {
+    if (IS_FASHION_SELLER) return true;
+    const value = parseInt(stallCountInput.value, 10) || 1;
+    return EXISTING_LOCK_COUNT + value <= MAX_STALLS_PER_SELLER;
+}
+
+// เช็คสดทันทีที่พิมพ์ ไม่ต้องรอกด submit ถึงจะรู้ว่าเกิน cap
+function validateStallCountLive() {
+    if (!stallCountInput) return;
+    const valid = isStallCountValid();
+    stallCountInput.classList.toggle('field-input--error', !valid);
+    if (stallCountNote) {
+        stallCountNote.classList.toggle('field-note--error', !valid);
+        if (!valid) {
+            const remaining = Math.max(0, MAX_STALLS_PER_SELLER - EXISTING_LOCK_COUNT);
+            stallCountNote.textContent = `เกินจำนวนที่จองได้ — จองเพิ่มได้อีกไม่เกิน ${remaining} ล็อคเท่านั้น (รวมทุกโซน ไม่เกิน ${MAX_STALLS_PER_SELLER} ล็อค/คน/รอบ)`;
+        } else {
+            stallCountNote.textContent = stallCountNoteDefault;
+        }
+    }
+}
+if (stallCountInput) {
+    stallCountInput.addEventListener('input', validateStallCountLive);
+    stallCountInput.addEventListener('change', validateStallCountLive);
+}
 
 function calculateDays() {
     const startVal = dateStartInput.value;
@@ -64,6 +97,16 @@ function getSelectedRound() {
     return document.querySelector('input[name="roundChoice"]:checked');
 }
 
+// วันนี้แบบ YYYY-MM-DD เทียบ string ได้ตรงกับ input type="date" (รอบที่เปิดจองอยู่แล้ว
+// cycleStart อาจเป็นวันที่ผ่านมาแล้ว ต้องกันไม่ให้เลือกวันที่ผ่านมาแล้วในปฏิทิน)
+function todayDateInputValue() {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 function resetCornerZoneToNone() {
     const noneOption = document.querySelector('input[name="cornerZone"][value="0"]');
     if (noneOption) noneOption.checked = true;
@@ -81,12 +124,13 @@ function applySelectedRound() {
 
     if (phaseHintBox) phaseHintBox.textContent = selected.dataset.hint || '';
 
-    // ช่วงที่ 1 (จันทร์-อังคาร): เลือกวันที่เองได้ในกรอบรอบ หรือกดปุ่มเต็มรอบ
-    // ช่วงที่ 2 (พุธ): เลือกวันที่เองในกรอบรอบ ขั้นต่ำ 3 วัน
-    // ช่วงที่ 3 (พฤหัส-จบรอบ): วันเริ่มจำกัดแค่วันนี้/พรุ่งนี้เท่านั้น
-    dateStartInput.min = cycleStart;
-    dateStartInput.max = (phase === '3' || phase === 3) && maxAdvanceStart ? maxAdvanceStart : cycleEnd;
-    dateEndInput.min = cycleStart;
+    // ช่วงที่ 1 (จันทร์-อังคาร): จองเต็มรอบ 14 วันเท่านั้น กดปุ่มเต็มรอบได้
+    // ช่วงที่ 2 (พุธ-จบรอบ): เลือกวันที่เองในกรอบรอบ ขั้นต่ำ 3 วัน หรือจองทีละวัน วันเริ่มล่วงหน้าได้แค่พรุ่งนี้เท่านั้น
+    const today = todayDateInputValue();
+    const effectiveMin = cycleStart > today ? cycleStart : today;
+    dateStartInput.min = effectiveMin;
+    dateStartInput.max = (phase === 2 || phase === '2') && maxAdvanceStart ? maxAdvanceStart : cycleEnd;
+    dateEndInput.min = effectiveMin;
     dateEndInput.max = cycleEnd;
 
     if (phase === 1 || phase === '1') {
@@ -98,17 +142,14 @@ function applySelectedRound() {
     }
 
     if (phase === 2 || phase === '2') {
-        dateStartInput.value = cycleStart;
-        dateEndInput.value = cycleEnd;
-    }
-
-    if (phase === 3 || phase === '3') {
         dateStartInput.value = cycleStart > (maxAdvanceStart || cycleStart) ? cycleStart : (maxAdvanceStart || cycleStart);
         dateEndInput.value = cycleEnd;
     }
 
+    // ไม่ซ่อนทั้ง section ตอนขอล็อคเต็งไม่ได้ (จะทำให้เลขหัวข้อ 01-06 กระโดดข้าม 05 หายไปดูแปลก)
+    // แค่หรี่ + ปิดกดไม่ได้แทน ให้เห็นว่ามีตัวเลือกนี้อยู่แต่ยังใช้ไม่ได้ช่วงนี้
     if (cornerZoneSection) {
-        cornerZoneSection.style.display = allowCorner ? '' : 'none';
+        cornerZoneSection.classList.toggle('is-disabled', !allowCorner);
     }
     if (!allowCorner) resetCornerZoneToNone();
 
@@ -164,6 +205,7 @@ bookingForm.addEventListener('submit', (event) => {
     const diffDays = Math.floor((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
     const phase = selected.dataset.phase;
     const minDays = parseInt(selected.dataset.minDays, 10) || 1;
+    const allowSingleDay = selected.dataset.allowSingleDay === '1';
     const cornerZoneChecked = document.querySelector('input[name="cornerZone"]:checked');
     const cornerZoneValue = cornerZoneChecked ? parseInt(cornerZoneChecked.value, 10) : 0;
 
@@ -173,22 +215,31 @@ bookingForm.addEventListener('submit', (event) => {
         return;
     }
 
-    if ((phase === 1 || phase === '1') && cornerZoneValue === 0) {
+    // จำกัดจำนวนล็อคต่อคำขอ รวมล็อคที่มีอยู่แล้วในรอบนี้ (เช็คเบื้องต้นฝั่ง client — ของจริงเช็คซ้ำฝั่ง server เสมอ)
+    if (!isStallCountValid()) {
+        event.preventDefault();
+        const remaining = Math.max(0, MAX_STALLS_PER_SELLER - EXISTING_LOCK_COUNT);
+        window.showAlertDialog({ title: 'จองเกินจำนวนที่กำหนด', message: `คุณมีล็อคอยู่แล้ว ${EXISTING_LOCK_COUNT} ล็อคในรอบนี้ จองเพิ่มได้อีกไม่เกิน ${remaining} ล็อค (รวมทุกโซน ไม่เกิน ${MAX_STALLS_PER_SELLER} ล็อค/คน/รอบ) ยกเว้นร้านแฟชั่นที่ขึ้นอยู่กับดุลยพินิจแอดมิน`, tone: 'warning' });
+        return;
+    }
+
+    if (phase === 1 || phase === '1') {
+        // ช่วงจันทร์-อังคารก่อนเปิดรอบ: ล็อคเต็งและล็อคปกติต้องจองเต็มรอบ 14 วันเหมือนกัน บังคับน้อยกว่านี้ไม่ได้
         const isFullRound = dateStartInput.value === selected.dataset.cycleStart && dateEndInput.value === selected.dataset.cycleEnd;
         if (!isFullRound) {
             event.preventDefault();
-            window.showAlertDialog({ title: 'จองได้แค่เต็มรอบ', message: 'ช่วงจันทร์-อังคารก่อนเปิดรอบ จองได้เฉพาะเต็มรอบ 14 วัน หรือเลือกล็อคเต็งเท่านั้น', tone: 'warning' });
+            window.showAlertDialog({ title: 'จองได้แค่เต็มรอบ', message: 'ช่วงจันทร์-อังคารก่อนเปิดรอบ จองได้เฉพาะเต็มรอบ 14 วันเท่านั้น (รวมถึงล็อคเต็งด้วย)', tone: 'warning' });
             return;
         }
     }
 
-    if (diffDays < minDays) {
+    if (diffDays < minDays && !(allowSingleDay && diffDays === 1)) {
         event.preventDefault();
-        window.showAlertDialog({ title: 'จองวันน้อยเกินไป', message: `ช่วงนี้ต้องจองต่อเนื่องอย่างน้อย ${minDays} วัน`, tone: 'warning' });
+        window.showAlertDialog({ title: 'จองวันน้อยเกินไป', message: `ช่วงนี้ต้องจองต่อเนื่องอย่างน้อย ${minDays} วัน หรือจองทีละ 1 วัน`, tone: 'warning' });
         return;
     }
 
-    if ((phase === 3 || phase === '3') && selected.dataset.maxAdvanceStart) {
+    if ((phase === 2 || phase === '2') && selected.dataset.maxAdvanceStart) {
         const maxAdvance = new Date(selected.dataset.maxAdvanceStart);
         if (startDate > maxAdvance) {
             event.preventDefault();
@@ -196,6 +247,14 @@ bookingForm.addEventListener('submit', (event) => {
             return;
         }
     }
+
+    // ผ่านทุกเงื่อนไขแล้ว กันกดซ้ำ/ดับเบิลคลิกส่งฟอร์มซ้อน ระหว่างรอ server ตอบกลับ
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'กำลังบันทึก...';
+    }
 });
 
 recalcSummary();
+
+validateStallCountLive();

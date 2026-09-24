@@ -2,11 +2,17 @@
     --navy: #12303a;
     --ink: #16333c;
     --ink-soft: #5b7a84;
+    --ink-faint: #93a8ae;
     --line: #d7e3e6;
+    --line-soft: #e7eef0;
     --soft-bg: #f6f8f8;
     --primary: #2C93A8;
     --primary-dark: #1f6f80;
+    --primary-wash: rgba(44, 147, 168, 0.07);
+    --amber: #c98a2e;
+    --amber-wash: rgba(201, 138, 46, 0.08);
     --danger: #c0392b;
+    --danger-wash: rgba(192, 57, 43, 0.06);
     --mono: 'IBM Plex Mono', 'Courier New', monospace;
     --radius: 4px;
     --radius-sm: 3px;
@@ -32,29 +38,85 @@ body { font-family: 'Kanit', sans-serif; background: #fff; color: var(--ink); mi
 .header-title { flex: 1; text-align: center; font-size: 1.15rem; font-weight: 600; color: var(--navy); }
 .header-spacer { width: 38px; }
 
-.main-content { max-width: 740px; margin: 30px auto 60px; padding: 0 16px; }
-.form-card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: none; padding: 28px; }
+.main-content { max-width: 720px; margin: 28px auto 60px; padding: 0 16px; }
+.form-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0;
+}
 
+/* ── โครงหัวข้อเป็นขั้นตอน (01 / 02 / …) แทนกล่องซ้อนกล่อง ── */
+.form-section {
+    padding: 22px 28px;
+    border-bottom: 1px solid var(--line-soft);
+}
+.form-section:last-of-type { border-bottom: none; }
+.form-section.is-disabled { opacity: 0.5; pointer-events: none; }
+.form-section.is-disabled .form-section__hint { color: var(--danger); opacity: 1; }
+.form-section__head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.form-section__num {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--primary);
+    letter-spacing: 0.02em;
+}
+.form-section__title {
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: var(--navy);
+}
+.form-section__hint {
+    margin-left: auto;
+    font-size: 0.76rem;
+    color: var(--ink-faint);
+}
+
+.top-alert { margin: 20px 28px 0; }
 .alert-box {
-    margin-bottom: 18px;
     padding: 12px 14px;
     border-radius: var(--radius-sm);
-    background: rgba(192, 57, 43, 0.06);
+    background: var(--danger-wash);
     border: 1px solid var(--line);
     border-left: 3px solid var(--danger);
     color: #922B21;
     font-weight: 600;
-}
-.alert-box.info-box {
-    background: rgba(44, 147, 168, 0.06);
-    border-left-color: var(--primary);
-    color: var(--navy);
-    font-weight: 500;
+    font-size: 0.9rem;
 }
 
-.field-group { margin-bottom: 18px; }
-.field-label { display: block; margin-bottom: 8px; font-size: 0.92rem; font-weight: 600; color: var(--navy); }
+/* ── แถบสรุปผู้จอง: ย่อ 3 ช่องอ่านอย่างเดียวให้เรียงแถวเดียว อ่านไวกว่าฟอร์มยาว ── */
+.identity-strip {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr 0.9fr;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+.identity-cell { background: var(--soft-bg); padding: 10px 12px; }
+.identity-cell__label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 3px;
+}
+.identity-cell__value { font-size: 0.9rem; font-weight: 600; color: var(--navy); }
+
+.field-group { margin-bottom: 16px; }
+.field-group:last-child { margin-bottom: 0; }
+.field-label { display: block; margin-bottom: 8px; font-size: 0.9rem; font-weight: 600; color: var(--navy); }
 .field-label__note { font-weight: 500; font-size: 0.78rem; color: var(--ink-soft); }
+.field-note { margin-top: 6px; font-size: 0.78rem; color: var(--ink-soft); line-height: 1.5; }
 .field-input {
     width: 100%;
     padding: 11px 12px;
@@ -69,8 +131,73 @@ body { font-family: 'Kanit', sans-serif; background: #fff; color: var(--ink); mi
 }
 .field-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(44, 147, 168, 0.12); }
 .field-input[readonly] { background: var(--soft-bg); color: var(--ink-soft); }
+.field-input--error { border-color: var(--danger); background: var(--danger-wash); }
+.field-input--error:focus { box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.12); }
+.field-note--error { color: var(--danger); font-weight: 600; }
+.btn-confirm:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* ── เงื่อนไขการจองแบบ 2 แถวเทียบกัน อ่านไวกว่า bullet ยาว ── */
+.rule-table {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+.rule-cell { background: var(--soft-bg); padding: 12px 14px; }
+.rule-cell__when {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 6px;
+}
+.rule-cell__body { font-size: 0.82rem; color: var(--ink); line-height: 1.55; }
+
+.status-strip {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 14px;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius-sm);
+    background: var(--primary-wash);
+    font-size: 0.85rem;
+    color: var(--navy);
+    margin-bottom: 16px;
+}
+.status-strip__icon { flex-shrink: 0; color: var(--primary); margin-top: 1px; }
+
+.note-block {
+    display: flex;
+    gap: 10px;
+    padding: 11px 14px;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-sm);
+    background: var(--soft-bg);
+    margin-top: 12px;
+}
+.note-block__label {
+    flex-shrink: 0;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding-top: 1px;
+}
+.note-block__body { font-size: 0.8rem; color: var(--ink-soft); line-height: 1.55; }
+.note-block__body li { margin-left: 16px; }
+.note-block__body li + li { margin-top: 4px; }
 
 .radio-row { display: flex; gap: 14px; }
 .radio-option { display: flex; gap: 8px; align-items: center; font-size: 0.92rem; }
@@ -94,7 +221,7 @@ body { font-family: 'Kanit', sans-serif; background: #fff; color: var(--ink); mi
 .option-card:hover { border-color: var(--primary); }
 .option-card:has(input:checked) {
     border-color: var(--primary);
-    background: rgba(44, 147, 168, 0.06);
+    background: var(--primary-wash);
 }
 .option-card input[type="radio"] {
     margin-top: 3px;
@@ -121,8 +248,8 @@ body { font-family: 'Kanit', sans-serif; background: #fff; color: var(--ink); mi
     font-family: var(--mono);
     font-size: 0.7rem;
     font-weight: 600;
-    color: #c98a2e;
-    background: rgba(201, 138, 46, 0.1);
+    color: var(--amber);
+    background: var(--amber-wash);
     border-radius: var(--radius-sm);
     padding: 1px 7px;
     margin-left: 4px;
@@ -130,15 +257,21 @@ body { font-family: 'Kanit', sans-serif; background: #fff; color: var(--ink); mi
 
 .summary-box {
     background: var(--soft-bg);
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     border: 1px solid var(--line);
     padding: 14px 16px;
-    margin-bottom: 18px;
 }
 
-.summary-line { line-height: 1.8; font-weight: 500; font-size: 0.92rem; }
-.summary-line strong { font-family: var(--mono); color: var(--navy); }
-.summary-small { color: var(--ink-soft); font-size: 0.82rem; margin-top: 4px; }
+.summary-line {
+    display: flex;
+    justify-content: space-between;
+    line-height: 1.9;
+    font-weight: 500;
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+}
+.summary-line strong { font-family: var(--mono); color: var(--navy); font-weight: 600; }
+.summary-small { color: var(--ink-faint); font-size: 0.76rem; margin-top: 8px; line-height: 1.5; }
 
 .total-row {
     margin-top: 14px;
@@ -153,7 +286,7 @@ body { font-family: 'Kanit', sans-serif; background: #fff; color: var(--ink); mi
 }
 .total-row span:last-child { font-family: var(--mono); }
 
-.bottom-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 20px; }
+.bottom-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 4px; }
 .btn-cancel-main, .btn-confirm {
     border: 1px solid transparent;
     border-radius: var(--radius-sm);
@@ -168,10 +301,23 @@ body { font-family: 'Kanit', sans-serif; background: #fff; color: var(--ink); mi
 .btn-cancel-main:hover { background: var(--soft-bg); }
 .btn-confirm { background: var(--primary); color: #fff; }
 .btn-confirm:hover { background: var(--primary-dark); }
+.btn-full-round {
+    width: 100%;
+    margin-bottom: 14px;
+    background: #fff;
+    border-color: var(--line);
+    color: var(--primary-dark);
+    padding: 10px 0;
+}
+.btn-full-round:hover { background: var(--primary-wash); border-color: var(--primary); }
 
 @media (max-width: 700px) {
     .grid-two { grid-template-columns: 1fr; }
     .bottom-buttons { grid-template-columns: 1fr; }
+    .identity-strip { grid-template-columns: 1fr; }
+    .rule-table { grid-template-columns: 1fr; }
+    .form-section { padding: 18px 18px; }
+    .form-section__hint { margin-left: 0; width: 100%; }
 }
 
 /* ── เลือกรอบการจอง ── */
@@ -192,7 +338,7 @@ body { font-family: 'Kanit', sans-serif; background: #fff; color: var(--ink); mi
 }
 .round-option:has(input:checked) {
     border-color: var(--primary);
-    background: rgba(44, 147, 168, 0.06);
+    background: var(--primary-wash);
 }
 .round-option input[type="radio"] {
     margin-top: 4px;

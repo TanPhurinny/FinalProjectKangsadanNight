@@ -30,27 +30,12 @@
   </header>
 
   <main class="main-content">
+    <% if (error) { %>
+      <div class="top-alert"><div class="alert-box"><%= error %></div></div>
+    <% } %>
+
     <form class="form-card" method="POST" action="/booking-stall" id="bookingForm">
-      <% if (error) { %>
-        <div class="alert-box"><%= error %></div>
-      <% } %>
-
       <input type="hidden" name="zone" value="<%= zone || '' %>" />
-
-      <div class="field-group">
-        <label class="field-label">ชื่อ - นามสกุล</label>
-        <input type="text" class="field-input" value="<%= user ? user.name : '' %>" readonly />
-      </div>
-
-      <div class="field-group">
-        <label class="field-label">เบอร์โทรศัพท์</label>
-        <input type="text" class="field-input" value="<%= user ? (user.phoneNumber || '-') : '' %>" readonly />
-      </div>
-
-      <div class="field-group">
-        <label class="field-label">โซนที่เลือก</label>
-        <input type="text" class="field-input" value="<%= zone ? ('โซน ' + zone) : 'ไม่ระบุ' %>" readonly />
-      </div>
 
       <%
       const toDateInputValue = (d) => {
@@ -61,122 +46,202 @@
         return `${year}-${month}-${day}`;
       };
       const formatThaiDate = (d) => new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' });
-      %>
-
-      <%
       const phaseHint = (phaseInfo) => {
         if (!phaseInfo) return '';
         if (phaseInfo.phase === 'not_open_yet') return 'รอบนี้ยังไม่เปิดให้จอง ต้องรอถึงวันจันทร์ก่อนรอบจะเปิดก่อนนะ';
-        if (phaseInfo.phase === 1) return 'วันนี้จองเต็ม 14 วันได้เลย หรือถ้าอยากได้ทำเลพิเศษ (ล็อคเต็ง) ก็ขอได้เฉพาะช่วงนี้เท่านั้น';
-        if (phaseInfo.phase === 2) return 'วันนี้จองได้ตั้งแต่ 3 วันขึ้นไป (ต้องเป็นวันติดกัน) ช่วงนี้ยังขอล็อคเต็งไม่ได้';
-        return 'จองกี่วันก็ได้ (ต้องเป็นวันติดกัน) แต่จองล่วงหน้าได้แค่ 1 วันก่อนวันขายเท่านั้น ช่วงนี้ขอล็อคเต็งไม่ได้แล้ว';
+        if (phaseInfo.phase === 1) return 'วันนี้จองได้เฉพาะเต็มรอบ 14 วันเท่านั้น (ทั้งล็อคเต็งและล็อคปกติ) ต้องชำระเงินให้เสร็จก่อนวันพุธ';
+        return 'วันนี้จองได้ตั้งแต่ 3 วันขึ้นไป (ต้องเป็นวันติดกัน) หรือจองทีละวันก็ได้ จองล่วงหน้าได้แค่ 1 วันก่อนวันขาย ช่วงนี้ขอล็อคเต็งไม่ได้ ต้องชำระเงินก่อนวันที่จะเริ่มขาย';
       };
       %>
 
-      <% if (bookingRoundInfo) { %>
-      <div class="field-group">
-        <label class="field-label">เลือกรอบการจอง (จองได้เฉพาะรอบปัจจุบันหรือรอบถัดไปเท่านั้น)</label>
-        <div class="round-picker">
-          <label class="round-option <%= currentPhase && currentPhase.phase === 'not_open_yet' ? 'round-option--disabled' : '' %>">
-            <input type="radio" name="roundChoice" value="current"
-              data-cycle-start="<%= toDateInputValue(bookingRoundInfo.cycleStart) %>"
-              data-cycle-end="<%= toDateInputValue(bookingRoundInfo.cycleEnd) %>"
-              data-phase="<%= currentPhase ? currentPhase.phase : 'not_open_yet' %>"
-              data-allow-corner="<%= currentPhase && currentPhase.allowCornerZone ? '1' : '0' %>"
-              data-min-days="<%= currentPhase && currentPhase.minDays ? currentPhase.minDays : 1 %>"
-              data-max-advance-start="<%= currentPhase && currentPhase.maxAdvanceStart ? toDateInputValue(currentPhase.maxAdvanceStart) : '' %>"
-              data-hint="<%= phaseHint(currentPhase) %>"
-              <%= (currentPhase && currentPhase.phase === 'not_open_yet') ? 'disabled' : 'checked required' %>>
-            <div class="round-option__body">
-              <strong>รอบปัจจุบัน — รอบที่ <%= bookingRoundInfo.roundNumber %></strong>
-              <span><%= formatThaiDate(bookingRoundInfo.cycleStart) %> ถึง <%= formatThaiDate(bookingRoundInfo.cycleEnd) %></span>
-              <small><%= phaseHint(currentPhase) %></small>
-            </div>
-          </label>
-          <% if (nextRoundInfo) { %>
-          <label class="round-option <%= nextPhase && nextPhase.phase === 'not_open_yet' ? 'round-option--disabled' : '' %>">
-            <input type="radio" name="roundChoice" value="next"
-              data-cycle-start="<%= toDateInputValue(nextRoundInfo.cycleStart) %>"
-              data-cycle-end="<%= toDateInputValue(nextRoundInfo.cycleEnd) %>"
-              data-phase="<%= nextPhase ? nextPhase.phase : 'not_open_yet' %>"
-              data-allow-corner="<%= nextPhase && nextPhase.allowCornerZone ? '1' : '0' %>"
-              data-min-days="<%= nextPhase && nextPhase.minDays ? nextPhase.minDays : 1 %>"
-              data-max-advance-start="<%= nextPhase && nextPhase.maxAdvanceStart ? toDateInputValue(nextPhase.maxAdvanceStart) : '' %>"
-              data-hint="<%= phaseHint(nextPhase) %>"
-              <%= (!currentPhase || currentPhase.phase === 'not_open_yet') && nextPhase && nextPhase.phase !== 'not_open_yet' ? 'checked' : '' %>
-              <%= (nextPhase && nextPhase.phase === 'not_open_yet') ? 'disabled' : 'required' %>>
-            <div class="round-option__body">
-              <strong>รอบถัดไป — รอบที่ <%= nextRoundInfo.roundNumber %></strong>
-              <span><%= formatThaiDate(nextRoundInfo.cycleStart) %> ถึง <%= formatThaiDate(nextRoundInfo.cycleEnd) %></span>
-              <small><%= phaseHint(nextPhase) %></small>
-            </div>
-          </label>
-          <% } %>
+      <!-- 01 — ผู้จอง -->
+      <section class="form-section">
+        <div class="form-section__head">
+          <span class="form-section__num">01</span>
+          <span class="form-section__title">ผู้จอง</span>
         </div>
-      </div>
-      <% } %>
+        <div class="identity-strip">
+          <div class="identity-cell">
+            <span class="identity-cell__label">ชื่อ - นามสกุล</span>
+            <span class="identity-cell__value"><%= user ? user.name : '-' %></span>
+          </div>
+          <div class="identity-cell">
+            <span class="identity-cell__label">เบอร์โทรศัพท์</span>
+            <span class="identity-cell__value"><%= user ? (user.phoneNumber || '-') : '-' %></span>
+          </div>
+          <div class="identity-cell">
+            <span class="identity-cell__label">โซนที่เลือก</span>
+            <span class="identity-cell__value"><%= zone ? ('โซน ' + zone) : 'ไม่ระบุ' %></span>
+          </div>
+        </div>
+      </section>
 
-      <div class="grid-two">
+      <!-- 02 — รอบและวันที่ -->
+      <section class="form-section">
+        <div class="form-section__head">
+          <span class="form-section__num">02</span>
+          <span class="form-section__title">รอบการจอง &amp; วันที่ขาย</span>
+        </div>
+
+        <div class="rule-table">
+          <div class="rule-cell">
+            <div class="rule-cell__when">จันทร์ - อังคาร</div>
+            <div class="rule-cell__body">จองเต็มรอบ 14 วันเท่านั้น (ล็อคเต็ง + ล็อคปกติ) ชำระก่อนวันพุธ</div>
+          </div>
+          <div class="rule-cell">
+            <div class="rule-cell__when">พุธ - จบรอบ</div>
+            <div class="rule-cell__body">ขั้นต่ำ 3 วันติดกัน หรือจองทีละวัน ล่วงหน้าได้ 1 วัน ห้ามล็อคเต็ง ชำระก่อนวันเริ่มขาย</div>
+          </div>
+        </div>
+
+        <% if (bookingRoundInfo) { %>
         <div class="field-group">
-          <label class="field-label">วันที่เริ่มขาย</label>
-          <input type="date" class="field-input" id="dateStart" name="dateStart" required />
+          <label class="field-label">เลือกรอบการจอง <span class="field-label__note">(รอบปัจจุบันหรือรอบถัดไปเท่านั้น)</span></label>
+          <div class="round-picker">
+            <label class="round-option <%= currentPhase && currentPhase.phase === 'not_open_yet' ? 'round-option--disabled' : '' %>">
+              <input type="radio" name="roundChoice" value="current"
+                data-cycle-start="<%= toDateInputValue(bookingRoundInfo.cycleStart) %>"
+                data-cycle-end="<%= toDateInputValue(bookingRoundInfo.cycleEnd) %>"
+                data-phase="<%= currentPhase ? currentPhase.phase : 'not_open_yet' %>"
+                data-allow-corner="<%= currentPhase && currentPhase.allowCornerZone ? '1' : '0' %>"
+                data-min-days="<%= currentPhase && currentPhase.minDays ? currentPhase.minDays : 1 %>"
+                data-allow-single-day="<%= currentPhase && currentPhase.allowSingleDay ? '1' : '0' %>"
+                data-max-advance-start="<%= currentPhase && currentPhase.maxAdvanceStart ? toDateInputValue(currentPhase.maxAdvanceStart) : '' %>"
+                data-hint="<%= phaseHint(currentPhase) %>"
+                <%= (currentPhase && currentPhase.phase === 'not_open_yet') ? 'disabled' : 'checked required' %>>
+              <div class="round-option__body">
+                <strong>รอบปัจจุบัน — รอบที่ <%= bookingRoundInfo.roundNumber %></strong>
+                <span><%= formatThaiDate(bookingRoundInfo.cycleStart) %> ถึง <%= formatThaiDate(bookingRoundInfo.cycleEnd) %></span>
+                <small><%= phaseHint(currentPhase) %></small>
+              </div>
+            </label>
+            <% if (nextRoundInfo) { %>
+            <label class="round-option <%= nextPhase && nextPhase.phase === 'not_open_yet' ? 'round-option--disabled' : '' %>">
+              <input type="radio" name="roundChoice" value="next"
+                data-cycle-start="<%= toDateInputValue(nextRoundInfo.cycleStart) %>"
+                data-cycle-end="<%= toDateInputValue(nextRoundInfo.cycleEnd) %>"
+                data-phase="<%= nextPhase ? nextPhase.phase : 'not_open_yet' %>"
+                data-allow-corner="<%= nextPhase && nextPhase.allowCornerZone ? '1' : '0' %>"
+                data-min-days="<%= nextPhase && nextPhase.minDays ? nextPhase.minDays : 1 %>"
+                data-allow-single-day="<%= nextPhase && nextPhase.allowSingleDay ? '1' : '0' %>"
+                data-max-advance-start="<%= nextPhase && nextPhase.maxAdvanceStart ? toDateInputValue(nextPhase.maxAdvanceStart) : '' %>"
+                data-hint="<%= phaseHint(nextPhase) %>"
+                <%= (!currentPhase || currentPhase.phase === 'not_open_yet') && nextPhase && nextPhase.phase !== 'not_open_yet' ? 'checked' : '' %>
+                <%= (nextPhase && nextPhase.phase === 'not_open_yet') ? 'disabled' : 'required' %>>
+              <div class="round-option__body">
+                <strong>รอบถัดไป — รอบที่ <%= nextRoundInfo.roundNumber %></strong>
+                <span><%= formatThaiDate(nextRoundInfo.cycleStart) %> ถึง <%= formatThaiDate(nextRoundInfo.cycleEnd) %></span>
+                <small><%= phaseHint(nextPhase) %></small>
+              </div>
+            </label>
+            <% } %>
+          </div>
         </div>
+        <% } %>
+
+        <button type="button" class="btn-cancel-main btn-full-round" id="fullRoundBtn" style="display:none;">เลือกเต็มรอบ 14 วัน</button>
+
+        <div class="grid-two">
+          <div class="field-group">
+            <label class="field-label">วันที่เริ่มขาย</label>
+            <input type="date" class="field-input" id="dateStart" name="dateStart" required />
+          </div>
+          <div class="field-group">
+            <label class="field-label">วันที่สิ้นสุดขาย</label>
+            <input type="date" class="field-input" id="dateEnd" name="dateEnd" required />
+          </div>
+        </div>
+
+        <div class="status-strip" id="phaseHintBox">
+          เลือกรอบการจองด้านบนเพื่อดูเงื่อนไขวันที่
+        </div>
+
+        <div class="note-block">
+          <span class="note-block__label">หมายเหตุ</span>
+          <ol class="note-block__body">
+            <li>ท่านจะไม่ได้ย้ายล็อคตลอดช่วงที่ท่านจอง</li>
+            <li>หากท่านจองคนละรอบ ท่านมีโอกาสจะได้ย้ายล็อค</li>
+            <li>ตำแหน่งล็อคจะถูกจัดสรรโดยระบบ เพื่อให้การจัดการพื้นที่เป็นไปอย่างมีประสิทธิภาพสูงสุด</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- 03 — จำนวนล็อกและรายละเอียดร้าน -->
+      <section class="form-section">
+        <div class="form-section__head">
+          <span class="form-section__num">03</span>
+          <span class="form-section__title">ล็อกแผงและรายละเอียดร้าน</span>
+        </div>
+
+        <%
+          var maxStallsVal = Number(pricing.maxStallsPerSeller || 2);
+          var existingLockVal = Number(pricing.existingLockCount || 0);
+          var remainingLockVal = Math.max(0, maxStallsVal - existingLockVal);
+        %>
         <div class="field-group">
-          <label class="field-label">วันที่สิ้นสุดขาย</label>
-          <input type="date" class="field-input" id="dateEnd" name="dateEnd" required />
+          <label class="field-label">จำนวนล็อกแผง</label>
+          <input type="number" class="field-input" id="stallCount" name="stallCount" min="1" value="1" required
+            data-max-stalls="<%= maxStallsVal %>"
+            data-existing-locks="<%= existingLockVal %>"
+            data-is-fashion="<%= pricing.isFashionSeller ? '1' : '0' %>"
+            <%= pricing.isFashionSeller ? '' : `max="${remainingLockVal || maxStallsVal}"` %> />
+          <p class="field-note" id="stallCountNote">
+            <% if (pricing.isFashionSeller) { %>
+              ร้านแฟชั่นจองเกิน <%= maxStallsVal %> ล็อคได้ แต่ต้องผ่านดุลยพินิจแอดมินพิจารณาอนุมัติ
+            <% } else if (existingLockVal > 0) { %>
+              คุณมีล็อคอยู่แล้ว <%= existingLockVal %> ล็อคในรอบนี้ — จองเพิ่มได้อีกไม่เกิน <%= remainingLockVal %> ล็อค (รวมทุกโซน ไม่เกิน <%= maxStallsVal %> ล็อค/คน/รอบ)
+            <% } else { %>
+              1 ร้านค้าจองได้ไม่เกิน <%= maxStallsVal %> ล็อค รวมทุกโซนในรอบเดียวกัน (ติดกันหรือไม่ติดกันก็ได้) — ถ้าต้องการล็อคติดกัน ต้องจองมาในคำขอเดียวกัน
+            <% } %>
+          </p>
         </div>
-      </div>
 
-      <button type="button" class="btn-cancel-main" id="fullRoundBtn" style="display:none; margin-bottom: 16px;">เลือกเต็มรอบ 14 วัน</button>
-
-      <div class="alert-box info-box" id="phaseHintBox">
-        เลือกรอบการจองด้านบนเพื่อดูเงื่อนไขวันที่
-      </div>
-
-      <div class="alert-box info-box">
-        <strong>หมายเหตุ</strong>
-        <ol style="margin: 6px 0 0; padding-left: 20px;">
-          <li>ท่านจะไม่ได้ย้ายล็อคตลอดช่วงที่ท่านจอง</li>
-          <li>หากท่านจองคนละรอบ ท่านมีโอกาสจะได้ย้ายล็อค</li>
-          <li>ตำแหน่งล็อคจะถูกจัดสรรโดยระบบ เพื่อให้การจัดการพื้นที่เป็นไปอย่างมีประสิทธิภาพสูงสุด</li>
-        </ol>
-      </div>
-
-      <div class="field-group">
-        <label class="field-label">จำนวนล็อกแผง</label>
-        <input type="number" class="field-input" id="stallCount" name="stallCount" min="1" value="1" required />
-      </div>
-
-      <div class="field-group">
-        <label class="field-label">รายละเอียดร้านค้า</label>
-        <textarea class="field-input" id="storeDetail" name="storeDetail" rows="4" placeholder="เพิ่มรายละเอียดร้านค้า"><%= defaultStoreDetail || '' %></textarea>
-      </div>
-
-      <div class="grid-two">
         <div class="field-group">
-          <label class="field-label">เครื่องใช้ไฟฟ้าเล็ก (เครื่องละ <%= pricing.smallAppliancePrice %> บาท/วัน)</label>
-          <input type="number" class="field-input" id="smallApplianceCount" name="smallApplianceCount" min="0" value="0" />
+          <label class="field-label">รายละเอียดร้านค้า</label>
+          <textarea class="field-input" id="storeDetail" name="storeDetail" rows="4" placeholder="เพิ่มรายละเอียดร้านค้า"><%= defaultStoreDetail || '' %></textarea>
         </div>
-        <div class="field-group">
-          <label class="field-label">เครื่องใช้ไฟฟ้าใหญ่ (เครื่องละ <%= pricing.largeAppliancePrice %> บาท/วัน)</label>
-          <input type="number" class="field-input" id="largeApplianceCount" name="largeApplianceCount" min="0" value="0" />
+      </section>
+
+      <!-- 04 — เครื่องใช้ไฟฟ้า -->
+      <section class="form-section">
+        <div class="form-section__head">
+          <span class="form-section__num">04</span>
+          <span class="form-section__title">เครื่องใช้ไฟฟ้า</span>
         </div>
-      </div>
 
-      <div class="alert-box info-box">
-        <strong>เกณฑ์เครื่องใช้ไฟฟ้า</strong>
-        <ol style="margin: 6px 0 0; padding-left: 20px;">
-          <li>เครื่องเล็ก = ใช้ไฟฟ้าไม่เกิน 1,200 วัตต์ และขนาดรวม (กว้าง×ยาว×สูง) ไม่เกิน 250,000 ลบ.ซม. นอกเหนือจากนี้นับเป็นเครื่องใหญ่</li>
-          <li>ราคาข้างต้นใช้สำหรับกรณีแจ้งล่วงหน้าในระบบเท่านั้น หากนำเครื่องใช้ไฟฟ้ามาโดยไม่แจ้งล่วงหน้าและเก็บหน้างาน จะคิดราคาสูงกว่า: เครื่องเล็ก 40 บาท / เครื่องใหญ่ 60 บาท ต่อเครื่อง/วัน</li>
-        </ol>
-      </div>
+        <div class="grid-two">
+          <div class="field-group">
+            <label class="field-label">เครื่องเล็ก <span class="field-label__note">(<%= pricing.smallAppliancePrice %> บาท/เครื่อง/วัน)</span></label>
+            <input type="number" class="field-input" id="smallApplianceCount" name="smallApplianceCount" min="0" value="0" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">เครื่องใหญ่ <span class="field-label__note">(<%= pricing.largeAppliancePrice %> บาท/เครื่อง/วัน)</span></label>
+            <input type="number" class="field-input" id="largeApplianceCount" name="largeApplianceCount" min="0" value="0" />
+          </div>
+        </div>
 
+        <div class="note-block">
+          <span class="note-block__label">เกณฑ์</span>
+          <ol class="note-block__body">
+            <li>เครื่องเล็ก = ใช้ไฟฟ้าไม่เกิน 1,200 วัตต์ และขนาดรวม (กว้าง×ยาว×สูง) ไม่เกิน 250,000 ลบ.ซม. นอกเหนือจากนี้นับเป็นเครื่องใหญ่</li>
+            <li>ราคาข้างต้นใช้สำหรับกรณีแจ้งล่วงหน้าในระบบเท่านั้น หากนำมาโดยไม่แจ้งและเก็บหน้างาน คิดสูงกว่า: เครื่องเล็ก 40 บาท / เครื่องใหญ่ 60 บาท ต่อเครื่อง/วัน</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- 05 — แผงพิเศษ -->
       <%
         var currentCornerValue = typeof cornerZoneValue !== 'undefined' ? Number(cornerZoneValue) : 0;
         var cornerOptionsList = typeof pricing.cornerZoneOptions !== 'undefined' ? pricing.cornerZoneOptions : [];
       %>
-      <div class="field-group" id="cornerZoneSection">
-        <label class="field-label">สนใจแผงหัวมุม/แผงพิเศษ (ล็อคเต็ง) ไหม? <span class="field-label__note">(เลือกได้เฉพาะช่วงจันทร์-อังคารก่อนเปิดรอบเท่านั้น — แจ้งความสนใจเฉยๆ ยังไม่คิดเงิน จะคิดเพิ่มก็ต่อเมื่อแอดมินจัดแผงพิเศษให้จริงเท่านั้น)</span></label>
+      <section class="form-section" id="cornerZoneSection">
+        <div class="form-section__head">
+          <span class="form-section__num">05</span>
+          <span class="form-section__title">แผงหัวมุม / แผงพิเศษ (ล็อคเต็ง)</span>
+          <span class="form-section__hint">เฉพาะจันทร์-อังคารก่อนเปิดรอบ</span>
+        </div>
+        <p class="field-note" style="margin-top: -8px; margin-bottom: 14px;">แจ้งความสนใจเฉยๆ ยังไม่คิดเงิน จะคิดเพิ่มก็ต่อเมื่อแอดมินจัดแผงพิเศษให้จริงเท่านั้น</p>
+
         <div class="option-list">
           <label class="option-card">
             <input type="radio" name="cornerZone" value="0" <%= currentCornerValue === 0 ? 'checked' : '' %> />
@@ -195,26 +260,34 @@
             </label>
           <% }) %>
         </div>
-      </div>
+      </section>
 
-      <div class="summary-box">
-        <div class="summary-line">ค่าเช่าแผงต่อวัน: <strong id="dailyPriceText"><%= Number(zonePrice || 0).toLocaleString('th-TH') %> บาท/ล็อก/วัน</strong></div>
-        <div class="summary-line">จำนวนวันเช่า: <strong id="rentalDaysText">1 วัน</strong></div>
-        <div class="summary-line">รวมค่าเช่าแผง: <strong id="rentTotalText">0 บาท</strong></div>
-        <div class="summary-line">รวมค่าไฟสว่าง: <strong id="lightTotalText">0 บาท</strong></div>
-        <div class="summary-line">รวมค่าเครื่องใช้ไฟฟ้า: <strong id="applianceTotalText">0 บาท</strong></div>
-        <div class="summary-small">ระบบจะคำนวณอีกครั้งฝั่งเซิร์ฟเวอร์ก่อนบันทึกข้อมูล (ค่าแผงหัวมุม/แผงพิเศษยังไม่รวมในยอดนี้ จะคิดเพิ่มภายหลังเฉพาะกรณีแอดมินจัดแผงพิเศษให้)</div>
-      </div>
+      <!-- 06 — สรุปยอดและยืนยัน -->
+      <section class="form-section">
+        <div class="form-section__head">
+          <span class="form-section__num">06</span>
+          <span class="form-section__title">สรุปยอดและยืนยัน</span>
+        </div>
 
-      <div class="total-row">
-        <span>รวมทั้งหมด</span>
-        <span id="grandTotalText">0 บาท</span>
-      </div>
+        <div class="summary-box">
+          <div class="summary-line"><span>ค่าเช่าแผงต่อวัน</span><strong id="dailyPriceText"><%= Number(zonePrice || 0).toLocaleString('th-TH') %> บาท/ล็อก/วัน</strong></div>
+          <div class="summary-line"><span>จำนวนวันเช่า</span><strong id="rentalDaysText">1 วัน</strong></div>
+          <div class="summary-line"><span>รวมค่าเช่าแผง</span><strong id="rentTotalText">0 บาท</strong></div>
+          <div class="summary-line"><span>รวมค่าไฟสว่าง</span><strong id="lightTotalText">0 บาท</strong></div>
+          <div class="summary-line"><span>รวมค่าเครื่องใช้ไฟฟ้า</span><strong id="applianceTotalText">0 บาท</strong></div>
+          <div class="summary-small">ระบบจะคำนวณอีกครั้งฝั่งเซิร์ฟเวอร์ก่อนบันทึกข้อมูล (ค่าแผงหัวมุม/แผงพิเศษยังไม่รวมในยอดนี้ จะคิดเพิ่มภายหลังเฉพาะกรณีแอดมินจัดแผงพิเศษให้)</div>
+        </div>
 
-      <div class="bottom-buttons">
-        <button type="button" class="btn-cancel-main" onclick="history.back()">ยกเลิก</button>
-        <button type="submit" class="btn-confirm">ยืนยันการจอง</button>
-      </div>
+        <div class="total-row">
+          <span>รวมทั้งหมด</span>
+          <span id="grandTotalText">0 บาท</span>
+        </div>
+
+        <div class="bottom-buttons">
+          <button type="button" class="btn-cancel-main" onclick="history.back()">ยกเลิก</button>
+          <button type="submit" class="btn-confirm">ยืนยันการจอง</button>
+        </div>
+      </section>
     </form>
   </main>
 
@@ -223,7 +296,9 @@
       zonePrice: <%= Number(zonePrice || 0) %>,
       lightUnitPrice: <%= Number(pricing.lightUnitPrice || 15) %>,
       smallAppliancePrice: <%= Number(pricing.smallAppliancePrice || 20) %>,
-      largeAppliancePrice: <%= Number(pricing.largeAppliancePrice || 40) %>
+      largeAppliancePrice: <%= Number(pricing.largeAppliancePrice || 40) %>,
+      maxStallsPerSeller: <%= Number(pricing.maxStallsPerSeller || 2) %>,
+      isFashionSeller: <%= pricing.isFashionSeller ? 'true' : 'false' %>
     };
   </script>
   <script src="/js/common/dialogs.js"></script>

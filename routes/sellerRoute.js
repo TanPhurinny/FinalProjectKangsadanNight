@@ -6,6 +6,7 @@ const { createImageStorage, deleteImage } = require('../utils/imageStorage');
 const { getAnnouncementsForUser } = require('../controllers/announcementController');
 const { getMarketMapPage } = require('../controllers/marketController');
 const { repairReportSchema, bookingStallInputSchema, sellerApplicationSchema, shopProfileSchema, THAI_BANK_NAMES } = require('../utils/validationSchemas');
+const { PRODUCT_SUBTYPE_GROUPS } = require('../utils/productSubtypes');
 const { buildPromptPayQrDataUrl, PROMPTPAY_ID } = require('../utils/promptpayQr');
 const { verifySlip } = require('../utils/slipVerification');
 const {
@@ -13,7 +14,9 @@ const {
     addDays,
     getBookingRoundMetaForDate,
     getBookingRoundStatusDetails,
-    getBookingPhaseForRound
+    getBookingPhaseForRound,
+    getPaymentDeadlineForRound,
+    BOOKING_ROUND_LENGTH_DAYS
 } = require('../utils/bookingRound');
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
 const { buildReceiptData } = require('../controllers/receiptController');
@@ -87,6 +90,9 @@ const uploadShopProfile = multer({
 const LIGHT_UNIT_PRICE = 15;
 const SMALL_APPLIANCE_PRICE = 20;
 const LARGE_APPLIANCE_PRICE = 40;
+// จำกัดจำนวนล็อคต่อ user ต่อรอบ (รวมทุกโซน) กันคนเดียวกวาดหลายล็อคแล้วปล่อยเช่าต่อ
+// เพื่อเปิดที่ให้ร้านใหม่ — FASHION ยกเว้นให้ขึ้นกับดุลยพินิจแอดมิน (ดูจุดใช้งานใน POST /booking-stall)
+const MAX_STALLS_PER_SELLER = 2;
 // ตัวเลือกค่าธรรมเนียมแผงหัวมุม/แผงพิเศษ เรียงจากทำเลธรรมดาไปทำเลเด่นที่สุด
 const CORNER_ZONE_OPTIONS = [
     { value: 20, label: 'ทำเลริมทางเดิน', desc: 'มองเห็นง่ายกว่าแผงทั่วไปเล็กน้อย' },
@@ -273,7 +279,7 @@ function buildWednesdayReminderMessage() {
 }
 
 // แจ้งเตือนกลุ่มจองครบ 14 วัน/ล็อกเต้ง (ช่วงที่ 1 จันทร์-อังคาร) ล่วงหน้าในวันพฤหัสบดี เวลา 15:00
-// (พฤหัสบดี = วันสุดท้ายของรอบก่อนหน้า ตรงกับ phase3Start ใน getBookingPhaseForRound)
+// (พฤหัสบดีอยู่ในช่วงที่ 2 ของ getBookingPhaseForRound แต่ยังคงใช้เป็นวันแจ้งเตือนตามเดิม)
 function isThursdayReminderDay(dateValue = new Date()) {
     const parsed = new Date(dateValue);
     return !Number.isNaN(parsed.getTime()) && parsed.getDay() === 4;
@@ -984,6 +990,7 @@ router.get('/shop-application', isAuthenticated, async (req, res) => {
         user: req.user,
         latestApplication,
         bankNames: THAI_BANK_NAMES,
+        productSubtypeGroups: PRODUCT_SUBTYPE_GROUPS,
         error: req.query.error || null,
         success: req.query.success || null
     });
@@ -995,13 +1002,21 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
             where: { userId: req.user.id },
             orderBy: { createdAt: 'desc' }
         });
+        // checkbox หลายตัวชื่อเดียวกัน (productSubtype) req.body ส่งมาเป็น array/string/undefined
+        // แปลงเป็น comma string ก่อนส่งกลับให้ view เพื่อ pre-check กล่องเดิมไว้ (ดู sellerApplicationSchema)
+        const rawSubtype = req.body.productSubtype;
+        const formData = {
+            ...req.body,
+            productSubtype: Array.isArray(rawSubtype) ? rawSubtype.join(',') : (rawSubtype || '')
+        };
         return res.render('seller/shopApplication', {
             user: req.user,
             latestApplication,
             bankNames: THAI_BANK_NAMES,
+            productSubtypeGroups: PRODUCT_SUBTYPE_GROUPS,
             error: errorCode,
             success: null,
-            formData: req.body
+            formData
         });
     }
 
@@ -1030,17 +1045,14 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
             const {
                 shopName,
                 productType,
+                productSubtype,
+                productSubtypeOther,
                 productDetail,
                 sellerName,
-                idCardNumber,
                 bankName,
                 bankAccountNumber,
                 bankAccountName,
-                phoneNumber,
-                houseNumber,
-                subdistrict,
-                district,
-                province
+                phoneNumber
             } = parsed.data;
             const shopCoverImage = req.file ? req.file.url : null;
 
@@ -1049,17 +1061,14 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
                     userId: req.user.id,
                     shopName,
                     productType,
+                    productSubtype,
+                    productSubtypeOther,
                     productDetail,
                     sellerName,
-                    idCardNumber,
                     bankName,
                     bankAccountNumber,
                     bankAccountName,
                     phoneNumber,
-                    houseNumber,
-                    subdistrict,
-                    district,
-                    province,
                     shopCoverImage,
                     termsAcceptedAt: new Date(),
                     status: 'PENDING'
@@ -1261,6 +1270,15 @@ router.get("/booking-stall", isAuthenticated, isSellerOrApplicant, async (req, r
 
     const zonePrice = await getDailyPriceByZoneCode(zoneCode);
 
+    // นับล็อคที่มีอยู่แล้วในรอบนี้ (ทุกโซน สถานะไม่ใช่ REJECTED) ให้ผู้ขายเห็นก่อนกรอกจำนวนล็อกใหม่
+    const existingLockCount = await prisma.booking.count({
+        where: {
+            userId: req.user.id,
+            status: { not: 'REJECTED' },
+            rentalStartDate: { gte: bookingRoundInfo.cycleStart, lte: bookingRoundInfo.cycleEnd }
+        }
+    });
+
     if (!zonePrice) {
         return res.status(404).render('seller/booking_stall', {
             user: userRecord,
@@ -1298,6 +1316,9 @@ router.get("/booking-stall", isAuthenticated, isSellerOrApplicant, async (req, r
             lightUnitPrice: LIGHT_UNIT_PRICE,
             smallAppliancePrice: SMALL_APPLIANCE_PRICE,
             largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+            maxStallsPerSeller: MAX_STALLS_PER_SELLER,
+            isFashionSeller: zoneAccess.normalizeProductType(productType) === 'FASHION',
+            existingLockCount,
             cornerZoneOptions: CORNER_ZONE_OPTIONS
         }
     });
@@ -1464,6 +1485,29 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
 
         const rentalDays = getRentalDays(startDate, endDate);
 
+        // กันเลือกวันที่ผ่านมาแล้ว (เช่น เลือก dateStart เป็นเมื่อวานในรอบที่กำลังเปิดอยู่)
+        if (startDate < toStartOfDay(new Date())) {
+            return res.status(400).render('seller/booking_stall', {
+                user: userRecord,
+                zone: zoneCode,
+                zonePrice,
+                error: 'ไม่สามารถเลือกวันที่ที่ผ่านมาแล้วได้ กรุณาเลือกวันที่ปัจจุบันหรือวันในอนาคต',
+                defaultStoreDetail: storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || req.sellerApplication?.productDetail || '',
+                bookingRoundInfo,
+                bookingRoundSummary,
+                nextRoundInfo,
+                currentPhase,
+                nextPhase,
+                cornerZoneValue,
+                pricing: {
+                    lightUnitPrice: LIGHT_UNIT_PRICE,
+                    smallAppliancePrice: SMALL_APPLIANCE_PRICE,
+                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                    cornerZoneOptions: CORNER_ZONE_OPTIONS
+                }
+            });
+        }
+
         // จองข้ามรอบไม่ได้ (วันเริ่ม/สิ้นสุดต้องอยู่ในรอบ 14 วันเดียวกัน)
         const targetRoundMeta = getBookingRoundMetaForDate(startDate);
         const endRoundMeta = getBookingRoundMetaForDate(endDate);
@@ -1491,7 +1535,7 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
             return rejectBooking('ห้ามจองข้ามรอบ กรุณาเลือกวันที่เริ่มและสิ้นสุดให้อยู่ในรอบการจองเดียวกัน');
         }
 
-        // กติกา 3 ช่วงก่อนรอบจะเปิด (ดู utils/bookingRound.js: getBookingPhaseForRound)
+        // กติกา 2 ช่วงก่อนรอบจะเปิด (ดู utils/bookingRound.js: getBookingPhaseForRound)
         const phaseInfo = getBookingPhaseForRound(targetRoundMeta, new Date());
 
         if (phaseInfo.phase === 'not_open_yet') {
@@ -1502,20 +1546,46 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
             return rejectBooking('เลือกล็อคเต็ง (แผงพิเศษ) ได้เฉพาะช่วงจันทร์-อังคารก่อนเปิดรอบเท่านั้น');
         }
 
-        if (phaseInfo.phase === 1 && cornerZoneValue === 0) {
+        if (phaseInfo.phase === 1) {
+            // ช่วงจันทร์-อังคารก่อนเปิดรอบ: ทั้งล็อคเต็งและล็อคปกติที่ต้องการจองช่วงนี้
+            // ต้องจองเต็มรอบ 14 วันเท่านั้น บังคับน้อยกว่านี้ไม่ได้ (ใช้กับล็อคเต็งด้วย ไม่ใช่แค่ล็อคปกติ)
             const isFullRound = startDate.getTime() === toStartOfDay(targetRoundMeta.cycleStart).getTime()
                 && endDate.getTime() === toStartOfDay(targetRoundMeta.cycleEnd).getTime();
             if (!isFullRound) {
-                return rejectBooking('ช่วงจันทร์-อังคารก่อนเปิดรอบ จองได้เฉพาะเต็มรอบ 14 วัน หรือเลือกล็อคเต็งเท่านั้น');
+                return rejectBooking('ช่วงจันทร์-อังคารก่อนเปิดรอบ จองได้เฉพาะเต็มรอบ 14 วันเท่านั้น (รวมถึงล็อคเต็งด้วย)');
             }
         }
 
-        if (phaseInfo.minDays && rentalDays < phaseInfo.minDays) {
-            return rejectBooking(`ช่วงนี้ต้องจองต่อเนื่องอย่างน้อย ${phaseInfo.minDays} วัน`);
+        if (phaseInfo.minDays && rentalDays < phaseInfo.minDays && !(phaseInfo.allowSingleDay && rentalDays === 1)) {
+            return rejectBooking(`ช่วงนี้ต้องจองต่อเนื่องอย่างน้อย ${phaseInfo.minDays} วัน หรือจองทีละ 1 วัน`);
         }
 
         if (phaseInfo.maxAdvanceStart && startDate.getTime() > toStartOfDay(phaseInfo.maxAdvanceStart).getTime()) {
             return rejectBooking('จองล่วงหน้าได้แค่ 1 วันก่อนวันขายเท่านั้น');
+        }
+
+        // จำกัดจำนวนล็อคต่อ user (นับรวมทุกโซนในรอบเดียวกัน) กันคนเดียวกวาดหลายล็อคแล้วปล่อยเช่าต่อ
+        // เพื่อเปิดที่ให้ร้านใหม่ — FOOD บังคับไม่เกิน 2 เสมอ, FASHION ให้แอดมินใช้ดุลยพินิจ (ไม่บล็อกตรงนี้
+        // แต่ปล่อยให้แอดมินเห็น/ตัดสินใจตอนจัดล็อก), ประเภทอื่น (เช่น EVENT_BOOTH) ใช้ cap แบบ FOOD ไว้ก่อน
+        // เพื่อความปลอดภัย (อ้างอิง MAX_STALLS_PER_SELLER ด้านบนไฟล์)
+        const sellerProductType = zoneAccess.normalizeProductType(productType);
+        const isUncappedFashion = sellerProductType === 'FASHION';
+
+        if (stallCount > MAX_STALLS_PER_SELLER && !isUncappedFashion) {
+            return rejectBooking(`1 ร้านค้าจองได้ไม่เกิน ${MAX_STALLS_PER_SELLER} ล็อคต่อคำขอ (ติดกันหรือไม่ติดกันก็ได้) ยกเว้นร้านแฟชั่นที่ขึ้นอยู่กับดุลยพินิจแอดมิน`);
+        }
+
+        if (!isUncappedFashion) {
+            const existingLockCount = await prisma.booking.count({
+                where: {
+                    userId: req.user.id,
+                    status: { not: 'REJECTED' },
+                    rentalStartDate: { gte: targetRoundMeta.cycleStart, lte: targetRoundMeta.cycleEnd }
+                }
+            });
+            if (existingLockCount + stallCount > MAX_STALLS_PER_SELLER) {
+                return rejectBooking(`คุณมีล็อคอยู่แล้ว ${existingLockCount} ล็อคในรอบนี้ จองเพิ่มได้อีกไม่เกิน ${Math.max(0, MAX_STALLS_PER_SELLER - existingLockCount)} ล็อคเท่านั้น (รวมทุกโซน ไม่เกิน ${MAX_STALLS_PER_SELLER} ล็อค/คน/รอบ)`);
+            }
         }
 
         const rentTotal = zonePrice * stallCount * rentalDays;
@@ -1957,6 +2027,28 @@ async function loadSellerBookingStatus(userId) {
             if (assignedStall && Number(assignedStall.extraPrice) > 0) {
                 bookingView.isSpecialCornerLot = true;
                 bookingView.cornerExtraPerDay = Number(assignedStall.extraPrice);
+            }
+        }
+
+        // กำหนดชำระเงินก่อนวันพุธ เฉพาะกลุ่ม "จองยาว 14 วัน" หรือ "ล็อคเต็ง" เท่านั้น
+        // (ตามเงื่อนไขธุรกิจ ไม่บังคับกับคนจองสั้นทั่วไป)
+        bookingView.paymentDeadline = null;
+        bookingView.paymentDeadlineOverdue = false;
+        const isLongOrCornerBooking = Number(bookingView.rentalDays) >= BOOKING_ROUND_LENGTH_DAYS
+            || Boolean(bookingView.cornerZoneNote)
+            || bookingView.isSpecialCornerLot;
+        if (normalizedRequestStatus === 'IN_PROGRESS' && !awaitingPaymentVerification) {
+            let deadlineDate = null;
+            if (isLongOrCornerBooking) {
+                const roundMeta = getBookingRoundMetaForDate(latestBooking?.rentalStartDate || latestRequest.createdAt);
+                deadlineDate = getPaymentDeadlineForRound(roundMeta);
+            } else if (latestBooking?.rentalStartDate) {
+                // กลุ่มจองสั้น (ขั้นต่ำ 3 วัน เริ่มพุธ หรือจองทีละวัน) ต้องชำระเงินก่อนวันที่จะเริ่มขายเอง
+                deadlineDate = addDays(toStartOfDay(latestBooking.rentalStartDate), -1);
+            }
+            if (deadlineDate) {
+                bookingView.paymentDeadline = formatDateThai(deadlineDate);
+                bookingView.paymentDeadlineOverdue = toStartOfDay(new Date()).getTime() > deadlineDate.getTime();
             }
         }
 
