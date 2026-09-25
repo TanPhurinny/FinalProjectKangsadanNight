@@ -14,7 +14,7 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
             rel="stylesheet" />
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
-        <link rel="stylesheet" href="/stylesheets/marketMap.css">
+        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20260925-cat">
     </head>
     <body>
         <script src="/js/common/tabSession.js"></script>
@@ -32,6 +32,18 @@
         }, {});
         const otherZones = zonesList.filter((zone) => !['A', 'B', 'C', 'D', 'E', 'F', 'X'].includes(zone.code));
         %>
+
+        <div id="stallTooltip" class="stall-tooltip">
+            <img id="tt-image" class="tt-image" alt="รูปร้านค้า" hidden>
+            <div class="tt-header">แผง <span id="tt-stall-id"></span></div>
+            <div class="tt-body">
+                <div class="tt-group"><span class="tt-label">ร้านค้า</span><span class="tt-value tt-strong" id="tt-shop"></span></div>
+                <div class="tt-group"><span class="tt-label">ประเภทสินค้า</span><span class="tt-value" id="tt-product"></span></div>
+                <div class="tt-group"><span class="tt-label">ขายอะไรบ้าง</span><span class="tt-value" id="tt-detail"></span></div>
+                <div class="tt-group"><span class="tt-label">หมดสัญญา</span><span class="tt-value" id="tt-expiry"></span></div>
+                <div class="tt-hint" id="tt-hint"></div>
+            </div>
+        </div>
 
         <div class="market-map-page">
 
@@ -57,6 +69,16 @@
                 <button class="qtag qtag-booked"
                     onclick="quickStatusFilter(this,'BOOKED')"><i
                         class="fa-solid fa-store fa-xs"></i> มีร้านค้าแล้ว</button>
+            </div>
+
+            <!-- หมวดสินค้า (สี + กรอง) และปุ่มลัด -->
+            <div class="cat-bar">
+                <span class="tag-lbl">หมวดสินค้า:</span>
+                <div class="cat-chips" id="catChips"></div>
+                <div class="cat-actions">
+                    <button type="button" class="act-btn d-none" id="btnMyStall"><i class="fa-solid fa-location-crosshairs fa-xs"></i> ไปที่ล็อกของฉัน</button>
+                    <button type="button" class="act-btn act-random" id="btnRandomFood"><i class="fa-solid fa-dice fa-xs"></i> สุ่มร้านกินอะไรดี</button>
+                </div>
             </div>
 
             <!-- PAGE BODY -->
@@ -208,6 +230,8 @@
                         <div class="ig ic-span2"><label>ขายอะไรบ้าง</label><span
                                 id="ic-detail"></span></div>
                     </div>
+                    <div class="ic-role-note d-none" id="icRoleNote"></div>
+                    <div class="ic-role-actions d-none" id="icRoleActions"></div>
                 </div>
 
                 <div class="drawer-body">
@@ -223,6 +247,7 @@
 
         <script type="application/json" id="zonesDataJson"><%- JSON.stringify(zoneByCode).replace(/</g, '\\u003c') %></script>
         <script type="application/json" id="bookingByStallJson"><%- JSON.stringify(locals.bookingByStallCode || {}).replace(/</g, '\\u003c') %></script>
-        <script src="/js/marketMap.js"></script>
+        <script type="application/json" id="viewerJson"><%- JSON.stringify(locals.viewer || { role: 'CUSTOMER', allowedZones: [], myStalls: [] }).replace(/</g, '\\u003c') %></script>
+        <script src="/js/marketMap.js?v=20260925-cat"></script>
     </body>
 </html>

@@ -13,12 +13,233 @@ function readJsonScript(id) {
 
 const ZONES_DATA = readJsonScript('zonesDataJson');
 const BOOKING_BY_STALL = readJsonScript('bookingByStallJson');
+const VIEWER = Object.assign({ role: 'CUSTOMER', allowedZones: [], myStalls: [] }, readJsonScript('viewerJson'));
+const MY_STALLS = new Set(VIEWER.myStalls || []);
+const IS_SELLER = VIEWER.role === 'SELLER';
+const IS_ADMIN = VIEWER.role === 'ADMIN';
+const IS_STAFF = VIEWER.role === 'STAFF';
+
+// ==========================================
+// หมวดสินค้า: ใน DB ชื่อประเภทปนหลายแบบ (FOOD / Food / อาหาร) จึงรวมเป็นหมวดเดียวกันก่อนใช้แสดงสี/กรอง
+// ==========================================
+const CATEGORIES = [
+    { key: 'FOOD', label: 'อาหาร', color: '#e67e22', match: /^(food|อาหาร)$/i },
+    { key: 'FASHION', label: 'แฟชั่น', color: '#8e44ad', match: /^(fashion|แฟชั่น)$/i },
+    { key: 'EVENT_BOOTH', label: 'บูธกิจกรรม', color: '#16a085', match: /^(event[ _]?booth|บูธกิจกรรม)$/i }
+];
+const OTHER_CATEGORY = { key: 'OTHER', label: 'อื่นๆ', color: '#607d8b' };
+
+function categoryOf(code) {
+    const bk = BOOKING_BY_STALL[code];
+    if (!bk) return null;
+    const name = String(bk.product || '').trim();
+    return CATEGORIES.find((c) => c.match.test(name)) || OTHER_CATEGORY;
+}
+
+function applyCategoryColor(cell, code) {
+    const cat = categoryOf(code);
+    if (!cat) return;
+    cell.classList.add('has-cat');
+    cell.style.setProperty('--cat', cat.color);
+}
+
+// โหมดทดลอง ?demo=1 — จำลองร้านหลายหมวดลงล็อกว่างเฉพาะในเบราว์เซอร์ (ไม่แตะ DB, รีเฟรชแล้วหาย) ไว้ดูสี/ตัวกรองหมวด
+if (new URLSearchParams(window.location.search).get('demo') === '1') {
+    const DEMO_SHOPS = [
+        ['Food', 'ข้าวมันไก่ป้าแดง', 'ข้าวมันไก่ ข้าวหมูแดง'],
+        ['อาหาร', 'หมูปิ้งนมสด', 'หมูปิ้ง ไก่ย่าง ข้าวเหนียว'],
+        ['Fashion', 'Nong Vintage', 'เสื้อยืด กางเกงยีนส์มือสอง'],
+        ['แฟชั่น', 'กระเป๋าผ้าลายไทย', 'กระเป๋า หมวก ผ้าพันคอ'],
+        ['Event Booth', 'บูธชิมฟรี น้ำดื่ม', 'กิจกรรมแจกสินค้าตัวอย่าง'],
+        ['เครื่องดื่ม', 'ชาไทยเย็นชื่นใจ', 'ชาไทย กาแฟ โกโก้ปั่น'],
+        ['ของฝาก', 'ของฝากกังสดาล', 'พวงกุญแจ แม่เหล็กติดตู้เย็น'],
+        ['ของเล่น', 'ร้านตุ๊กตาหมี', 'ตุ๊กตา ของเล่นเด็ก'],
+        ['Food', 'ก๋วยเตี๋ยวเรือเจ๊หน่อย', 'ก๋วยเตี๋ยวเรือ ต้มยำ']
+    ];
+    let n = 0;
+    Object.keys(ZONES_DATA).forEach((z) => {
+        (ZONES_DATA[z].columns || []).forEach((column) => {
+            column.stalls.forEach((stall) => {
+                if (stall.status === 'PLACEHOLDER' || stall.status === 'MAINTENANCE' || stall.status === 'BOOKED') return;
+                n += 1;
+                if (n % 3 !== 0) return;
+                const [product, shop, productDetail] = DEMO_SHOPS[(n / 3) % DEMO_SHOPS.length | 0];
+                stall.status = 'BOOKED';
+                BOOKING_BY_STALL[stall.code] = { shop, product, productDetail, image: null };
+            });
+        });
+    });
+}
+
+function zoneOf(code) {
+    return Object.keys(ZONES_DATA).find((z) => (ZONES_DATA[z].columns || []).some((column) => column.stalls.some((st) => st.code === code))) || '';
+}
+
+function findStall(code) {
+    for (const z of Object.keys(ZONES_DATA)) {
+        for (const column of (ZONES_DATA[z].columns || [])) {
+            const hit = column.stalls.find((st) => st.code === code);
+            if (hit) return hit;
+        }
+    }
+    return null;
+}
+
+function formatThaiDate(value) {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '-';
+    return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function daysLeftUntil(value) {
+    const end = new Date(value);
+    if (Number.isNaN(end.getTime())) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    return Math.round((end - today) / 86400000);
+}
+
+// ข้อความ+ปุ่มลัดในการ์ดรายละเอียดล็อก แยกตาม role (ผู้ขาย/ลูกค้า/แอดมิน/staff)
+function renderRoleActions(id, zone, isVacant) {
+    const noteEl = document.getElementById('icRoleNote');
+    const actionsEl = document.getElementById('icRoleActions');
+    const notes = [];
+    const actions = [];
+    const stall = findStall(id);
+
+    if (MY_STALLS.has(id)) {
+        notes.push('<b>ล็อกของคุณ</b>');
+        if (stall && stall.bookingEndDate) {
+            const left = daysLeftUntil(stall.bookingEndDate);
+            const leftText = left === null ? '' : left < 0 ? ' (หมดสัญญาแล้ว)' : ` (เหลือ ${left} วัน)`;
+            notes.push(`หมดสัญญา ${formatThaiDate(stall.bookingEndDate)}${leftText}`);
+        }
+        actions.push(['/booking-stall/extend', 'ต่อล็อก']);
+    } else if (IS_SELLER && isVacant) {
+        if ((VIEWER.allowedZones || []).includes(zone)) {
+            notes.push('แผงว่าง จองได้ตามประเภทสินค้าของคุณ');
+            actions.push([`/booking-stall?zone=${encodeURIComponent(zone)}`, `จองโซน ${zone}`]);
+        } else {
+            notes.push(`โซน ${zone} ไม่ตรงกับประเภทสินค้าของคุณ จึงจองไม่ได้`);
+        }
+    } else if (VIEWER.role === 'CUSTOMER' && isVacant) {
+        notes.push('แผงนี้ยังว่าง สนใจขายของที่ตลาดกังสดาล?');
+        actions.push(['/shop-application', 'สมัครเป็นผู้ขาย']);
+    } else if (IS_ADMIN || IS_STAFF) {
+        if (stall && stall.bookingEndDate) {
+            const left = daysLeftUntil(stall.bookingEndDate);
+            const leftText = left === null ? '' : left < 0 ? ' (หมดสัญญาแล้ว)' : ` (เหลือ ${left} วัน)`;
+            notes.push(`หมดสัญญา ${formatThaiDate(stall.bookingEndDate)}${leftText}`);
+        }
+        if (IS_ADMIN) actions.push(['/admin/slots', 'จัดการที่หน้าจัดแผง']);
+        if (IS_STAFF && !isVacant) actions.push(['/staff/marketinspection', 'ไปหน้าตรวจตลาด']);
+    }
+
+    noteEl.innerHTML = notes.join('<br>');
+    noteEl.classList.toggle('d-none', !notes.length);
+    actionsEl.innerHTML = '';
+    actions.forEach(([href, label]) => {
+        const a = document.createElement('a');
+        a.className = 'ic-role-btn';
+        a.href = href;
+        a.textContent = label;
+        actionsEl.appendChild(a);
+    });
+    actionsEl.classList.toggle('d-none', !actions.length);
+}
+
+// ==========================================
+// TOOLTIP ลอยตามเมาส์ — หน้าตาเหมือนหน้าจัดแผงของแอดมิน แต่โชว์เฉพาะข้อมูลที่ลูกค้า/ผู้ขายดูได้
+// (ชื่อร้าน/ประเภท/ขายอะไร/รูป; วันหมดสัญญาเฉพาะเจ้าของล็อก+แอดมิน) ไม่มีชื่อผู้จอง/เบอร์โทร/ราคา
+// ==========================================
+const stallTooltip = document.getElementById('stallTooltip');
+
+function setTt(id, text) {
+    const el = document.getElementById(id);
+    const box = el.closest('.tt-group');
+    el.textContent = text || '';
+    if (box) box.style.display = text ? '' : 'none';
+}
+
+function showStallTooltip(e, code, stall) {
+    const img = document.getElementById('tt-image');
+    const bk = BOOKING_BY_STALL[code];
+    const mine = MY_STALLS.has(code);
+    stallTooltip.className = 'stall-tooltip';
+    document.getElementById('tt-stall-id').textContent = code + (mine ? ' · ล็อกของคุณ' : '');
+    img.hidden = true;
+    img.removeAttribute('src');
+
+    let hint = '';
+    if (stall.status === 'BOOKED') {
+        stallTooltip.classList.add('tt-booked');
+        if (bk && bk.image) { img.src = bk.image; img.hidden = false; }
+        setTt('tt-shop', bk ? bk.shop : 'มีร้านค้าแล้ว');
+        setTt('tt-product', bk ? (categoryOf(code) || {}).label : '');
+        setTt('tt-detail', bk && bk.productDetail && bk.productDetail !== '-' ? bk.productDetail : '');
+        hint = 'คลิกเพื่อดูรายละเอียด';
+    } else if (stall.status === 'MAINTENANCE') {
+        stallTooltip.classList.add('tt-maint');
+        setTt('tt-shop', 'อยู่ระหว่างซ่อมบำรุง');
+        setTt('tt-product', '');
+        setTt('tt-detail', 'ยังจองไม่ได้ในตอนนี้');
+    } else {
+        stallTooltip.classList.add('tt-vacant');
+        setTt('tt-shop', 'ว่าง พร้อมให้จอง');
+        setTt('tt-product', '');
+        setTt('tt-detail', '');
+        hint = 'คลิกเพื่อดูรายละเอียด';
+    }
+
+    const showExpiry = (mine || IS_ADMIN || IS_STAFF) && stall.status === 'BOOKED' && stall.bookingEndDate;
+    if (showExpiry) {
+        const left = daysLeftUntil(stall.bookingEndDate);
+        setTt('tt-expiry', `${formatThaiDate(stall.bookingEndDate)}${left === null ? '' : left < 0 ? ' (หมดสัญญาแล้ว)' : ` (เหลือ ${left} วัน)`}`);
+    } else {
+        setTt('tt-expiry', '');
+    }
+    document.getElementById('tt-hint').textContent = hint;
+
+    stallTooltip.style.display = 'block';
+    moveStallTooltip(e);
+}
+
+function moveStallTooltip(e) {
+    const w = stallTooltip.offsetWidth;
+    const h = stallTooltip.offsetHeight;
+    let x = e.clientX + 20;
+    let y = e.clientY - h / 2;
+    if (x + w > window.innerWidth) x = e.clientX - w - 20;
+    if (x < 4) x = 4;
+    if (y < 4) y = 4;
+    if (y + h > window.innerHeight) y = window.innerHeight - h - 4;
+    stallTooltip.style.left = `${x}px`;
+    stallTooltip.style.top = `${y}px`;
+}
+
+function hideStallTooltip() {
+    stallTooltip.style.display = 'none';
+}
+
+function bindStallTooltip(cell, code, stall) {
+    if (!window.matchMedia('(hover: hover)').matches) return;
+    cell.addEventListener('mouseenter', (e) => showStallTooltip(e, code, stall));
+    cell.addEventListener('mousemove', moveStallTooltip);
+    cell.addEventListener('mouseleave', hideStallTooltip);
+    cell.addEventListener('click', hideStallTooltip);
+}
 
 let activeZone = null;
 let currentQuery = '';
 let currentStatusFilter = null; // 'EMPTY' | 'BOOKED' | null
+let currentCategoryFilter = null; // key ใน CATEGORIES | 'OTHER' | null
 
 function stallMatchesFilter(id, stall) {
+    if (currentCategoryFilter) {
+        const cat = categoryOf(id);
+        return !!cat && cat.key === currentCategoryFilter;
+    }
     if (currentStatusFilter) {
         if (currentStatusFilter === 'EMPTY') {
             return stall.status !== 'BOOKED' && stall.status !== 'MAINTENANCE';
@@ -72,6 +293,14 @@ function renderZoneCards(z) {
             stat.innerHTML = `ว่าง <b>${free}</b> / ${total}`;
 
             btn.append(title, desc, stat);
+            if (IS_SELLER) {
+                const mine = (VIEWER.myStalls || []).filter((c) => ((ZONES_DATA[code].columns || []).some((col) => col.stalls.some((st) => st.code === c)))).length;
+                const badge = document.createElement('span');
+                const allowed = (VIEWER.allowedZones || []).includes(code);
+                badge.className = `zc-badge ${allowed ? 'zc-ok' : 'zc-no'}`;
+                badge.textContent = mine ? `ล็อกของคุณ ${mine}` : (allowed ? 'จองได้' : 'ไม่ตรงประเภท');
+                btn.appendChild(badge);
+            }
             btn.addEventListener('click', () => openZone(code));
             box.appendChild(btn);
         });
@@ -157,10 +386,16 @@ function renderDZoneGrid(z, stallByCode) {
         cell.dataset.stall = pos.code;
 
         const bk = BOOKING_BY_STALL[pos.code];
+        if (MY_STALLS.has(pos.code)) cell.classList.add('mine');
+        if (IS_ADMIN || IS_STAFF || MY_STALLS.has(pos.code)) {
+            if (stall.expiryState === 'expired') cell.classList.add('expired');
+            else if (stall.expiryState === 'critical') cell.classList.add('expiry-critical');
+            else if (stall.expiryState === 'near') cell.classList.add('expiry-near');
+        }
         if (stall.status === 'BOOKED') {
             booked += 1;
             cell.classList.add('booked');
-            cell.dataset.tooltip = `แผง ${pos.code}\n${bk ? `${bk.shop}\nขาย: ${bk.product}\n(คลิกดูรายละเอียด)` : 'จองแล้ว'}`;
+            applyCategoryColor(cell, pos.code);
             cell.addEventListener('click', (e) => {
                 e.stopPropagation();
                 showInfo(pos.code);
@@ -168,12 +403,17 @@ function renderDZoneGrid(z, stallByCode) {
         } else if (stall.status === 'MAINTENANCE') {
             maintenance += 1;
             cell.classList.add('maintenance');
-            cell.dataset.tooltip = `แผง ${pos.code}\nอยู่ระหว่างซ่อมบำรุง`;
         } else {
-            cell.dataset.tooltip = `แผง ${pos.code}\nว่าง`;
+            cell.classList.add('vacant-clickable');
+            cell.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showVacantInfo(pos.code, z);
+            });
         }
 
-        if ((currentQuery || currentStatusFilter) && stallMatchesFilter(pos.code, stall)) cell.classList.add('s-match');
+        if ((currentQuery || currentStatusFilter || currentCategoryFilter) && stallMatchesFilter(pos.code, stall)) cell.classList.add('s-match');
+        else if (currentCategoryFilter) cell.classList.add('dimmed');
+        bindStallTooltip(cell, pos.code, stall);
         layout.appendChild(cell);
     });
 
@@ -252,10 +492,17 @@ function renderGrid(z) {
 
             const bk = BOOKING_BY_STALL[id];
 
+            if (MY_STALLS.has(id)) cell.classList.add('mine');
+            if (IS_ADMIN || IS_STAFF || MY_STALLS.has(id)) {
+                if (stall.expiryState === 'expired') cell.classList.add('expired');
+                else if (stall.expiryState === 'critical') cell.classList.add('expiry-critical');
+                else if (stall.expiryState === 'near') cell.classList.add('expiry-near');
+            }
+
             if (stall.status === 'BOOKED') {
                 booked += 1;
                 cell.classList.add('booked');
-                cell.dataset.tooltip = `แผง ${id}\n${bk ? `${bk.shop}\nขาย: ${bk.product}\n(คลิกดูรายละเอียด)` : 'จองแล้ว'}`;
+                applyCategoryColor(cell, id);
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     showInfo(id);
@@ -263,12 +510,17 @@ function renderGrid(z) {
             } else if (stall.status === 'MAINTENANCE') {
                 maintenance += 1;
                 cell.classList.add('maintenance');
-                cell.dataset.tooltip = `แผง ${id}\nอยู่ระหว่างซ่อมบำรุง`;
             } else {
-                cell.dataset.tooltip = `แผง ${id}\nว่าง`;
+                cell.classList.add('vacant-clickable');
+                cell.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showVacantInfo(id, z);
+                });
             }
 
-            if ((currentQuery || currentStatusFilter) && stallMatchesFilter(id, stall)) cell.classList.add('s-match');
+            if ((currentQuery || currentStatusFilter || currentCategoryFilter) && stallMatchesFilter(id, stall)) cell.classList.add('s-match');
+            else if (currentCategoryFilter) cell.classList.add('dimmed');
+            bindStallTooltip(cell, id, stall);
             (isPaired(stall) ? getSmallWrap(stall.groupId) : col).appendChild(cell);
         });
 
@@ -279,13 +531,24 @@ function renderGrid(z) {
     document.getElementById('drawerStats').innerHTML = `ทั้งหมด <b>${total}</b> ล็อก &nbsp;·&nbsp; จอง <b>${booked}</b> &nbsp;·&nbsp; ซ่อมบำรุง <b>${maintenance}</b> &nbsp;·&nbsp; ว่าง <b>${total - booked - maintenance}</b>`;
 }
 
+function showVacantInfo(id, zone) {
+    document.getElementById('ic-head').textContent = `แผง ${id} — ว่าง`;
+    document.getElementById('ic-image').classList.add('d-none');
+    document.querySelector('#infoCard .ic-grid').classList.add('d-none');
+    renderRoleActions(id, zone, true);
+    document.getElementById('infoCard').classList.add('show');
+    document.getElementById('infoCardBackdrop').classList.add('show');
+}
+
 function showInfo(id) {
     const d = BOOKING_BY_STALL[id];
     if (!d) return;
+    document.querySelector('#infoCard .ic-grid').classList.remove('d-none');
+    renderRoleActions(id, (findStall(id) && zoneOf(id)) || '', false);
 
     document.getElementById('ic-head').textContent = `แผง ${id} — ${d.shop}`;
     document.getElementById('ic-shop').textContent = d.shop;
-    document.getElementById('ic-product').textContent = d.product;
+    document.getElementById('ic-product').textContent = (categoryOf(id) || {}).label || d.product;
     document.getElementById('ic-detail').textContent = d.productDetail || '-';
 
     const icImage = document.getElementById('ic-image');
@@ -313,7 +576,7 @@ function refreshFilterResults() {
     const badge = document.getElementById('resultBadge');
     const clrBtn = document.getElementById('clearBtn');
 
-    if (!currentQuery && !currentStatusFilter) {
+    if (!currentQuery && !currentStatusFilter && !currentCategoryFilter) {
         badge.classList.remove('show');
         clrBtn.classList.remove('show');
         document.querySelectorAll('.zone-block').forEach((el) => el.classList.remove('search-match'));
@@ -343,9 +606,14 @@ function refreshFilterResults() {
         else el.classList.remove('search-match');
     });
 
-    badge.textContent = currentStatusFilter
-        ? `พบ ${total} แผง (${STATUS_LABELS[currentStatusFilter]})`
-        : `พบ ${total} ร้าน`;
+    const catLabel = currentCategoryFilter
+        ? ([...CATEGORIES, OTHER_CATEGORY].find((c) => c.key === currentCategoryFilter) || {}).label
+        : null;
+    badge.textContent = catLabel
+        ? `พบ ${total} ร้าน (หมวด${catLabel})`
+        : currentStatusFilter
+            ? `พบ ${total} แผง (${STATUS_LABELS[currentStatusFilter]})`
+            : `พบ ${total} ร้าน`;
     badge.classList.add('show');
     if (activeZone) renderGrid(activeZone);
 }
@@ -353,21 +621,24 @@ function refreshFilterResults() {
 function doSearch(q) {
     currentQuery = q.trim();
     currentStatusFilter = null;
-    document.querySelectorAll('.qtag').forEach((t) => t.classList.remove('active'));
+    currentCategoryFilter = null;
+    document.querySelectorAll('.qtag, .cat-chip').forEach((t) => t.classList.remove('active'));
     refreshFilterResults();
 }
 
 function clearSearch() {
     document.getElementById('searchInput').value = '';
     currentStatusFilter = null;
-    document.querySelectorAll('.qtag').forEach((t) => t.classList.remove('active'));
+    currentCategoryFilter = null;
+    document.querySelectorAll('.qtag, .cat-chip').forEach((t) => t.classList.remove('active'));
     doSearch('');
 }
 
 function quickStatusFilter(btn, status) {
     document.getElementById('searchInput').value = '';
-    document.querySelectorAll('.qtag').forEach((t) => t.classList.remove('active'));
+    document.querySelectorAll('.qtag, .cat-chip').forEach((t) => t.classList.remove('active'));
     currentQuery = '';
+    currentCategoryFilter = null;
 
     if (currentStatusFilter === status) {
         currentStatusFilter = null;
@@ -392,7 +663,7 @@ function findZoneForStall(code) {
 
 // เปิดจากลิงก์ deep link (เช่น จากหน้าคอมมูนิตี้ที่คลิกเลขล็อกของร้าน) — ?stall=A101
 // เปิดโซนที่ล็อกนั้นอยู่ให้อัตโนมัติ, เลื่อนจอไปหา, ไฮไลต์ และเปิดการ์ดข้อมูลร้านถ้าล็อกนั้นมีร้านจองอยู่
-function openStallDeepLink(code) {
+function openStallDeepLink(code, showCard = true) {
     const zone = findZoneForStall(code);
     if (!zone) return;
 
@@ -406,7 +677,7 @@ function openStallDeepLink(code) {
         cell.classList.add('deeplink-target');
         setTimeout(() => cell.classList.remove('deeplink-target'), 3000);
 
-        if (cell.classList.contains('booked')) {
+        if (showCard && cell.classList.contains('booked')) {
             showInfo(code);
         }
     });
@@ -417,6 +688,78 @@ const stallParam = new URLSearchParams(window.location.search).get('stall');
 if (stallParam) {
     openStallDeepLink(stallParam.trim().toUpperCase());
 }
+
+// ==========================================
+// แถบหมวดสินค้า (สี+กรอง), ปุ่มไปล็อกของฉัน (ผู้ขาย), ปุ่มสุ่มร้านอาหาร
+// ==========================================
+function toggleCategoryFilter(key, chip) {
+    document.getElementById('searchInput').value = '';
+    document.querySelectorAll('.qtag, .cat-chip').forEach((t) => t.classList.remove('active'));
+    currentQuery = '';
+    currentStatusFilter = null;
+
+    if (currentCategoryFilter === key) {
+        currentCategoryFilter = null;
+    } else {
+        currentCategoryFilter = key;
+        chip.classList.add('active');
+    }
+    refreshFilterResults();
+}
+
+function buildCategoryBar() {
+    const box = document.getElementById('catChips');
+    if (!box) return;
+    const counts = {};
+    Object.keys(BOOKING_BY_STALL).forEach((code) => {
+        const cat = categoryOf(code);
+        if (cat) counts[cat.key] = (counts[cat.key] || 0) + 1;
+    });
+    [...CATEGORIES, OTHER_CATEGORY].filter((c) => counts[c.key]).forEach((cat) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'cat-chip';
+        chip.style.setProperty('--cat', cat.color);
+        chip.innerHTML = `<i class="cat-dot"></i>${cat.label} <small>${counts[cat.key]}</small>`;
+        chip.addEventListener('click', () => toggleCategoryFilter(cat.key, chip));
+        box.appendChild(chip);
+    });
+}
+
+let myStallIndex = 0;
+function goToMyStall() {
+    const list = [...MY_STALLS].filter((c) => findZoneForStall(c));
+    if (!list.length) return;
+    openStallDeepLink(list[myStallIndex % list.length], false);
+    myStallIndex += 1;
+}
+
+let lastRandomStall = null;
+function randomFoodShop() {
+    const foods = Object.keys(BOOKING_BY_STALL).filter((code) => {
+        const cat = categoryOf(code);
+        return cat && cat.key === 'FOOD' && findZoneForStall(code);
+    });
+    if (!foods.length) return;
+    let pick = foods[Math.floor(Math.random() * foods.length)];
+    if (foods.length > 1 && pick === lastRandomStall) {
+        pick = foods[(foods.indexOf(pick) + 1) % foods.length];
+    }
+    lastRandomStall = pick;
+    hideInfo();
+    openStallDeepLink(pick, true);
+}
+
+buildCategoryBar();
+(function setupActions() {
+    const mine = document.getElementById('btnMyStall');
+    if (mine) {
+        if (IS_SELLER && MY_STALLS.size) mine.classList.remove('d-none');
+        mine.addEventListener('click', goToMyStall);
+    }
+    const rnd = document.getElementById('btnRandomFood');
+    if (rnd) rnd.addEventListener('click', randomFoodShop);
+})();
 
 window.openZone = openZone;
 window.closeZone = closeZone;
