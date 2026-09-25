@@ -676,6 +676,18 @@ enum ProductTypeCode {
   EVENT_BOOTH
 }
 
+// แจ้งเตือนในระบบที่แอดมินกด "แจ้งเตือนร้านค้า" ให้ผู้เช่าล็อกที่ใกล้หมดสัญญา (ควบคู่กับอีเมล) — ไม่ผูก FK
+// การ์ดฝั่งผู้ขายแสดงเมื่อ bookingEndDate ตรงกับวันหมดสัญญาปัจจุบันของล็อกนั้น ต่อสัญญาแล้วการ์ดหายเอง
+model StallRenewalNotice {
+  id             Int      @id @default(autoincrement())
+  stallCode      String
+  userId         Int
+  bookingEndDate DateTime
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+}
+
 enum StallPriceRuleType {
   PINK
   YELLOW

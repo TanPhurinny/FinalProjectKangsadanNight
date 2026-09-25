@@ -35,15 +35,15 @@
                 <div class="summary-cards">
                     <div class="summary-card summary-expired">
                         <div class="summary-count"><%= counts.expired %></div>
-                        <div class="summary-label">หมดอายุแล้ว</div>
+                        <div class="summary-label">หมดสิทธิ์แล้ว (เลย 20:00)</div>
                     </div>
                     <div class="summary-card summary-critical">
                         <div class="summary-count"><%= counts.critical %></div>
-                        <div class="summary-label">ใกล้หมดอายุมาก (≤1 วัน)</div>
+                        <div class="summary-label">ใกล้หมดอายุมาก (≤1 วัน / วันสุดท้ายก่อน 20:00)</div>
                     </div>
                     <div class="summary-card summary-near">
                         <div class="summary-count"><%= counts.near %></div>
-                        <div class="summary-label">ใกล้หมดอายุ (≤7 วัน)</div>
+                        <div class="summary-label">ใกล้หมดอายุ (≤1 วัน)</div>
                     </div>
                 </div>
 
@@ -65,6 +65,7 @@
                                     <th>เบอร์โทร</th>
                                     <th>สถานะจ่ายเงิน</th>
                                     <th>วันหมดอายุ</th>
+                                    <th>ต่อได้ถึง</th>
                                     <th>จัดการ</th>
                                 </tr>
                             </thead>
@@ -87,7 +88,18 @@
                                     <td><%= (occ && occ.renterName) || '-' %></td>
                                     <td><%= (occ && occ.phone) || '-' %></td>
                                     <td><%= (occ && occ.paymentStatusText) || '-' %></td>
-                                    <td><%= daysText %></td>
+                                    <td><%= row.renewalPhase === 'grace' ? 'วันนี้ (ต่อได้ถึง 20:00)' : daysText %></td>
+                                    <td>
+                                        <% if (row.renewal) { %>
+                                            <% const fmtShort = (d) => new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' }); %>
+                                            <% if (row.renewalPhase === 'lapsed') { %>
+                                                หมดสิทธิ์ (เลย 20:00)
+                                            <% } else { %>
+                                                ก่อน 20:00 วันที่ <%= fmtShort(row.renewal.currentEnd) %><br>
+                                                <small class="zone-desc">สุดรอบ <%= fmtShort(row.renewal.roundEnd) %> ต่อได้ทันที<%= row.renewal.canRenewShort ? ' · ต่อสั้นเปิดแล้ว' : ' · ต่อสั้นเปิด ' + fmtShort(row.renewal.opensAt) %></small>
+                                            <% } %>
+                                        <% } else { %>-<% } %>
+                                    </td>
                                     <td class="cell-actions">
                                         <% if (row.expiryState === 'expired') { %>
                                             <button type="button" class="btn-row-action btn-row-release"
@@ -122,7 +134,9 @@
                 if (success === 'stall_released') {
                     window.showAlertDialog({ title: 'ปล่อยล็อกแล้ว', message: 'ล็อกนี้กลับมาว่างพร้อมให้จองใหม่แล้ว', tone: 'success' });
                 } else if (success === 'notify_sent') {
-                    window.showAlertDialog({ title: 'ส่งแจ้งเตือนแล้ว', message: 'ส่งอีเมลแจ้งร้านค้าให้ต่อสัญญาเรียบร้อยแล้ว', tone: 'success' });
+                    window.showAlertDialog({ title: 'ส่งแจ้งเตือนแล้ว', message: 'แจ้งร้านค้าให้ต่อสัญญาทั้งทางอีเมลและกระดิ่งแจ้งเตือนในระบบเรียบร้อยแล้ว', tone: 'success' });
+                } else if (success === 'notify_sent_in_app') {
+                    window.showAlertDialog({ title: 'ส่งแจ้งเตือนในระบบแล้ว', message: 'แจ้งเตือนผ่านกระดิ่งของร้านค้าแล้ว แต่ไม่พบอีเมลจึงไม่ได้ส่งอีเมล', tone: 'success' });
                 } else if (error === 'stall_not_expired') {
                     window.showAlertDialog({ title: 'ปล่อยล็อกไม่ได้', message: 'ล็อกนี้ยังไม่หมดสัญญา หรือถูกจัดการไปแล้ว กรุณารีเฟรชหน้าแล้วลองใหม่', tone: 'warning' });
                 } else if (error === 'stall_not_expiring') {

@@ -5,6 +5,7 @@ const { buildZonesData } = require('./marketController');
 const zoneAccess = require('../utils/zoneAccess');
 const stallSpacing = require('../utils/stallSpacing');
 const stallOccupancy = require('../utils/stallOccupancy');
+const { getRenewalPhase } = require('../utils/stallRenewal');
 
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable } = require('../utils/bookingRound');
 const { verifySlip } = require('../utils/slipVerification');
@@ -987,7 +988,7 @@ exports.releaseExpiredStall = async (req, res) => {
         }
 
         // เช็คซ้ำฝั่ง server ว่าหมดสัญญาจริง ไม่เชื่อ client เฉยๆ — กันปล่อยล็อกที่ยังจองอยู่จริงผิดพลาด/ตั้งใจ
-        const isExpired = stall.status === 'BOOKED' && stall.bookingEndDate && new Date(stall.bookingEndDate).getTime() < Date.now();
+        const isExpired = stall.status === 'BOOKED' && stall.bookingEndDate && getRenewalPhase(stall.bookingEndDate) === 'lapsed';
         if (!isExpired) {
             return res.redirect(`${returnPath}?error=stall_not_expired`);
         }
@@ -1029,13 +1030,23 @@ exports.notifyStallExpiring = async (req, res) => {
                     where: { status: { in: ['IN_PROGRESS', 'SUCCESS', 'APPROVED'] } },
                     orderBy: { id: 'desc' },
                     take: 1,
-                    select: { user: { select: { email: true } } }
+                    select: { userId: true, user: { select: { email: true } } }
                 }
             }
         });
-        const email = slot?.bookings[0]?.user?.email;
-        if (!email) {
+        const renter = slot?.bookings[0];
+        if (!renter) {
             return res.redirect(`${returnPath}?error=notify_no_email`);
+        }
+
+        // แจ้งเตือนในระบบ (การ์ดใน /notifications + badge กระดิ่งผู้ขาย) ก่อนส่งอีเมลเสมอ — อีเมลพังหรือไม่มีอีเมลก็ยังแจ้งในระบบได้
+        await prisma.stallRenewalNotice.create({
+            data: { stallCode, userId: renter.userId, bookingEndDate: stall.bookingEndDate }
+        });
+
+        const email = renter.user?.email;
+        if (!email) {
+            return res.redirect(`${returnPath}?success=notify_sent_in_app`);
         }
 
         await sendStallExpiringSoonEmail(email, stallCode, daysLeft);

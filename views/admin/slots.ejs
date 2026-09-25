@@ -241,7 +241,7 @@
                     <div class="leg"><div class="leg-box"
                             style="background:#c98a2e;border-color:#a06c1f;"></div>ซ่อมบำรุง</div>
                     <div class="leg"><div class="leg-box"
-                            style="background:#c0392b;border-color:#a32b1d;"></div>ใกล้หมดอายุ (≤7 วัน)</div>
+                            style="background:#c0392b;border-color:#a32b1d;"></div>ใกล้หมดอายุ (≤1 วัน)</div>
                     <div class="leg"><div class="leg-box"
                             style="background:#fff;"></div>หมดอายุแล้ว (แสดงเป็นว่าง)</div>
                     <div class="leg"><div class="leg-box"
@@ -333,7 +333,9 @@
                 if (success === 'stall_released') {
                     window.showAlertDialog({ title: 'ปล่อยล็อกแล้ว', message: 'ล็อกนี้กลับมาว่างพร้อมให้จองใหม่แล้ว', tone: 'success' });
                 } else if (success === 'notify_sent') {
-                    window.showAlertDialog({ title: 'ส่งแจ้งเตือนแล้ว', message: 'ส่งอีเมลแจ้งร้านค้าให้ต่อสัญญาเรียบร้อยแล้ว', tone: 'success' });
+                    window.showAlertDialog({ title: 'ส่งแจ้งเตือนแล้ว', message: 'แจ้งร้านค้าให้ต่อสัญญาทั้งทางอีเมลและกระดิ่งแจ้งเตือนในระบบเรียบร้อยแล้ว', tone: 'success' });
+                } else if (success === 'notify_sent_in_app') {
+                    window.showAlertDialog({ title: 'ส่งแจ้งเตือนในระบบแล้ว', message: 'แจ้งเตือนผ่านกระดิ่งของร้านค้าแล้ว แต่ไม่พบอีเมลจึงไม่ได้ส่งอีเมล', tone: 'success' });
                 } else if (error === 'stall_not_expired') {
                     window.showAlertDialog({ title: 'ปล่อยล็อกไม่ได้', message: 'ล็อกนี้ยังไม่หมดสัญญา หรือถูกจัดการไปแล้ว กรุณารีเฟรชหน้าแล้วลองใหม่', tone: 'warning' });
                 } else if (error === 'stall_not_expiring') {

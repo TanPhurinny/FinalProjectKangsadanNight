@@ -19,6 +19,7 @@ const {
     getRoundWindow,
     BOOKING_ROUND_LENGTH_DAYS
 } = require('../utils/bookingRound');
+const { getRenewalOptions, validateRenewal } = require('../utils/stallRenewal');
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
 const { buildQuotationData } = require('../controllers/quotationController');
 const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
@@ -322,28 +323,34 @@ function buildSlipRejectedReminderEntry(latestBooking, status) {
     }];
 }
 
-// การ์ดย้ำเตือนต่อล็อก ผูกกับล็อกจริงที่แม่ค้าจองไว้ (assignedStallCode) ไม่ใช่แค่เดาจากวันในสัปดาห์
-// โชว์เฉพาะตอนที่ยังมีวันให้ต่อได้ (rentalEndDate ยังไม่ถึง cycleEnd ของรอบปัจจุบัน)
+// การ์ดย้ำเตือนต่อล็อก ผูกกับล็อกจริงที่แม่ค้าจองไว้ (assignedStallCode) โชว์ตั้งแต่ 1 วันก่อนวันขายสุดท้าย (D-1)
+// จนถึง 20:00 ของวัน D (ดูกติกาใน utils/stallRenewal.js) — วัน D ตรงกับวันสิ้นรอบพอดีต่อไม่ได้ ชวนไปจองรอบใหม่แทน
 function buildExtendLockReminderEntry(extendInfo) {
     if (!extendInfo?.currentBooking?.rentalEndDate) return [];
 
     const { currentBooking, latestRequest, roundMeta } = extendInfo;
-    const currentEndDate = toStartOfDay(currentBooking.rentalEndDate);
-    const cycleEnd = toStartOfDay(roundMeta.cycleEnd);
-    if (!currentEndDate || !cycleEnd || currentEndDate.getTime() >= cycleEnd.getTime()) return [];
+    const renewal = getRenewalOptions(currentBooking.rentalEndDate, new Date());
+    if (!renewal || !renewal.isOpen || new Date().getTime() < renewal.opensAt.getTime()) return [];
 
     const stallLabel = latestRequest?.assignedStallCode ? `ล็อก ${latestRequest.assignedStallCode}` : 'ล็อกของคุณ';
+    const cutoffText = `20:00 น. วันที่ ${formatDateThai(renewal.currentEnd)}`;
+    const canExtend = renewal.fullRoundDays > 0;
 
     return [{
         id: `extend-reminder-${latestRequest.id}`,
         type: 'pending-review',
-        title: 'ต่อล็อกไหม?',
-        desc: `${stallLabel} จะหมดสิทธิ์ขายวันที่ ${formatDateThai(currentBooking.rentalEndDate)} หากต้องการขายต่อในรอบนี้ (ถึงได้สูงสุดวันที่ ${formatDateThai(roundMeta.cycleEnd)}) กดต่อล็อกได้ที่หน้าสถานะการจอง`,
-        date: formatDateThai(currentBooking.rentalEndDate),
-        time: formatTimeThai(currentBooking.rentalEndDate),
+        title: canExtend ? 'ต่อล็อกไหม?' : 'ล็อกของคุณจะหมดรอบแล้ว',
+        desc: canExtend
+            ? `${stallLabel} ขายวันสุดท้ายวันที่ ${formatDateThai(renewal.currentEnd)} ต้องต่อก่อน ${cutoffText} เลยเวลาแล้วล็อกจะถูกเปิดให้คนอื่นจอง (ต่อได้สูงสุดวันที่ ${formatDateThai(roundMeta.cycleEnd)})`
+            : `${stallLabel} ขายวันสุดท้ายของรอบวันที่ ${formatDateThai(renewal.currentEnd)} ต่อข้ามรอบไม่ได้ หากต้องการขายต่อให้จองรอบใหม่ ล็อกจะถูกเปิดให้คนอื่นหลัง ${cutoffText}`,
+        date: formatDateThai(renewal.currentEnd),
+        time: '20:00',
         status: 'IN_PROGRESS',
         isRead: false,
-        isNew: true
+        isNew: true,
+        link: canExtend ? '/booking-stall/extend' : '/select-zone',
+        linkLabel: canExtend ? 'ต่อล็อก' : 'จองรอบใหม่',
+        linkIcon: 'bi-arrow-repeat'
     }];
 }
 
@@ -1801,27 +1808,6 @@ async function findActiveLockForExtension(userRecord) {
     return { latestRequest, currentBooking, roundMeta };
 }
 
-// กติกา "ต่อล็อก" ใช้ 3 ช่วงเดียวกับกติกาจองรอบใหม่ (จันทร์-อังคาร / พุธ / พฤหัสฯ เป็นต้นไป)
-// ต่างจาก getBookingPhaseForRound ตรงที่นี่เทียบจากวันในสัปดาห์ของ "วันนี้" ตรงๆ ไม่ใช่ระยะห่างจาก
-// วันเปิดรอบถัดไป เพราะการต่อล็อกเกิดขึ้นกลางรอบที่กำลังขายอยู่ ไม่ใช่ก่อนรอบเปิด
-function getExtendPhase(dateValue = new Date()) {
-    const today = toStartOfDay(dateValue);
-    const day = today.getDay();
-
-    if (day === 1 || day === 2) {
-        // ช่วงที่ 1: จันทร์-อังคาร — ต่อกี่วันก็ได้ทันที (รวมถึงต่อจนสุดรอบ)
-        return { phase: 1, minDays: 1, maxAdvanceStart: null };
-    }
-
-    if (day === 3) {
-        // ช่วงที่ 2: พุธ — ต่อต้องอย่างน้อย 3 วันติดกัน
-        return { phase: 2, minDays: 3, maxAdvanceStart: null };
-    }
-
-    // ช่วงที่ 3: พฤหัสบดีเป็นต้นไป — ต่อกี่วันก็ได้ แต่ขอล่วงหน้าได้แค่ 1 วันก่อนวันขาย
-    return { phase: 3, minDays: 1, maxAdvanceStart: addDays(today, 1) };
-}
-
 router.get('/booking-stall/extend', isAuthenticated, async (req, res) => {
     const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { sellerProfile: true } });
 
@@ -1836,17 +1822,15 @@ router.get('/booking-stall/extend', isAuthenticated, async (req, res) => {
         return res.redirect('/booking-status?error=no_active_lock_to_extend');
     }
 
-    const extendPhase = getExtendPhase(new Date());
-    const extendStartDate = addDays(toStartOfDay(active.currentBooking.rentalEndDate), 1);
-    const extendAllowedToday = !extendPhase.maxAdvanceStart || extendStartDate.getTime() <= extendPhase.maxAdvanceStart.getTime();
+    // กติกาต่อล็อก (ต่อสุดรอบได้ทันที / ต่อสั้นเริ่มได้ 1 วันก่อนวันขายสุดท้าย / ต้องต่อก่อน 20:00) ดู utils/stallRenewal.js
+    const renewal = getRenewalOptions(active.currentBooking.rentalEndDate, new Date());
 
     res.render('seller/extendLock', {
         user: userRecord,
         activeLock: active.currentBooking,
         request: active.latestRequest,
         roundMeta: active.roundMeta,
-        extendPhase,
-        extendAllowedToday,
+        renewal,
         error: req.query.error || null
     });
 });
@@ -1866,27 +1850,17 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
             return res.redirect('/booking-status?error=no_active_lock_to_extend');
         }
 
-        const { latestRequest, currentBooking, roundMeta } = active;
+        const { latestRequest, currentBooking } = active;
         const newEndDate = toStartOfDay(req.body.newEndDate);
-        const cycleEnd = toStartOfDay(roundMeta.cycleEnd);
         const currentEndDate = toStartOfDay(currentBooking.rentalEndDate);
 
-        if (!newEndDate || newEndDate <= currentEndDate || newEndDate > cycleEnd) {
-            return res.redirect('/booking-stall/extend?error=invalid_extend_date');
+        const renewalError = validateRenewal(currentEndDate, newEndDate, new Date());
+        if (renewalError) {
+            return res.redirect(`/booking-stall/extend?error=${renewalError}`);
         }
 
         const extendStartDate = addDays(currentEndDate, 1);
         const rentalDays = getRentalDays(extendStartDate, newEndDate);
-
-        const today = toStartOfDay(new Date());
-        const extendPhase = getExtendPhase(today);
-
-        if (rentalDays < extendPhase.minDays) {
-            return res.redirect('/booking-stall/extend?error=extend_min_days');
-        }
-        if (extendPhase.maxAdvanceStart && extendStartDate.getTime() > extendPhase.maxAdvanceStart.getTime()) {
-            return res.redirect('/booking-stall/extend?error=too_early_to_extend');
-        }
         const rentTotal = currentBooking.dailyStallPrice * currentBooking.stallCount * rentalDays;
         const applianceTotal = (currentBooking.smallApplianceCount * currentBooking.smallAppliancePrice
             + currentBooking.largeApplianceCount * currentBooking.largeAppliancePrice) * currentBooking.stallCount * rentalDays;
@@ -1971,6 +1945,45 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
         return res.redirect('/booking-stall/extend?error=extend_failed');
     }
 });
+
+// การ์ดจากปุ่ม "แจ้งเตือนร้านค้า" ของแอดมิน (StallRenewalNotice) — โชว์เฉพาะล็อกที่ยังจองอยู่และวันหมดสัญญายังตรงกับตอนแจ้ง
+// (ต่อสัญญาแล้ววันเปลี่ยน การ์ดหายเอง) ล้มเหลวเงียบๆ ได้ (เช่นตารางยังไม่ถูกสร้างใน DB) ไม่ให้พังหน้าแจ้งเตือนทั้งหน้า
+async function loadAdminRenewalNotices(userId) {
+    try {
+        const notices = await prisma.stallRenewalNotice.findMany({ where: { userId }, orderBy: { id: 'desc' }, take: 20 });
+        if (!notices.length) return [];
+        const stalls = await prisma.stall.findMany({ where: { stallCode: { in: notices.map((n) => n.stallCode) }, status: 'BOOKED' } });
+        const stallByCode = new Map(stalls.map((s) => [s.stallCode, s]));
+        const seen = new Set();
+        const entries = [];
+        notices.forEach((notice) => {
+            const stall = stallByCode.get(notice.stallCode);
+            if (!stall || seen.has(notice.stallCode)) return;
+            if (toStartOfDay(stall.bookingEndDate)?.getTime() !== toStartOfDay(notice.bookingEndDate)?.getTime()) return;
+            seen.add(notice.stallCode);
+            const renewal = getRenewalOptions(stall.bookingEndDate, new Date());
+            const closed = !renewal || !renewal.isOpen;
+            entries.push({
+                id: `renewal-notice-${notice.id}`,
+                type: 'pending-review',
+                title: `ผู้ดูแลตลาดแจ้ง: ต่อล็อก ${notice.stallCode} ไหม?`,
+                desc: closed
+                    ? `ล็อก ${notice.stallCode} เลยเวลา 20:00 น. วันที่ ${formatDateThai(stall.bookingEndDate)} แล้ว หมดสิทธิ์ต่อและถูกเปิดให้คนอื่นจอง`
+                    : `ล็อก ${notice.stallCode} ขายวันสุดท้ายวันที่ ${formatDateThai(stall.bookingEndDate)} หากจะขายต่อต้องต่อก่อน 20:00 น. ของวันนั้น เลยเวลาแล้วล็อกจะถูกเปิดให้คนอื่นจอง`,
+                date: formatDateThai(notice.createdAt),
+                time: formatTimeThai(notice.createdAt),
+                status: 'IN_PROGRESS',
+                isRead: false,
+                isNew: true,
+                ...(closed ? {} : { link: '/booking-stall/extend', linkLabel: 'ต่อล็อก', linkIcon: 'bi-arrow-repeat' })
+            });
+        });
+        return entries;
+    } catch (error) {
+        console.error('loadAdminRenewalNotices error', error.message);
+        return [];
+    }
+}
 
 // รวม logic การหาคำขอ/รายการจองล่าสุดของผู้ขาย ให้ /booking-status และ /notifications
 // ใช้สถานะเดียวกัน (อิง BookingRequest.status เป็นหลัก ไม่ใช่ Booking.status แบบเดิม
@@ -2157,10 +2170,13 @@ async function loadSellerBookingStatus(userId) {
         orderBy: { requestedAt: 'desc' }
     });
 
+    const renewalNotices = await loadAdminRenewalNotices(userId);
+
     return {
         userRecord,
         bookingView,
         notifications: [
+            ...renewalNotices,
             ...buildRepairNotifications(repairReports),
             ...buildTaxInvoiceNotifications(taxInvoiceRequests),
             ...buildBookingNotifications(notificationBooking, awaitingPaymentVerification, extendInfo)
@@ -2317,5 +2333,12 @@ router.get('/tax-invoices/:id', isAuthenticated, async (req, res) => {
         return res.status(500).render('seller/taxInvoice', { error: 'เกิดข้อผิดพลาดในการโหลดใบกำกับภาษี', taxInvoice: null });
     }
 });
+
+// ให้ app.js เรียกไปใส่ res.locals.notifications ทุกหน้าผู้ขาย (badge กระดิ่งใน navbarSeller) — ใช้ชุดแจ้งเตือน
+// เดียวกับหน้า /notifications รวมถึงการ์ด "ต่อล็อกไหม?" ไม่ต้องเข้า /booking-status ก่อนถึงจะเห็นเลขบนกระดิ่ง
+router.loadSellerNotifications = async (userId) => {
+    const { notifications } = await loadSellerBookingStatus(userId);
+    return notifications;
+};
 
 module.exports = router;

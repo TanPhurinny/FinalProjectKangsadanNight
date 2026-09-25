@@ -327,7 +327,7 @@
                 </div>
               </div>
               <div class="d-flex gap-2 ms-auto align-self-center">
-                ${item.link ? `<a href="${item.link}" class="btn btn-sm btn-custom-primary text-white px-3 text-nowrap"><i class="bi bi-receipt me-1"></i>${item.type === 'tax-invoice-issued' ? 'ดูใบกำกับภาษี' : 'ดูใบเสนอราคา'}</a>` : ''}
+                ${item.link ? `<a href="${item.link}" class="btn btn-sm btn-custom-primary text-white px-3 text-nowrap"><i class="bi ${item.linkIcon || 'bi-receipt'} me-1"></i>${item.linkLabel || (item.type === 'tax-invoice-issued' ? 'ดูใบกำกับภาษี' : 'ดูใบเสนอราคา')}</a>` : ''}
                 <button class="btn btn-sm btn-light border hover-lift px-3 text-nowrap" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
               </div>
             </div>
@@ -435,7 +435,7 @@
                 </div>
               </div>
               <div class="d-flex gap-2 ms-auto align-self-center">
-                ${item.link ? `<a href="${item.link}" class="btn btn-sm btn-custom-primary text-white px-3 text-nowrap"><i class="bi bi-receipt me-1"></i>${item.type === 'tax-invoice-issued' ? 'ดูใบกำกับภาษี' : 'ดูใบเสนอราคา'}</a>` : ''}
+                ${item.link ? `<a href="${item.link}" class="btn btn-sm btn-custom-primary text-white px-3 text-nowrap"><i class="bi ${item.linkIcon || 'bi-receipt'} me-1"></i>${item.linkLabel || (item.type === 'tax-invoice-issued' ? 'ดูใบกำกับภาษี' : 'ดูใบเสนอราคา')}</a>` : ''}
                 <button class="btn btn-sm btn-light border hover-lift px-3 text-nowrap" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
               </div>
             </div>

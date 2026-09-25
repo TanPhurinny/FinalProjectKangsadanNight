@@ -140,7 +140,7 @@ async function sendStallExpiringSoonEmail(toEmail, stallCode, daysLeft) {
     }
 
     const urgencyText = daysLeft <= 0
-        ? 'วันนี้เป็นวันสุดท้ายของสัญญาเช่า'
+        ? 'วันนี้เป็นวันสุดท้ายของสัญญาเช่า ต้องต่อล็อกก่อนเวลา 20:00 น.'
         : `เหลืออีก ${daysLeft} วันสัญญาเช่าจะหมดอายุ`;
 
     await transporter.sendMail({
@@ -150,7 +150,7 @@ async function sendStallExpiringSoonEmail(toEmail, stallCode, daysLeft) {
         html: `
             <p>${urgencyText} — ล็อก <strong>${stallCode}</strong> ของร้านคุณ</p>
             <p>หากต้องการเช่าต่อ กรุณาติดต่อแอดมินหรือดำเนินการต่อสัญญาก่อนวันหมดอายุ</p>
-            <p>หากไม่ต่อสัญญาภายในกำหนด ล็อกนี้อาจถูกปล่อยให้ร้านค้าอื่นจองแทนได้</p>
+            <p>หากไม่ต่อสัญญาภายใน 20:00 น. ของวันสุดท้าย ล็อกนี้จะถูกปล่อยให้ร้านค้าอื่นจองแทนโดยอัตโนมัติ</p>
         `
     });
 }

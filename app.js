@@ -10,6 +10,8 @@ const { getCurrentUser } = require('./middlewares/jwtAuth');
 const { isProduction } = require('./config/authSecrets');
 const { generalLimiter } = require('./middlewares/authRateLimit');
 const logger = require('./config/logger');
+const { sendStallExpiringSoonEmail } = require('./config/mailer');
+const { releaseLapsedStalls, sendGraceReminders } = require('./utils/stallRenewal');
 const { ensureWeeklyRoundAnnouncement, ensureWeeklyCornerLockAnnouncement } = require('./utils/autoRoundAnnouncement');
 
 const { resolveImageUrl } = require('./utils/imageStorage');
@@ -110,6 +112,27 @@ const communityRoutes = require('./routes/communityRoutes');
 const sellerRoute = require('./routes/sellerRoute');
 const announceCtrl = require('./controllers/announcementController');
 
+// แจ้งเตือนของผู้ขาย (badge กระดิ่งใน navbarSeller) ให้ขึ้นทุกหน้า ไม่ใช่แค่ /booking-status และ /notifications
+// — cache รายผู้ใช้ 60 วินาทีกันยิง query ชุดสถานะการจองทุกครั้งที่เปลี่ยนหน้า (page ที่ส่ง notifications เองยังทับค่านี้ได้)
+const sellerNotificationCache = new Map();
+app.use(async (req, res, next) => {
+  try {
+    if (req.method !== 'GET' || req.user?.role !== 'SELLER' || res.locals.viewAsCustomer) return next();
+    if (!String(req.headers.accept || '').includes('text/html')) return next();
+    const cached = sellerNotificationCache.get(req.user.id);
+    if (cached && Date.now() - cached.at < 60 * 1000) {
+      res.locals.notifications = cached.notifications;
+    } else {
+      const notifications = await sellerRoute.loadSellerNotifications(req.user.id);
+      sellerNotificationCache.set(req.user.id, { at: Date.now(), notifications });
+      res.locals.notifications = notifications;
+    }
+  } catch (error) {
+    logger.error({ error: error.message }, 'load seller notifications failed');
+  }
+  next();
+});
+
 // --- 5. การกำหนดเส้นทาง (Routing) ---
 // หน้าแรก (Index)
 app.get('/', async (req, res) => {
@@ -207,12 +230,39 @@ function scheduleAutoRoundAnnouncement() {
   }, 60 * 60 * 1000);
 }
 
+// ตัดสิทธิ์ล็อกที่ไม่ต่อภายใน 20:00 ของวันขายสุดท้าย (utils/stallRenewal.js) — เช็คตอนสตาร์ทแล้วเช็คซ้ำทุก 5 นาที
+// ปิดไว้เป็นค่าเริ่มต้น — ต้องตั้ง ENABLE_LAPSED_RELEASE=true ถึงจะปล่อยล็อกอัตโนมัติจริง (กันปล่อยล็อกผิดตอน dev/ทดสอบบน DB กลาง)
+function scheduleLapsedStallRelease() {
+  if (process.env.ENABLE_LAPSED_RELEASE !== 'true') {
+    logger.info('lapsed stall auto-release disabled (set ENABLE_LAPSED_RELEASE=true to enable)');
+    return;
+  }
+  const run = () => releaseLapsedStalls()
+    .then((codes) => {
+      if (codes.length) logger.info({ stalls: codes }, 'released lapsed stalls');
+    })
+    .catch((error) => {
+      logger.error({ error: error.message }, 'releaseLapsedStalls failed');
+    });
+  const remind = () => sendGraceReminders(new Date(), sendStallExpiringSoonEmail)
+    .then((codes) => {
+      if (codes.length) logger.info({ stalls: codes }, 'sent lapse reminders');
+    })
+    .catch((error) => {
+      logger.error({ error: error.message }, 'sendGraceReminders failed');
+    });
+  run();
+  remind();
+  setInterval(() => { run(); remind(); }, 5 * 60 * 1000);
+}
+
 // เชื่อมต่อฐานข้อมูลให้พร้อมก่อนเปิดรับ request จริง กัน request แรกของผู้ใช้
 // (เช่นตอน login) ต้องรอ TLS/connection handshake ไปกับฐานข้อมูล remote เอง
 prisma.$connect()
   .then(() => {
     startServer();
     scheduleAutoRoundAnnouncement();
+    scheduleLapsedStallRelease();
   })
   .catch((error) => {
     console.error('Prisma connection failed, starting server anyway:', error.message);
