@@ -1,6 +1,8 @@
 const prisma = require('../config/prismaClient');
 const { getLotPricing } = require('../utils/lotPricing');
 const stallOccupancy = require('../utils/stallOccupancy');
+const zoneAccess = require('../utils/zoneAccess');
+const { getRenewalPhase, getRenewalOptions } = require('../utils/stallRenewal');
 
 const ZONE_CATEGORY_META = {
     FASHION: { icon: 'fa-shirt', description: 'โซนแฟชั่น' },
@@ -103,23 +105,25 @@ const ZONE_CATEGORY_LABEL = {
 };
 
 // จำนวนวันก่อนหมดสัญญาที่ถือว่า "ใกล้หมดอายุ" (ใช้ไฮไลต์แผงที่จองแล้วบนผังให้แอดมินตามงานต่อสัญญา)
-// CRITICAL แยกออกมาจาก NEAR เพราะ "เหลืออีก 7 วัน" กับ "เหลือวันเดียว/วันนี้" ควรเร่งด่วนไม่เท่ากัน
-const NEAR_EXPIRY_DAYS = 7;
+// ตั้งไว้ 1 วัน = ถามผู้ขายว่าจะต่อล็อกไหมตอนเหลือวันเดียว/วันนี้ (ระดับ CRITICAL ทับกันหมด จึงไม่มีล็อกที่เป็น 'near' แยก)
+const NEAR_EXPIRY_DAYS = 1;
 const CRITICAL_EXPIRY_DAYS = 1;
 
 // ล็อกที่จองแล้ว (BOOKED) เทียบวันหมดสัญญา (bookingEndDate) กับวันนี้ เพื่อแยกสีบนผัง:
-// 'expired' = เลยกำหนดแล้วแต่ยังไม่ได้ปลดสถานะ, 'critical' = เหลือ ≤1 วัน, 'near' = จะหมดอายุใน 7 วัน, null = ปกติ
+// 'expired' = เลยกำหนดแล้วแต่ยังไม่ได้ปลดสถานะ, 'critical' = เหลือ ≤1 วัน, 'near' = จะหมดอายุภายใน NEAR_EXPIRY_DAYS วัน, null = ปกติ
 function computeExpiryState(status, bookingEndDate) {
     if (status !== 'BOOKED' || !bookingEndDate) return null;
     const endDate = new Date(bookingEndDate);
     if (Number.isNaN(endDate.getTime())) return null;
+
+    // หมดสิทธิ์ = เลย 20:00 ของวันขายสุดท้าย (ดู utils/stallRenewal.js) ไม่ใช่แค่เลยวันสุดท้าย
+    if (getRenewalPhase(endDate) === 'lapsed') return 'expired';
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     endDate.setHours(0, 0, 0, 0);
 
     const daysLeft = Math.round((endDate - today) / (24 * 60 * 60 * 1000));
-    if (daysLeft < 0) return 'expired';
     if (daysLeft <= CRITICAL_EXPIRY_DAYS) return 'critical';
     if (daysLeft <= NEAR_EXPIRY_DAYS) return 'near';
     return null;
@@ -343,7 +347,7 @@ exports.getSlotsPage = async (req, res) => {
 };
 
 // รวมล็อกที่ "ใกล้หมดอายุ/หมดอายุแล้ว" ทุกโซนไว้ตารางเดียว (ก่อนหน้านี้ต้องเข้าไปดูทีละโซนในผัง /admin/slots
-// เอง ไม่มีที่ไหนเห็นภาพรวมทั้งตลาดพร้อมกัน) เรียงเร่งด่วนสุดก่อน: หมดอายุแล้ว > ใกล้มาก (≤1 วัน) > ใกล้ (≤7 วัน)
+// เอง ไม่มีที่ไหนเห็นภาพรวมทั้งตลาดพร้อมกัน) เรียงเร่งด่วนสุดก่อน: หมดอายุแล้ว > ใกล้มาก (≤1 วัน) > ใกล้ (≤1 วัน)
 // ปุ่มแจ้งเตือน/ปล่อยล็อกในตารางยิงไป route เดิมที่มีอยู่แล้ว (release-stall / notify-expiring)
 const EXPIRY_URGENCY_ORDER = { expired: 0, critical: 1, near: 2 };
 
@@ -361,7 +365,10 @@ exports.getExpiringStallsPage = async (req, res) => {
                     const daysLeft = stall.bookingEndDate
                         ? Math.round((new Date(stall.bookingEndDate).setHours(0, 0, 0, 0) - new Date(now).setHours(0, 0, 0, 0)) / (24 * 60 * 60 * 1000))
                         : null;
+                    const renewal = stall.bookingEndDate ? getRenewalOptions(stall.bookingEndDate, now) : null;
                     rows.push({
+                        renewalPhase: stall.bookingEndDate ? getRenewalPhase(stall.bookingEndDate, now) : null,
+                        renewal,
                         code: stall.code,
                         zoneCode: zone.code,
                         zoneDescription: zone.description,
@@ -422,6 +429,7 @@ exports.getMarketMapPage = async (req, res) => {
                 sellerName: true,
                 zone: true,
                 assignedStallCode: true,
+                sellerId: true,
                 productImage: true,
                 seller: {
                     select: {
@@ -475,9 +483,39 @@ exports.getMarketMapPage = async (req, res) => {
             });
         });
 
+        // มุมมองตาม role: ผู้ขายเห็นล็อกของตัวเอง+โซนที่จองได้, แอดมิน/staff เห็นสถานะใกล้หมดอายุ, ลูกค้าดูอย่างเดียว
+        const role = req.user?.role || 'CUSTOMER';
+        const viewer = { role, allowedZones: [], myStalls: [] };
+
+        if (role === 'SELLER') {
+            const [userRecord, sellerRecord] = await Promise.all([
+                prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true } }),
+                prisma.seller.findUnique({ where: { userId: req.user.id }, select: { id: true } })
+            ]);
+            viewer.allowedZones = zoneAccess.allowedZonesFor(userRecord?.shop?.productType || null).map((z) => String(z).toUpperCase());
+            if (sellerRecord) {
+                approvedRequests
+                    .filter((r) => r.sellerId === sellerRecord.id)
+                    .forEach((r) => {
+                        String(r.assignedStallCode || '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)
+                            .forEach((code) => viewer.myStalls.push(code));
+                    });
+            }
+        }
+
+        // วันหมดสัญญา/ระดับเตือนเป็นข้อมูลภายใน ส่งให้เฉพาะแอดมิน/staff และเจ้าของล็อกเท่านั้น
+        const canSeeExpiry = role === 'ADMIN' || role === 'STAFF';
+        const mySet = new Set(viewer.myStalls);
+        zonesData.forEach((zone) => zone.columns.forEach((column) => column.stalls.forEach((stall) => {
+            if (canSeeExpiry || mySet.has(String(stall.code).toUpperCase())) return;
+            delete stall.expiryState;
+            delete stall.bookingEndDate;
+        })));
+
         res.render('marketMap', {
             zonesData,
             bookingByStallCode,
+            viewer,
             user: req.user
         });
     } catch (error) {
