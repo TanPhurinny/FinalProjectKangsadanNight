@@ -130,13 +130,34 @@
 
 /* E/D/X/C ขยายให้สูงขึ้นกว่าสัดส่วนจริง (เดิม 9-10%) เพื่อให้กดง่ายขึ้นบนหน้าจอ — เป็น widget ย่อสำหรับ
    คลิกสลับดูโซนเท่านั้น ไม่ต้องยึดสัดส่วนจริงเป๊ะเหมือนผังจัดล็อคของแอดมิน จึงปรับเพื่อ usability ได้ */
-.insp-ov-zone-A { top: 8%; left: 2%; width: 23%; height: 72%; }
-.insp-ov-zone-E { top: 8%; left: 27%; width: 17%; height: 18%; }
-.insp-ov-zone-F { top: 28%; left: 27%; width: 18%; height: 58%; }
-.insp-ov-zone-D { top: 8%; left: 47%; width: 17%; height: 18%; }
-.insp-ov-zone-X { top: 8%; left: 64%; width: 15%; height: 18%; }
-.insp-ov-zone-B { top: 28%; left: 47%; width: 49%; height: 58%; }
-.insp-ov-zone-C { top: 82%; left: 2%; width: 23%; height: 16%; }
+.insp-ov-zone-A { top: 28%; left: 13.5%; width: 23%; height: 52%; }
+.insp-ov-zone-E { top: 8%; left: 19.5%; width: 17%; height: 18%; }
+.insp-ov-zone-F { top: 28%; left: 50.5%; width: 17%; height: 58%; }
+.insp-ov-zone-D { top: 8%; left: 50.5%; width: 17%; height: 18%; }
+.insp-ov-zone-X { top: 8%; left: 71.5%; width: 15%; height: 18%; }
+.insp-ov-zone-B { top: 28%; left: 71.5%; width: 15%; height: 58%; }
+.insp-ov-zone-C { top: 82%; left: 13.5%; width: 23%; height: 16%; }
+
+/* ทางเดินหลัก: กรอบประคั่นระหว่าง A กับ F */
+.insp-ov-zone-canvas::before {
+    content: 'ทางเดินหลัก';
+    position: absolute;
+    top: 8%;
+    left: 37.5%;
+    width: 12%;
+    height: 89%;
+    border: 1px dashed #9a9a9a;
+    background: repeating-linear-gradient(135deg, #f4f4f4 0 6px, #fff 6px 12px);
+    color: #777;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    writing-mode: vertical-rl;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
 
 .insp-ov-zone-block.is-empty {
     cursor: default;

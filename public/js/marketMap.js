@@ -33,6 +33,56 @@ function stallMatchesFilter(id, stall) {
     return false;
 }
 
+// การ์ดสลับโซนด้านข้างใน drawer (กดแล้วเปิดโซนนั้นทันที) แสดงจำนวนล็อกว่าง/ทั้งหมดของแต่ละโซน
+function zoneStallCounts(code) {
+    let total = 0;
+    let free = 0;
+    ((ZONES_DATA[code] && ZONES_DATA[code].columns) || []).forEach((column) => {
+        column.stalls.forEach((stall) => {
+            if (stall.status === 'PLACEHOLDER') return;
+            total += 1;
+            if (stall.status !== 'BOOKED' && stall.status !== 'MAINTENANCE') free += 1;
+        });
+    });
+    return { total, free };
+}
+
+function renderZoneCards(z) {
+    const box = document.getElementById('zoneCards');
+    if (!box) return;
+    if (!box.dataset.built) {
+        box.dataset.built = '1';
+        Object.keys(ZONES_DATA).sort().forEach((code) => {
+            const { total, free } = zoneStallCounts(code);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'zone-card';
+            btn.dataset.zone = code;
+            btn.style.setProperty('--zc-bg', `var(--zone-${code}-bg, #eee)`);
+            btn.style.setProperty('--zc-cl', `var(--zone-${code}-cl, #333)`);
+
+            const title = document.createElement('span');
+            title.className = 'zc-title';
+            title.textContent = `โซน ${code}`;
+            const desc = document.createElement('span');
+            desc.className = 'zc-desc';
+            desc.textContent = ZONES_DATA[code].description || '';
+            const stat = document.createElement('span');
+            stat.className = 'zc-stat';
+            stat.innerHTML = `ว่าง <b>${free}</b> / ${total}`;
+
+            btn.append(title, desc, stat);
+            btn.addEventListener('click', () => openZone(code));
+            box.appendChild(btn);
+        });
+    }
+    box.querySelectorAll('.zone-card').forEach((el) => {
+        const on = el.dataset.zone === z;
+        el.classList.toggle('active', on);
+        el.setAttribute('aria-current', on ? 'true' : 'false');
+    });
+}
+
 function openZone(z) {
     if (!ZONES_DATA[z]) return;
 
@@ -56,6 +106,7 @@ function openZone(z) {
     document.getElementById('zoneDot').className = `zone-dot dot-${z}`;
 
     renderGrid(z);
+    renderZoneCards(z);
     document.getElementById('drawer').classList.add('open');
     document.getElementById('backdrop').classList.add('show');
 }
