@@ -1,0 +1,44 @@
+/* หน้าต่อล็อก — ทับบน bookingStall.css */
+#extendForm { display: flex; flex-direction: column; gap: 24px; padding: 28px; }
+#extendForm .bottom-buttons { margin-top: 4px; }
+
+.ext-step { border: 1px solid var(--line); background: #fff; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+.ext-step-plain { border: 0; padding: 0; background: none; }
+.ext-title { margin: 0; font: 600 18px 'Kanit', sans-serif; color: var(--ink); display: flex; align-items: center; gap: 12px; }
+.ext-num {
+  width: 28px; height: 28px; flex: none; display: grid; place-items: center;
+  background: var(--primary); color: #fff; font: 600 14px 'IBM Plex Mono', monospace;
+}
+
+.ext-stall { display: flex; align-items: center; gap: 22px; padding: 18px 20px; background: var(--primary-wash); border-left: 4px solid var(--primary); }
+.ext-stall-code { font: 700 44px/1 'IBM Plex Mono', monospace; color: var(--primary-dark); min-width: 84px; text-align: center; }
+.ext-stall-info { display: flex; flex-direction: column; gap: 6px; font-size: 16px; color: var(--ink-soft); }
+.ext-stall-info strong { color: var(--ink); font-weight: 600; }
+
+.ext-status { padding: 16px 20px; line-height: 1.7; font-size: 15px; border-left: 4px solid; }
+.ext-status strong { display: block; font-size: 16px; }
+.ext-status-open { background: #eaf6ee; border-color: #2f9e5b; color: #1d5c37; }
+.ext-status-closed { background: var(--danger-wash); border-color: var(--danger); color: var(--danger); }
+
+.ext-label { font-weight: 500; color: var(--ink); }
+#extendForm .field-input { width: 100%; font-size: 17px; padding: 12px 14px; }
+.ext-round-btn {
+  padding: 14px 16px; cursor: pointer; text-align: center;
+  border: 0; background: var(--primary); color: #fff;
+  font: 600 16px 'Kanit', sans-serif; border-radius: 0;
+}
+.ext-round-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ext-hint { margin: 0; font-size: 14px; color: var(--amber); line-height: 1.6; }
+
+.ext-notes { margin: 0; padding-left: 22px; color: var(--ink-soft); line-height: 1.9; font-size: 15px; }
+
+@media (max-width: 560px) {
+  #extendForm { padding: 16px; gap: 18px; }
+  .ext-step { padding: 18px; }
+  .ext-stall { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .ext-stall-code { text-align: left; font-size: 38px; }
+}
+
+#extendForm .btn-confirm { background: #2f9e5b; border-color: #2f9e5b; color: #fff; }
+#extendForm .btn-confirm:hover:not(:disabled) { background: #268a4e; border-color: #268a4e; }
+#extendForm .btn-confirm:disabled { background: #2f9e5b; opacity: .5; cursor: not-allowed; }

@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
   <link rel="stylesheet" href="/stylesheets/seller/bookingStall.css">
+  <link rel="stylesheet" href="/stylesheets/seller/extendLock.css">
 </head>
 <body>
 <script src="/js/common/tabSession.js"></script>
@@ -35,8 +36,8 @@
         <%
         const errorMsg = {
             'invalid_extend_date': 'กรุณาเลือกวันที่ให้ถูกต้อง (ต้องอยู่หลังวันสิ้นสุดปัจจุบัน และไม่เกินวันจบรอบ)',
-            'too_early_to_extend': 'วันพฤหัสบดีเป็นต้นไป ขอต่อล็อกล่วงหน้าได้แค่ 1 วันก่อนวันขายเท่านั้น',
-            'extend_min_days': 'วันพุธ ต้องขอต่อล็อกอย่างน้อย 3 วันติดกัน',
+            'too_early_to_extend': 'ต่อไม่ถึงสิ้นรอบ เริ่มขอต่อได้ตั้งแต่ 1 วันก่อนวันขายสุดท้าย (ต่อจนสุดรอบขอได้ทันที)',
+            'extend_window_closed': 'เลยเวลา 20:00 น. ของวันขายสุดท้ายแล้ว ล็อกนี้หมดสิทธิ์การต่อ',
             'extend_failed': 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
             'blacklisted': 'ร้านค้าของคุณถูกระงับสิทธิ์การต่อล็อก (Blacklist) กรุณาติดต่อผู้ดูแลตลาด'
         }[error] || null;
@@ -46,54 +47,55 @@
         <% } %>
       <% } %>
 
-      <div class="field-group">
-        <label class="field-label">ล็อกปัจจุบัน</label>
-        <input type="text" class="field-input" value="<%= request.zone %> — ล็อก <%= request.assignedStallCode || '-' %>" readonly />
-      </div>
+      <% const fmtD = (d) => new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }); %>
 
-      <div class="grid-two">
-        <div class="field-group">
-          <label class="field-label">ขายถึงวันที่ (ปัจจุบัน)</label>
-          <input type="text" class="field-input" value="<%= new Date(activeLock.rentalEndDate).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>" readonly />
+      <section class="ext-step">
+        <h2 class="ext-title"><span class="ext-num">1</span>ล็อกของคุณตอนนี้</h2>
+        <div class="ext-stall">
+          <div class="ext-stall-code"><%= request.assignedStallCode || '-' %></div>
+          <div class="ext-stall-info">
+            <div>โซน <strong><%= request.zone %></strong></div>
+            <div>ขายได้ถึงวันที่ <strong><%= fmtD(activeLock.rentalEndDate) %></strong></div>
+            <div>รอบนี้จบวันที่ <strong><%= fmtD(roundMeta.cycleEnd) %></strong></div>
+          </div>
         </div>
-        <div class="field-group">
-          <label class="field-label">รอบนี้สิ้นสุด</label>
-          <input type="text" class="field-input" value="<%= new Date(roundMeta.cycleEnd).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>" readonly />
-        </div>
+      </section>
+
+      <% if (!renewal.isOpen) { %>
+      <div class="ext-status ext-status-closed">
+        <strong>หมดเวลาต่อล็อกแล้ว</strong>
+        เลย 20:00 น. ของวันขายสุดท้ายแล้ว ล็อกนี้ถูกเปิดให้ร้านอื่นจองแทน
       </div>
-
-      <div class="field-group">
-        <label class="field-label">ต่อขายถึงวันที่</label>
-        <input type="date" class="field-input" id="newEndDate" name="newEndDate" <%= extendAllowedToday ? 'required' : 'disabled' %> />
+      <% } else { %>
+      <div class="ext-status ext-status-open">
+        <strong>ส่งคำขอต่อได้ ถึง 20:00 น. วันที่ <%= fmtD(renewal.currentEnd) %></strong>
+        เลยเวลานี้ล็อกจะถูกเปิดให้ร้านอื่นจอง
       </div>
+      <% } %>
 
-      <button type="button" class="btn-cancel-main" id="extendToRoundEndBtn" style="margin-bottom: 16px;" <%= extendAllowedToday ? '' : 'disabled' %>>ต่อจนสุดรอบ</button>
-
-      <div class="alert-box info-box">
-        <% if (extendPhase.phase === 1) { %>
-          วันนี้ (จันทร์-อังคาร) ต่อล็อกกี่วันก็ได้ทันที — รวมถึงต่อจนสุดรอบ
-        <% } else if (extendPhase.phase === 2) { %>
-          วันนี้ (พุธ) ต่อล็อกได้ต้องอย่างน้อย 3 วันติดกัน จะเว้นวันไม่ได้
-        <% } else if (extendAllowedToday) { %>
-          วันนี้ (พฤหัสบดีเป็นต้นไป) ต่อล็อกกี่วันก็ได้ แต่ขอล่วงหน้าได้แค่ 1 วันก่อนวันขายเท่านั้น
-        <% } else { %>
-          วันนี้ (พฤหัสบดีเป็นต้นไป) ขอต่อล็อกล่วงหน้าได้แค่ 1 วันก่อนวันขาย — กลับมาขอใหม่วันที่ <%= new Date(new Date(activeLock.rentalEndDate).getTime()).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>
+      <section class="ext-step">
+        <h2 class="ext-title"><span class="ext-num">2</span>เลือกวันที่จะขายต่อ</h2>
+        <label class="ext-label" for="newEndDate">ขายต่อถึงวันที่</label>
+        <input type="date" class="field-input" id="newEndDate" name="newEndDate" <%= renewal.isOpen ? 'required' : 'disabled' %> />
+        <button type="button" class="ext-round-btn" id="extendToRoundEndBtn" <%= renewal.isOpen ? '' : 'disabled' %>>
+          ต่อจนจบรอบ (<%= fmtD(renewal.roundEnd) %>)
+        </button>
+        <% if (renewal.isOpen && !renewal.canRenewShort) { %>
+        <p class="ext-hint">อยากต่อสั้นกว่านี้ ต้องรอถึงวันที่ <%= fmtD(renewal.opensAt) %> ตอนนี้เลือกได้เฉพาะจนจบรอบ</p>
         <% } %>
-        คำขอนี้จะเข้าสู่ขั้นตอนอนุมัติของแอดมินเหมือนการจองปกติ
-      </div>
+      </section>
 
-      <div class="alert-box info-box">
-        <strong>หมายเหตุ</strong>
-        <ol style="margin: 6px 0 0; padding-left: 20px;">
-          <li>ท่านจะไม่ได้ย้ายล็อคตลอดช่วงที่ท่านจอง</li>
-          <li>หากท่านจองคนละรอบ ท่านมีโอกาสจะได้ย้ายล็อค</li>
-          <li>ตำแหน่งล็อคจะถูกจัดสรรโดยระบบ เพื่อให้การจัดการพื้นที่เป็นไปอย่างมีประสิทธิภาพสูงสุด</li>
-        </ol>
-      </div>
+      <section class="ext-step ext-step-plain">
+        <h2 class="ext-title"><span class="ext-num">3</span>ส่งคำขอ แล้วรอแอดมินอนุมัติ</h2>
+        <ul class="ext-notes">
+          <li>ล็อกเดิมของคุณ ไม่ย้ายตลอดช่วงที่จองอยู่</li>
+          <li>ถ้าจองข้ามรอบ อาจได้ล็อกใหม่ ระบบเป็นคนจัดให้</li>
+        </ul>
+      </section>
 
       <div class="bottom-buttons">
         <button type="button" class="btn-cancel-main" onclick="history.back()">ยกเลิก</button>
-        <button type="submit" class="btn-confirm" <%= extendAllowedToday ? '' : 'disabled' %>>ส่งคำขอต่อล็อค</button>
+        <button type="submit" class="btn-confirm" <%= renewal.isOpen ? '' : 'disabled' %>>ส่งคำขอต่อล็อก</button>
       </div>
     </form>
   </main>
@@ -112,17 +114,13 @@
       };
       var currentEnd = toDateInputValue(<%- JSON.stringify(new Date(activeLock.rentalEndDate)) %>);
       var roundEnd = toDateInputValue(<%- JSON.stringify(new Date(roundMeta.cycleEnd)) %>);
-      var minDays = <%- extendPhase.minDays %>;
+      var canRenewShort = <%- renewal.canRenewShort %>;
 
       var extendStart = new Date(currentEnd);
       extendStart.setDate(extendStart.getDate() + 1);
 
-      // วันพุธต้องต่ออย่างน้อย 3 วันติดกัน เลยดัน min ของช่องวันที่ให้ไกลกว่าปกติ
-      var minEndDate = new Date(extendStart);
-      minEndDate.setDate(minEndDate.getDate() + (minDays - 1));
-      var minValue = toDateInputValue(minEndDate);
-
-      newEndDateInput.min = minValue;
+      // ต่อไม่ถึงสิ้นรอบยังไม่เปิด (ก่อน D-1) = เลือกได้แค่วันสิ้นรอบวันเดียว
+      newEndDateInput.min = canRenewShort ? toDateInputValue(extendStart) : roundEnd;
       newEndDateInput.max = roundEnd;
 
       extendToRoundEndBtn.addEventListener('click', function () {
