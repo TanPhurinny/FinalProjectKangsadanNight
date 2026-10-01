@@ -827,10 +827,9 @@ body {
 	box-shadow: 3px 3px 0 var(--navy);
 }
 .open-checkin__btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--navy); }
-.open-checkin.is-open .open-checkin__btn { background: #fff; color: var(--navy); }
 .open-checkin__btn:disabled { opacity: .6; cursor: wait; }
 /* ค่าเริ่มต้นเปิดอยู่: ปุ่มปิดเป็นปุ่มรอง (ไม่เด่นเท่าการ์ดสถานะ) / ปิดแล้ว: การ์ดเทา ปุ่มยกเลิกเป็นปุ่มหลัก */
-.open-checkin.is-open .open-checkin__btn { background: #fff; color: var(--navy); }
+.open-checkin.is-open .open-checkin__btn { background: var(--danger); border-color: #8e2a1f; color: #fff; }
 .open-checkin.is-closed { border-left-color: var(--ink-soft); background: var(--soft-bg); }
 .open-checkin.is-closed .open-checkin__dot { background: var(--ink-soft); border-color: var(--navy); }
 .open-checkin.is-closed .open-checkin__btn { background: var(--navy); color: #fff; }

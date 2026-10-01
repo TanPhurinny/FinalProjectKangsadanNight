@@ -2191,12 +2191,13 @@ body.bulk-on .zoom-ctl, body.walk-on .zoom-ctl { bottom: 14px; }
     flex-shrink: 0;
     min-height: 40px;
     padding: 6px 14px;
-    border: 1px solid var(--text);
-    background: #fff;
-    color: var(--text);
+    border: 1px solid #8e2a1f;
+    background: #c0392b;
+    color: #fff;
     font-family: inherit;
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
 }
+.ich-open-btn:hover { background: #962d22; }
 .ich-open.is-closed .ich-open-btn { background: var(--text); color: #fff; }
