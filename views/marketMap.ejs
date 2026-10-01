@@ -15,6 +15,7 @@
             rel="stylesheet" />
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
         <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261002-match">
+        <link rel="stylesheet" href="/stylesheets/common/searchSuggest.css?v=20261002">
     </head>
     <body>
         <script src="/js/common/tabSession.js"></script>
@@ -56,6 +57,7 @@
                     <input type="text" id="searchInput"
                         placeholder="ค้นหาร้านค้า เช่น หมูปิ้ง, เสื้อผ้า, ก๋วยเตี๋ยว..." />
                     <button id="clearBtn" onclick="clearSearch()">✕</button>
+                    <ul id="searchSuggest" class="search-suggest" hidden></ul>
                 </div>
                 <span id="resultBadge"></span>
             </div>
@@ -252,6 +254,7 @@
         <script type="application/json" id="zonesDataJson"><%- JSON.stringify(zoneByCode).replace(/</g, '\\u003c') %></script>
         <script type="application/json" id="bookingByStallJson"><%- JSON.stringify(locals.bookingByStallCode || {}).replace(/</g, '\\u003c') %></script>
         <script type="application/json" id="viewerJson"><%- JSON.stringify(locals.viewer || { role: 'CUSTOMER', allowedZones: [], myStalls: [] }).replace(/</g, '\\u003c') %></script>
-        <script src="/js/marketMap.js?v=20261002-vacancy"></script>
+        <script src="/js/common/searchSuggest.js?v=20261002"></script>
+        <script src="/js/marketMap.js?v=20261002-suggest2"></script>
     </body>
 </html>

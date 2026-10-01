@@ -1,0 +1,55 @@
+/* คำแนะนำตอนพิมพ์ค้นหา (autocomplete) ใช้ร่วมกันในผังตลาดทุก role — คู่กับ public/js/common/searchSuggest.js
+   ต้องวาง <ul class="search-suggest"> ไว้ใน .search-box */
+.search-box { position: relative; }
+.search-suggest {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: -1px;
+    right: -1px;
+    z-index: 60;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: #fff;
+    border: 1px solid var(--text, #12303a);
+    box-shadow: 4px 4px 0 rgba(18, 48, 58, .14);
+    max-height: 340px;
+    overflow-y: auto;
+}
+.search-suggest[hidden] { display: none; }
+.search-suggest .ss-head {
+    padding: 6px 12px;
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--sub, #5b7a84);
+    border-bottom: 1px solid var(--border, #d7e3e6);
+    background: #f7fafb;
+}
+.search-suggest .ss-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border, #d7e3e6);
+}
+.search-suggest .ss-item:last-child { border-bottom: none; }
+.search-suggest .ss-item.active { background: #e4f2f5; box-shadow: inset 3px 0 0 var(--primary, #2C93A8); }
+.search-suggest .ss-icon { font-size: 11px; color: var(--sub, #5b7a84); width: 14px; text-align: center; }
+.search-suggest .ss-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
+.search-suggest .ss-text b { font-weight: 700; }
+.search-suggest .ss-kind {
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 10px;
+    padding: 1px 6px;
+    border: 1px solid var(--border, #d7e3e6);
+    color: var(--sub, #5b7a84);
+    white-space: nowrap;
+}
+.search-suggest .ss-meta {
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--sub, #5b7a84);
+    white-space: nowrap;
+}

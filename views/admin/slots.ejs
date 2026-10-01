@@ -19,6 +19,7 @@
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/admin/slots.css?v=20261002-match">
+        <link rel="stylesheet" href="/stylesheets/common/searchSuggest.css?v=20261002">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
     <body class="bg-light">
@@ -80,6 +81,7 @@
                     <input type="text" id="searchInput"
                         placeholder="ค้นหา เช่น หมูปิ้ง, เสื้อผ้า, ก๋วยเตี๋ยว..." />
                     <button id="clearBtn" onclick="clearSearch()">✕</button>
+                    <ul id="searchSuggest" class="search-suggest" hidden></ul>
                 </div>
                 <span id="resultBadge"></span>
                 <a href="/admin/slots/expiring" class="btn-expiring-link">
@@ -322,7 +324,8 @@
         <script
             src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
         <script src="/js/common/dialogs.js"></script>
-        <script src="/js/admin/slots.js"></script>
+        <script src="/js/common/searchSuggest.js?v=20261002"></script>
+        <script src="/js/admin/slots.js?v=20261002-suggest2"></script>
         <script>
             // แจ้งผลลัพธ์ปุ่ม "ปล่อยล็อก"/"แจ้งเตือนร้านค้า" (ดู releaseStall()/notifyExpiring() ใน slots.js)
             // หลัง redirect กลับมาที่หน้านี้ แล้วล้าง query ทิ้ง

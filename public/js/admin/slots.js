@@ -153,7 +153,7 @@ function stallMatchesFilter(id, stall) {
     if (currentQuery) {
         const d = BOOKING_BY_STALL[id];
         if (!d) return false;
-        return (d.shop + d.product + d.name + d.note).toLowerCase().includes(currentQuery.toLowerCase());
+        return (d.shop + d.product + d.name + d.note + (d.productDetail || '')).toLowerCase().includes(currentQuery.toLowerCase());
     }
     return false;
 }
@@ -659,6 +659,64 @@ function quickStatusFilter(btn, status) {
     btn.classList.add('active');
     refreshFilterResults();
 }
+
+// คำแนะนำตอนพิมพ์ค้นหา (แบบ Google) — ดู public/js/common/searchSuggest.js
+// ดัชนีคำมาจากร้านในผัง: ชื่อร้าน, ชื่อผู้ขาย, ประเภทสินค้า และคำในรายละเอียดสินค้า
+function findZoneOfStall(code) {
+    return Object.keys(ZONES_DATA).find((z) => (ZONES_DATA[z].columns || []).some((column) => column.stalls.some((st) => st.code === code))) || null;
+}
+
+// ประเภทสินค้าใน DB เป็นรหัสอังกฤษ (FOOD/FASHION/...) — แสดงเป็นไทย แต่ค้นด้วยรหัสเดิมผ่าน alias
+const PRODUCT_TYPE_LABELS = { food: 'อาหาร', fashion: 'แฟชั่น', event_booth: 'บูธกิจกรรม' };
+
+window.createSearchSuggest && createSearchSuggest({
+    input: document.getElementById('searchInput'),
+    list: document.getElementById('searchSuggest'),
+    kinds: {
+        shop: { label: 'ร้าน', order: 0, icon: 'fa-store' },
+        seller: { label: 'ผู้ขาย', order: 1, icon: 'fa-user' },
+        category: { label: 'ประเภท', order: 2, icon: 'fa-tag', popular: true },
+        product: { label: 'สินค้า', order: 3 }
+    },
+    buildEntries() {
+        const entries = [];
+        Object.keys(BOOKING_BY_STALL).forEach((code) => {
+            if (!findZoneOfStall(code)) return;
+            const d = BOOKING_BY_STALL[code];
+            entries.push({ label: d.shop, kind: 'shop', stall: code });
+            entries.push({ label: d.name, kind: 'seller', stall: code });
+            // "โซน X" คือค่าสำรองตอนไม่รู้ประเภทสินค้า ไม่ใช่ประเภทจริง จึงไม่เอามาแนะนำ
+            if (d.product && !/^โซน /.test(d.product)) {
+                const raw = String(d.product).trim();
+                entries.push({ label: PRODUCT_TYPE_LABELS[raw.toLowerCase()] || raw, kind: 'category', stall: code, alias: raw });
+            }
+            String(d.productDetail || '').split(/[\s,/]+/).forEach((w) => entries.push({ label: w, kind: 'product', stall: code }));
+        });
+        return entries;
+    },
+    onSearch: doSearch,
+    onPick(it) {
+        if (it.kind === 'category' && it.alias) {
+            document.getElementById('searchInput').value = it.label;
+            doSearch(it.alias);
+            return true;
+        }
+        // เลือกชื่อร้านที่มีล็อกเดียว: ค้นด้วยชื่อร้าน แล้วเปิดโซน เลื่อนไปหาล็อก และเปิดการ์ดรายละเอียดเลย
+        if (it.kind !== 'shop' || it.stalls.size !== 1) return false;
+        const code = [...it.stalls][0];
+        const zone = findZoneOfStall(code);
+        document.getElementById('searchInput').value = it.label;
+        doSearch(it.label);
+        if (!zone) return true;
+        openZone(zone);
+        requestAnimationFrame(() => {
+            const cell = document.querySelector(`.stall-cell[data-stall="${code}"]`);
+            if (cell) cell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+            showInfo(code);
+        });
+        return true;
+    }
+});
 
 window.openZone = openZone;
 window.closeZone = closeZone;
