@@ -1,5 +1,6 @@
 const prisma = require('../config/prismaClient');
 const { toStartOfDay } = require('./bookingRound');
+const { buildPreferredWalkOrder } = require('./inspectionWalkOrder');
 
 // สรุปผลตรวจตลาด "ของวันนี้" รายล็อก ใช้กับชั้นข้อมูล "ผลตรวจวันนี้" บนผังตลาด (แอดมิน/staff เท่านั้น)
 //
@@ -104,8 +105,17 @@ async function buildTodayInspectionLayer() {
         };
     });
 
+    // ลำดับเดินตรวจจริง (เส้นทางเดียวกับหน้าตรวจตลาด) — ล็อกที่ไม่อยู่ในเส้นทางต่อท้ายตามรหัส
+    const walkIndex = new Map(buildPreferredWalkOrder().map((code, idx) => [code, idx]));
+    const walkOrder = Object.keys(byCode).sort((a, b) => {
+        const ia = walkIndex.has(a) ? walkIndex.get(a) : Number.POSITIVE_INFINITY;
+        const ib = walkIndex.has(b) ? walkIndex.get(b) : Number.POSITIVE_INFINITY;
+        return ia === ib ? a.localeCompare(b) : ia - ib;
+    });
+
     return {
         byCode,
+        walkOrder,
         dateLabel: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })
     };
 }

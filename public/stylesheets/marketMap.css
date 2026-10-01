@@ -1750,3 +1750,313 @@ body.mv-open { overflow: hidden; }
 .qi-msg { font-size: 12px; min-height: 1em; }
 .qi-msg-ok { color: #1e7a45; font-weight: 600; }
 .qi-msg-err { color: #c0392b; font-weight: 600; }
+
+/* ========================================
+   รอบใหม่: QR / ห้องน้ำ / ร้านข้างๆ / โซนที่จองได้ / โพสต์ / ซูม / ดูล่วงหน้า / เลือกหลายล็อก /
+   สถิติโซน / เดินตรวจ / งานซ่อม — ออกแบบให้ใช้นิ้วบนมือถือเป็นหลัก (ปุ่มสูง ≥ 40px, แถบล่างจอ)
+   ======================================== */
+
+/* แถบบนสำหรับคนที่สแกน QR เข้ามาโดยไม่ล็อกอิน */
+.guest-bar {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--text);
+    color: #fff;
+}
+.guest-brand { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font-weight: 700; }
+.guest-brand img { height: 32px; }
+.guest-login { padding: 8px 14px; border: 1px solid #fff; color: #fff; text-decoration: none; font-size: 13px; font-weight: 600; }
+.guest-login:hover { background: #fff; color: var(--text); }
+
+/* ปุ่มมาตรฐานของแถบล่างจอ/หน้าต่าง */
+.ad-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid var(--text);
+    background: var(--text);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.ad-btn:hover { background: #0b1f26; color: #fff; }
+.ad-btn:disabled { opacity: .4; cursor: not-allowed; }
+.ad-ghost { background: #fff; color: var(--text); }
+.ad-ghost:hover, .ad-ghost.active { background: var(--road); color: var(--text); }
+.ad-danger { background: #c0392b; border-color: #8e2a1f; }
+.ad-danger:hover { background: #962d22; }
+
+/* แถบล่างจอ (เลือกหลายล็อก / เดินตรวจ) — อยู่เหนือ drawer และการ์ด กดด้วยนิ้วโป้งได้ */
+.action-dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: #fff;
+    border-top: 2px solid var(--text);
+    box-shadow: 0 -6px 20px rgba(18, 48, 58, .18);
+}
+.action-dock[hidden] { display: none; }
+.ad-info { display: flex; flex-direction: column; gap: 2px; font-size: 14px; color: var(--text); min-width: 0; }
+.ad-info b { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 16px; }
+.ad-info small { font-size: 11px; color: var(--sub); }
+.ad-kicker { font-size: 11px; color: var(--sub); font-family: 'IBM Plex Mono', 'Courier New', monospace; }
+.ad-progress { display: block; width: 160px; height: 6px; border: 1px solid var(--text); margin-top: 3px; }
+.ad-progress > span { display: block; height: 100%; background: #2e9e5b; }
+.ad-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+body.bulk-on .drawer.open, body.walk-on .drawer.open { padding-bottom: var(--dock-h, 76px); }
+.ad-line { display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* แถบสรุปชั้นข้อมูล: ดูล่วงหน้า / ปุ่มโหมด */
+.ls-ahead { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; padding: 2px 10px; border: 1px solid var(--border); }
+.ls-ahead input { width: 120px; accent-color: #2e9e5b; }
+.ls-ahead b { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 11px; white-space: nowrap; }
+.ls-note { font-size: 12px; color: var(--sub); }
+.ls-note b { color: var(--text); }
+.lf-select.active, .lf-walk.active { background: var(--text); border-color: var(--text); color: #fff; }
+.lf-walk { border-color: #2e9e5b; color: #1e7a45; }
+
+/* ล็อก: ดูล่วงหน้า / เลือกหลายล็อก / ร้านที่กำลังเดินตรวจ */
+.stall-cell.booked.exp-will-free {
+    background: repeating-linear-gradient(135deg, #d6f5e3 0 5px, #2e9e5b 5px 8px);
+    color: var(--text);
+    font-weight: 700;
+}
+body.bulk-on .stall-cell.booked { cursor: copy; }
+.stall-cell.bulk-selected { outline: 4px solid #1c6ef2; outline-offset: -2px; z-index: 3; }
+.stall-cell.bulk-selected::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    font-size: 10px;
+    color: #1c6ef2;
+    background: #fff;
+    padding: 0 2px;
+}
+.stall-cell.walk-current { outline: 4px solid #2e9e5b; outline-offset: 1px; z-index: 4; animation: walkPulse 1.4s ease-in-out infinite; }
+@keyframes walkPulse { 50% { outline-color: #9be2b8; } }
+
+/* ชั้นงานซ่อม */
+.stall-cell.booked.rep-base { background: #eef1f2; color: var(--sub); border-color: #000; }
+.stall-cell.rep { border-color: #000; color: var(--text) !important; font-weight: 700; }
+.stall-cell.rep-pending { background: #e2b83a !important; }
+.stall-cell.rep-approved { background: #2c7be5 !important; color: #fff !important; }
+.stall-cell.rep-in_progress { background: #e67e22 !important; color: #fff !important; }
+.stall-cell .cell-mark-repair { top: 2px; left: 2px; font-size: 9px; }
+.stall-cell .cell-mark-count {
+    top: 1px;
+    right: 1px;
+    padding: 0 3px;
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 9px;
+    background: #fff;
+    color: var(--text);
+    border: 1px solid #000;
+}
+
+/* สถิติโซน (แอดมิน) */
+.zone-insights {
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    border-bottom: 1px solid var(--border);
+}
+.zone-insights:empty { display: none; }
+.zi-tile, .zi-mix { display: flex; flex-direction: column; gap: 2px; padding: 8px 18px; border-right: 1px solid var(--border); }
+.zi-mix { border-right: 0; }
+.zi-tile span, .zi-mix > span { font-size: 11px; color: var(--sub); }
+.zi-tile b { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 18px; color: var(--text); }
+.zi-tile small { font-size: 11px; color: var(--sub); }
+.zi-bar { display: flex; gap: 2px; height: 12px; margin-top: 4px; }
+.zi-bar span { display: block; min-width: 4px; }
+.zi-bar .zi-empty { flex: 1; background: var(--road); }
+.zi-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: 11px; color: var(--text); }
+.zi-legend i { display: inline-block; width: 8px; height: 8px; margin-right: 4px; }
+
+/* ซูมผัง: ปุ่มลอยมุมขวาล่างของลิ้นชัก */
+.drawer-body { position: relative; }
+.drawer-grid { touch-action: pan-x pan-y; }
+.zoom-ctl {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid var(--text);
+    box-shadow: 3px 3px 0 var(--text);
+}
+.zoom-ctl button { width: 40px; height: 40px; border: 0; border-left: 1px solid var(--text); background: #fff; color: var(--text); cursor: pointer; }
+.zoom-ctl button:first-child { border-left: 0; }
+.zoom-ctl button:hover { background: var(--road); }
+.zoom-ctl span { min-width: 48px; padding: 0 6px; text-align: center; font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 12px; border-left: 1px solid var(--text); line-height: 40px; }
+.zoom-ctl span + button { border-left: 1px solid var(--text); }
+body.bulk-on .zoom-ctl, body.walk-on .zoom-ctl { bottom: 14px; }
+
+/* ส่วนเสริมในการ์ดร้าน */
+.ic-section { margin-top: 14px; }
+.ic-section.d-none { display: none; }
+.ics-head { font-size: 11px; font-weight: 600; color: var(--sub); margin-bottom: 6px; }
+.ics-head small { font-weight: 400; margin-left: 4px; }
+.ic-post { display: flex; gap: 10px; align-items: flex-start; padding: 8px; border: 1px solid var(--border); color: var(--text); text-decoration: none; font-size: 13px; line-height: 1.5; }
+.ic-post:hover { border-color: var(--text); }
+.ic-post img { width: 56px; height: 56px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border); }
+.nb-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.nb-item { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 52px; padding: 7px 10px; border: 1px solid var(--border); background: #fff; color: var(--text); font-family: inherit; text-align: left; cursor: pointer; }
+.nb-item:hover { border-color: var(--text); }
+.nb-item b { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 11px; color: var(--sub); }
+.nb-item span { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.nb-item small { font-size: 11px; color: var(--sub); }
+.nb-item.nb-warn { border-color: #e2b83a; background: #fff8e1; }
+.nb-item.nb-warn small { color: #8a6a00; font-weight: 600; }
+.fc-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.fc-btn { min-height: 40px; padding: 6px; border: 1px solid var(--text); background: #fff; color: var(--text); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.fc-btn:hover { background: var(--road); }
+.ic-tool.d-none { display: none; }
+
+/* ปุ่มห้องน้ำ/ขยะ/ออฟฟิศบนภาพรวมผัง: กระพริบตอนพามาจากการ์ดร้าน */
+.btn-facility { cursor: pointer; }
+.btn-facility.facility-ping { animation: facilityPing 0.8s ease-in-out 4; outline: 3px solid var(--match); outline-offset: 2px; }
+@keyframes facilityPing { 50% { transform: scale(1.15); } }
+
+/* ผู้ขาย: แบนเนอร์รอบจอง + โซนที่จองได้ */
+.seller-banner {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 12px 18px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: #fffaf0;
+    border-left: 4px solid #e67e22;
+}
+.seller-banner[hidden] { display: none; }
+.sb-round { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.sb-kicker { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 11px; color: var(--sub); }
+.sb-round b { font-size: 15px; color: var(--text); }
+.sb-steps { font-size: 12px; color: var(--sub); }
+.sb-stat { display: flex; flex-direction: column; padding: 4px 12px; border: 1px solid var(--text); background: #fff; color: var(--text); text-decoration: none; }
+.sb-stat span { font-size: 10px; color: var(--sub); }
+.sb-stat b { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 18px; line-height: 1.1; }
+.sb-actions { display: flex; gap: 6px; }
+.zone-book-badge {
+    position: absolute;
+    left: 50%;
+    bottom: 6px;
+    transform: translateX(-50%);
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+    border: 1px solid #000;
+    background: #fff;
+    display: none;
+}
+.zb-free { color: #1e7a45; }
+.zb-full { color: #8e2a1f; }
+body.show-allowed .zone-book-badge { display: block; }
+body.show-allowed .zone-block.zone-not-allowed { opacity: .25; filter: grayscale(1); }
+body.show-allowed .zone-block.zone-allowed { box-shadow: 0 0 0 3px #e67e22; }
+
+/* หน้าต่าง QR */
+.qr-panel { width: min(420px, calc(100vw - 24px)); }
+.qr-body { padding: 16px 18px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; overflow-y: auto; }
+.qr-body img { width: min(240px, 70vw); height: auto; aspect-ratio: 1; border: 1px solid var(--text); background: #fff; }
+.qr-body p { margin: 0; font-size: 13px; color: var(--sub); }
+.qr-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+
+/* ========================================
+   มือถือ: การ์ดร้านเป็น bottom sheet, หัวลิ้นชักกระชับ, แถบต่างๆ เลื่อนแนวนอนแทนการขึ้นบรรทัด
+   ======================================== */
+@media (max-width: 600px) {
+    .info-card {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: 86vh;
+        transform: none;
+        border-left: 0;
+        border-top: 3px solid var(--text);
+        padding: 22px 16px calc(16px + env(safe-area-inset-bottom));
+        box-shadow: 0 -10px 40px rgba(18, 48, 58, .3);
+    }
+    .info-card::before {
+        content: '';
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        width: 40px;
+        height: 4px;
+        margin-left: -20px;
+        background: var(--border);
+    }
+    .info-card.show { animation: sheetUp .2s ease; }
+    @keyframes sheetUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+    body.bulk-on .info-card, body.walk-on .info-card { bottom: var(--dock-h, 76px); max-height: calc(86vh - var(--dock-h, 76px)); }
+
+    .drawer-head { padding: 8px 12px 10px; gap: 8px; }
+    .zone-pill { font-size: 14px; padding: 4px 10px 4px 6px; white-space: nowrap; }
+    .head-sub { display: none; }
+    .drawer-stats { font-size: 11px; line-height: 1.5; }
+    .drawer-legend { flex-wrap: nowrap; overflow-x: auto; gap: 12px; padding: 6px 12px; }
+    .leg { white-space: nowrap; }
+
+    .layer-bar { flex-wrap: nowrap; overflow-x: auto; padding: 8px 12px; }
+    .layer-bar .tag-lbl { display: none; }
+    .layer-tab { white-space: nowrap; min-height: 38px; }
+    .layer-summary { flex-wrap: nowrap; white-space: nowrap; }
+    .cat-bar { flex-wrap: nowrap; overflow-x: auto; padding: 8px 12px; }
+    .cat-bar > .tag-lbl { display: none; }
+    .cat-chips { flex-wrap: nowrap; }
+    .cat-chip { white-space: nowrap; min-height: 36px; }
+    .cat-actions { width: auto; margin-left: 8px; }
+    .act-btn { white-space: nowrap; flex: 0 0 auto; }
+    .qtag { min-height: 36px; }
+
+    .z-title { font-size: 16px; }
+    .zone-label .z-sub { font-size: 10px; }
+
+    .seller-banner { grid-template-columns: 1fr auto; }
+    .sb-actions { grid-column: 1 / -1; }
+    .sb-actions .ad-btn { flex: 1; }
+
+    .zone-insights { grid-template-columns: 1fr 1fr; }
+    .zi-mix { grid-column: 1 / -1; border-top: 1px solid var(--border); }
+    .zi-tile { padding: 6px 12px; }
+
+    .action-dock { padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); gap: 6px; }
+    .ad-info { width: 100%; }
+    .ad-info small { display: none; }
+    .ad-actions { width: 100%; flex-wrap: nowrap; }
+    .ad-actions .ad-btn { flex: 1; min-width: 0; padding: 8px 8px; }
+    .ad-progress { width: 100%; }
+    .zone-book-badge { font-size: 9px; padding: 0 4px; bottom: 4px; }
+
+    .nb-list { grid-template-columns: 1fr; }
+    .ls-ahead input { width: 90px; }
+}

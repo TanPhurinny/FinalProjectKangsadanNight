@@ -4,6 +4,8 @@ const stallOccupancy = require('../utils/stallOccupancy');
 const zoneAccess = require('../utils/zoneAccess');
 const { getRenewalPhase, getRenewalOptions } = require('../utils/stallRenewal');
 const { buildTodayInspectionLayer } = require('../utils/inspectionToday');
+const { getShopViewStats } = require('../utils/shopViews');
+const { getBookingRoundMetaForDate, getRoundWindow, addDays } = require('../utils/bookingRound');
 
 const ZONE_CATEGORY_META = {
     FASHION: { icon: 'fa-shirt', description: 'โซนแฟชั่น' },
@@ -419,6 +421,51 @@ function stripLotPricing(zonesData) {
 }
 
 const NEW_SHOP_DAYS = 14;
+const STALL_CODE_PATTERN = /\b([A-Z])\s?(\d{3})\b/g;
+
+// คำร้องแจ้งซ่อมเก็บตำแหน่งเป็นข้อความ (เลือกจาก dropdown = รหัสล็อกตรงๆ หรือพิมพ์เองเช่น "A105, โซน F")
+// ดึงรหัสล็อกทุกตัวที่เจอในข้อความมาปักหมุด — คำร้องที่ไม่มีรหัสล็อกเลย (เช่น "ห้องน้ำ") จะไม่ขึ้นบนผัง
+async function buildOpenRepairLayer() {
+    const reports = await prisma.maintenanceReport.findMany({
+        where: { status: { in: OPEN_REPAIR_STATUSES } },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, location: true, category: true, description: true, status: true, createdAt: true, assignedTo: { select: { name: true } } }
+    });
+    const byCode = {};
+    let unpinned = 0;
+    reports.forEach((report) => {
+        const codes = new Set();
+        for (const match of String(report.location || '').toUpperCase().matchAll(STALL_CODE_PATTERN)) codes.add(`${match[1]}${match[2]}`);
+        if (!codes.size) { unpinned += 1; return; }
+        codes.forEach((code) => {
+            (byCode[code] = byCode[code] || []).push({
+                id: report.id,
+                category: report.category,
+                description: String(report.description || '').slice(0, 120),
+                status: report.status,
+                at: report.createdAt,
+                assignee: report.assignedTo?.name || null
+            });
+        });
+    });
+    return { byCode, unpinned };
+}
+
+// รอบจองถัดไปสำหรับแบนเนอร์ผู้ขายบนผัง — ใช้กติกาเดียวกับ getBookingPhaseForRound ใน utils/bookingRound.js
+// (ช่วง 1 จันทร์-อังคาร จอง 14 วัน = openAt-5, ช่วง 2 ตั้งแต่พุธ จองรายวันได้ = openAt-3, openAt = วันเริ่มรอบ+1)
+function buildNextRoundInfo() {
+    const current = getBookingRoundMetaForDate(new Date());
+    const roundNumber = current.roundNumber + 1;
+    const { cycleStart, cycleEnd } = getRoundWindow(roundNumber);
+    const openAt = addDays(cycleStart, 1);
+    return {
+        roundNumber,
+        sellStart: cycleStart,
+        sellEnd: cycleEnd,
+        longBookingOpen: addDays(openAt, -5),
+        dailyBookingOpen: addDays(openAt, -3)
+    };
+}
 const OPEN_REPAIR_STATUSES = ['PENDING', 'APPROVED', 'IN_PROGRESS'];
 
 // การ์ด "สุขภาพล็อกของฉัน" ฝั่งผู้ขาย: ผลตรวจความสะอาดล่าสุด, ไฟเกินที่ถูกบันทึกล่าสุด, งานแจ้งซ่อมที่ยังไม่เสร็จ
@@ -455,7 +502,12 @@ async function buildMyStallHealth(userId, stallCodes) {
 
 exports.getMarketMapPage = async (req, res) => {
     try {
-        const zonesData = stripLotPricing(await buildZonesData());
+        // มุมมองตาม role: ผู้ขายเห็นล็อกของตัวเอง+โซนที่จองได้, แอดมิน/staff เห็นสถานะใกล้หมดอายุ, ลูกค้าดูอย่างเดียว
+        // หน้านี้เปิดได้โดยไม่ต้องล็อกอิน (ลูกค้าสแกน QR หน้าร้าน) — ไม่มี req.user = ลูกค้าทั่วไป
+        const role = req.user?.role || 'CUSTOMER';
+        // ราคาล็อกใช้คำนวณรายได้คาดการณ์ในสถิติโซน — ส่งให้เฉพาะแอดมิน role อื่นตัดทิ้งเหมือนเดิม
+        const rawZones = await buildZonesData();
+        const zonesData = role === 'ADMIN' ? rawZones : stripLotPricing(rawZones);
 
         const approvedRequests = await prisma.bookingRequest.findMany({
             where: { status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] }, assignedStallCode: { not: null } },
@@ -486,10 +538,12 @@ exports.getMarketMapPage = async (req, res) => {
             const sellerUsers = await prisma.user.findMany({
                 where: { role: 'SELLER', name: { in: allSellerNames } },
                 select: {
+                    id: true,
                     name: true,
                     shop: {
                         select: {
                             productType: true, productDetail: true, productImage: true, shopCoverImage: true, shopTags: true, shopSummary: true,
+                            productSubtype: true,
                             // ปุ่ม "ดูเมนูร้าน" ในการ์ดร้าน — รูปเมนู + แกลเลอรีรูปสินค้า
                             menuImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } },
                             productImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } }
@@ -498,8 +552,26 @@ exports.getMarketMapPage = async (req, res) => {
                 }
             });
             sellerUsers.forEach((u) => {
-                if (u.shop) shopInfoByName[u.name] = u.shop;
+                if (u.shop) shopInfoByName[u.name] = { ...u.shop, userId: u.id };
             });
+        }
+
+        // โพสต์คอมมูนิตี้ล่าสุดของแต่ละร้าน โชว์ในการ์ดร้าน (ตัดข้อความสั้นๆ พอให้รู้ว่าร้านมีอะไรใหม่)
+        const shopUserIds = Object.values(shopInfoByName).map((shop) => shop.userId);
+        const latestPostByUserId = new Map();
+        if (shopUserIds.length) {
+            const posts = await prisma.communityPost.findMany({
+                where: { userId: { in: shopUserIds } },
+                orderBy: { createdAt: 'desc' },
+                distinct: ['userId'],
+                select: { id: true, userId: true, content: true, createdAt: true, images: { select: { imageUrl: true }, take: 1 } }
+            });
+            posts.forEach((post) => latestPostByUserId.set(post.userId, {
+                id: post.id,
+                excerpt: String(post.content || '').replace(/\s+/g, ' ').trim().slice(0, 140),
+                at: post.createdAt,
+                image: post.images[0]?.imageUrl || null
+            }));
         }
 
         // ป้าย "ร้านใหม่" — ร้านที่คำขอจองแรกสุด (ที่ได้ล็อก) เพิ่งเกิดภายใน NEW_SHOP_DAYS วัน
@@ -545,14 +617,14 @@ exports.getMarketMapPage = async (req, res) => {
                     image: shopImage,
                     menuImages: (fallbackShop.menuImages || []).map((img) => img.imageUrl),
                     photos: (fallbackShop.productImages || []).map((img) => img.imageUrl),
-                    isNew: newShopNames.has(request.sellerName)
+                    isNew: newShopNames.has(request.sellerName),
+                    subtype: fallbackShop.productSubtype || '',
+                    post: latestPostByUserId.get(fallbackShop.userId) || null
                 };
             });
         });
 
-        // มุมมองตาม role: ผู้ขายเห็นล็อกของตัวเอง+โซนที่จองได้, แอดมิน/staff เห็นสถานะใกล้หมดอายุ, ลูกค้าดูอย่างเดียว
-        const role = req.user?.role || 'CUSTOMER';
-        const viewer = { role, allowedZones: [], myStalls: [] };
+        const viewer = { role, allowedZones: [], myStalls: [], isGuest: !req.user };
 
         if (role === 'SELLER') {
             const [userRecord, sellerRecord] = await Promise.all([
@@ -566,6 +638,13 @@ exports.getMarketMapPage = async (req, res) => {
             viewer.myStalls = [...new Set(myRequests.flatMap((r) => String(r.assignedStallCode || '')
                 .split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)))];
             viewer.stallHealth = await buildMyStallHealth(req.user.id, viewer.myStalls);
+            viewer.nextRound = buildNextRoundInfo();
+            // โซนที่จองได้มีล็อกว่างไหม (บอกแค่ ว่าง/เต็ม ระดับโซน เหมือนหน้าเลือกโซน ไม่บอกว่าล็อกไหนว่าง)
+            viewer.zoneHasVacancy = {};
+            rawZones.forEach((zone) => {
+                viewer.zoneHasVacancy[zone.code] = zone.columns.some((column) => column.stalls.some((stall) => stall.status === 'AVAILABLE'));
+            });
+            viewer.viewStats = await getShopViewStats(req.user.id);
         }
 
         // วันหมดสัญญา/ระดับเตือน และสถานะล็อกว่าง เป็นข้อมูลภายใน — วันหมดสัญญาส่งให้เฉพาะแอดมิน/staff และเจ้าของล็อก, ล็อกว่างเห็นเฉพาะแอดมิน/staff
@@ -579,12 +658,15 @@ exports.getMarketMapPage = async (req, res) => {
 
         // ชั้นข้อมูล "ผลตรวจวันนี้" — ข้อมูลภายใน ส่งให้เฉพาะแอดมิน/staff (role อื่นไม่ได้รับข้อมูลนี้เลย ไม่ใช่แค่ซ่อนปุ่ม)
         const inspectionLayer = canSeeExpiry ? await buildTodayInspectionLayer() : null;
+        // ชั้นข้อมูล "งานซ่อม" — คำร้องแจ้งซ่อมที่ยังไม่ปิด ปักหมุดตามรหัสล็อกในช่องตำแหน่ง (แอดมิน/staff)
+        const repairLayer = canSeeExpiry ? await buildOpenRepairLayer() : null;
 
         res.render('marketMap', {
             zonesData,
             bookingByStallCode,
             viewer,
             inspectionLayer,
+            repairLayer,
             canSeeVacancy: canSeeExpiry,
             user: req.user
         });

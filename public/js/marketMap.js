@@ -253,7 +253,8 @@ const LAYERS = {
                     <span class="ls-bar"><span style="width:${pct}%"></span></span>
                 </span>
                 <button type="button" class="qtag lf-btn lf-issue" data-layer-filter="INSP_ISSUE">! มีปัญหา <b>${issue}</b></button>
-                <button type="button" class="qtag lf-btn lf-pending" data-layer-filter="INSP_PENDING">ยังไม่ตรวจ <b>${pending}</b></button>`;
+                <button type="button" class="qtag lf-btn lf-pending" data-layer-filter="INSP_PENDING">ยังไม่ตรวจ <b>${pending}</b></button>
+                ${IS_STAFF ? `<button type="button" class="qtag lf-btn lf-walk${walkMode ? ' active' : ''}" data-action="walk"><i class="fa-solid fa-person-walking"></i> ${walkMode ? 'กำลังเดินตรวจ' : 'เริ่มเดินตรวจ'}</button>` : ''}`;
         }
     }
 };
@@ -289,7 +290,9 @@ LAYERS.expiry = {
     available: CAN_SEE_VACANCY,
     hidesBookedLegend: true,
     paint(cell, code) {
-        cell.classList.add('exp', `exp-${expiryKeyOf(findStall(code))}`);
+        const stall = findStall(code);
+        cell.classList.add('exp', `exp-${expiryKeyOf(stall)}`);
+        if (willFreeWithin(stall, expiryAheadDays)) cell.classList.add('exp-will-free');
     },
     legend() {
         return ['expired', 'critical', 'near', 'ok'].map((key) => legendItem(EXPIRY_STATUS[key].color, EXPIRY_STATUS[key].label)).join('')
@@ -303,12 +306,314 @@ LAYERS.expiry = {
     summary() {
         const { expired, critical, near } = expiryCounts(allStalls());
         const link = IS_ADMIN ? '<a class="ls-link" href="/admin/slots/expiring">ดูรายการทั้งหมด <i class="fa-solid fa-arrow-right fa-xs"></i></a>' : '';
+        const bulk = IS_ADMIN ? `<button type="button" class="qtag lf-btn lf-select${bulkMode ? ' active' : ''}" data-action="bulk"><i class="fa-regular fa-square-check"></i> เลือกหลายล็อก</button>` : '';
         return `
             <button type="button" class="qtag lf-btn lf-issue" data-layer-filter="EXP_LAPSED">หมดสิทธิ์แล้ว <b>${expired}</b></button>
             <button type="button" class="qtag lf-btn lf-warn" data-layer-filter="EXP_SOON">ใกล้หมดสัญญา <b>${critical + near}</b></button>
+            <label class="ls-ahead" title="ดูล่วงหน้าว่าภายในกี่วันจะมีล็อกว่างเพิ่ม (นับล็อกที่สัญญาหมดก่อนวันนั้น)">
+                <span>ดูล่วงหน้า</span>
+                <input type="range" min="0" max="30" step="1" value="${expiryAheadDays}" data-action="ahead" aria-label="ดูล่วงหน้ากี่วัน">
+                <b data-ahead-text>${aheadSummaryText()}</b>
+            </label>
+            ${bulk}
             ${link}`;
     }
 };
+
+// ==========================================
+// ชั้นงานซ่อม (แอดมิน/staff) — คำร้องที่ยังไม่ปิด ปักหมุดตามรหัสล็อกในช่องตำแหน่ง
+// ==========================================
+const REPAIRS = readJsonScript('repairLayerJson') || null;
+const HAS_REPAIRS = !!(REPAIRS && REPAIRS.byCode);
+const REPAIR_STATUS = {
+    PENDING: { label: 'รอตรวจสอบ', color: '#e2b83a' },
+    APPROVED: { label: 'อนุมัติแล้ว รอซ่อม', color: '#2c7be5' },
+    IN_PROGRESS: { label: 'กำลังซ่อม', color: '#e67e22' }
+};
+function repairsOf(code) {
+    return (HAS_REPAIRS && REPAIRS.byCode[code]) || [];
+}
+// สถานะที่ "ด่วนสุด" ของล็อก: รอตรวจสอบ > อนุมัติแล้ว > กำลังซ่อม (ใหม่สุดที่ยังไม่มีคนรับ ขึ้นก่อน)
+function repairStatusOf(code) {
+    const list = repairsOf(code);
+    if (!list.length) return null;
+    return ['PENDING', 'APPROVED', 'IN_PROGRESS'].find((st) => list.some((r) => r.status === st));
+}
+
+LAYERS.repair = {
+    label: 'งานซ่อม',
+    icon: 'fa-screwdriver-wrench',
+    available: HAS_REPAIRS,
+    hidesBookedLegend: true,
+    paint(cell) { cell.classList.add('rep-base'); },
+    // หมุดงานซ่อมขึ้นได้ทั้งล็อกที่มีร้านและล็อกว่าง
+    paintAll(cell, code) {
+        const st = repairStatusOf(code);
+        if (!st) return;
+        cell.classList.add('rep', `rep-${st.toLowerCase()}`);
+        cell.insertAdjacentHTML('beforeend', `<i class="cell-mark cell-mark-repair fa-solid fa-wrench" aria-hidden="true"></i>${repairsOf(code).length > 1 ? `<span class="cell-mark cell-mark-count">${repairsOf(code).length}</span>` : ''}`);
+    },
+    legend() {
+        return Object.keys(REPAIR_STATUS).map((k) => legendItem(REPAIR_STATUS[k].color, REPAIR_STATUS[k].label)).join('')
+            + legendItem('#eef1f2', 'ไม่มีงานซ่อมค้าง');
+    },
+    zoneStat(code) {
+        const n = stallsOfZone(code).filter((s) => repairStatusOf(s.code)).length;
+        return n ? `งานซ่อมค้าง <span class="zc-issue">${n} ล็อก</span>` : 'ไม่มีงานซ่อมค้าง';
+    },
+    summary() {
+        const counts = { PENDING: 0, APPROVED: 0, IN_PROGRESS: 0 };
+        Object.values(REPAIRS.byCode).forEach((list) => list.forEach((r) => { counts[r.status] = (counts[r.status] || 0) + 1; }));
+        const unpinned = REPAIRS.unpinned ? `<span class="ls-note">อีก ${REPAIRS.unpinned} คำร้องไม่ได้ระบุรหัสล็อก</span>` : '';
+        return `
+            <button type="button" class="qtag lf-btn lf-warn" data-layer-filter="REP_ANY">ล็อกที่มีงานค้าง <b>${Object.keys(REPAIRS.byCode).length}</b></button>
+            <span class="ls-note">รอตรวจสอบ <b>${counts.PENDING}</b> · รอซ่อม <b>${counts.APPROVED}</b> · กำลังซ่อม <b>${counts.IN_PROGRESS}</b></span>
+            ${unpinned}
+            <a class="ls-link" href="/admin/requests">จัดการคำร้อง <i class="fa-solid fa-arrow-right fa-xs"></i></a>`;
+    }
+};
+
+// ทาสีเพิ่มเติมให้ทุกล็อก (รวมล็อกว่าง) ตามชั้นที่เลือก + สถานะเลือกหลายล็อก
+function decorateAnyCell(cell, code) {
+    const layer = LAYERS[currentLayer];
+    if (layer.paintAll) layer.paintAll(cell, code);
+    if (bulkSelection.has(code)) cell.classList.add('bulk-selected');
+    if (walkMode && walkCurrent === code) cell.classList.add('walk-current');
+}
+
+// ==========================================
+// แอดมิน: ดูล่วงหน้า (แถบเลื่อนวัน) — ล็อกที่สัญญาหมดภายใน N วันจะว่างเพิ่ม
+// ==========================================
+let expiryAheadDays = 0;
+function willFreeWithin(stall, days) {
+    if (!days || !stall || stall.status !== 'BOOKED' || !stall.bookingEndDate) return false;
+    const left = daysLeftUntil(stall.bookingEndDate);
+    return left !== null && left <= days;
+}
+function aheadSummaryText() {
+    if (!expiryAheadDays) return 'วันนี้';
+    const n = allStalls().filter((s) => willFreeWithin(s, expiryAheadDays)).length;
+    return `${expiryAheadDays} วัน · จะว่าง ${n} ล็อก`;
+}
+
+// ==========================================
+// แอดมิน: เลือกหลายล็อกบนผัง แล้วแจ้งเตือนหมดอายุ/ปล่อยล็อกพร้อมกัน (ใช้ endpoint เดิมของหน้าจัดแผง)
+// แตะล็อกเพื่อเลือก — ใช้ได้ทั้งมือถือ (ไม่ต้องกด Shift/ลาก)
+// ==========================================
+let bulkMode = false;
+const bulkSelection = new Set();
+
+function setBulkMode(on) {
+    if (bulkMode === on) return;
+    bulkMode = on;
+    if (!on) bulkSelection.clear();
+    document.body.classList.toggle('bulk-on', on);
+    renderBulkBar();
+    if (activeZone) renderGrid(activeZone);
+    const btn = document.querySelector('#layerSummary [data-action="bulk"]');
+    if (btn) btn.classList.toggle('active', on);
+}
+
+function toggleBulkStall(code) {
+    if (bulkSelection.has(code)) bulkSelection.delete(code);
+    else bulkSelection.add(code);
+    const cell = document.querySelector(`.stall-cell[data-stall="${code}"]`);
+    if (cell) cell.classList.toggle('bulk-selected', bulkSelection.has(code));
+    renderBulkBar();
+}
+
+// ความสูงจริงของแถบล่างจอ — การ์ดร้าน/ลิ้นชัก/ปุ่มซูมใช้หลบไม่ให้ถูกบัง (แถบสูงไม่เท่ากันตามจอ)
+function syncDockHeight() {
+    const dock = [...document.querySelectorAll('.action-dock')].find((el) => !el.hidden);
+    document.body.style.setProperty('--dock-h', dock ? `${dock.offsetHeight}px` : '0px');
+}
+window.addEventListener('resize', syncDockHeight);
+
+function renderBulkBar() {
+    let bar = document.getElementById('bulkBar');
+    if (!bulkMode) { if (bar) bar.hidden = true; syncDockHeight(); return; }
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'bulkBar';
+        bar.className = 'action-dock';
+        document.body.appendChild(bar);
+    }
+    const n = bulkSelection.size;
+    const lapsed = [...bulkSelection].filter((c) => (findStall(c) || {}).expiryState === 'expired').length;
+    bar.hidden = false;
+    bar.innerHTML = `
+        <div class="ad-info"><span class="ad-line"><b>${n}</b> ล็อกที่เลือก</span> <small>แตะล็อกบนผังเพื่อเลือก/ยกเลิก</small></div>
+        <div class="ad-actions">
+            <button type="button" class="ad-btn" data-bulk="notify" ${n ? '' : 'disabled'}><i class="fa-regular fa-bell"></i> แจ้งเตือนหมดอายุ</button>
+            <button type="button" class="ad-btn ad-danger" data-bulk="release" ${lapsed ? '' : 'disabled'} title="ปล่อยได้เฉพาะล็อกที่หมดสิทธิ์แล้ว"><i class="fa-solid fa-lock-open"></i> ปล่อยล็อก (${lapsed})</button>
+            <button type="button" class="ad-btn ad-ghost" data-bulk="cancel">เสร็จ</button>
+        </div>`;
+    bar.querySelector('[data-bulk="cancel"]').onclick = () => setBulkMode(false);
+    bar.querySelector('[data-bulk="notify"]').onclick = () => confirmBulk('notify');
+    bar.querySelector('[data-bulk="release"]').onclick = () => confirmBulk('release');
+    syncDockHeight();
+}
+
+function confirmBulk(action) {
+    const codes = [...bulkSelection].filter((c) => action !== 'release' || (findStall(c) || {}).expiryState === 'expired');
+    if (!codes.length) return;
+    const isRelease = action === 'release';
+    window.showConfirmDialog({
+        title: isRelease ? `ปล่อย ${codes.length} ล็อกให้ว่าง?` : `แจ้งเตือนหมดอายุ ${codes.length} ล็อก?`,
+        message: isRelease
+            ? `${codes.join(', ')} จะกลับเป็นว่างให้คนอื่นจองได้ เช็คหน้างานก่อนว่าร้านออกจากพื้นที่แล้วจริง`
+            : `ส่งแจ้งเตือนในระบบ + อีเมลให้ผู้เช่า ${codes.join(', ')}`,
+        tone: isRelease ? 'danger' : 'warning',
+        confirmText: isRelease ? 'ปล่อยล็อก' : 'ส่งแจ้งเตือน',
+        onConfirm: () => runBulk(action, codes)
+    });
+}
+
+async function runBulk(action, codes) {
+    const path = action === 'release' ? '/admin/slots/release-stall' : '/admin/slots/notify-expiring';
+    const results = { ok: [], fail: [] };
+    const bar = document.getElementById('bulkBar');
+    for (let i = 0; i < codes.length; i += 1) {
+        if (bar) bar.querySelector('.ad-info').innerHTML = `กำลังทำรายการ <b>${i + 1}/${codes.length}</b>`;
+        try {
+            // endpoint เดิมตอบเป็น redirect พร้อม ?success= / ?error= — อ่านผลจาก URL ปลายทาง
+            const response = await fetch(path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ stallCode: codes[i], returnTo: '/admin/slots' })
+            });
+            const params = new URL(response.url).searchParams;
+            if (response.ok && params.get('success')) results.ok.push(codes[i]);
+            else results.fail.push(`${codes[i]} (${params.get('error') || response.status})`);
+        } catch (e) {
+            results.fail.push(`${codes[i]} (เชื่อมต่อไม่ได้)`);
+        }
+    }
+    if (action === 'release') {
+        results.ok.forEach((code) => {
+            const stall = findStall(code);
+            if (stall) { stall.status = 'AVAILABLE'; delete stall.expiryState; }
+        });
+    }
+    bulkSelection.clear();
+    renderBulkBar();
+    renderLayerChrome();
+    if (activeZone) renderGrid(activeZone);
+    window.showAlertDialog({
+        title: results.fail.length ? 'ทำรายการไม่ครบ' : 'เรียบร้อย',
+        message: `สำเร็จ ${results.ok.length} ล็อก${results.fail.length ? ` · ไม่สำเร็จ: ${results.fail.join(', ')}` : ''}`,
+        tone: results.fail.length ? 'warning' : 'success'
+    });
+}
+
+// ==========================================
+// staff: โหมดเดินตรวจ — เรียงร้านที่ยังไม่ตรวจตามเส้นทางเดินจริง แถบล่างจอบอก "ร้านถัดไป"
+// บันทึกผลตรวจด่วนแล้วเด้งไปร้านถัดไปเอง
+// ==========================================
+let walkMode = false;
+let walkCurrent = null;
+
+function walkQueue() {
+    if (!HAS_INSPECTION) return [];
+    return (INSPECTION.walkOrder || Object.keys(INSPECTION.byCode))
+        .filter((code) => (findStall(code) || {}).status === 'BOOKED' && inspectionStatusOf(code) === 'pending');
+}
+
+function setWalkMode(on) {
+    if (walkMode === on) return;
+    walkMode = on;
+    document.body.classList.toggle('walk-on', on);
+    if (on) {
+        walkCurrent = walkQueue()[0] || null;
+        if (walkCurrent) openStallDeepLink(walkCurrent, true);
+    } else {
+        walkCurrent = null;
+    }
+    renderWalkBar();
+    const btn = document.querySelector('#layerSummary [data-action="walk"]');
+    if (btn) btn.classList.toggle('active', on);
+}
+
+function walkStep(delta) {
+    const queue = walkQueue();
+    if (!queue.length) { walkCurrent = null; renderWalkBar(); return; }
+    const idx = queue.indexOf(walkCurrent);
+    if (idx === -1) {
+        // ร้านปัจจุบันเพิ่งตรวจเสร็จ (หลุดจากคิว) — ไปร้านที่ยังไม่ตรวจถัดไปตามเส้นทาง ไม่ย้อนกลับไปต้นคิว
+        const order = INSPECTION.walkOrder || [];
+        const pos = order.indexOf(walkCurrent);
+        walkCurrent = queue.find((code) => order.indexOf(code) > pos) || queue[0];
+    } else {
+        walkCurrent = queue[(idx + delta + queue.length) % queue.length];
+    }
+    renderWalkBar();
+    hideInfo();
+    openStallDeepLink(walkCurrent, true);
+}
+
+function renderWalkBar() {
+    let bar = document.getElementById('walkBar');
+    if (!walkMode) { if (bar) bar.hidden = true; syncDockHeight(); return; }
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'walkBar';
+        bar.className = 'action-dock';
+        document.body.appendChild(bar);
+    }
+    const { total, checked } = inspectionCounts(allStalls());
+    const pct = total ? Math.round((checked / total) * 100) : 0;
+    const d = walkCurrent ? BOOKING_BY_STALL[walkCurrent] : null;
+    bar.hidden = false;
+    bar.innerHTML = walkCurrent ? `
+        <div class="ad-info">
+            <span class="ad-kicker">ร้านถัดไป · ตรวจแล้ว ${checked}/${total}</span>
+            <span class="ad-line"><b>${escapeHtml(walkCurrent)}</b> ${escapeHtml(d ? d.shop : '')}</span>
+            <span class="ad-progress"><span style="width:${pct}%"></span></span>
+        </div>
+        <div class="ad-actions">
+            <button type="button" class="ad-btn ad-ghost" data-walk="prev" aria-label="ร้านก่อนหน้า"><i class="fa-solid fa-chevron-left"></i></button>
+            <button type="button" class="ad-btn" data-walk="open"><i class="fa-solid fa-location-crosshairs"></i> เปิดร้านนี้</button>
+            <button type="button" class="ad-btn ad-ghost" data-walk="next" aria-label="ร้านถัดไป"><i class="fa-solid fa-chevron-right"></i></button>
+            <button type="button" class="ad-btn ad-ghost" data-walk="stop">จบ</button>
+        </div>` : `
+        <div class="ad-info"><b>ตรวจครบทุกร้านแล้ว</b> <small>ตรวจแล้ว ${checked}/${total} — อย่าลืมกด "ส่งงาน" ที่หน้าตรวจตลาด</small></div>
+        <div class="ad-actions">
+            <a class="ad-btn" href="/staff/marketinspection">ไปส่งงาน</a>
+            <button type="button" class="ad-btn ad-ghost" data-walk="stop">จบ</button>
+        </div>`;
+    const on = (sel, fn) => { const el = bar.querySelector(sel); if (el) el.onclick = fn; };
+    on('[data-walk="prev"]', () => walkStep(-1));
+    on('[data-walk="next"]', () => walkStep(1));
+    on('[data-walk="open"]', () => { hideInfo(); openStallDeepLink(walkCurrent, true); });
+    on('[data-walk="stop"]', () => setWalkMode(false));
+    syncDockHeight();
+}
+
+// ปุ่ม action ที่อยู่ในแถบสรุปของชั้นข้อมูล (เลือกหลายล็อก / เดินตรวจ / แถบเลื่อนวัน)
+function bindSummaryActions(summary) {
+    const bulk = summary.querySelector('[data-action="bulk"]');
+    if (bulk) bulk.addEventListener('click', () => setBulkMode(!bulkMode));
+    const walk = summary.querySelector('[data-action="walk"]');
+    if (walk) walk.addEventListener('click', () => setWalkMode(!walkMode));
+    const ahead = summary.querySelector('[data-action="ahead"]');
+    if (ahead) {
+        let timer = null;
+        ahead.addEventListener('input', () => {
+            expiryAheadDays = Number(ahead.value) || 0;
+            const text = summary.querySelector('[data-ahead-text]');
+            if (text) text.textContent = aheadSummaryText();
+            clearTimeout(timer);
+            timer = setTimeout(() => { if (activeZone) renderGrid(activeZone); }, 60);
+        });
+    }
+}
+
+// แตะล็อกที่มีร้าน: โหมดเลือกหลายล็อก = เลือก/ยกเลิก, ปกติ = เปิดการ์ดร้าน
+function onBookedStallClick(code) {
+    if (bulkMode) { toggleBulkStall(code); return; }
+    if (walkMode) { walkCurrent = code; renderWalkBar(); }
+    showInfo(code);
+}
 
 const LAYER_KEYS = Object.keys(LAYERS).filter((key) => LAYERS[key].available);
 const layerParam = new URLSearchParams(window.location.search).get('layer');
@@ -319,7 +624,7 @@ let currentLayer = LAYER_KEYS.includes(layerParam)
 
 // ตัวกรองที่ทำให้ล็อกอื่นจางลง (ให้เห็นเฉพาะที่ตรง) — ตัวกรองหมวดสินค้าใช้เงื่อนไขแยกอยู่แล้ว
 function isDimmingFilter(status) {
-    return isLayerFilter(status) || ['HAS_MENU', 'NEW', 'FAV'].includes(status);
+    return isLayerFilter(status) || ['HAS_MENU', 'NEW', 'FAV', 'RECENT'].includes(status);
 }
 
 // ==========================================
@@ -357,7 +662,8 @@ function updateQuickTagCounts() {
     const counts = {
         HAS_MENU: booked.filter((s) => hasMenu(s.code)).length,
         NEW: booked.filter((s) => BOOKING_BY_STALL[s.code] && BOOKING_BY_STALL[s.code].isNew).length,
-        FAV: booked.filter((s) => isFavorite(s.code)).length
+        FAV: booked.filter((s) => isFavorite(s.code)).length,
+        RECENT: booked.filter((s) => isRecent(s.code)).length
     };
     Object.keys(counts).forEach((key) => {
         const el = document.querySelector(`[data-qcount="${key}"]`);
@@ -374,7 +680,7 @@ function paintStallLayer(cell, code) {
 
 // ตัวกรองที่มาจากแถบสรุปของชั้นข้อมูล (INSP_* = ผลตรวจ, EXP_* = หมดสัญญา) — เปลี่ยนชั้นแล้วล้างทิ้ง
 function isLayerFilter(status) {
-    return /^(INSP|EXP)_/.test(String(status || ''));
+    return /^(INSP|EXP|REP)_/.test(String(status || ''));
 }
 
 function renderLayerChrome() {
@@ -394,6 +700,7 @@ function renderLayerChrome() {
             if (btn.dataset.layerFilter === currentStatusFilter) btn.classList.add('active');
             btn.addEventListener('click', () => quickStatusFilter(btn, btn.dataset.layerFilter));
         });
+        bindSummaryActions(summary);
     }
 
     document.querySelectorAll('#layerTabs .layer-tab').forEach((tab) => {
@@ -411,6 +718,9 @@ function renderLayerChrome() {
 function setLayer(key) {
     if (!LAYER_KEYS.includes(key) || key === currentLayer) return;
     currentLayer = key;
+    // โหมดเลือกหลายล็อก/เดินตรวจผูกกับชั้นของมัน เปลี่ยนชั้นแล้วปิด
+    if (key !== 'expiry') setBulkMode(false);
+    if (key !== 'inspection') setWalkMode(false);
     // ตัวกรองของชั้นเดิมไม่มีปุ่มให้กดปิดในชั้นใหม่ ล้างทิ้งไม่ให้ไฮไลต์ค้าง
     if (isLayerFilter(currentStatusFilter)) currentStatusFilter = null;
 
@@ -610,7 +920,9 @@ async function saveQuickInspect(id, markOk) {
         if (activeZone) renderGrid(activeZone);
         showInfo(id);
         const after = document.querySelector('#icQuickInspect .qi-msg');
-        if (after) { after.className = 'qi-msg qi-msg-ok'; after.textContent = 'บันทึกแล้ว'; }
+        if (after) { after.className = 'qi-msg qi-msg-ok'; after.textContent = walkMode ? 'บันทึกแล้ว กำลังไปร้านถัดไป...' : 'บันทึกแล้ว'; }
+        // โหมดเดินตรวจ: บันทึกเสร็จเด้งไปร้านที่ยังไม่ตรวจถัดไปตามเส้นทางเอง
+        if (walkMode) setTimeout(() => walkStep(0), 700);
     } catch (error) {
         msg.className = 'qi-msg qi-msg-err';
         msg.textContent = error.message;
@@ -749,6 +1061,8 @@ function stallMatchesFilter(id, stall) {
         if (currentStatusFilter === 'HAS_MENU') return stall.status === 'BOOKED' && hasMenu(id);
         if (currentStatusFilter === 'NEW') return stall.status === 'BOOKED' && !!(BOOKING_BY_STALL[id] && BOOKING_BY_STALL[id].isNew);
         if (currentStatusFilter === 'FAV') return stall.status === 'BOOKED' && isFavorite(id);
+        if (currentStatusFilter === 'RECENT') return stall.status === 'BOOKED' && isRecent(id);
+        if (currentStatusFilter === 'REP_ANY') return !!repairStatusOf(id);
         if (currentStatusFilter === 'EMPTY') {
             if (!CAN_SEE_VACANCY) return false;
             return stall.status !== 'BOOKED' && stall.status !== 'MAINTENANCE';
@@ -832,6 +1146,8 @@ function openZone(z) {
 
     renderGrid(z);
     renderZoneCards(z);
+    renderZoneInsights(z);
+    applyZoom();
     document.getElementById('drawer').classList.add('open');
     document.getElementById('backdrop').classList.add('show');
 }
@@ -899,7 +1215,7 @@ function renderDZoneGrid(z, stallByCode) {
             paintStallLayer(cell, pos.code);
             cell.addEventListener('click', (e) => {
                 e.stopPropagation();
-                showInfo(pos.code);
+                onBookedStallClick(pos.code);
             });
         } else if (stall.status === 'MAINTENANCE') {
             maintenance += 1;
@@ -916,6 +1232,7 @@ function renderDZoneGrid(z, stallByCode) {
 
         if ((currentQuery || currentStatusFilter || currentCategoryFilter) && stallMatchesFilter(pos.code, stall)) cell.classList.add('s-match');
         else if (currentCategoryFilter || isDimmingFilter(currentStatusFilter)) cell.classList.add('dimmed');
+        decorateAnyCell(cell, pos.code, stall);
         if (!cell.classList.contains('vacant-hidden')) bindStallTooltip(cell, pos.code, stall);
         layout.appendChild(cell);
     });
@@ -1008,7 +1325,7 @@ function renderGrid(z) {
                 paintStallLayer(cell, id);
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    showInfo(id);
+                    onBookedStallClick(id);
                 });
             } else if (stall.status === 'MAINTENANCE') {
                 maintenance += 1;
@@ -1025,6 +1342,7 @@ function renderGrid(z) {
 
             if ((currentQuery || currentStatusFilter || currentCategoryFilter) && stallMatchesFilter(id, stall)) cell.classList.add('s-match');
             else if (currentCategoryFilter || isDimmingFilter(currentStatusFilter)) cell.classList.add('dimmed');
+            decorateAnyCell(cell, id, stall);
             if (!cell.classList.contains('vacant-hidden')) bindStallTooltip(cell, id, stall);
             (isPaired(stall) ? getSmallWrap(stall.groupId) : col).appendChild(cell);
         });
@@ -1048,12 +1366,37 @@ function renderCardTools(id) {
     paintFav();
     favBtn.onclick = () => { toggleFavorite(id); paintFav(); };
     document.getElementById('icShareBtn').onclick = () => shareStall(id);
+    // QR/ป้ายหน้าร้าน: เจ้าของล็อก + แอดมิน/staff (ลูกค้าใช้ปุ่มแชร์แทน)
+    const qrBtn = document.getElementById('icQrBtn');
+    const canQr = MY_STALLS.has(id) || CAN_SEE_VACANCY;
+    qrBtn.classList.toggle('d-none', !canQr);
+    qrBtn.onclick = () => openQrViewer(id);
+}
+
+function openQrViewer(id) {
+    const d = BOOKING_BY_STALL[id] || {};
+    document.getElementById('qrStall').textContent = id;
+    document.getElementById('qrTitle').textContent = d.shop || '';
+    document.getElementById('qrImage').src = `/market-map/qr/${encodeURIComponent(id)}.svg`;
+    document.getElementById('qrSignLink').href = `/market-map/sign/${encodeURIComponent(id)}`;
+    const dl = document.getElementById('qrDownload');
+    dl.href = `/market-map/qr/${encodeURIComponent(id)}.svg?download=1`;
+    const viewer = document.getElementById('qrViewer');
+    viewer.hidden = false;
+    document.body.classList.add('mv-open');
+    viewer.querySelector('.mv-close').focus();
+}
+
+function closeQrViewer() {
+    document.getElementById('qrViewer').hidden = true;
+    document.body.classList.remove('mv-open');
 }
 
 // แชร์ร้าน: มือถือใช้เมนูแชร์ของเครื่อง, คอมคัดลอกลิงก์ — ลิงก์เปิดผังที่ล็อกนี้พร้อมการ์ดร้าน
 async function shareStall(id) {
     const d = BOOKING_BY_STALL[id] || {};
     const url = `${window.location.origin}/market-map?stall=${encodeURIComponent(id)}`;
+    trackView(id, 'share');
     if (navigator.share) {
         try {
             await navigator.share({ title: `${d.shop || 'ร้านค้า'} — ตลาดกังสดาลไนท์`, text: `ร้าน ${d.shop || ''} แผง ${id}`, url });
@@ -1085,6 +1428,283 @@ function showMapToast(text, ms = 2500) {
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove('show'), ms);
 }
+
+// ==========================================
+// ส่วนเสริมในการ์ดร้าน: โพสต์ล่าสุด / ร้านข้างๆ / ทางไปห้องน้ำ-ที่ทิ้งขยะ-ออฟฟิศ
+// ==========================================
+function formatAgo(value) {
+    const t = new Date(value).getTime();
+    if (Number.isNaN(t)) return '';
+    const mins = Math.round((Date.now() - t) / 60000);
+    if (mins < 60) return `${Math.max(1, mins)} นาทีที่แล้ว`;
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return `${hours} ชม.ที่แล้ว`;
+    const days = Math.round(hours / 24);
+    return days < 30 ? `${days} วันที่แล้ว` : formatThaiDate(value);
+}
+
+// ล็อกติดกันในคอลัมน์เดียวกัน (บน/ล่าง) — ข้ามช่องเว้น (placeholder)
+function neighborsOf(code) {
+    const zone = findZoneForStall(code);
+    if (!zone) return [];
+    for (const column of ZONES_DATA[zone].columns || []) {
+        const list = (column.stalls || []).filter((st) => st.status !== 'PLACEHOLDER');
+        const idx = list.findIndex((st) => st.code === code);
+        if (idx === -1) continue;
+        return [list[idx - 1], list[idx + 1]].filter(Boolean);
+    }
+    return [];
+}
+
+// จุดห้องน้ำ/ที่ทิ้งขยะ/ออฟฟิศอยู่จุดเดียวกันด้านล่างผัง (ข้างโซน C ใกล้ทางเข้า-ออก) — บอกทางจากโซนของร้าน
+const FACILITIES = {
+    restroom: { label: 'ห้องน้ำ', icon: 'fa-restroom' },
+    trash: { label: 'จุดทิ้งขยะ', icon: 'fa-dumpster' },
+    office: { label: 'ออฟฟิศตลาด', icon: 'fa-user-tie' }
+};
+const FACILITY_ROUTE = {
+    A: 'เดินลงทางใต้ตามแนวโซน A จนสุด อยู่ข้างโซน C ใกล้ทางเข้า-ออก',
+    B: 'เดินลงทางใต้จนสุดโซน B แล้วเลี้ยวซ้ายไปทางโซน C ใกล้ทางเข้า-ออก',
+    F: 'เดินลงทางใต้จนสุดโซน F แล้วเลี้ยวซ้ายไปทางโซน C ใกล้ทางเข้า-ออก',
+    C: 'อยู่ติดโซน C ด้านทางเข้า-ออก เดินไม่กี่ก้าว',
+    D: 'เดินลงทางเดินหลักไปทางใต้จนสุด อยู่ข้างโซน C ใกล้ทางเข้า-ออก',
+    E: 'เดินลงทางเดินหลักไปทางใต้จนสุด อยู่ข้างโซน C ใกล้ทางเข้า-ออก',
+    X: 'เดินลงทางใต้ผ่านโซน B จนสุด แล้วเลี้ยวซ้ายไปทางโซน C ใกล้ทางเข้า-ออก'
+};
+const FACILITY_DEFAULT_ROUTE = 'อยู่ด้านล่างของผัง ข้างโซน C ใกล้ทางเข้า-ออก';
+
+function goToFacility(kind, fromZone) {
+    hideInfo();
+    closeZone();
+    const btn = document.querySelector(`.btn-facility-${kind}`);
+    if (btn) {
+        btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        btn.classList.remove('facility-ping');
+        void btn.offsetWidth;
+        btn.classList.add('facility-ping');
+        setTimeout(() => btn.classList.remove('facility-ping'), 4000);
+    }
+    showMapToast(`${FACILITIES[kind].label}: ${FACILITY_ROUTE[fromZone] || FACILITY_DEFAULT_ROUTE}`, 5000);
+}
+
+function renderCardExtras(id, d) {
+    // โพสต์ล่าสุดของร้านในคอมมูนิตี้
+    const postEl = document.getElementById('icPost');
+    if (d.post) {
+        postEl.innerHTML = `
+            <div class="ics-head">โพสต์ล่าสุดของร้าน <small>${escapeHtml(formatAgo(d.post.at))}</small></div>
+            <a class="ic-post" href="${VIEWER.isGuest ? '/login' : '/community'}">
+                ${d.post.image ? `<img src="${escapeHtml(d.post.image)}" alt="" loading="lazy">` : ''}
+                <span>${escapeHtml(d.post.excerpt || 'ดูโพสต์')}</span>
+            </a>`;
+        postEl.classList.remove('d-none');
+    } else {
+        postEl.classList.add('d-none');
+    }
+
+    // ร้านข้างๆ (กดเพื่อเปิดร้านนั้น) — เจ้าของล็อกเห็นคำเตือนถ้าข้างๆ ขายประเภทเดียวกัน
+    const nbEl = document.getElementById('icNeighbors');
+    const neighbors = neighborsOf(id).filter((st) => st.status === 'BOOKED' && BOOKING_BY_STALL[st.code]);
+    if (neighbors.length) {
+        const mine = MY_STALLS.has(id);
+        const myTags = new Set(shopTagsOf(d).map((t) => t.toLowerCase()));
+        const items = neighbors.map((st) => {
+            const nd = BOOKING_BY_STALL[st.code];
+            const sameSubtype = d.subtype && nd.subtype && d.subtype === nd.subtype;
+            const overlap = shopTagsOf(nd).some((t) => myTags.has(t.toLowerCase()));
+            const warn = mine && (sameSubtype || overlap);
+            return `<button type="button" class="nb-item${warn ? ' nb-warn' : ''}" data-nb="${escapeHtml(st.code)}">
+                <b>${escapeHtml(st.code)}</b><span>${escapeHtml(nd.shop)}</span>
+                <small>${escapeHtml(((categoryOf(st.code) || {}).label) || '')}${warn ? ' · ขายคล้ายร้านคุณ' : ''}</small>
+            </button>`;
+        }).join('');
+        nbEl.innerHTML = `<div class="ics-head">ร้านข้างๆ</div><div class="nb-list">${items}</div>`;
+        nbEl.querySelectorAll('[data-nb]').forEach((b) => b.addEventListener('click', () => { hideInfo(); openStallDeepLink(b.dataset.nb, true); }));
+        nbEl.classList.remove('d-none');
+    } else {
+        nbEl.classList.add('d-none');
+    }
+
+    // ทางไปห้องน้ำ / ที่ทิ้งขยะ / ออฟฟิศ
+    const fcEl = document.getElementById('icFacilities');
+    const zone = findZoneForStall(id);
+    fcEl.innerHTML = `<div class="ics-head">ใกล้ร้านนี้ <small>${escapeHtml(FACILITY_ROUTE[zone] || FACILITY_DEFAULT_ROUTE)}</small></div>
+        <div class="fc-list">${Object.keys(FACILITIES).map((k) => `<button type="button" class="fc-btn" data-fc="${k}"><i class="fa-solid ${FACILITIES[k].icon}"></i> ${FACILITIES[k].label}</button>`).join('')}</div>`;
+    fcEl.querySelectorAll('[data-fc]').forEach((b) => b.addEventListener('click', () => goToFacility(b.dataset.fc, zone)));
+    fcEl.classList.remove('d-none');
+}
+
+// ==========================================
+// ดูล่าสุด (เก็บในเครื่อง) + สถิติการเปิดดูร้านให้ผู้ขาย (ส่งแบบ beacon ไม่รอผล)
+// ==========================================
+const RECENT_KEY = 'kangsadan.recentShops';
+const RECENT_MAX = 8;
+let recentShops = [];
+try { recentShops = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch (e) { recentShops = []; }
+
+function isRecent(code) {
+    const d = BOOKING_BY_STALL[code];
+    return !!(d && recentShops.includes(d.shop));
+}
+
+function rememberRecent(code) {
+    const d = BOOKING_BY_STALL[code];
+    if (!d) return;
+    recentShops = [d.shop, ...recentShops.filter((name) => name !== d.shop)].slice(0, RECENT_MAX);
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(recentShops)); } catch (e) { /* เขียนไม่ได้ก็ข้าม */ }
+    updateQuickTagCounts();
+}
+
+const trackedViews = new Set();
+function trackView(code, kind) {
+    // แอดมิน/staff ไม่นับ, เจ้าของไม่นับร้านตัวเอง, นับครั้งเดียวต่อร้านต่อประเภทต่อการเปิดหน้า
+    if (CAN_SEE_VACANCY || MY_STALLS.has(code) || !navigator.sendBeacon) return;
+    if (new URLSearchParams(window.location.search).get('demo') === '1') return;
+    const key = `${code}:${kind}`;
+    if (trackedViews.has(key)) return;
+    trackedViews.add(key);
+    navigator.sendBeacon('/market-map/track', new Blob([JSON.stringify({ code, kind })], { type: 'application/json' }));
+}
+
+// ==========================================
+// ผู้ขาย: แบนเนอร์รอบจองถัดไป + ป้ายโซนที่จองได้บนภาพรวมผัง
+// ==========================================
+function renderSellerBanner() {
+    const banner = document.getElementById('sellerBanner');
+    if (!banner || !IS_SELLER || !VIEWER.nextRound) return;
+    const r = VIEWER.nextRound;
+    const fmt = (v) => new Date(v).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    const views = VIEWER.viewStats ? VIEWER.viewStats.totals.card : null;
+    banner.innerHTML = `
+        <div class="sb-round">
+            <span class="sb-kicker">รอบจองถัดไป #${r.roundNumber}</span>
+            <b>ขาย ${fmt(r.sellStart)} – ${fmt(r.sellEnd)}</b>
+            <span class="sb-steps">จองยาว 14 วัน เปิด ${fmt(r.longBookingOpen)} · จองรายวันได้ตั้งแต่ ${fmt(r.dailyBookingOpen)}</span>
+        </div>
+        ${views !== null ? `<a class="sb-stat" href="/shop-profile"><span>คนเปิดดูร้านคุณ 7 วัน</span><b>${views}</b></a>` : ''}
+        <div class="sb-actions">
+            <button type="button" class="ad-btn ad-ghost" id="sbZonesBtn" aria-pressed="false"><i class="fa-solid fa-layer-group"></i> ดูโซนที่จองได้</button>
+            <a class="ad-btn" href="/select-zone"><i class="fa-solid fa-store"></i> จองแผง</a>
+        </div>`;
+    banner.hidden = false;
+    const btn = document.getElementById('sbZonesBtn');
+    btn.addEventListener('click', () => {
+        const on = !document.body.classList.contains('show-allowed');
+        document.body.classList.toggle('show-allowed', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.classList.toggle('active', on);
+        if (on) document.querySelector('.map-shell').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    // ป้ายบนบล็อกโซน: จองได้ (มีที่ว่าง/เต็ม) — โซนที่ประเภทสินค้าไม่ตรงจะจางลงตอนเปิด "ดูโซนที่จองได้"
+    document.querySelectorAll('.zone-block').forEach((block) => {
+        const code = block.id.replace('zone-', '');
+        const allowed = (VIEWER.allowedZones || []).includes(code);
+        block.classList.toggle('zone-allowed', allowed);
+        block.classList.toggle('zone-not-allowed', !allowed);
+        if (!allowed) return;
+        const free = (VIEWER.zoneHasVacancy || {})[code];
+        // ข้อความสั้นเพราะโซนเล็ก (D/X/E) บนมือถือกว้างไม่ถึง 90px — กรอบส้มรอบโซนบอกอยู่แล้วว่าจองได้
+        block.insertAdjacentHTML('beforeend', `<span class="zone-book-badge ${free ? 'zb-free' : 'zb-full'}" title="${free ? 'จองได้ มีล็อกว่าง' : 'จองได้ แต่ตอนนี้เต็ม'}">${free ? 'ว่าง' : 'เต็ม'}</span>`);
+    });
+}
+
+// ==========================================
+// แอดมิน: สถิติโซน (อัตราเช่า / รายได้คาดการณ์ต่อวัน / สัดส่วนหมวดสินค้า) ในลิ้นชักโซน
+// ==========================================
+function renderZoneInsights(z) {
+    const box = document.getElementById('zoneInsights');
+    if (!box || !IS_ADMIN) return;
+    const stalls = stallsOfZone(z);
+    const booked = stalls.filter((st) => st.status === 'BOOKED');
+    const rate = stalls.length ? Math.round((booked.length / stalls.length) * 100) : 0;
+    const revenue = booked.reduce((sum, st) => sum + (Number(st.pricePerDay) || 0), 0);
+    const potential = stalls.reduce((sum, st) => sum + (st.status === 'MAINTENANCE' ? 0 : (Number(st.pricePerDay) || 0)), 0);
+    const catCounts = [...CATEGORIES, OTHER_CATEGORY].map((cat) => ({
+        ...cat,
+        n: booked.filter((st) => (categoryOf(st.code) || {}).key === cat.key).length
+    })).filter((c) => c.n);
+    const baht = (v) => `฿${Math.round(v).toLocaleString('th-TH')}`;
+    box.innerHTML = `
+        <div class="zi-tile"><span>อัตราเช่า</span><b>${rate}%</b><small>${booked.length}/${stalls.length} ล็อก</small></div>
+        <div class="zi-tile"><span>รายได้คาดการณ์/วัน</span><b>${baht(revenue)}</b><small>เต็มโซน ${baht(potential)}</small></div>
+        <div class="zi-mix">
+            <span>สัดส่วนหมวดสินค้า</span>
+            <div class="zi-bar" role="img" aria-label="${catCounts.map((c) => `${c.label} ${c.n} ร้าน`).join(', ') || 'ยังไม่มีร้าน'}">
+                ${catCounts.map((c) => `<span style="flex:${c.n};background:${c.color}" title="${c.label} ${c.n} ร้าน"></span>`).join('') || '<span class="zi-empty"></span>'}
+            </div>
+            <div class="zi-legend">${catCounts.map((c) => `<span><i style="background:${c.color}"></i>${c.label} ${c.n}</span>`).join('')}</div>
+        </div>`;
+}
+
+// ==========================================
+// ซูมผังในลิ้นชัก — ปุ่ม +/−/พอดีจอ และถ่าง/หุบสองนิ้วบนมือถือ (จำค่าไว้ในเครื่อง)
+// ==========================================
+const ZOOM_KEY = 'kangsadan.mapZoom';
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 1.6;
+let zoomLevel = Number(localStorage.getItem(ZOOM_KEY)) || (window.innerWidth < 600 ? 0.8 : 1);
+
+function setZoom(value, persist = true) {
+    zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value * 100) / 100));
+    if (persist) { try { localStorage.setItem(ZOOM_KEY, String(zoomLevel)); } catch (e) { /* ข้าม */ } }
+    applyZoom();
+}
+
+function applyZoom() {
+    const grid = document.getElementById('stallGrid');
+    if (grid) grid.style.zoom = zoomLevel;
+    const label = document.getElementById('zoomLabel');
+    if (label) label.textContent = `${Math.round(zoomLevel * 100)}%`;
+}
+
+function fitZoom() {
+    const grid = document.getElementById('stallGrid');
+    const wrap = document.getElementById('drawerGrid');
+    if (!grid || !wrap) return;
+    grid.style.zoom = 1;
+    const natural = grid.scrollWidth;
+    const avail = wrap.clientWidth - 24;
+    setZoom(natural > avail ? Math.max(ZOOM_MIN, Math.floor((avail / natural) * 20) / 20) : 1);
+}
+
+(function setupZoom() {
+    const ctl = document.getElementById('zoomCtl');
+    if (!ctl) return;
+    ctl.querySelector('[data-zoom="in"]').addEventListener('click', () => setZoom(zoomLevel + 0.1));
+    ctl.querySelector('[data-zoom="out"]').addEventListener('click', () => setZoom(zoomLevel - 0.1));
+    ctl.querySelector('[data-zoom="fit"]').addEventListener('click', fitZoom);
+    const wrap = document.getElementById('drawerGrid');
+    let pinch = null;
+    const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    wrap.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) pinch = { d: dist(e.touches), z: zoomLevel };
+    }, { passive: true });
+    wrap.addEventListener('touchmove', (e) => {
+        if (!pinch || e.touches.length !== 2) return;
+        e.preventDefault();
+        setZoom(pinch.z * (dist(e.touches) / pinch.d), false);
+    }, { passive: false });
+    wrap.addEventListener('touchend', () => {
+        if (!pinch) return;
+        pinch = null;
+        setZoom(zoomLevel);
+    });
+    applyZoom();
+})();
+
+// ปุ่มห้องน้ำ/ขยะ/ออฟฟิศบนภาพรวมผัง: บอกตำแหน่ง
+document.querySelectorAll('.btn-facility').forEach((btn) => {
+    const kind = ['restroom', 'trash', 'office'].find((k) => btn.classList.contains(`btn-facility-${k}`));
+    if (kind) btn.addEventListener('click', () => showMapToast(`${FACILITIES[kind].label}: ${FACILITY_DEFAULT_ROUTE}`, 4000));
+});
+
+(function setupQrViewer() {
+    const viewer = document.getElementById('qrViewer');
+    if (!viewer) return;
+    viewer.querySelectorAll('[data-qr-close]').forEach((el) => el.addEventListener('click', closeQrViewer));
+    document.addEventListener('keydown', (e) => { if (!viewer.hidden && e.key === 'Escape') closeQrViewer(); });
+})();
 
 // ป้ายเมนูเด่น (กดแล้วค้นร้านอื่นที่ขายคล้ายกัน) + ปุ่ม "ดูเมนูร้าน" ในการ์ดร้าน
 function renderCardMenu(id, d) {
@@ -1127,6 +1747,7 @@ function showVacantInfo(id, zone) {
     document.getElementById('icNewBadge').classList.add('d-none');
     document.getElementById('icTools').classList.add('d-none');
     document.getElementById('icQuickInspect').innerHTML = '';
+    ['icPost', 'icNeighbors', 'icFacilities'].forEach((elId) => document.getElementById(elId).classList.add('d-none'));
     renderRoleActions(id, zone, true);
     document.getElementById('infoCard').classList.add('show');
     document.getElementById('infoCardBackdrop').classList.add('show');
@@ -1143,6 +1764,9 @@ function showInfo(id) {
     document.getElementById('ic-head').textContent = `แผง ${id} — ${d.shop}`;
     document.getElementById('icNewBadge').classList.toggle('d-none', !d.isNew);
     renderCardTools(id);
+    renderCardExtras(id, d);
+    rememberRecent(id);
+    trackView(id, 'card');
     document.getElementById('ic-shop').textContent = d.shop;
     document.getElementById('ic-product').textContent = (categoryOf(id) || {}).label || d.product;
     document.getElementById('ic-detail').textContent = d.productDetail || '-';
@@ -1204,6 +1828,7 @@ function openMenuViewer(code) {
 
     showMenuSection(sections[0].key);
     hideStallTooltip();
+    trackView(code, 'menu');
     const viewer = document.getElementById('menuViewer');
     viewer.hidden = false;
     document.body.classList.add('mv-open');
@@ -1323,7 +1948,9 @@ const STATUS_LABELS = {
     EXP_SOON: 'ล็อกที่ใกล้หมดสัญญา',
     HAS_MENU: 'ร้านที่มีรูปเมนู',
     NEW: 'ร้านใหม่',
-    FAV: 'ร้านโปรดของคุณ'
+    FAV: 'ร้านโปรดของคุณ',
+    RECENT: 'ร้านที่ดูล่าสุด',
+    REP_ANY: 'ล็อกที่มีงานซ่อมค้าง'
 };
 
 function refreshFilterResults() {
@@ -1511,6 +2138,7 @@ buildCategoryBar();
 buildLayerTabs();
 renderLayerChrome();
 updateQuickTagCounts();
+renderSellerBanner();
 (function setupActions() {
     const mine = document.getElementById('btnMyStall');
     if (mine) {
