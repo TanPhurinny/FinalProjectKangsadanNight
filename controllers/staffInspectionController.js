@@ -82,9 +82,16 @@ function parseStallCodes(assignedStallCodeText) {
 // ใช้เป็นแหล่งความจริงเดียวกันทั้งหน้า (bookingByStallCode) และ endpoint บันทึกข้อมูล
 // แทนการเช็ค stall.isAvailable/stall.status ซึ่งถูกตั้งตอนแอดมิน "จัดล็อกให้" (IN_PROGRESS)
 // ไม่ได้ถูกอัปเดตอีกตอนยืนยันจ่ายเงิน (confirmPayment) จึงอาจไม่ตรงกับสถานะจ่ายเงินจริง
-async function isStallPaidAndBooked(stallCode) {
+async function isStallPaidAndBooked(stallCode, knownStallStatus) {
     const normalizedCode = String(stallCode || '').trim().toUpperCase();
     if (!normalizedCode) return false;
+
+    // ล็อกที่ถูกปล่อยแล้วไม่นับ แม้คำขอ SUCCESS เดิมยังค้างอยู่ (ไม่ถูกปิดโดยตั้งใจ ดู utils/stallRenewal.js)
+    // knownStallStatus: ผู้เรียกที่มีสถานะล็อกอยู่แล้ว (เช่น submitDay วนทุกล็อก) ส่งมาได้ ไม่ต้อง query ซ้ำ
+    const stallStatus = knownStallStatus !== undefined
+        ? knownStallStatus
+        : (await prisma.stall.findUnique({ where: { stallCode: normalizedCode }, select: { status: true } }))?.status;
+    if (stallStatus !== 'BOOKED') return false;
 
     const candidates = await prisma.bookingRequest.findMany({
         where: {
@@ -346,7 +353,10 @@ exports.getMarketInspectionPage = async (req, res) => {
         });
 
         const stalls = stallRows.map((stall) => {
-            const booking = bookingByStallCode[String(stall.stallCode || '').trim().toUpperCase()] || null;
+            // ล็อกที่ถูกปล่อยแล้ว (ตัดสิทธิ์/แอดมินกดปล่อย) ยังมีคำขอ SUCCESS ค้างอยู่โดยตั้งใจ (เก็บไว้ย้อนดู/กู้คืน
+            // ดู utils/stallRenewal.js) — รอบปัจจุบันจึงต้องเช็คว่า Stall ยัง BOOKED ด้วย ไม่งั้นนับเป็นงานตรวจทั้งที่ไม่มีร้านแล้ว
+            const isReleased = isCurrentRound && stall.status !== 'BOOKED';
+            const booking = isReleased ? null : (bookingByStallCode[String(stall.stallCode || '').trim().toUpperCase()] || null);
             const zoneCode = stall.row?.zone?.code || '';
             // ยึดจาก booking (มาจาก BookingRequest ที่ SUCCESS เท่านั้น) เป็นตัวตัดสิน "ว่าง" เพียงตัวเดียว
             // ไม่ใช้ stall.status === 'BOOKED' อีกต่อไป เพราะ field นั้นถูกตั้งตั้งแต่ตอน IN_PROGRESS (ยังไม่จ่ายเงิน)
@@ -766,8 +776,8 @@ exports.saveCleanlinessInspection = async (req, res) => {
 exports.submitDay = async (req, res) => {
     try {
         // นับเฉพาะล็อคที่เปิดให้ตรวจได้จริง (มีการจองและชำระเงินแล้ว) ตรงกับ inspectionEnabled บนหน้า
-        const stallRows = await prisma.stall.findMany({ select: { id: true, stallCode: true } });
-        const bookedFlags = await Promise.all(stallRows.map((stall) => isStallPaidAndBooked(stall.stallCode)));
+        const stallRows = await prisma.stall.findMany({ select: { id: true, stallCode: true, status: true } });
+        const bookedFlags = await Promise.all(stallRows.map((stall) => isStallPaidAndBooked(stall.stallCode, stall.status)));
         const bookedStallIds = stallRows.filter((_, idx) => bookedFlags[idx]).map((stall) => stall.id);
         const bookedStallByCode = new Map(
             stallRows.filter((_, idx) => bookedFlags[idx]).map((stall) => [stall.id, stall.stallCode])
