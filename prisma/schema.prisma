@@ -711,3 +711,15 @@ enum StallInventoryStatus {
   BOOKED
   MAINTENANCE
 }
+
+// สถิติการเปิดดูร้านจากผังตลาด (เปิดการ์ดร้าน/ดูเมนู/แชร์) ให้ผู้ขายเห็นในหน้าร้านค้าของฉัน
+// เก็บแค่ร้านไหน + ประเภท + เวลา ไม่เก็บว่าใครเป็นคนดู (ไม่มี userId ผู้ดู/IP)
+model ShopViewEvent {
+  id          Int      @id @default(autoincrement())
+  shopUserId  Int
+  stallCode   String
+  kind        String
+  createdAt   DateTime @default(now())
+
+  @@index([shopUserId, createdAt])
+}

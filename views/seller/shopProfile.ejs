@@ -13,7 +13,7 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
         <link rel="stylesheet" href="/stylesheets/seller/repair.css">
-        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261002-cover">
+        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261002-stats">
         <link rel="stylesheet" href="/stylesheets/seller/taxInvoiceRequest.css">
     </head>
 
@@ -106,6 +106,35 @@
                 ];
                 const profileDone = profileChecks.filter((c) => c.done).length;
                 %>
+                <% if (locals.viewStats) {
+                    const vs = locals.viewStats;
+                    const maxDay = Math.max(1, ...vs.daily.map((d) => d.card));
+                    const dayFmt = { weekday: 'short' };
+                %>
+                <section class="view-stats" aria-labelledby="viewStatsTitle">
+                    <div class="pm-head">
+                        <span class="pm-title" id="viewStatsTitle">คนดูร้านคุณในผังตลาด</span>
+                        <span class="pm-score"><%= vs.days %> วันล่าสุด</span>
+                    </div>
+                    <div class="vs-tiles">
+                        <div class="vs-tile"><span>เปิดดูร้าน</span><b><%= vs.totals.card %></b></div>
+                        <div class="vs-tile"><span>ดูเมนู</span><b><%= vs.totals.menu %></b></div>
+                        <div class="vs-tile"><span>แชร์ร้าน</span><b><%= vs.totals.share %></b></div>
+                    </div>
+                    <div class="vs-chart" role="img" aria-label="จำนวนครั้งที่เปิดดูร้านรายวัน <%= vs.daily.map((d) => d.date.toLocaleDateString('th-TH', dayFmt) + ' ' + d.card + ' ครั้ง').join(', ') %>">
+                        <% vs.daily.forEach(function (d, i) { const isToday = i === vs.daily.length - 1; %>
+                        <div class="vs-col" data-tip="<%= d.date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) %> · เปิดดู <%= d.card %> ครั้ง">
+                            <div class="vs-bar-area"><div class="vs-bar" style="height: <%= Math.round((d.card / maxDay) * 100) %>%"></div></div>
+                            <span class="vs-day<%= isToday ? ' is-today' : '' %>"><%= isToday ? 'วันนี้' : d.date.toLocaleDateString('th-TH', dayFmt) %></span>
+                        </div>
+                        <% }); %>
+                    </div>
+                    <% if (!vs.totals.card) { %>
+                    <p class="vs-empty">ยังไม่มีคนเปิดดูร้านใน 7 วันนี้ — ใส่ป้ายเมนูกับรูปเมนูให้ครบ แล้วพิมพ์ป้าย QR ติดหน้าร้านจากผังตลาด ลูกค้าจะเจอร้านง่ายขึ้น</p>
+                    <% } %>
+                </section>
+                <% } %>
+
                 <div class="profile-meter">
                     <div class="pm-head">
                         <span class="pm-title">ความครบของร้านในผังตลาด</span>

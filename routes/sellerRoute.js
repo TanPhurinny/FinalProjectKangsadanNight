@@ -5,6 +5,10 @@ const multer = require('multer');
 const { createImageStorage, deleteImage } = require('../utils/imageStorage');
 const { getAnnouncementsForUser } = require('../controllers/announcementController');
 const { getMarketMapPage } = require('../controllers/marketController');
+const marketMapCtrl = require('../controllers/marketMapController');
+const { shopViewLimiter } = require('../middlewares/authRateLimit');
+const { isStaffOrAdmin } = require('../middlewares/auth');
+const { getShopViewStats } = require('../utils/shopViews');
 const { repairReportSchema, bookingStallInputSchema, sellerApplicationSchema, shopProfileSchema, THAI_BANK_NAMES } = require('../utils/validationSchemas');
 const { PRODUCT_SUBTYPE_GROUPS } = require('../utils/productSubtypes');
 const { buildPromptPayQrDataUrl, PROMPTPAY_ID } = require('../utils/promptpayQr');
@@ -911,10 +915,11 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
     });
 
     // ขอใบกำกับภาษี — รวมมาไว้ในหน้าร้านค้าของฉันแทนที่จะแยกเป็นหน้าเมนูของตัวเอง (ดู taxInvoiceController.js)
-    const [eligibleQuotations, taxInvoiceProfiles, taxInvoiceRequests] = await Promise.all([
+    const [eligibleQuotations, taxInvoiceProfiles, taxInvoiceRequests, viewStats] = await Promise.all([
         taxInvoiceCtrl.getEligibleQuotationsForUser(req.user.id),
         taxInvoiceCtrl.getTaxInvoiceProfilesForUser(req.user.id),
-        taxInvoiceCtrl.buildTaxInvoiceListRows({ requestedByUserId: req.user.id })
+        taxInvoiceCtrl.buildTaxInvoiceListRows({ requestedByUserId: req.user.id }),
+        getShopViewStats(req.user.id)
     ]);
 
     res.render('seller/shopProfile', {
@@ -922,6 +927,7 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
         shop: userRecord?.shop || null,
         maxProductImages: MAX_SHOP_PRODUCT_IMAGES,
         maxMenuImages: MAX_SHOP_MENU_IMAGES,
+        viewStats,
         eligibleQuotations,
         taxInvoiceProfiles,
         taxInvoiceRequests,
@@ -1060,7 +1066,13 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
 // เส้นทาง community ถูกแยกไปจัดการที่ routes/communityRoutes.js แล้ว
 
 // --- ผังตลาด (read-only สำหรับลูกค้าทั่วไป/ผู้ขาย ดูร้านค้า+ค้นหาร้านค้า) ---
-router.get('/market-map', isAuthenticated, getMarketMapPage);
+// เปิดได้โดยไม่ต้องล็อกอิน — ลูกค้าหน้าตลาดสแกน QR ที่ป้ายหน้าร้านแล้วเข้ามาดูร้าน/เมนูได้ทันที
+// ข้อมูลภายใน (ล็อกว่าง/วันหมดสัญญา/ผลตรวจ/ราคา) server ตัดออกตาม role อยู่แล้ว ดู getMarketMapPage
+router.get('/market-map', getMarketMapPage);
+router.get('/market-map/qr/:code.svg', marketMapCtrl.getStallQr);
+router.get('/market-map/sign/:code', marketMapCtrl.getStallSign);
+router.get('/market-map/print', isStaffOrAdmin, marketMapCtrl.getPrintableMap);
+router.post('/market-map/track', shopViewLimiter, marketMapCtrl.trackShopView);
 
 // --- หน้าประกาศ (แยกประกาศสำคัญ / ข่าวสารทั่วไป) ---
 router.get('/announcements', isAuthenticated, async (req, res) => {

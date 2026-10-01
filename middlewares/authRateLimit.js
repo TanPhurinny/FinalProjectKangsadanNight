@@ -54,7 +54,18 @@ const forgotPasswordLimiter = rateLimit({
     }
 });
 
+// เก็บสถิติการเปิดดูร้านในผังตลาด (เปิดได้โดยไม่ล็อกอิน) — กันยิงปั่นยอดวิวร้าน
+const shopViewLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: skipInNonProduction,
+    message: { success: false, message: 'มีการเรียกใช้งานถี่เกินไป' }
+});
+
 module.exports = {
+    shopViewLimiter,
     authLimiter,
     forgotPasswordLimiter,
     registerLimiter,

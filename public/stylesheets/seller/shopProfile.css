@@ -342,3 +342,37 @@
 .pm-done { margin: 0; padding: 10px 14px; color: #1e7a45; font-weight: 600; font-size: 0.88rem; }
 [id^="field-"] { scroll-margin-top: 90px; }
 [id^="field-"]:target > label { background: #ffe08a; box-shadow: 0 0 0 4px #ffe08a; }
+
+/* ── สถิติคนดูร้าน 7 วัน: ตัวเลข 3 ช่อง + แท่งรายวันสีเดียว (ซีรีส์เดียว ตัวเลขใช้สีหมึก ไม่ใช้สีแท่ง) ── */
+.view-stats { margin: 18px 0 0; border: 1px solid var(--navy); }
+.vs-tiles { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--navy); }
+.vs-tile { display: flex; flex-direction: column; padding: 10px 14px; border-right: 1px solid var(--navy); }
+.vs-tile:last-child { border-right: 0; }
+.vs-tile span { font-size: 0.78rem; color: var(--ink-soft); }
+.vs-tile b { font-family: var(--mono); font-size: 1.5rem; color: var(--navy); line-height: 1.2; }
+.vs-chart { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 12px 14px 8px; }
+.vs-col { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: default; }
+.vs-bar-area { width: 100%; height: 64px; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--line); }
+.vs-bar { width: 60%; min-height: 2px; background: #2C93A8; border-radius: 4px 4px 0 0; }
+.vs-col:hover .vs-bar { background: #1f6f80; }
+.vs-day { font-size: 0.72rem; color: var(--ink-soft); }
+.vs-day.is-today { color: var(--navy); font-weight: 700; }
+/* tooltip ต่อแท่ง (hover/แตะ) */
+.vs-col::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% - 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background: var(--navy);
+    color: #fff;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .12s;
+    z-index: 2;
+}
+.vs-col:hover::after, .vs-col:focus-within::after { opacity: 1; }
+.vs-empty { margin: 0; padding: 8px 14px 12px; font-size: 0.82rem; color: var(--ink-soft); }
