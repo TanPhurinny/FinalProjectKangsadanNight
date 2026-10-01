@@ -949,7 +949,7 @@
 .stall-cell {
     width: 62px;
     height: 32px;
-    border: 1px solid #90a0a6;
+    border: 1px solid #000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1175,7 +1175,7 @@
     grid-row: 2 / 3;
     width: 62px;
     height: 32px;
-    border: 1px solid #90a0a6;
+    border: 1px solid #000;
     display: flex;
     align-items: center;
     justify-content: center;

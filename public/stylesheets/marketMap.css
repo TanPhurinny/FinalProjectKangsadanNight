@@ -649,7 +649,7 @@ body {
     width: 16px;
     height: 16px;
     border-radius: 3px;
-    border: 1px solid var(--border);
+    border: 1px solid #000;
     flex-shrink: 0;
 }
 
@@ -824,7 +824,7 @@ body {
 .stall-cell {
     width: 62px;
     height: 32px;
-    border: 1px solid #90a0a6;
+    border: 1px solid #000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -967,7 +967,7 @@ body {
     grid-row: 2 / 3;
     width: 62px;
     height: 32px;
-    border: 1px solid #90a0a6;
+    border: 1px solid #000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1200,7 +1200,8 @@ body {
 .stall-tooltip .tt-hint:empty { display: none; }
 
 /* สีตามหมวดสินค้าบนล็อกที่มีร้านแล้ว */
-.stall-cell.booked.has-cat { background: var(--cat); border-color: var(--cat); }
+/* คงเส้นขอบสีดำไว้ ให้แยกล็อกที่ติดกันและสีเดียวกันออกได้ */
+.stall-cell.booked.has-cat { background: var(--cat); border-color: #000; }
 .stall-cell.booked.has-cat:hover { background: var(--cat); filter: brightness(.88); }
 .stall-cell.dimmed { opacity: .28; }
 

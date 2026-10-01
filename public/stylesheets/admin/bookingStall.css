@@ -506,7 +506,7 @@
     .stall-cell {
       width: 55px;
       height: 28px;
-      border: 1px solid #90a0a6;
+      border: 1px solid #000;
       background: var(--stall-empty);
       display: flex;
       align-items: center;
@@ -668,7 +668,7 @@
       grid-row: 2 / 3;
       width: 55px;
       height: 28px;
-      border: 1px solid #90a0a6;
+      border: 1px solid #000;
       display: flex;
       align-items: center;
       justify-content: center;

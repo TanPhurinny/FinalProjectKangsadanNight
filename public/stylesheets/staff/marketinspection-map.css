@@ -321,7 +321,7 @@
 .insp-stall-cell {
     width: 55px;
     height: 28px;
-    border: 1px solid var(--line);
+    border: 1px solid #000;
     background: var(--muted-color);
     color: #fff;
     display: flex;
@@ -400,7 +400,7 @@
     grid-row: 2 / 3;
     width: 55px;
     height: 28px;
-    border: 1px solid var(--line);
+    border: 1px solid #000;
     display: flex;
     align-items: center;
     justify-content: center;
