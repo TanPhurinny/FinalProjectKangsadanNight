@@ -222,6 +222,10 @@
     height: 100%;
     object-fit: cover;
 }
+/* ยังไม่มีรูปหน้าปก: ซ่อน img ไว้ ไม่ให้โชว์ไอคอนรูปเสีย + alt ซ้อนกับ placeholder */
+.upload-box-frame:not(.has-image) .upload-box--cover img {
+    display: none;
+}
 /* กล่องยังไม่มีรูป: ไอคอน + ข้อความบอกชัดว่ากดเพื่ออัปโหลด แทนเครื่องหมาย + ลอยๆ */
 .cover-upload-placeholder {
     position: absolute;
@@ -301,3 +305,40 @@
         height: 92px;
     }
 }
+
+/* ── ความครบของโปรไฟล์ร้าน: แถบช่อง 6 ช่อง + รายการที่ยังขาด (กดแล้วเลื่อนไปที่ช่องนั้น) ── */
+.profile-meter {
+    margin: 18px 0 24px;
+    border: 1px solid var(--navy);
+}
+.pm-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--navy);
+}
+.pm-title { font-weight: 700; color: var(--navy); font-size: 0.92rem; }
+.pm-score { font-family: var(--mono); font-size: 0.85rem; color: var(--ink-soft); }
+.pm-score b { color: var(--navy); font-size: 1.05rem; }
+.pm-bar { display: flex; border-bottom: 1px solid var(--navy); }
+.pm-bar span { flex: 1; height: 10px; border-right: 1px solid var(--navy); background: #fff; }
+.pm-bar span:last-child { border-right: 0; }
+.pm-bar span.on { background: #2e9e5b; }
+.pm-list { list-style: none; margin: 0; padding: 0; }
+.pm-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+    padding: 8px 14px;
+    border-bottom: 1px dashed var(--line);
+    font-size: 0.86rem;
+}
+.pm-list li:last-child { border-bottom: 0; }
+.pm-list a { color: var(--navy); font-weight: 600; text-decoration: none; }
+.pm-list a:hover { text-decoration: underline; }
+.pm-list small { color: var(--ink-soft); }
+.pm-done { margin: 0; padding: 10px 14px; color: #1e7a45; font-weight: 600; font-size: 0.88rem; }
+[id^="field-"] { scroll-margin-top: 90px; }
+[id^="field-"]:target > label { background: #ffe08a; box-shadow: 0 0 0 4px #ffe08a; }

@@ -13,7 +13,7 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
         <link rel="stylesheet" href="/stylesheets/seller/repair.css">
-        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261002-menu">
+        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261002-cover">
         <link rel="stylesheet" href="/stylesheets/seller/taxInvoiceRequest.css">
     </head>
 
@@ -92,6 +92,39 @@
                 <p class="text-muted small">ชื่อร้านและประเภทสินค้ามาจากใบสมัครที่ผ่านการอนุมัติแล้ว แก้ไขไม่ได้ที่นี่
                     เพื่อให้ตรงกับข้อมูลที่แอดมินตรวจสอบไว้เสมอ — หากต้องการเปลี่ยน ติดต่อแอดมิน</p>
 
+                <%
+                // ความครบของโปรไฟล์ร้าน — นับจากข้อมูลที่บันทึกแล้วเท่านั้น (ไม่ใช่ค่าที่ค้างในฟอร์มตอน error)
+                // ยิ่งครบ ลูกค้ายิ่งค้นเจอและรู้ว่าร้านขายอะไรในผังตลาด
+                const savedTags = String(shopRecord.shopTags || '').split(',').map((t) => t.trim()).filter(Boolean);
+                const profileChecks = [
+                    { id: 'field-tags', label: 'ป้ายเมนูเด่นอย่างน้อย 3 ป้าย', done: savedTags.length >= 3, why: 'ลูกค้าพิมพ์ชื่อเมนูแล้วเจอร้าน' },
+                    { id: 'field-menu', label: 'รูปเมนูร้าน', done: (shopRecord.menuImages || []).length > 0, why: 'ลูกค้ากด "ดูเมนูร้าน" ในผังได้' },
+                    { id: 'field-photos', label: 'รูปสินค้า', done: (shopRecord.productImages || []).length > 0, why: 'รูปย่อร้านบนผัง/คอมมูนิตี้' },
+                    { id: 'field-summary', label: 'แนะนำร้าน', done: !!shopRecord.shopSummary, why: 'โชว์ในการ์ดร้าน' },
+                    { id: 'field-detail', label: 'รายละเอียดสินค้า', done: !!shopRecord.productDetail, why: 'บอกว่าขายอะไร' },
+                    { id: 'field-cover', label: 'รูปหน้าปก', done: !!shopRecord.shopCoverImage, why: 'หน้าร้านดูน่าเข้า' }
+                ];
+                const profileDone = profileChecks.filter((c) => c.done).length;
+                %>
+                <div class="profile-meter">
+                    <div class="pm-head">
+                        <span class="pm-title">ความครบของร้านในผังตลาด</span>
+                        <span class="pm-score"><b><%= profileDone %></b>/<%= profileChecks.length %></span>
+                    </div>
+                    <div class="pm-bar" aria-hidden="true">
+                        <% profileChecks.forEach(function (c) { %><span class="<%= c.done ? 'on' : '' %>"></span><% }); %>
+                    </div>
+                    <% if (profileDone < profileChecks.length) { %>
+                    <ul class="pm-list">
+                        <% profileChecks.filter((c) => !c.done).forEach(function (c) { %>
+                        <li><a href="#<%= c.id %>"><i class="fa-regular fa-square"></i> <%= c.label %></a> <small><%= c.why %></small></li>
+                        <% }); %>
+                    </ul>
+                    <% } else { %>
+                    <p class="pm-done"><i class="fa-solid fa-check"></i> ข้อมูลร้านครบแล้ว ลูกค้าค้นเจอและเห็นเมนูได้เต็มที่</p>
+                    <% } %>
+                </div>
+
                 <form action="/shop-profile" method="POST" enctype="multipart/form-data">
 
                     <div class="form-section">
@@ -100,7 +133,7 @@
                             <span class="form-section-hint">แสดงบนผังตลาด/คอมมูนิตี้</span>
                         </div>
 
-                        <div class="form-group full-width">
+                        <div class="form-group full-width" id="field-tags">
                             <label>เมนูเด่น (คำค้นหา)</label>
                             <div class="tag-input-box" id="shopTagsBox">
                                 <input type="text" id="shopTagsField" class="tag-input-field"
@@ -112,13 +145,13 @@
                                 แต่ละป้ายมีปุ่ม &times; กดเพื่อลบทิ้งได้เลย</p>
                         </div>
 
-                        <div class="form-group full-width">
+                        <div class="form-group full-width" id="field-summary">
                             <label>แนะนำร้านสั้น ๆ</label>
                             <textarea name="shopSummary" class="input-white" style="min-height: 70px;"
                                 placeholder="แนะนำร้านสั้น ๆ ให้ลูกค้าเห็นบนหน้าคอมมูนิตี้/ผังตลาด"><%= currentShopSummary %></textarea>
                         </div>
 
-                        <div class="form-group full-width">
+                        <div class="form-group full-width" id="field-detail">
                             <label>รายละเอียดสินค้า</label>
                             <textarea name="productDetail" class="input-white"
                                 placeholder="เพิ่มรายละเอียดสินค้าที่ขาย..."><%= currentProductDetail %></textarea>
@@ -131,7 +164,7 @@
                             <span class="form-section-hint">JPG / PNG</span>
                         </div>
 
-                        <div class="form-group full-width">
+                        <div class="form-group full-width" id="field-photos">
                             <label>รูปสินค้า/โลโก้ร้าน (สูงสุด <%= maxProductImagesCount %> รูป)</label>
                             <div class="upload-wrapper" id="productImagesWrapper">
                                 <% currentProductImages.forEach(function (img) { %>
@@ -150,7 +183,7 @@
                             <p class="field-hint">รูปแรกในแกลเลอรีจะใช้เป็นรูปย่อของร้านในผังตลาด/คอมมูนิตี้</p>
                         </div>
 
-                        <div class="form-group full-width">
+                        <div class="form-group full-width" id="field-menu">
                             <label>รูปเมนูร้าน (สูงสุด <%= maxMenuImagesCount %> รูป)</label>
                             <div class="upload-wrapper" id="menuImagesWrapper">
                                 <% currentMenuImages.forEach(function (img) { %>
@@ -170,15 +203,15 @@
                                 ลูกค้ากดปุ่ม "ดูเมนูร้าน" ในผังตลาดเพื่อดูรูปนี้ได้เลย ไม่ต้องเดินไปถึงหน้าร้าน</p>
                         </div>
 
-                        <div class="form-group full-width">
+                        <div class="form-group full-width" id="field-cover">
                             <label>รูปหน้าปกร้าน</label>
                             <div class="upload-wrapper">
                                 <div class="upload-box-frame upload-box-frame--cover<%= shopRecord.shopCoverImage ? ' has-image' : '' %>" id="shopCoverImageFrame">
                                     <label for="shopCoverImageUpload" class="upload-box upload-box--cover" id="shopCoverImageUploadLabel">
                                         <img id="shopCoverImagePreview"
-                                            src="<%= shopRecord.shopCoverImage || '' %>"
+                                            <% if (shopRecord.shopCoverImage) { %>src="<%= shopRecord.shopCoverImage %>"<% } %>
                                             style="<%= shopRecord.shopCoverImage ? 'display:block;' : '' %>"
-                                            alt="Preview">
+                                            alt="รูปหน้าปกร้าน">
                                         <span class="cover-upload-placeholder">
                                             <i class="fa-solid fa-camera"></i>
                                             <span>อัปโหลดรูปหน้าปก</span>
