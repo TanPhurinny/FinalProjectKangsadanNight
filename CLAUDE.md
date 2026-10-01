@@ -12,7 +12,7 @@ There is no test suite, lint config, or build step in this project. To verify a 
 OPEN_BROWSER=false node -e "require('./app'); setTimeout(() => process.exit(0), 1500)"
 ```
 
-Required env vars (see `.env`): `DATABASE_URL` (MySQL), `JWT_SECRET`. Optional: `PORT`, `NODE_ENV`, `OPEN_BROWSER`, `CLOUDINARY_URL` (required in production so uploads survive redeploys; `CLOUDINARY_FOLDER` overrides the root folder, default `kangsadan`), `GMAIL_USER`/`GMAIL_APP_PASSWORD` (Gmail App Password used to send password-reset emails via `config/mailer.js`; if unset, the reset link is logged to the console instead — fine for dev, must be set in production).
+Required env vars (see `.env`): `DATABASE_URL` (MySQL), `JWT_SECRET`. Optional: `PORT`, `NODE_ENV`, `OPEN_BROWSER`, `CLOUDINARY_URL` (required in production so uploads survive redeploys; `CLOUDINARY_FOLDER` overrides the root folder, default `kangsadan`), `GMAIL_USER`/`GMAIL_APP_PASSWORD` (Gmail App Password used to send password-reset emails via `config/mailer.js`; if unset, the reset link is logged to the console instead — fine for dev, must be set in production), `PUBLIC_BASE_URL` (base URL baked into stall QR codes/printed signs from `controllers/marketMapController.js`; defaults to the request's protocol+host — set it if production sits behind a proxy or a different domain).
 
 ## Architecture
 
@@ -23,7 +23,9 @@ Server-rendered Express + EJS app ("Kangsadan Night Market" management system) b
 - `/` → `routes/authRoutes.js` (login, register, logout, profile)
 - `/admin` → `routes/adminRoutes.js` (dashboard, announcements, users, approvals, requests, bookings) — gated by `isStaffOrAdmin` (and `isAdminOnly` for user management specifically)
 - `/market` → `routes/marketRoutes.js` (slot map, booking)
-- `/` → `routes/sellerRoute.js` (zone selection, repair reports, stall booking)
+- `/` → `routes/sellerRoute.js` (zone selection, repair reports, stall booking, and the market map `/market-map` + its extras `/market-map/{qr,sign,print,track}` handled by `controllers/marketMapController.js`)
+
+**`/market-map` is public (no login)** so customers can scan a stall's QR sign. Internal data (vacancy, contract end dates, inspection results, lot prices, open repairs) is stripped server-side by role in `getMarketMapPage` — never just hidden with CSS. Its client is split into `public/js/marketMap.js` (map, layers, cards) and `public/js/marketNav.js` (step-by-step navigation, loaded after and reusing marketMap.js globals).
 
 A catch-all 404 handler re-renders `index` with an error message rather than a dedicated error page.
 
@@ -43,16 +45,16 @@ Routes that need JSON vs. HTML behavior (login/register/forgot-password) branch 
 
 **Localization:** UI copy, error messages, and code comments are primarily in Thai.
 
-## สถานะงานที่ทำวันนี้ (2026-09-24)
+## สถานะงานที่ทำวันนี้ (2026-10-02)
 
-- เพิ่มระบบ **ขอใบกำกับภาษี** แยกจากใบเสนอราคาเดิม (`controllers/taxInvoiceController.js`) — ต่างจากใบเสนอราคาที่ gen อัตโนมัติทันทีที่ยืนยันสลิป ใบกำกับภาษีต้องให้ผู้ขาย/ลูกค้า **ขอเข้ามาก่อน** แล้วแอดมินเป็นคนกรอก/ยืนยันข้อมูลผู้เสียภาษี (นามบริษัทมักคนละอันกับคนจอง) แล้วถึงออกเอกสารจริง
-  - Schema ใหม่: `TaxInvoiceProfile` (โปรไฟล์ผู้เสียภาษี reuse ได้ ผูกกับ `User`), `TaxInvoiceRequest` (สถานะ PENDING/ISSUED/CANCELLED, มี `replacesRequestId` เก็บสายประวัติตอน "ยกเลิก & ออกใหม่"), `TaxInvoiceRequestItem` (many-to-many ผูกกับ `BookingRequest` — 1 คำขอรวมได้หลายใบเสนอราคา) — ไม่ persist ยอดเงินซ้ำ คำนวณสดผ่าน `buildQuotationData` เสมอ
-  - Migration `prisma/migrations/20260924130000_add_tax_invoice_request/` — ใช้ `prisma db push` แทน `migrate dev` เพราะ DB กลาง (TiDB Cloud) มี schema drift ที่ไม่เกี่ยวกับงานนี้อยู่ก่อนแล้ว (`migrate dev` จะขึ้นเตือนให้ `migrate reset` ซึ่ง**ลบข้อมูลทั้งหมด** — ห้ามทำเด็ดขาดกับ DB ทีมที่ใช้งานจริง) แล้วเขียน migration SQL มือ + `prisma migrate resolve --applied` เพื่อให้ migration history ตรงกับ DB จริงโดยไม่รีเซ็ตข้อมูล
-  - ฝั่งผู้ขาย: UI ขอใบกำกับภาษี (เลือกใบเสนอราคาได้หลายใบ + เลือกโปรไฟล์เดิม/กรอกนามใหม่) **รวมอยู่ในหน้า "ร้านค้าของฉัน" (`/shop-profile`)** ไม่ใช่หน้าแยก (ย้ายจากเมนู navbar ออกมาเพราะดูไม่สวย) — โปรไฟล์คู่มือ reuse ได้จาก dropdown ถ้าเคยขอมาก่อน
-  - ฝั่งแอดมิน: หน้า `/admin/tax-invoice-requests` (list + filter สถานะ) และ `/admin/tax-invoice-requests/:id/fulfill` (กรอก/แก้ข้อมูลผู้เสียภาษีแล้วออกเอกสาร หรือ "ยกเลิก & ออกใหม่" ถ้าออกไปแล้วพบข้อมูลผิด — เก็บฉบับเดิมไว้เป็นประวัติเสมอ ไม่ลบทิ้ง) อยู่ใน dropdown "เพิ่มเติม" ของ navbar แอดมิน
-  - แจ้งเตือนผู้ขาย: เพิ่มการ์ด "ใบกำกับภาษีได้รับการอนุมัติแล้ว" / "คำขอถูกปฏิเสธ" ในหน้า `/notifications` (`buildTaxInvoiceNotifications` ใน `routes/sellerRoute.js`) ตาม pattern เดียวกับการ์ดใบเสนอราคาเดิม
-- แก้ navbar ล้นทั้งฝั่งแอดมิน/ผู้ขาย ด้วย component dropdown "เพิ่มเติม" (`<details>/<summary>`, ไม่ใช้ JS หนัก) ที่มี CSS เตรียมไว้ในโปรเจกต์อยู่แล้วแต่ไม่เคยถูกใช้จริง — ระหว่างทางเจอบั๊ก dropdown panel โดน `.nav-links { overflow-x: auto }` ตัดจนกลายเป็นกล่องเลื่อนเล็กๆ (CSS overflow บังคับให้ทั้งสองแกนตัดพร้อมกันเสมอ แยกไม่ได้) แก้ด้วย JS สลับพาเนลเป็น `position: fixed` คำนวณตำแหน่งจริงตอนเปิด (`public/js/partials/navbar.js`)
-- ปรับ UX งานตรวจความสะอาดร้านอาหาร (`/staff/marketinspection` โหมดความสะอาด) ให้ตรวจ+บันทึกเสร็จแล้ว **เด้งไปร้านถัดไปในลิสต์อัตโนมัติ** ไม่ต้องปิด-เปิดฟอร์มเอง พร้อมโชว์ข้อมูลร้าน/ผู้ขาย/สินค้าหลักที่หัว modal ให้เห็นชัดว่ากำลังตรวจร้านไหน (`public/js/staff/marketinspection-cleanliness.js`) — ระหว่างทางเจอบั๊ก modal ชนกับ navbar (z-index ของ `.excess-panel` ต่ำกว่า navbar ที่ sticky ไว้ สีเดียวกันเลยดูเหมือนหัว modal หายไป) แก้แล้วใน `public/stylesheets/staff/marketinspection.css`
+งานทั้งหมดอยู่บน branch `tanmac` (push แล้ว ยังไม่ได้เปิด PR เข้า `main`) — เน้นผังตลาด `/market-map` ให้ใช้บนมือถือเป็นหลัก
+
+- **ระบบชั้นข้อมูลบนผัง (layer)** สำหรับแอดมิน/staff: แท็บสลับว่าสีบนล็อกบอกเรื่องอะไร — หมวดสินค้า / ผลตรวจวันนี้ (`utils/inspectionToday.js`) / หมดสัญญา (มีแถบเลื่อน "ดูล่วงหน้า 0–30 วัน" + เลือกหลายล็อกแล้วแจ้งเตือน/ปล่อยล็อกพร้อมกัน) / งานซ่อม (ปักหมุดคำร้องที่ยังไม่ปิดจากรหัสล็อกในช่อง `location`) — เพิ่มชั้นใหม่ได้ที่ `LAYERS` ใน `marketMap.js`
+- **staff:** บันทึกผลตรวจด่วนจากการ์ดล็อก (ใช้ API เดิม `/staff/marketinspection/*`) + โหมดเดินตรวจ เรียงร้านที่ยังไม่ตรวจตามเส้นทางจริง (`utils/inspectionWalkOrder.js` ใช้ร่วมกับหน้าตรวจตลาด) บันทึกแล้วเด้งไปร้านถัดไป — **ยังไม่ได้ลองบันทึกจริงกับ DB**
+- **ผู้ขาย:** อัปโหลดรูปเมนูได้ 4 รูป (ตาราง `ShopMenuImage`), แถบความครบของร้าน + สถิติคนเปิดดูร้าน 7 วัน (ตาราง `ShopViewEvent` เก็บแค่ร้าน/ประเภท/เวลา ไม่เก็บผู้ดู) ในหน้าร้านค้าของฉัน, การ์ดสุขภาพล็อก (สัญญา/ความสะอาด/ไฟเกิน/แจ้งซ่อมค้าง) + ปุ่มแจ้งซ่อมล็อกนี้ (`/repair?stall=`), QR ร้าน + ป้ายหน้าร้าน A5 (`/market-map/sign/:code`), แถบรอบจองถัดไปที่หัวหน้าเลือกโซน (`getRoundTimeline` ใน `utils/bookingRound.js` คำนวณจากกติกาเดียวกับฟอร์มจอง)
+- **ลูกค้า:** ป้ายเมนูเด่น + ปุ่มดูเมนูร้าน, ร้านโปรด/ดูล่าสุด (localStorage), แชร์ร้าน, ป้ายร้านใหม่, ร้านข้างๆ, โพสต์ล่าสุดของร้าน, ซูมผัง (ปุ่ม + สองนิ้ว), การ์ดร้านเป็น bottom sheet บนมือถือ, **นำทาง "ฉันอยู่ตรงนี้"** (แตะโซนบนผังย่อ → เส้นทาง + ขั้นตอนเลี้ยวซ้าย/ขวา นับแถว นับล็อก — พิกัดอยู่ใน `ZONE_GEO` ของ `marketNav.js` ต้องตรงกับ `#zone-*` ใน `marketMap.css`; **ยังไม่ได้ลองเดินตามที่หน้างานจริง**)
+- **แก้บั๊กระหว่างทาง:** "ล็อกของฉัน" บนผังไม่เคยขึ้นเพราะ `BookingRequest.sellerId` เป็น null ทุกแถว — ตอนนี้จับคู่จากชื่อผู้ขายด้วย (ชื่อซ้ำจะปนกัน ควรผูก `sellerId` จริงในอนาคต); หน้าตรวจตลาดนับล็อกที่ถูกปล่อยแล้วเป็นงานตรวจ (คำขอ SUCCESS ค้างไว้โดยตั้งใจตาม `utils/stallRenewal.js`) — ตอนนี้นับเฉพาะล็อกที่ `Stall.status` ยัง `BOOKED`
+- **ค้างตัดสิน:** 4 ล็อก (B304, B100, B601, B106) มีคำขอ SUCCESS แต่ล็อกถูกปล่อยเป็นว่าง — จะกู้คืนด้วย `scripts/restore-released-stalls.js` หรือปล่อยไว้
 
 ## Team conventions
 
@@ -63,5 +65,6 @@ This project is worked on by multiple people in parallel (branches per person: `
 - **Before starting work:** `git pull` on `main` and rebase/merge it into your branch first — several people touch `views/`, `controllers/`, and `routes/` at once, so stale branches conflict often.
 - **UI/design:** follow the existing "gridgeist" visual style already applied across `index`, `admin`, and `seller` pages (see git history for `รีดีไซน์...เป็นสไตล์ gridgeist`) — sharp grid layout, visible borders, no `rounded-pill`/`rounded-4`. Use the `gridgeist` skill when redesigning or adding pages so new screens match.
 - **After schema changes:** run `npx prisma generate` and commit the migration under `prisma/migrations/` — don't hand-edit the generated client.
+- **Applying schema changes to the shared DB (TiDB Cloud):** never use `prisma migrate dev` — the shared DB has drift unrelated to your change, so it prompts for `migrate reset`, which **wipes all team data**. Instead: check the diff first with `npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script` (must contain only your change), save it as `prisma/migrations/<timestamp>_<name>/migration.sql`, apply with `npx prisma db execute --file <that file> --schema prisma/schema.prisma`, then `npx prisma migrate resolve --applied <name>` so migration history matches the DB.
 - **Before opening a PR:** boot-check the app (see verify command above) and click through the flow you changed in a browser; there's no automated test suite to catch regressions.
 - **Language:** keep new UI copy, flash/error messages, and comments in Thai to match the rest of the codebase; code identifiers (variables, functions, routes) stay in English.
