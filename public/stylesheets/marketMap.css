@@ -2016,3 +2016,122 @@ body.bulk-on .zoom-ctl, body.walk-on .zoom-ctl { bottom: 14px; }
     .nb-list { grid-template-columns: 1fr; }
     .ls-ahead input { width: 90px; }
 }
+
+/* ========================================
+   ฉันอยู่ตรงนี้ — หน้าต่างนำทาง: ผังย่อแตะเลือกจุดเริ่ม + เส้นทาง + ขั้นตอน
+   ======================================== */
+.ic-tool-nav { background: #1c6ef2; border-color: #12303a; color: #fff; }
+.ic-tool-nav:hover { background: #1557c0; }
+.ic-tools { flex-wrap: wrap; }
+
+.nav-panel { width: min(560px, calc(100vw - 24px)); }
+.nav-body { overflow-y: auto; min-height: 0; padding: 12px 18px 4px; }
+.nav-hint { margin: 0 0 10px; font-size: 13px; color: var(--sub); }
+.nav-hint b { color: var(--text); }
+.nav-foot { padding: 10px 18px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
+.nav-foot .ad-btn { width: 100%; }
+.nav-foot .ad-btn[hidden] { display: none; }
+
+.nm-map {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    max-height: 42vh;
+    background: #fff;
+    border: 1px solid var(--text);
+    border-top: 10px solid var(--road);
+    border-bottom: 10px solid var(--road);
+}
+.nm-aisle { position: absolute; border: 1px dashed #9a9a9a; background: repeating-linear-gradient(135deg, #f4f4f4 0 5px, #fff 5px 10px); }
+.nm-zone {
+    position: absolute;
+    padding: 0;
+    border: 1px solid #000;
+    background: var(--zc);
+    color: var(--zt);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.nm-zone:hover { filter: brightness(.95); }
+.nm-zone.active { outline: 3px solid #1c6ef2; outline-offset: 1px; z-index: 2; }
+.nm-mark {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    padding: 2px 6px;
+    border: 1px solid var(--text);
+    background: #fff;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    z-index: 3;
+}
+.nm-mark-facility { transform: translate(-50%, -60%); }
+.nm-mark.active { background: #1c6ef2; border-color: #1c6ef2; color: #fff; }
+.nm-side {
+    position: absolute;
+    top: 50%;
+    font-size: 9px;
+    color: var(--sub);
+    writing-mode: vertical-rl;
+    transform: translateY(-50%);
+    white-space: nowrap;
+}
+.nm-side-left { left: 2px; transform: translateY(-50%) rotate(180deg); }
+.nm-side-right { right: 2px; }
+.nm-route { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; overflow: visible; }
+.nm-route polyline {
+    fill: none;
+    stroke: #1c6ef2;
+    stroke-width: 3;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    stroke-dasharray: 6 4;
+    vector-effect: non-scaling-stroke;
+    animation: navDash 1s linear infinite;
+}
+@keyframes navDash { to { stroke-dashoffset: -10; } }
+.nm-pin { position: absolute; z-index: 5; width: 14px; height: 14px; transform: translate(-50%, -50%); border: 2px solid #fff; box-shadow: 0 0 0 1px #000; pointer-events: none; }
+.nm-pin[hidden] { display: none; }
+.nm-pin-start { background: #1c6ef2; border-radius: 50%; }
+.nm-pin-target { background: #e67e22; width: 16px; height: 16px; animation: navPin 1.2s ease-in-out infinite; }
+@keyframes navPin { 50% { transform: translate(-50%, -50%) scale(1.35); } }
+
+.nav-steps { list-style: none; margin: 12px 0 8px; padding: 0; border-top: 1px solid var(--text); }
+.nav-step {
+    display: grid;
+    grid-template-columns: 28px 18px 1fr;
+    gap: 10px;
+    align-items: start;
+    padding: 10px 2px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text);
+}
+.ns-num {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--text);
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 12px;
+    font-weight: 600;
+}
+.ns-icon { margin-top: 5px; color: #1c6ef2; text-align: center; }
+.nav-step-final { background: #fff8ee; }
+.nav-step-final .ns-num { background: #e67e22; border-color: #e67e22; color: #fff; }
+.nav-step-final .ns-icon { color: #e67e22; }
+
+@media (max-width: 600px) {
+    .nav-body { padding: 10px 12px 4px; }
+    .nm-map { aspect-ratio: 1 / 1; max-height: 38vh; }
+    .nm-mark { font-size: 9px; padding: 1px 4px; }
+    .nav-step { font-size: 13px; }
+}

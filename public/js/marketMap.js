@@ -1366,6 +1366,12 @@ function renderCardTools(id) {
     paintFav();
     favBtn.onclick = () => { toggleFavorite(id); paintFav(); };
     document.getElementById('icShareBtn').onclick = () => shareStall(id);
+    // นำทาง (public/js/marketNav.js) — ซ่อนถ้ายังคำนวณทางไปล็อกนี้ไม่ได้ (เช่น โซนอื่นๆ นอกผังหลัก)
+    const navBtn = document.getElementById('icNavBtn');
+    // การ์ดที่เปิดจากลิงก์ ?stall= ตอนโหลดหน้า แสดงก่อน marketNav.js โหลดเสร็จ — ยังเช็คไม่ได้ก็แสดงปุ่มไว้ก่อน
+    const canNav = !window.canNavigateTo || window.canNavigateTo(id);
+    navBtn.classList.toggle('d-none', !canNav);
+    navBtn.onclick = () => { if (window.openNavigator) window.openNavigator(id); };
     // QR/ป้ายหน้าร้าน: เจ้าของล็อก + แอดมิน/staff (ลูกค้าใช้ปุ่มแชร์แทน)
     const qrBtn = document.getElementById('icQrBtn');
     const canQr = MY_STALLS.has(id) || CAN_SEE_VACANCY;

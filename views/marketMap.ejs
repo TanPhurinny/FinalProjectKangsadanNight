@@ -14,7 +14,7 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
             rel="stylesheet" />
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
-        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261002-nobanner">
+        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261002-nav">
         <link rel="stylesheet" href="/stylesheets/common/searchSuggest.css?v=20261002">
     </head>
     <body>
@@ -262,6 +262,7 @@
                     <div class="ic-tools d-none" id="icTools">
                         <button type="button" class="ic-tool" id="icFavBtn" aria-pressed="false"></button>
                         <button type="button" class="ic-tool" id="icShareBtn"><i class="fa-solid fa-share-nodes"></i> แชร์ร้าน</button>
+                        <button type="button" class="ic-tool ic-tool-nav" id="icNavBtn"><i class="fa-solid fa-route"></i> นำทาง</button>
                         <button type="button" class="ic-tool d-none" id="icQrBtn"><i class="fa-solid fa-qrcode"></i> QR / ป้ายหน้าร้าน</button>
                     </div>
                     <img id="ic-image" class="ic-image d-none" alt="รูปร้านค้า" />
@@ -335,6 +336,28 @@
             </div>
         </div>
 
+        <!-- ฉันอยู่ตรงนี้: เลือกจุดเริ่มบนผังย่อ แล้วบอกทางไปร้านทีละขั้น (public/js/marketNav.js) -->
+        <div class="menu-viewer nav-viewer" id="navViewer" hidden>
+            <div class="mv-backdrop" data-nav-close></div>
+            <div class="mv-panel nav-panel" role="dialog" aria-modal="true" aria-labelledby="navTitle">
+                <div class="mv-head">
+                    <div>
+                        <div class="mv-kicker">นำทางไป · แผง <span id="navStall"></span></div>
+                        <div class="mv-title" id="navTitle"></div>
+                    </div>
+                    <button type="button" class="mv-close" data-nav-close aria-label="ปิด">✕</button>
+                </div>
+                <div class="nav-body">
+                    <p class="nav-hint" id="navHint"></p>
+                    <div class="nav-map-wrap" id="navMapWrap"></div>
+                    <ol class="nav-steps" id="navSteps"></ol>
+                </div>
+                <div class="nav-foot">
+                    <button type="button" class="ad-btn" id="navGo" hidden><i class="fa-solid fa-location-crosshairs"></i> ไปที่ล็อกบนผัง</button>
+                </div>
+            </div>
+        </div>
+
         <!-- QR ร้าน + ป้ายหน้าร้าน (เจ้าของล็อก/แอดมิน/staff) -->
         <div class="menu-viewer qr-viewer" id="qrViewer" hidden>
             <div class="mv-backdrop" data-qr-close></div>
@@ -364,6 +387,7 @@
         <script type="application/json" id="inspectionLayerJson"><%- JSON.stringify(locals.inspectionLayer || null).replace(/</g, '\\u003c') %></script>
         <script src="/js/common/dialogs.js"></script>
         <script src="/js/common/searchSuggest.js?v=20261002"></script>
-        <script src="/js/marketMap.js?v=20261002-nobanner"></script>
+        <script src="/js/marketMap.js?v=20261002-nav"></script>
+        <script src="/js/marketNav.js?v=20261002"></script>
     </body>
 </html>
