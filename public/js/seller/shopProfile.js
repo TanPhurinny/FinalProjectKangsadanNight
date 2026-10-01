@@ -101,29 +101,31 @@ bindImagePreview('shopCoverImageUpload', 'shopCoverImagePreview', 'shopCoverImag
     renderTags();
 })();
 
-// ── แกลเลอรีรูปสินค้า: มีรูปเดิมที่บันทึกไว้แล้ว + เพิ่ม/ลบได้หลายรูปก่อนกดบันทึก ──
-const productImagesUpload = document.getElementById('productImagesUpload');
-const productImagesUploadLabel = document.getElementById('productImagesUploadLabel');
-const removeProductImageIdsInput = document.getElementById('removeProductImageIdsInput');
+// ── แกลเลอรีรูป (รูปสินค้า / รูปเมนู): มีรูปเดิมที่บันทึกไว้แล้ว + เพิ่ม/ลบได้หลายรูปก่อนกดบันทึก ──
+function bindGalleryUpload(wrapperId, inputId, labelId, removeIdsInputId) {
+    const wrapper = document.getElementById(wrapperId);
+    const input = document.getElementById(inputId);
+    const label = document.getElementById(labelId);
+    const removeIdsInput = document.getElementById(removeIdsInputId);
+    if (!wrapper || !input || !label) return;
 
-if (productImagesUpload && productImagesUploadLabel) {
-    const maxProductImages = productImagesUpload.dataset.max ? Number(productImagesUpload.dataset.max) : 6;
-    let existingCount = productImagesUpload.dataset.existing ? Number(productImagesUpload.dataset.existing) : 0;
+    const maxImages = input.dataset.max ? Number(input.dataset.max) : 6;
+    let existingCount = input.dataset.existing ? Number(input.dataset.existing) : 0;
     const removedIds = [];
     let selectedFiles = [];
 
     function allowedNewCount() {
-        return Math.max(0, maxProductImages - existingCount);
+        return Math.max(0, maxImages - existingCount);
     }
 
-    function syncProductImagesInput() {
+    function syncInput() {
         const dt = new DataTransfer();
         selectedFiles.forEach((file) => dt.items.add(file));
-        productImagesUpload.files = dt.files;
+        input.files = dt.files;
     }
 
-    function renderProductImagePreviews() {
-        productImagesUploadLabel.innerHTML = '';
+    function renderPreviews() {
+        label.innerHTML = '';
         selectedFiles.forEach((file, index) => {
             const reader = new FileReader();
             reader.onload = function (e) {
@@ -135,10 +137,10 @@ if (productImagesUpload && productImagesUploadLabel) {
                     ev.preventDefault();
                     ev.stopPropagation();
                     selectedFiles.splice(index, 1);
-                    syncProductImagesInput();
-                    renderProductImagePreviews();
+                    syncInput();
+                    renderPreviews();
                 });
-                productImagesUploadLabel.appendChild(item);
+                label.appendChild(item);
             };
             reader.readAsDataURL(file);
         });
@@ -146,35 +148,38 @@ if (productImagesUpload && productImagesUploadLabel) {
             const addBox = document.createElement('div');
             addBox.className = 'upload-add-icon';
             addBox.innerHTML = '<i class="fa-solid fa-camera"></i><span>เพิ่มรูป</span>';
-            productImagesUploadLabel.appendChild(addBox);
+            label.appendChild(addBox);
         }
     }
 
-    productImagesUpload.addEventListener('change', function (e) {
+    input.addEventListener('change', function (e) {
         const incoming = Array.from(e.target.files || []);
         selectedFiles = selectedFiles.concat(incoming).slice(0, allowedNewCount());
-        syncProductImagesInput();
-        renderProductImagePreviews();
+        syncInput();
+        renderPreviews();
     });
 
-    document.querySelectorAll('.existing-remove-btn').forEach(function (btn) {
+    // จำกัดเฉพาะปุ่มลบในแกลเลอรีนี้ — หน้านี้มีหลายแกลเลอรีที่ใช้คลาสเดียวกัน
+    wrapper.querySelectorAll('.existing-remove-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            const imageId = btn.dataset.imageId;
-            removedIds.push(imageId);
-            if (removeProductImageIdsInput) removeProductImageIdsInput.value = removedIds.join(',');
+            removedIds.push(btn.dataset.imageId);
+            if (removeIdsInput) removeIdsInput.value = removedIds.join(',');
             const thumb = btn.closest('.existing-thumb');
             if (thumb) thumb.remove();
             existingCount = Math.max(0, existingCount - 1);
             if (selectedFiles.length > allowedNewCount()) {
                 selectedFiles = selectedFiles.slice(0, allowedNewCount());
-                syncProductImagesInput();
+                syncInput();
             }
-            renderProductImagePreviews();
+            renderPreviews();
         });
     });
 
-    renderProductImagePreviews();
+    renderPreviews();
 }
+
+bindGalleryUpload('productImagesWrapper', 'productImagesUpload', 'productImagesUploadLabel', 'removeProductImageIdsInput');
+bindGalleryUpload('menuImagesWrapper', 'menuImagesUpload', 'menuImagesUploadLabel', 'removeMenuImageIdsInput');
 
 const shopProfileForm = document.querySelector('form[action="/shop-profile"]');
 const submitBtn = document.getElementById('submitBtn');

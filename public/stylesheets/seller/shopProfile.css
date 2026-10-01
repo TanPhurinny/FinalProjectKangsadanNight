@@ -252,16 +252,19 @@
     }
 }
 
-/* ── แกลเลอรีรูปสินค้า: ไทล์ใหญ่ขึ้น กล่อง "เพิ่มรูป" มีไอคอน+ข้อความแทนขีด + ลอยๆ ── */
-#productImagesWrapper {
+/* ── แกลเลอรีรูปสินค้า/รูปเมนู: ไทล์ใหญ่ขึ้น กล่อง "เพิ่มรูป" มีไอคอน+ข้อความแทนขีด + ลอยๆ ── */
+#productImagesWrapper,
+#menuImagesWrapper {
     gap: 14px;
 }
-#productImagesWrapper .upload-thumb-item {
+#productImagesWrapper .upload-thumb-item,
+#menuImagesWrapper .upload-thumb-item {
     width: 108px;
     height: 108px;
     border-radius: var(--radius);
 }
-#productImagesWrapper .upload-add-icon {
+#productImagesWrapper .upload-add-icon,
+#menuImagesWrapper .upload-add-icon {
     width: 108px;
     height: 108px;
     display: flex;
@@ -272,14 +275,18 @@
     border-radius: var(--radius);
 }
 #productImagesWrapper .upload-add-icon::before,
-#productImagesWrapper .upload-add-icon::after {
+#menuImagesWrapper .upload-add-icon::before,
+#productImagesWrapper .upload-add-icon::after,
+#menuImagesWrapper .upload-add-icon::after {
     content: none;
 }
-#productImagesWrapper .upload-add-icon i {
+#productImagesWrapper .upload-add-icon i,
+#menuImagesWrapper .upload-add-icon i {
     font-size: 1.3rem;
     color: var(--primary);
 }
-#productImagesWrapper .upload-add-icon span {
+#productImagesWrapper .upload-add-icon span,
+#menuImagesWrapper .upload-add-icon span {
     font-size: 0.76rem;
     font-weight: 600;
     color: var(--ink-soft);
@@ -287,7 +294,9 @@
 
 @media (max-width: 640px) {
     #productImagesWrapper .upload-thumb-item,
-    #productImagesWrapper .upload-add-icon {
+    #menuImagesWrapper .upload-thumb-item,
+    #productImagesWrapper .upload-add-icon,
+    #menuImagesWrapper .upload-add-icon {
         width: 92px;
         height: 92px;
     }

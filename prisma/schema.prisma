@@ -161,6 +161,7 @@ model ShopDetail {
   userId        Int     @unique
   user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   productImages ShopProductImage[]
+  menuImages    ShopMenuImage[]
 }
 
 model ShopProductImage {
@@ -171,6 +172,17 @@ model ShopProductImage {
   shopDetail   ShopDetail @relation(fields: [shopDetailId], references: [id], onDelete: Cascade)
 
   @@index([shopDetailId], map: "ShopProductImage_shopDetailId_fkey")
+}
+
+// รูปเมนูร้าน (เช่น ป้ายเมนู/ใบราคา) แยกจากรูปสินค้า — ลูกค้ากด "ดูเมนูร้าน" ในผังตลาดเพื่อดู
+model ShopMenuImage {
+  id           Int        @id @default(autoincrement())
+  shopDetailId Int
+  imageUrl     String
+  createdAt    DateTime   @default(now())
+  shopDetail   ShopDetail @relation(fields: [shopDetailId], references: [id], onDelete: Cascade)
+
+  @@index([shopDetailId], map: "ShopMenuImage_shopDetailId_fkey")
 }
 
 model BookingRequest {

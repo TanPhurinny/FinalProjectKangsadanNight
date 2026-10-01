@@ -13,7 +13,7 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
         <link rel="stylesheet" href="/stylesheets/seller/repair.css">
-        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css">
+        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261002-menu">
         <link rel="stylesheet" href="/stylesheets/seller/taxInvoiceRequest.css">
     </head>
 
@@ -51,6 +51,8 @@
                 const currentShopTags = fd.shopTags || shopRecord.shopTags || '';
                 const currentProductImages = shopRecord.productImages || [];
                 const maxProductImagesCount = (typeof maxProductImages !== 'undefined' && maxProductImages) ? maxProductImages : 6;
+                const currentMenuImages = shopRecord.menuImages || [];
+                const maxMenuImagesCount = (typeof maxMenuImages !== 'undefined' && maxMenuImages) ? maxMenuImages : 4;
                 %>
 
                 <% if (successMsg) { %>
@@ -146,6 +148,26 @@
                                 data-max="<%= maxProductImagesCount %>" data-existing="<%= currentProductImages.length %>">
                             <input type="hidden" name="removeProductImageIds" id="removeProductImageIdsInput" value="">
                             <p class="field-hint">รูปแรกในแกลเลอรีจะใช้เป็นรูปย่อของร้านในผังตลาด/คอมมูนิตี้</p>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label>รูปเมนูร้าน (สูงสุด <%= maxMenuImagesCount %> รูป)</label>
+                            <div class="upload-wrapper" id="menuImagesWrapper">
+                                <% currentMenuImages.forEach(function (img) { %>
+                                <div class="upload-thumb-item existing-thumb" data-image-id="<%= img.id %>">
+                                    <img src="<%= img.imageUrl %>" alt="รูปเมนู">
+                                    <button type="button" class="upload-thumb-remove existing-remove-btn"
+                                        data-image-id="<%= img.id %>" title="ลบรูปนี้">&times;</button>
+                                </div>
+                                <% }); %>
+                                <label for="menuImagesUpload" class="upload-box" id="menuImagesUploadLabel"></label>
+                            </div>
+                            <input type="file" name="menuImages" id="menuImagesUpload"
+                                class="upload-input" accept="image/*" multiple
+                                data-max="<%= maxMenuImagesCount %>" data-existing="<%= currentMenuImages.length %>">
+                            <input type="hidden" name="removeMenuImageIds" id="removeMenuImageIdsInput" value="">
+                            <p class="field-hint">ถ่ายป้ายเมนู/ใบราคาของร้านให้อ่านชื่อเมนูและราคาได้ชัด
+                                ลูกค้ากดปุ่ม "ดูเมนูร้าน" ในผังตลาดเพื่อดูรูปนี้ได้เลย ไม่ต้องเดินไปถึงหน้าร้าน</p>
                         </div>
 
                         <div class="form-group full-width">
@@ -331,6 +353,6 @@
             })();
         </script>
 
-        <script src="/js/seller/shopProfile.js"></script>
+        <script src="/js/seller/shopProfile.js?v=20261002-menu"></script>
     </body>
 </html>
