@@ -1224,6 +1224,7 @@ router.get("/repair", isAuthenticated, async (req, res) => {
         user: user,
         reports: reports,
         activeStallCodes: activeStallCodes,
+        prefillStall: req.query.stall || '',
         maxImages: REPAIR_MAX_IMAGES,
         error: req.query.error || null,
         success: req.query.success || null

@@ -1586,3 +1586,167 @@ body.mv-open { overflow: hidden; }
     .mv-stage { height: 56vh; }
     .mv-nav { width: 34px; height: 34px; }
 }
+
+/* ========================================
+   ชั้นหมดสัญญา (แอดมิน/staff)
+   ======================================== */
+.stall-cell.booked.exp { border-color: #000; }
+.stall-cell.booked.exp-expired { background: #c0392b; color: #fff; }
+.stall-cell.booked.exp-critical { background: #e67e22; color: #fff; }
+.stall-cell.booked.exp-near { background: #e2b83a; color: var(--text); }
+.stall-cell.booked.exp-ok { background: #8a9aa0; color: #fff; }
+.stall-cell.booked.exp-none {
+    background: repeating-linear-gradient(45deg, #fff 0 4px, #cfd8db 4px 7px);
+    color: var(--sub);
+}
+.stall-cell.booked.exp:hover { filter: brightness(.9); }
+/* แถบล่างของระดับเตือนซ้ำกับสีพื้นในชั้นนี้ ปิดไว้ไม่ให้รก */
+.stall-cell.booked.exp { box-shadow: none; }
+.lf-warn { color: #a0620f; border-color: #e2b83a; }
+.lf-warn.active { background: #e2b83a; border-color: #a0620f; color: var(--text); }
+.ls-link { font-size: 12px; font-weight: 600; color: var(--text); text-decoration: none; border-bottom: 1px solid var(--text); }
+.ls-link:hover { color: var(--primary-dark); border-color: var(--primary-dark); }
+
+/* ========================================
+   ค้นหาด่วน: มีรูปเมนู / ร้านใหม่ / ร้านโปรด
+   ======================================== */
+.qtag small { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 11px; margin-left: 2px; opacity: .8; }
+.qtag-menu.active { background: #e67e22; border-color: #b85f0a; color: #fff; }
+.qtag-new.active { background: #2e9e5b; border-color: #1e7a45; color: #fff; }
+.qtag-fav.active { background: #f1c40f; border-color: #b7950b; color: var(--text); }
+
+/* เครื่องหมายเล็กบนล็อก */
+.stall-cell .cell-mark { position: absolute; font-size: 8px; line-height: 1; pointer-events: none; }
+.stall-cell .cell-mark-fav { top: 2px; left: 2px; font-size: 11px; color: #f1c40f; -webkit-text-stroke: .8px #000; }
+.stall-cell .cell-mark-menu {
+    right: 1px;
+    bottom: 1px;
+    padding: 1px 2px;
+    background: #fff;
+    color: #b85f0a;
+    border: 1px solid #000;
+}
+.stall-cell-small .cell-mark { font-size: 6px; }
+
+/* ========================================
+   การ์ดร้าน: ป้ายร้านใหม่ + ปุ่มร้านโปรด/แชร์
+   ======================================== */
+.ic-new-badge {
+    margin-left: 8px;
+    padding: 1px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #2e9e5b;
+    color: #fff;
+    vertical-align: middle;
+}
+.ic-new-badge.d-none, .ic-tools.d-none { display: none; }
+.ic-tools { display: flex; gap: 0; margin: 4px 0 10px; }
+.ic-tool {
+    padding: 5px 12px;
+    border: 1px solid var(--text);
+    border-left-width: 0;
+    background: #fff;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.ic-tool:first-child { border-left-width: 1px; }
+.ic-tool:hover { background: var(--road); }
+.ic-tool.active { background: #f1c40f; }
+.ic-tool.active i { -webkit-text-stroke: .6px #000; }
+
+.map-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    z-index: 1300;
+    max-width: calc(100vw - 32px);
+    padding: 10px 16px;
+    background: var(--text);
+    color: #fff;
+    font-size: 13px;
+    border: 1px solid #000;
+    box-shadow: 3px 3px 0 #000;
+    transform: translate(-50%, 20px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s, transform .15s;
+    word-break: break-all;
+}
+.map-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ========================================
+   การ์ดสุขภาพล็อกของผู้ขาย
+   ======================================== */
+.ic-health {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    margin-top: 8px;
+    border-top: 1px solid var(--text);
+    border-left: 1px solid var(--text);
+}
+.ich {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 8px 10px;
+    border-right: 1px solid var(--text);
+    border-bottom: 1px solid var(--text);
+    background: #fff;
+    border-top: 4px solid transparent;
+}
+.ich-label { font-size: 11px; color: var(--sub); }
+.ich-value { font-size: 15px; color: var(--text); }
+.ich-sub { font-size: 11px; color: var(--sub); line-height: 1.4; }
+.ich-good { border-top-color: #2e9e5b; }
+.ich-warn { border-top-color: #e2b83a; }
+.ich-bad { border-top-color: #c0392b; }
+.ich-bad .ich-value { color: #c0392b; }
+.ich-muted { border-top-color: var(--border); }
+
+/* ========================================
+   staff: บันทึกผลตรวจด่วนในการ์ด
+   ======================================== */
+.ic-quick-inspect:empty { display: none; }
+.ic-quick-inspect {
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid var(--text);
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.qi-head { font-size: 13px; font-weight: 700; color: var(--text); }
+.qi-head small { font-weight: 400; color: var(--sub); }
+.qi-ok, .qi-save {
+    padding: 8px 12px;
+    border: 1px solid var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.qi-ok { background: #2e9e5b; color: #fff; }
+.qi-ok:hover { background: #237a46; }
+.qi-save { background: #c0392b; color: #fff; }
+.qi-save:hover { background: #962d22; }
+.qi-ok:disabled, .qi-save:disabled { opacity: .5; cursor: wait; }
+.qi-or { font-size: 11px; color: var(--sub); text-align: center; border-top: 1px dashed var(--border); padding-top: 6px; }
+.qi-checks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 10px; }
+.qi-check { font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.qi-note, .qi-excess input {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    font-family: inherit;
+    font-size: 13px;
+}
+.qi-excess { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.qi-excess > span { font-weight: 600; }
+.qi-excess input { width: 56px; margin-left: 4px; }
+.qi-msg { font-size: 12px; min-height: 1em; }
+.qi-msg-ok { color: #1e7a45; font-weight: 600; }
+.qi-msg-err { color: #c0392b; font-weight: 600; }

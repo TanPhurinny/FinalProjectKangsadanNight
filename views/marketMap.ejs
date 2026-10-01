@@ -14,7 +14,7 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
             rel="stylesheet" />
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
-        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261002-menu">
+        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261002-all">
         <link rel="stylesheet" href="/stylesheets/common/searchSuggest.css?v=20261002">
     </head>
     <body>
@@ -83,6 +83,12 @@
                 <button class="qtag qtag-booked"
                     onclick="quickStatusFilter(this,'BOOKED')"><i
                         class="fa-solid fa-store fa-xs"></i> มีร้านค้าแล้ว</button>
+                <button class="qtag qtag-menu" onclick="quickStatusFilter(this,'HAS_MENU')"><i
+                        class="fa-solid fa-book-open fa-xs"></i> มีรูปเมนู <small data-qcount="HAS_MENU"></small></button>
+                <button class="qtag qtag-new" onclick="quickStatusFilter(this,'NEW')"><i
+                        class="fa-solid fa-seedling fa-xs"></i> ร้านใหม่ <small data-qcount="NEW"></small></button>
+                <button class="qtag qtag-fav" onclick="quickStatusFilter(this,'FAV')"><i
+                        class="fa-solid fa-star fa-xs"></i> ร้านโปรด <small data-qcount="FAV"></small></button>
             </div>
 
             <!-- หมวดสินค้า (สี + กรอง) และปุ่มลัด -->
@@ -237,7 +243,11 @@
                     <button type="button" class="ic-close" onclick="hideInfo()" aria-label="ปิด">✕</button>
                     <div class="ic-title"><i
                             class="fa-solid fa-store fa-xs"></i><span
-                            id="ic-head"></span></div>
+                            id="ic-head"></span><span class="ic-new-badge d-none" id="icNewBadge">ร้านใหม่</span></div>
+                    <div class="ic-tools d-none" id="icTools">
+                        <button type="button" class="ic-tool" id="icFavBtn" aria-pressed="false"></button>
+                        <button type="button" class="ic-tool" id="icShareBtn"><i class="fa-solid fa-share-nodes"></i> แชร์ร้าน</button>
+                    </div>
                     <img id="ic-image" class="ic-image d-none" alt="รูปร้านค้า" />
                     <div class="ic-grid">
                         <div class="ig"><label>ชื่อร้านค้า</label><span
@@ -258,6 +268,7 @@
                     </button>
                     <div class="ic-role-note d-none" id="icRoleNote"></div>
                     <div class="ic-role-actions d-none" id="icRoleActions"></div>
+                    <div class="ic-quick-inspect" id="icQuickInspect"></div>
                 </div>
 
                 <div class="drawer-body">
@@ -303,6 +314,6 @@
         <script type="application/json" id="viewerJson"><%- JSON.stringify(locals.viewer || { role: 'CUSTOMER', allowedZones: [], myStalls: [] }).replace(/</g, '\\u003c') %></script>
         <script type="application/json" id="inspectionLayerJson"><%- JSON.stringify(locals.inspectionLayer || null).replace(/</g, '\\u003c') %></script>
         <script src="/js/common/searchSuggest.js?v=20261002"></script>
-        <script src="/js/marketMap.js?v=20261002-menu"></script>
+        <script src="/js/marketMap.js?v=20261002-all"></script>
     </body>
 </html>

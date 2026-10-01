@@ -36,7 +36,8 @@ async function buildTodayInspectionLayer() {
 
     const stalls = paidCodes.size
         ? await prisma.stall.findMany({
-            where: { stallCode: { in: [...paidCodes] } },
+            // ล็อกที่ถูกปล่อยแล้วยังมีคำขอ SUCCESS ค้าง (ตั้งใจ) — นับเฉพาะล็อกที่ยัง BOOKED ให้ตรงกับหน้าตรวจตลาด
+            where: { stallCode: { in: [...paidCodes] }, status: 'BOOKED' },
             select: { id: true, stallCode: true }
         })
         : [];
@@ -87,9 +88,18 @@ async function buildTodayInspectionLayer() {
         else if (records.length) status = 'ok';
 
         byCode[String(stall.stallCode).trim().toUpperCase()] = {
+            stallId: stall.id,
             status,
-            problems,
             cleanlinessPassed: clean ? Boolean(clean.overallPassed) : null,
+            // ค่าปัจจุบันของวันนี้ ใช้เติมฟอร์ม "บันทึกผลตรวจด่วน" บนผังของ staff
+            issue: {
+                noShow: Boolean(issue?.noShow),
+                sublease: Boolean(issue?.sublease),
+                otherMarket: Boolean(issue?.otherMarket),
+                wrongSeller: Boolean(issue?.wrongSeller),
+                otherIssueNote: issue?.otherIssueNote || ''
+            },
+            excess: { small: excess?.smallCount || 0, large: excess?.largeCount || 0 },
             checkedAt
         };
     });

@@ -114,18 +114,26 @@ const HAS_INSPECTION = !!(INSPECTION && INSPECTION.byCode);
 // โหมดทดลอง ?demo=1 — สุ่มผลตรวจให้ล็อกที่มีร้าน (รวมร้านจำลอง) ที่ยังไม่มีข้อมูลจริง ไว้ดูสีของชั้นผลตรวจ
 if (HAS_INSPECTION && new URLSearchParams(window.location.search).get('demo') === '1') {
     const DEMO_RESULTS = [
-        { status: 'ok', problems: [] },
-        { status: 'ok', problems: [] },
-        { status: 'pending', problems: [] },
-        { status: 'issue', problems: ['ไม่มาขาย'] },
-        { status: 'ok', problems: [] },
-        { status: 'issue', problems: ['ไฟเกิน (เล็ก 2 / ใหญ่ 0)'] },
-        { status: 'pending', problems: [] }
+        { status: 'ok' },
+        { status: 'ok' },
+        { status: 'pending' },
+        { status: 'issue', issue: { noShow: true } },
+        { status: 'ok' },
+        { status: 'issue', excess: { small: 2, large: 0 } },
+        { status: 'pending' }
     ];
     let n = 0;
     Object.keys(ZONES_DATA).forEach((z) => (ZONES_DATA[z].columns || []).forEach((column) => column.stalls.forEach((stall) => {
         if (stall.status !== 'BOOKED' || INSPECTION.byCode[stall.code]) return;
-        INSPECTION.byCode[stall.code] = Object.assign({ cleanlinessPassed: null, checkedAt: null }, DEMO_RESULTS[n % DEMO_RESULTS.length]);
+        const demo = DEMO_RESULTS[n % DEMO_RESULTS.length];
+        INSPECTION.byCode[stall.code] = {
+            stallId: null, // demo บันทึกจริงไม่ได้
+            status: demo.status,
+            cleanlinessPassed: null,
+            checkedAt: null,
+            issue: Object.assign({ noShow: false, sublease: false, otherMarket: false, wrongSeller: false, otherIssueNote: '' }, demo.issue),
+            excess: Object.assign({ small: 0, large: 0 }, demo.excess)
+        };
         n += 1;
     })));
 }
@@ -136,6 +144,22 @@ const INSPECTION_STATUS = {
     pending: { label: 'ยังไม่ตรวจ', short: 'ยังไม่ตรวจ', color: '#ffe08a' },
     na: { label: 'ยังไม่ชำระเงิน (ไม่ต้องตรวจ)', short: 'ไม่ต้องตรวจ', color: '#fff' }
 };
+
+// รายการปัญหาที่อ่านง่าย จากบันทึกล่าสุดของวันนี้ — ใช้ทั้งตอนโหลดหน้าและหลังบันทึกด่วนจากผัง
+function inspectionProblems(r) {
+    if (!r) return [];
+    const issue = r.issue || {};
+    const excess = r.excess || {};
+    const problems = [];
+    if (issue.noShow) problems.push('ไม่มาขาย');
+    if (issue.sublease) problems.push('ปล่อยเช่าช่วง');
+    if (issue.otherMarket) problems.push('ไปขายตลาดอื่น');
+    if (issue.wrongSeller) problems.push('คนขายไม่ตรงชื่อ');
+    if (issue.otherIssueNote && issue.otherIssueNote.trim()) problems.push(issue.otherIssueNote.trim());
+    if (excess.small > 0 || excess.large > 0) problems.push(`ไฟเกิน (เล็ก ${excess.small} / ใหญ่ ${excess.large})`);
+    if (r.cleanlinessPassed === false) problems.push('ความสะอาดไม่ผ่าน');
+    return problems;
+}
 
 function inspectionOf(code) {
     return (HAS_INSPECTION && INSPECTION.byCode[code]) || null;
@@ -228,9 +252,61 @@ const LAYERS = {
                     ตรวจแล้ว <b>${checked}</b>/${total}
                     <span class="ls-bar"><span style="width:${pct}%"></span></span>
                 </span>
-                <button type="button" class="qtag lf-btn lf-issue" data-insp-filter="INSP_ISSUE">! มีปัญหา <b>${issue}</b></button>
-                <button type="button" class="qtag lf-btn lf-pending" data-insp-filter="INSP_PENDING">ยังไม่ตรวจ <b>${pending}</b></button>`;
+                <button type="button" class="qtag lf-btn lf-issue" data-layer-filter="INSP_ISSUE">! มีปัญหา <b>${issue}</b></button>
+                <button type="button" class="qtag lf-btn lf-pending" data-layer-filter="INSP_PENDING">ยังไม่ตรวจ <b>${pending}</b></button>`;
         }
+    }
+};
+
+const EXPIRY_STATUS = {
+    expired: { label: 'หมดสิทธิ์แล้ว', color: '#c0392b' },
+    critical: { label: 'เหลือ ≤ 1 วัน', color: '#e67e22' },
+    near: { label: 'ใกล้หมดสัญญา', color: '#e2b83a' },
+    ok: { label: 'สัญญายังไม่ใกล้หมด', color: '#8a9aa0' },
+    none: { label: 'ไม่มีวันหมดสัญญาในระบบ', color: '#fff' }
+};
+
+function expiryKeyOf(stall) {
+    if (!stall) return 'none';
+    if (stall.expiryState) return stall.expiryState;
+    return stall.bookingEndDate ? 'ok' : 'none';
+}
+
+function expiryCounts(stalls) {
+    const counts = { expired: 0, critical: 0, near: 0 };
+    stalls.forEach((s) => {
+        if (s.status !== 'BOOKED') return;
+        const key = expiryKeyOf(s);
+        if (counts[key] !== undefined) counts[key] += 1;
+    });
+    return counts;
+}
+
+LAYERS.expiry = {
+    label: 'หมดสัญญา',
+    icon: 'fa-hourglass-half',
+    // วันหมดสัญญาของทุกล็อก server ส่งให้เฉพาะแอดมิน/staff (role อื่นเห็นแค่ล็อกตัวเอง)
+    available: CAN_SEE_VACANCY,
+    hidesBookedLegend: true,
+    paint(cell, code) {
+        cell.classList.add('exp', `exp-${expiryKeyOf(findStall(code))}`);
+    },
+    legend() {
+        return ['expired', 'critical', 'near', 'ok'].map((key) => legendItem(EXPIRY_STATUS[key].color, EXPIRY_STATUS[key].label)).join('')
+            + legendItem('repeating-linear-gradient(45deg,#fff 0 3px,#cfd8db 3px 5px)', EXPIRY_STATUS.none.label);
+    },
+    zoneStat(code) {
+        const { expired, critical, near } = expiryCounts(stallsOfZone(code));
+        if (!expired && !critical && !near) return 'ไม่มีล็อกใกล้หมด';
+        return `ใกล้หมด <b>${critical + near}</b>${expired ? ` <span class="zc-issue">หมดแล้ว ${expired}</span>` : ''}`;
+    },
+    summary() {
+        const { expired, critical, near } = expiryCounts(allStalls());
+        const link = IS_ADMIN ? '<a class="ls-link" href="/admin/slots/expiring">ดูรายการทั้งหมด <i class="fa-solid fa-arrow-right fa-xs"></i></a>' : '';
+        return `
+            <button type="button" class="qtag lf-btn lf-issue" data-layer-filter="EXP_LAPSED">หมดสิทธิ์แล้ว <b>${expired}</b></button>
+            <button type="button" class="qtag lf-btn lf-warn" data-layer-filter="EXP_SOON">ใกล้หมดสัญญา <b>${critical + near}</b></button>
+            ${link}`;
     }
 };
 
@@ -241,12 +317,64 @@ let currentLayer = LAYER_KEYS.includes(layerParam)
     ? layerParam
     : (IS_STAFF && LAYER_KEYS.includes('inspection') ? 'inspection' : 'category');
 
-function paintStallLayer(cell, code) {
-    LAYERS[currentLayer].paint(cell, code);
+// ตัวกรองที่ทำให้ล็อกอื่นจางลง (ให้เห็นเฉพาะที่ตรง) — ตัวกรองหมวดสินค้าใช้เงื่อนไขแยกอยู่แล้ว
+function isDimmingFilter(status) {
+    return isLayerFilter(status) || ['HAS_MENU', 'NEW', 'FAV'].includes(status);
 }
 
-function isInspectionFilter(status) {
-    return status === 'INSP_ISSUE' || status === 'INSP_PENDING';
+// ==========================================
+// ร้านโปรด — เก็บในเครื่อง (localStorage) ด้วยชื่อร้าน ไม่ใช่รหัสล็อก เพราะร้านเดิมย้ายล็อกได้ทุกรอบ
+// ==========================================
+const FAV_KEY = 'kangsadan.favoriteShops';
+let favoriteShops = new Set();
+try { favoriteShops = new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]')); } catch (e) { favoriteShops = new Set(); }
+
+function isFavorite(code) {
+    const d = BOOKING_BY_STALL[code];
+    return !!(d && favoriteShops.has(d.shop));
+}
+
+function toggleFavorite(code) {
+    const d = BOOKING_BY_STALL[code];
+    if (!d) return false;
+    if (favoriteShops.has(d.shop)) favoriteShops.delete(d.shop);
+    else favoriteShops.add(d.shop);
+    try { localStorage.setItem(FAV_KEY, JSON.stringify([...favoriteShops])); } catch (e) { /* โหมดส่วนตัวบางเบราว์เซอร์เขียนไม่ได้ */ }
+    updateQuickTagCounts();
+    if (currentStatusFilter === 'FAV') refreshFilterResults();
+    else if (activeZone) renderGrid(activeZone);
+    return favoriteShops.has(d.shop);
+}
+
+function hasMenu(code) {
+    const d = BOOKING_BY_STALL[code];
+    return !!(d && (d.menuImages || []).length);
+}
+
+// เลขในปุ่มค้นหาด่วน (มีรูปเมนู / ร้านใหม่ / ร้านโปรด) นับเป็นจำนวนล็อกบนผัง
+function updateQuickTagCounts() {
+    const booked = allStalls().filter((s) => s.status === 'BOOKED');
+    const counts = {
+        HAS_MENU: booked.filter((s) => hasMenu(s.code)).length,
+        NEW: booked.filter((s) => BOOKING_BY_STALL[s.code] && BOOKING_BY_STALL[s.code].isNew).length,
+        FAV: booked.filter((s) => isFavorite(s.code)).length
+    };
+    Object.keys(counts).forEach((key) => {
+        const el = document.querySelector(`[data-qcount="${key}"]`);
+        if (el) el.textContent = counts[key];
+    });
+}
+
+function paintStallLayer(cell, code) {
+    LAYERS[currentLayer].paint(cell, code);
+    // เครื่องหมายเล็กบนล็อก: ดาว = ร้านโปรด (มุมซ้ายบน), สมุด = มีรูปเมนู (มุมขวาล่าง)
+    if (isFavorite(code)) cell.insertAdjacentHTML('beforeend', '<i class="cell-mark cell-mark-fav fa-solid fa-star" aria-hidden="true"></i>');
+    if (hasMenu(code)) cell.insertAdjacentHTML('beforeend', '<i class="cell-mark cell-mark-menu fa-solid fa-book-open" aria-hidden="true"></i>');
+}
+
+// ตัวกรองที่มาจากแถบสรุปของชั้นข้อมูล (INSP_* = ผลตรวจ, EXP_* = หมดสัญญา) — เปลี่ยนชั้นแล้วล้างทิ้ง
+function isLayerFilter(status) {
+    return /^(INSP|EXP)_/.test(String(status || ''));
 }
 
 function renderLayerChrome() {
@@ -262,9 +390,9 @@ function renderLayerChrome() {
         const html = layer.summary();
         summary.innerHTML = html;
         summary.hidden = !html;
-        summary.querySelectorAll('[data-insp-filter]').forEach((btn) => {
-            if (btn.dataset.inspFilter === currentStatusFilter) btn.classList.add('active');
-            btn.addEventListener('click', () => quickStatusFilter(btn, btn.dataset.inspFilter));
+        summary.querySelectorAll('[data-layer-filter]').forEach((btn) => {
+            if (btn.dataset.layerFilter === currentStatusFilter) btn.classList.add('active');
+            btn.addEventListener('click', () => quickStatusFilter(btn, btn.dataset.layerFilter));
         });
     }
 
@@ -283,8 +411,8 @@ function renderLayerChrome() {
 function setLayer(key) {
     if (!LAYER_KEYS.includes(key) || key === currentLayer) return;
     currentLayer = key;
-    // ตัวกรองผลตรวจใช้ได้เฉพาะในชั้นผลตรวจ ออกจากชั้นแล้วล้างทิ้ง ไม่ให้ไฮไลต์ค้างแบบไม่มีปุ่มให้กดปิด
-    if (key !== 'inspection' && isInspectionFilter(currentStatusFilter)) currentStatusFilter = null;
+    // ตัวกรองของชั้นเดิมไม่มีปุ่มให้กดปิดในชั้นใหม่ ล้างทิ้งไม่ให้ไฮไลต์ค้าง
+    if (isLayerFilter(currentStatusFilter)) currentStatusFilter = null;
 
     // เก็บชั้นที่เลือกไว้ในลิงก์ ส่งต่อให้คนอื่นเปิดแล้วเจอมุมมองเดียวกัน
     const url = new URL(window.location.href);
@@ -317,6 +445,41 @@ function buildLayerTabs() {
 }
 
 // ข้อความ+ปุ่มลัดในการ์ดรายละเอียดล็อก แยกตาม role (ผู้ขาย/ลูกค้า/แอดมิน/staff)
+const REPAIR_STATUS_LABELS = { PENDING: 'รอตรวจสอบ', APPROVED: 'อนุมัติแล้ว', IN_PROGRESS: 'กำลังซ่อม' };
+
+// การ์ดสุขภาพล็อกของผู้ขาย: สัญญา / ความสะอาด / ไฟเกิน / แจ้งซ่อมค้าง — ช่องละเรื่อง อ่านจบในแวบเดียว
+function myStallHealthHtml(id, stall) {
+    const h = (VIEWER.stallHealth || {})[id] || {};
+    const cells = [];
+
+    if (stall && stall.bookingEndDate) {
+        const left = daysLeftUntil(stall.bookingEndDate);
+        const tone = left !== null && left < 0 ? 'bad' : left !== null && left <= 3 ? 'warn' : 'good';
+        cells.push(['สัญญา', left === null ? '-' : left < 0 ? 'หมดแล้ว' : `เหลือ ${left} วัน`, `ถึง ${formatThaiDate(stall.bookingEndDate)}`, tone]);
+    }
+    if (h.cleanliness) {
+        cells.push(['ความสะอาด', h.cleanliness.passed ? 'ผ่าน' : 'ไม่ผ่าน', `ตรวจ ${formatThaiDate(h.cleanliness.at)}`, h.cleanliness.passed ? 'good' : 'bad']);
+    } else {
+        cells.push(['ความสะอาด', 'ยังไม่มีผล', 'เฉพาะร้านอาหาร', 'muted']);
+    }
+    if (h.excess) {
+        cells.push(['ไฟเกิน', `฿${Number(h.excess.subtotal || 0).toLocaleString('th-TH')}`, `เล็ก ${h.excess.small} · ใหญ่ ${h.excess.large} (${formatThaiDate(h.excess.at)})`, 'warn']);
+    } else {
+        cells.push(['ไฟเกิน', 'ไม่มี', 'ไม่พบเครื่องใช้ไฟฟ้าเกิน', 'good']);
+    }
+    const repairs = h.openRepairs || [];
+    cells.push(['แจ้งซ่อม', repairs.length ? `ค้าง ${repairs.length}` : 'ไม่มีค้าง',
+        repairs.length ? repairs.map((r) => `${r.category} (${REPAIR_STATUS_LABELS[r.status] || r.status})`).join(', ') : 'ทุกงานเสร็จแล้ว',
+        repairs.length ? 'warn' : 'good']);
+
+    return `<div class="ic-health">${cells.map(([label, value, sub, tone]) => `
+        <div class="ich ich-${tone}">
+            <span class="ich-label">${escapeHtml(label)}</span>
+            <b class="ich-value">${escapeHtml(value)}</b>
+            <span class="ich-sub">${escapeHtml(sub)}</span>
+        </div>`).join('')}</div>`;
+}
+
 function renderRoleActions(id, zone, isVacant) {
     const noteEl = document.getElementById('icRoleNote');
     const actionsEl = document.getElementById('icRoleActions');
@@ -326,31 +489,29 @@ function renderRoleActions(id, zone, isVacant) {
 
     if (MY_STALLS.has(id)) {
         notes.push('<b>ล็อกของคุณ</b>');
-        if (stall && stall.bookingEndDate) {
-            const left = daysLeftUntil(stall.bookingEndDate);
-            const leftText = left === null ? '' : left < 0 ? ' (หมดสัญญาแล้ว)' : ` (เหลือ ${left} วัน)`;
-            notes.push(`หมดสัญญา ${formatThaiDate(stall.bookingEndDate)}${leftText}`);
-        }
+        notes.push(myStallHealthHtml(id, stall));
         actions.push(['/booking-stall/extend', 'ต่อล็อก']);
+        actions.push([`/repair?stall=${encodeURIComponent(id)}`, 'แจ้งซ่อมล็อกนี้']);
     } else if (IS_ADMIN || IS_STAFF) {
         if (stall && stall.bookingEndDate) {
             const left = daysLeftUntil(stall.bookingEndDate);
             const leftText = left === null ? '' : left < 0 ? ' (หมดสัญญาแล้ว)' : ` (เหลือ ${left} วัน)`;
-            notes.push(`หมดสัญญา ${formatThaiDate(stall.bookingEndDate)}${leftText}`);
+            notes.push(`<div>หมดสัญญา ${formatThaiDate(stall.bookingEndDate)}${leftText}</div>`);
         }
         const insp = inspectionOf(id);
         if (insp) {
             const st = INSPECTION_STATUS[insp.status];
-            const problems = insp.problems && insp.problems.length ? ` — ${insp.problems.map(escapeHtml).join(', ')}` : '';
-            notes.push(`ผลตรวจวันนี้: <b class="insp-note insp-note-${insp.status}">${st.short}</b>${problems}`);
+            const list = inspectionProblems(insp);
+            const problems = list.length ? ` — ${list.map(escapeHtml).join(', ')}` : '';
+            notes.push(`<div>ผลตรวจวันนี้: <b class="insp-note insp-note-${insp.status}">${st.short}</b>${problems}</div>`);
         } else if (HAS_INSPECTION && !isVacant) {
-            notes.push(`ผลตรวจวันนี้: <b class="insp-note insp-note-na">${INSPECTION_STATUS.na.short}</b> — ยังไม่ชำระเงิน`);
+            notes.push(`<div>ผลตรวจวันนี้: <b class="insp-note insp-note-na">${INSPECTION_STATUS.na.short}</b> — ยังไม่ชำระเงิน</div>`);
         }
         if (IS_ADMIN) actions.push(['/admin/slots', 'จัดการที่หน้าจัดแผง']);
         if (IS_STAFF && !isVacant) actions.push([`/staff/marketinspection?q=${encodeURIComponent(id)}`, insp && insp.status === 'pending' ? 'ไปบันทึกผลตรวจ' : 'ไปหน้าตรวจตลาด']);
     }
 
-    noteEl.innerHTML = notes.join('<br>');
+    noteEl.innerHTML = notes.join('');
     noteEl.classList.toggle('d-none', !notes.length);
     actionsEl.innerHTML = '';
     actions.forEach(([href, label]) => {
@@ -361,6 +522,100 @@ function renderRoleActions(id, zone, isVacant) {
         actionsEl.appendChild(a);
     });
     actionsEl.classList.toggle('d-none', !actions.length);
+}
+
+// ==========================================
+// บันทึกผลตรวจด่วนจากผัง (staff) — ใช้ API เดียวกับหน้าตรวจตลาด (/staff/marketinspection/*)
+// เฉพาะล็อกที่ชำระเงินแล้ว (มีใน INSPECTION.byCode) และอยู่ในชั้นผลตรวจ
+// ==========================================
+const QUICK_ISSUES = [
+    ['noShow', 'ไม่มาขาย'],
+    ['sublease', 'ปล่อยเช่าช่วง'],
+    ['otherMarket', 'ไปขายตลาดอื่น'],
+    ['wrongSeller', 'คนขายไม่ตรงชื่อ']
+];
+
+function renderQuickInspect(id) {
+    const box = document.getElementById('icQuickInspect');
+    box.innerHTML = '';
+    const r = inspectionOf(id);
+    if (!IS_STAFF || !r || currentLayer !== 'inspection') return;
+
+    const issue = r.issue || {};
+    const excess = r.excess || {};
+    box.innerHTML = `
+        <div class="qi-head">บันทึกผลตรวจด่วน <small>${r.stallId ? '' : '(โหมดทดลอง บันทึกจริงไม่ได้)'}</small></div>
+        <button type="button" class="qi-ok" data-qi="ok"><i class="fa-solid fa-check"></i> ตรวจแล้ว ปกติ</button>
+        <div class="qi-or">หรือระบุปัญหาที่พบ</div>
+        <div class="qi-checks">
+            ${QUICK_ISSUES.map(([key, label]) => `<label class="qi-check"><input type="checkbox" name="${key}" ${issue[key] ? 'checked' : ''}> ${label}</label>`).join('')}
+        </div>
+        <input type="text" class="qi-note" name="otherIssueNote" maxlength="1000" placeholder="ปัญหาอื่นๆ (ถ้ามี)" value="${escapeHtml(issue.otherIssueNote || '')}">
+        <div class="qi-excess">
+            <span>ไฟเกิน</span>
+            <label>เล็ก <input type="number" name="small" min="0" max="50" value="${excess.small || 0}"></label>
+            <label>ใหญ่ <input type="number" name="large" min="0" max="50" value="${excess.large || 0}"></label>
+        </div>
+        <button type="button" class="qi-save" data-qi="issue">บันทึกปัญหา</button>
+        <div class="qi-msg" role="status"></div>`;
+    box.querySelector('[data-qi="ok"]').addEventListener('click', () => saveQuickInspect(id, true));
+    box.querySelector('[data-qi="issue"]').addEventListener('click', () => saveQuickInspect(id, false));
+}
+
+async function postInspection(path, body) {
+    const response = await fetch(`/staff/marketinspection/${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(body)
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
+    return payload;
+}
+
+async function saveQuickInspect(id, markOk) {
+    const r = inspectionOf(id);
+    const box = document.getElementById('icQuickInspect');
+    const msg = box.querySelector('.qi-msg');
+    if (!r || !r.stallId) {
+        msg.textContent = 'โหมดทดลอง: ไม่ได้บันทึกจริง';
+        return;
+    }
+    const issue = { noShow: false, sublease: false, otherMarket: false, wrongSeller: false, otherIssueNote: '' };
+    let small = 0;
+    let large = 0;
+    if (!markOk) {
+        QUICK_ISSUES.forEach(([key]) => { issue[key] = box.querySelector(`input[name="${key}"]`).checked; });
+        issue.otherIssueNote = box.querySelector('input[name="otherIssueNote"]').value.trim();
+        small = Math.max(0, parseInt(box.querySelector('input[name="small"]').value, 10) || 0);
+        large = Math.max(0, parseInt(box.querySelector('input[name="large"]').value, 10) || 0);
+    }
+    const hadExcess = (r.excess && (r.excess.small > 0 || r.excess.large > 0));
+
+    box.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+    msg.className = 'qi-msg';
+    msg.textContent = 'กำลังบันทึก...';
+    try {
+        // บันทึกเป็น "เร็คอร์ดล่าสุดของวันนี้" ทับของเดิม — ปกติ = ล้างปัญหา + ทำเครื่องหมายว่าตรวจแล้ว
+        await postInspection('issue', Object.assign({ stallId: r.stallId }, issue));
+        // บันทึกไฟเกินเฉพาะตอนมีค่า หรือเคยบันทึกไว้วันนี้แล้วต้องล้าง — ไม่สร้างเร็คอร์ด 0 โดยไม่จำเป็น
+        if (small > 0 || large > 0 || hadExcess) await postInspection('electric-excess', { stallId: r.stallId, smallCount: small, largeCount: large });
+        if (markOk) await postInspection('inspection-check', { stallId: r.stallId, isInspected: true });
+
+        r.issue = issue;
+        r.excess = { small, large };
+        r.checkedAt = new Date().toISOString();
+        r.status = inspectionProblems(r).length ? 'issue' : 'ok';
+        renderLayerChrome();
+        if (activeZone) renderGrid(activeZone);
+        showInfo(id);
+        const after = document.querySelector('#icQuickInspect .qi-msg');
+        if (after) { after.className = 'qi-msg qi-msg-ok'; after.textContent = 'บันทึกแล้ว'; }
+    } catch (error) {
+        msg.className = 'qi-msg qi-msg-err';
+        msg.textContent = error.message;
+        box.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+    }
 }
 
 // ==========================================
@@ -402,7 +657,8 @@ function showStallTooltip(e, code, stall) {
     const bk = BOOKING_BY_STALL[code];
     const mine = MY_STALLS.has(code);
     stallTooltip.className = 'stall-tooltip';
-    document.getElementById('tt-stall-id').textContent = code + (mine ? ' · ล็อกของคุณ' : '');
+    const tags = [mine ? 'ล็อกของคุณ' : '', bk && bk.isNew && stall.status === 'BOOKED' ? 'ร้านใหม่' : '', isFavorite(code) && stall.status === 'BOOKED' ? '★ ร้านโปรด' : ''].filter(Boolean);
+    document.getElementById('tt-stall-id').textContent = code + (tags.length ? ` · ${tags.join(' · ')}` : '');
     img.hidden = true;
     img.removeAttribute('src');
 
@@ -418,7 +674,8 @@ function showStallTooltip(e, code, stall) {
         if (currentLayer === 'inspection') {
             const insp = inspectionOf(code);
             const st = INSPECTION_STATUS[insp ? insp.status : 'na'];
-            const problems = insp && insp.problems && insp.problems.length ? ` (${insp.problems.join(', ')})` : '';
+            const list = inspectionProblems(insp);
+            const problems = list.length ? ` (${list.join(', ')})` : '';
             hint = `ผลตรวจวันนี้: ${st.short}${problems} · ${hint}`;
         }
     } else if (stall.status === 'MAINTENANCE') {
@@ -487,6 +744,11 @@ function stallMatchesFilter(id, stall) {
     if (currentStatusFilter) {
         if (currentStatusFilter === 'INSP_ISSUE') return stall.status === 'BOOKED' && inspectionStatusOf(id) === 'issue';
         if (currentStatusFilter === 'INSP_PENDING') return stall.status === 'BOOKED' && inspectionStatusOf(id) === 'pending';
+        if (currentStatusFilter === 'EXP_LAPSED') return stall.status === 'BOOKED' && stall.expiryState === 'expired';
+        if (currentStatusFilter === 'EXP_SOON') return stall.status === 'BOOKED' && (stall.expiryState === 'critical' || stall.expiryState === 'near');
+        if (currentStatusFilter === 'HAS_MENU') return stall.status === 'BOOKED' && hasMenu(id);
+        if (currentStatusFilter === 'NEW') return stall.status === 'BOOKED' && !!(BOOKING_BY_STALL[id] && BOOKING_BY_STALL[id].isNew);
+        if (currentStatusFilter === 'FAV') return stall.status === 'BOOKED' && isFavorite(id);
         if (currentStatusFilter === 'EMPTY') {
             if (!CAN_SEE_VACANCY) return false;
             return stall.status !== 'BOOKED' && stall.status !== 'MAINTENANCE';
@@ -653,7 +915,7 @@ function renderDZoneGrid(z, stallByCode) {
         }
 
         if ((currentQuery || currentStatusFilter || currentCategoryFilter) && stallMatchesFilter(pos.code, stall)) cell.classList.add('s-match');
-        else if (currentCategoryFilter || isInspectionFilter(currentStatusFilter)) cell.classList.add('dimmed');
+        else if (currentCategoryFilter || isDimmingFilter(currentStatusFilter)) cell.classList.add('dimmed');
         if (!cell.classList.contains('vacant-hidden')) bindStallTooltip(cell, pos.code, stall);
         layout.appendChild(cell);
     });
@@ -762,7 +1024,7 @@ function renderGrid(z) {
             }
 
             if ((currentQuery || currentStatusFilter || currentCategoryFilter) && stallMatchesFilter(id, stall)) cell.classList.add('s-match');
-            else if (currentCategoryFilter || isInspectionFilter(currentStatusFilter)) cell.classList.add('dimmed');
+            else if (currentCategoryFilter || isDimmingFilter(currentStatusFilter)) cell.classList.add('dimmed');
             if (!cell.classList.contains('vacant-hidden')) bindStallTooltip(cell, id, stall);
             (isPaired(stall) ? getSmallWrap(stall.groupId) : col).appendChild(cell);
         });
@@ -772,6 +1034,56 @@ function renderGrid(z) {
     });
 
     document.getElementById('drawerStats').innerHTML = drawerStatsHtml(total, booked, maintenance);
+}
+
+// ปุ่มร้านโปรด + แชร์ร้าน ในการ์ดร้าน
+function renderCardTools(id) {
+    const favBtn = document.getElementById('icFavBtn');
+    const paintFav = () => {
+        const on = isFavorite(id);
+        favBtn.classList.toggle('active', on);
+        favBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        favBtn.innerHTML = `<i class="fa-${on ? 'solid' : 'regular'} fa-star"></i> ${on ? 'ร้านโปรดแล้ว' : 'ร้านโปรด'}`;
+    };
+    paintFav();
+    favBtn.onclick = () => { toggleFavorite(id); paintFav(); };
+    document.getElementById('icShareBtn').onclick = () => shareStall(id);
+}
+
+// แชร์ร้าน: มือถือใช้เมนูแชร์ของเครื่อง, คอมคัดลอกลิงก์ — ลิงก์เปิดผังที่ล็อกนี้พร้อมการ์ดร้าน
+async function shareStall(id) {
+    const d = BOOKING_BY_STALL[id] || {};
+    const url = `${window.location.origin}/market-map?stall=${encodeURIComponent(id)}`;
+    if (navigator.share) {
+        try {
+            await navigator.share({ title: `${d.shop || 'ร้านค้า'} — ตลาดกังสดาลไนท์`, text: `ร้าน ${d.shop || ''} แผง ${id}`, url });
+            return;
+        } catch (e) {
+            if (e && e.name === 'AbortError') return;
+        }
+    }
+    try {
+        await navigator.clipboard.writeText(url);
+        showMapToast('คัดลอกลิงก์ร้านแล้ว ส่งให้เพื่อนได้เลย');
+    } catch (e) {
+        showMapToast(url, 6000);
+    }
+}
+
+let toastTimer = null;
+function showMapToast(text, ms = 2500) {
+    let toast = document.getElementById('mapToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'mapToast';
+        toast.className = 'map-toast';
+        toast.setAttribute('role', 'status');
+        document.body.appendChild(toast);
+    }
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), ms);
 }
 
 // ป้ายเมนูเด่น (กดแล้วค้นร้านอื่นที่ขายคล้ายกัน) + ปุ่ม "ดูเมนูร้าน" ในการ์ดร้าน
@@ -812,6 +1124,9 @@ function showVacantInfo(id, zone) {
     document.querySelector('#infoCard .ic-grid').classList.add('d-none');
     document.getElementById('icTagsWrap').classList.add('d-none');
     document.getElementById('icMenuBtn').classList.add('d-none');
+    document.getElementById('icNewBadge').classList.add('d-none');
+    document.getElementById('icTools').classList.add('d-none');
+    document.getElementById('icQuickInspect').innerHTML = '';
     renderRoleActions(id, zone, true);
     document.getElementById('infoCard').classList.add('show');
     document.getElementById('infoCardBackdrop').classList.add('show');
@@ -821,9 +1136,13 @@ function showInfo(id) {
     const d = BOOKING_BY_STALL[id];
     if (!d) return;
     document.querySelector('#infoCard .ic-grid').classList.remove('d-none');
+    document.getElementById('icTools').classList.remove('d-none');
     renderRoleActions(id, (findStall(id) && zoneOf(id)) || '', false);
+    renderQuickInspect(id);
 
     document.getElementById('ic-head').textContent = `แผง ${id} — ${d.shop}`;
+    document.getElementById('icNewBadge').classList.toggle('d-none', !d.isNew);
+    renderCardTools(id);
     document.getElementById('ic-shop').textContent = d.shop;
     document.getElementById('ic-product').textContent = (categoryOf(id) || {}).label || d.product;
     document.getElementById('ic-detail').textContent = d.productDetail || '-';
@@ -995,7 +1314,17 @@ function hideInfo() {
 }
 window.hideInfo = hideInfo;
 
-const STATUS_LABELS = { EMPTY: 'แผงว่าง', BOOKED: 'แผงที่มีร้านค้าแล้ว', INSP_ISSUE: 'ร้านที่ตรวจพบปัญหาวันนี้', INSP_PENDING: 'ร้านที่ยังไม่ตรวจวันนี้' };
+const STATUS_LABELS = {
+    EMPTY: 'แผงว่าง',
+    BOOKED: 'แผงที่มีร้านค้าแล้ว',
+    INSP_ISSUE: 'ร้านที่ตรวจพบปัญหาวันนี้',
+    INSP_PENDING: 'ร้านที่ยังไม่ตรวจวันนี้',
+    EXP_LAPSED: 'ล็อกที่หมดสิทธิ์แล้ว',
+    EXP_SOON: 'ล็อกที่ใกล้หมดสัญญา',
+    HAS_MENU: 'ร้านที่มีรูปเมนู',
+    NEW: 'ร้านใหม่',
+    FAV: 'ร้านโปรดของคุณ'
+};
 
 function refreshFilterResults() {
     const badge = document.getElementById('resultBadge');
@@ -1181,6 +1510,7 @@ function randomFoodShop() {
 buildCategoryBar();
 buildLayerTabs();
 renderLayerChrome();
+updateQuickTagCounts();
 (function setupActions() {
     const mine = document.getElementById('btnMyStall');
     if (mine) {

@@ -418,6 +418,41 @@ function stripLotPricing(zonesData) {
     }));
 }
 
+const NEW_SHOP_DAYS = 14;
+const OPEN_REPAIR_STATUSES = ['PENDING', 'APPROVED', 'IN_PROGRESS'];
+
+// การ์ด "สุขภาพล็อกของฉัน" ฝั่งผู้ขาย: ผลตรวจความสะอาดล่าสุด, ไฟเกินที่ถูกบันทึกล่าสุด, งานแจ้งซ่อมที่ยังไม่เสร็จ
+// ส่งเฉพาะข้อมูลของล็อกตัวเองเท่านั้น — ไม่รวมบันทึกปัญหาแบบไม่มาขาย/ปล่อยเช่าช่วง ซึ่งเป็นบันทึกภายในของเจ้าหน้าที่
+async function buildMyStallHealth(userId, stallCodes) {
+    const codes = [...new Set(stallCodes)];
+    if (!codes.length) return {};
+    const stalls = await prisma.stall.findMany({ where: { stallCode: { in: codes } }, select: { id: true, stallCode: true } });
+    const ids = stalls.map((stall) => stall.id);
+    const newestFirst = { orderBy: { createdAt: 'desc' } };
+    const [cleanliness, excesses, repairs] = await Promise.all([
+        prisma.stallCleanlinessInspection.findMany({ where: { stallId: { in: ids } }, select: { stallId: true, overallPassed: true, createdAt: true }, ...newestFirst }),
+        prisma.stallElectricExcessRecord.findMany({ where: { stallId: { in: ids } }, select: { stallId: true, smallCount: true, largeCount: true, subtotal: true, createdAt: true }, ...newestFirst }),
+        prisma.maintenanceReport.findMany({ where: { userId, location: { in: codes }, status: { in: OPEN_REPAIR_STATUSES } }, select: { location: true, category: true, status: true, createdAt: true }, ...newestFirst })
+    ]);
+
+    const health = {};
+    stalls.forEach((stall) => {
+        const code = String(stall.stallCode).toUpperCase();
+        const clean = cleanliness.find((record) => record.stallId === stall.id);
+        const excess = excesses.find((record) => record.stallId === stall.id);
+        health[code] = {
+            cleanliness: clean ? { passed: clean.overallPassed, at: clean.createdAt } : null,
+            excess: excess && (excess.smallCount > 0 || excess.largeCount > 0)
+                ? { small: excess.smallCount, large: excess.largeCount, subtotal: excess.subtotal, at: excess.createdAt }
+                : null,
+            openRepairs: repairs
+                .filter((report) => String(report.location).toUpperCase() === code)
+                .map((report) => ({ category: report.category, status: report.status, at: report.createdAt }))
+        };
+    });
+    return health;
+}
+
 exports.getMarketMapPage = async (req, res) => {
     try {
         const zonesData = stripLotPricing(await buildZonesData());
@@ -467,6 +502,21 @@ exports.getMarketMapPage = async (req, res) => {
             });
         }
 
+        // ป้าย "ร้านใหม่" — ร้านที่คำขอจองแรกสุด (ที่ได้ล็อก) เพิ่งเกิดภายใน NEW_SHOP_DAYS วัน
+        // นับจากคำขอแรกของร้าน ไม่ใช่วันเริ่มสัญญา เพราะร้านเดิมที่ต่อสัญญาทุกรอบจะได้วันเริ่มใหม่ตลอด
+        const newShopNames = new Set();
+        if (allSellerNames.length) {
+            const firstRequests = await prisma.bookingRequest.groupBy({
+                by: ['sellerName'],
+                where: { sellerName: { in: allSellerNames }, status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] } },
+                _min: { createdAt: true }
+            });
+            const newSince = Date.now() - NEW_SHOP_DAYS * 24 * 60 * 60 * 1000;
+            firstRequests.forEach((row) => {
+                if (row._min.createdAt && new Date(row._min.createdAt).getTime() >= newSince) newShopNames.add(row.sellerName);
+            });
+        }
+
         const bookingByStallCode = {};
         approvedRequests.forEach((request) => {
             // assignedStallCode เก็บได้ทั้งล็อกเดียว ("A901") หรือหลายล็อกคั่นด้วย comma ("A901,A902")
@@ -494,7 +544,8 @@ exports.getMarketMapPage = async (req, res) => {
                     summary: fallbackShop.shopSummary || '',
                     image: shopImage,
                     menuImages: (fallbackShop.menuImages || []).map((img) => img.imageUrl),
-                    photos: (fallbackShop.productImages || []).map((img) => img.imageUrl)
+                    photos: (fallbackShop.productImages || []).map((img) => img.imageUrl),
+                    isNew: newShopNames.has(request.sellerName)
                 };
             });
         });
@@ -509,14 +560,12 @@ exports.getMarketMapPage = async (req, res) => {
                 prisma.seller.findUnique({ where: { userId: req.user.id }, select: { id: true } })
             ]);
             viewer.allowedZones = zoneAccess.allowedZonesFor(userRecord?.shop?.productType || null).map((z) => String(z).toUpperCase());
-            if (sellerRecord) {
-                approvedRequests
-                    .filter((r) => r.sellerId === sellerRecord.id)
-                    .forEach((r) => {
-                        String(r.assignedStallCode || '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)
-                            .forEach((code) => viewer.myStalls.push(code));
-                    });
-            }
+            // คำขอจองส่วนใหญ่ไม่ได้ผูก sellerId (เป็น null) จึงเทียบชื่อผู้ขายด้วย แบบเดียวกับที่ใช้ดึง ShopDetail ด้านบน
+            const myRequests = approvedRequests.filter((r) => (sellerRecord && r.sellerId === sellerRecord.id)
+                || (userRecord?.name && r.sellerName === userRecord.name));
+            viewer.myStalls = [...new Set(myRequests.flatMap((r) => String(r.assignedStallCode || '')
+                .split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)))];
+            viewer.stallHealth = await buildMyStallHealth(req.user.id, viewer.myStalls);
         }
 
         // วันหมดสัญญา/ระดับเตือน และสถานะล็อกว่าง เป็นข้อมูลภายใน — วันหมดสัญญาส่งให้เฉพาะแอดมิน/staff และเจ้าของล็อก, ล็อกว่างเห็นเฉพาะแอดมิน/staff
