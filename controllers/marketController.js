@@ -3,6 +3,7 @@ const { getLotPricing } = require('../utils/lotPricing');
 const stallOccupancy = require('../utils/stallOccupancy');
 const zoneAccess = require('../utils/zoneAccess');
 const { getRenewalPhase, getRenewalOptions } = require('../utils/stallRenewal');
+const { buildTodayInspectionLayer } = require('../utils/inspectionToday');
 
 const ZONE_CATEGORY_META = {
     FASHION: { icon: 'fa-shirt', description: 'โซนแฟชั่น' },
@@ -449,7 +450,17 @@ exports.getMarketMapPage = async (req, res) => {
         if (allSellerNames.length) {
             const sellerUsers = await prisma.user.findMany({
                 where: { role: 'SELLER', name: { in: allSellerNames } },
-                select: { name: true, shop: { select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true, shopTags: true } } }
+                select: {
+                    name: true,
+                    shop: {
+                        select: {
+                            productType: true, productDetail: true, productImage: true, shopCoverImage: true, shopTags: true, shopSummary: true,
+                            // ปุ่ม "ดูเมนูร้าน" ในการ์ดร้าน — รูปเมนู + แกลเลอรีรูปสินค้า
+                            menuImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } },
+                            productImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } }
+                        }
+                    }
+                }
             });
             sellerUsers.forEach((u) => {
                 if (u.shop) shopInfoByName[u.name] = u.shop;
@@ -480,7 +491,10 @@ exports.getMarketMapPage = async (req, res) => {
                     product,
                     productDetail,
                     tags,
-                    image: shopImage
+                    summary: fallbackShop.shopSummary || '',
+                    image: shopImage,
+                    menuImages: (fallbackShop.menuImages || []).map((img) => img.imageUrl),
+                    photos: (fallbackShop.productImages || []).map((img) => img.imageUrl)
                 };
             });
         });
@@ -514,10 +528,14 @@ exports.getMarketMapPage = async (req, res) => {
             delete stall.bookingEndDate;
         })));
 
+        // ชั้นข้อมูล "ผลตรวจวันนี้" — ข้อมูลภายใน ส่งให้เฉพาะแอดมิน/staff (role อื่นไม่ได้รับข้อมูลนี้เลย ไม่ใช่แค่ซ่อนปุ่ม)
+        const inspectionLayer = canSeeExpiry ? await buildTodayInspectionLayer() : null;
+
         res.render('marketMap', {
             zonesData,
             bookingByStallCode,
             viewer,
+            inspectionLayer,
             canSeeVacancy: canSeeExpiry,
             user: req.user
         });

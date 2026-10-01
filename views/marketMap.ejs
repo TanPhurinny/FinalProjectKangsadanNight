@@ -14,7 +14,7 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
             rel="stylesheet" />
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
-        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261002-match">
+        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261002-menu">
         <link rel="stylesheet" href="/stylesheets/common/searchSuggest.css?v=20261002">
     </head>
     <body>
@@ -41,6 +41,7 @@
                 <div class="tt-group"><span class="tt-label">ร้านค้า</span><span class="tt-value tt-strong" id="tt-shop"></span></div>
                 <div class="tt-group"><span class="tt-label">ประเภทสินค้า</span><span class="tt-value" id="tt-product"></span></div>
                 <div class="tt-group"><span class="tt-label">ขายอะไรบ้าง</span><span class="tt-value" id="tt-detail"></span></div>
+                <div class="tt-group" id="tt-tags-group"><span class="tt-label">เมนูเด่น</span><span class="tt-tags" id="tt-tags"></span></div>
                 <div class="tt-group"><span class="tt-label">หมดสัญญา</span><span class="tt-value" id="tt-expiry"></span></div>
                 <div class="tt-hint" id="tt-hint"></div>
             </div>
@@ -61,6 +62,15 @@
                 </div>
                 <span id="resultBadge"></span>
             </div>
+
+            <% if (canSeeVacancy) { %>
+            <!-- ชั้นข้อมูล: สลับว่าสีบนผังบอกเรื่องอะไร (เฉพาะแอดมิน/staff) — ปุ่มสร้างใน marketMap.js -->
+            <div class="layer-bar" id="layerBar">
+                <span class="tag-lbl">ชั้นข้อมูล:</span>
+                <div class="layer-tabs" id="layerTabs" role="tablist"></div>
+                <div class="layer-summary" id="layerSummary" hidden></div>
+            </div>
+            <% } %>
 
             <!-- QUICK TAGS -->
             <div class="tag-bar">
@@ -213,8 +223,9 @@
                     <div class="leg"><div class="leg-box"
                             style="background:#fff;"></div>ว่าง</div>
                     <% } %>
-                    <div class="leg"><div class="leg-box"
+                    <div class="leg" id="legBooked"><div class="leg-box"
                             style="background:#8a9aa0;border-color:#000;"></div>มีร้านค้าแล้ว</div>
+                    <div class="layer-legend" id="layerLegend"></div>
                     <div class="leg"><div class="leg-box"
                             style="background:#c98a2e;border-color:#000;"></div>ซ่อมบำรุง</div>
                     <div class="leg"><div class="leg-box"
@@ -235,7 +246,16 @@
                                 id="ic-product"></span></div>
                         <div class="ig ic-span2"><label>ขายอะไรบ้าง</label><span
                                 id="ic-detail"></span></div>
+                        <div class="ig ic-span2 d-none" id="icSummaryWrap"><label>แนะนำร้าน</label><span
+                                id="ic-summary"></span></div>
                     </div>
+                    <div class="ic-tags-wrap d-none" id="icTagsWrap">
+                        <label>เมนูเด่น <small>กดป้ายเพื่อหาร้านอื่นที่ขายคล้ายกัน</small></label>
+                        <div class="ic-tags" id="icTags"></div>
+                    </div>
+                    <button type="button" class="ic-menu-btn d-none" id="icMenuBtn">
+                        <i class="fa-solid fa-book-open"></i> ดูเมนูร้าน <span class="ic-menu-count" id="icMenuCount"></span>
+                    </button>
                     <div class="ic-role-note d-none" id="icRoleNote"></div>
                     <div class="ic-role-actions d-none" id="icRoleActions"></div>
                 </div>
@@ -251,10 +271,38 @@
 
         </div>
 
+        <!-- หน้าต่างดูเมนูร้าน: รูปเมนู / รายการเมนู / รูปสินค้า (เนื้อหาเติมใน marketMap.js) -->
+        <div class="menu-viewer" id="menuViewer" hidden>
+            <div class="mv-backdrop" data-mv-close></div>
+            <div class="mv-panel" role="dialog" aria-modal="true" aria-labelledby="mvTitle">
+                <div class="mv-head">
+                    <div>
+                        <div class="mv-kicker">เมนูร้าน · แผง <span id="mvStall"></span></div>
+                        <div class="mv-title" id="mvTitle"></div>
+                    </div>
+                    <button type="button" class="mv-close" data-mv-close aria-label="ปิด">✕</button>
+                </div>
+                <div class="mv-tabs" id="mvTabs" role="tablist"></div>
+                <div class="mv-body">
+                    <div class="mv-stage" id="mvStage">
+                        <button type="button" class="mv-nav mv-prev" id="mvPrev" aria-label="รูปก่อนหน้า"><i class="fa-solid fa-chevron-left"></i></button>
+                        <a class="mv-image-link" id="mvImageLink" target="_blank" rel="noopener" title="เปิดรูปขนาดเต็ม">
+                            <img id="mvImage" alt="">
+                        </a>
+                        <button type="button" class="mv-nav mv-next" id="mvNext" aria-label="รูปถัดไป"><i class="fa-solid fa-chevron-right"></i></button>
+                        <span class="mv-counter" id="mvCounter"></span>
+                    </div>
+                    <div class="mv-thumbs" id="mvThumbs"></div>
+                    <ol class="mv-list" id="mvList"></ol>
+                </div>
+            </div>
+        </div>
+
         <script type="application/json" id="zonesDataJson"><%- JSON.stringify(zoneByCode).replace(/</g, '\\u003c') %></script>
         <script type="application/json" id="bookingByStallJson"><%- JSON.stringify(locals.bookingByStallCode || {}).replace(/</g, '\\u003c') %></script>
         <script type="application/json" id="viewerJson"><%- JSON.stringify(locals.viewer || { role: 'CUSTOMER', allowedZones: [], myStalls: [] }).replace(/</g, '\\u003c') %></script>
+        <script type="application/json" id="inspectionLayerJson"><%- JSON.stringify(locals.inspectionLayer || null).replace(/</g, '\\u003c') %></script>
         <script src="/js/common/searchSuggest.js?v=20261002"></script>
-        <script src="/js/marketMap.js?v=20261002-suggest2"></script>
+        <script src="/js/marketMap.js?v=20261002-menu"></script>
     </body>
 </html>
