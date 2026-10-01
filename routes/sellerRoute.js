@@ -19,6 +19,7 @@ const {
     getBookingRoundMetaForDate,
     getBookingRoundStatusDetails,
     getBookingPhaseForRound,
+    getRoundTimeline,
     getPaymentDeadlineFromLockAssignedAt,
     getRoundWindow,
     BOOKING_ROUND_LENGTH_DAYS
@@ -1304,7 +1305,8 @@ router.get("/select-zone", isAuthenticated, isSellerOrApplicant, async (req, res
             productType,
             allowedZones,
             zoneDetails,
-            cornerZoneOptions: CORNER_ZONE_OPTIONS
+            cornerZoneOptions: CORNER_ZONE_OPTIONS,
+            roundTimeline: getRoundTimeline(new Date())
         });
     } catch (err) {
         console.error('select-zone error', err);

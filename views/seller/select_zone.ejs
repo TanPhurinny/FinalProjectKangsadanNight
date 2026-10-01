@@ -10,7 +10,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
-  <link rel="stylesheet" href="/stylesheets/seller/selectZone.css">
+  <link rel="stylesheet" href="/stylesheets/seller/selectZone.css?v=20261002-round">
 </head>
 
 <body>
@@ -18,6 +18,46 @@
   <%- include('../partials/navbarSeller') %>
 
   <div class="page-wrapper">
+    <% if (locals.roundTimeline) {
+      const rt = locals.roundTimeline;
+      const fmt = (d) => new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+      const range = (a, b) => (a ? (fmt(a) === fmt(b) ? fmt(a) : `${fmt(a)} – ${fmt(b)}`) : `ถึง ${fmt(b)}`);
+      const order = rt.steps.map((st) => st.key);
+      const activeIdx = order.indexOf(rt.activeKey);
+      const longStep = rt.steps.find((st) => st.key === 'long');
+      const nowText = {
+        closed: `เปิดจองยาว 14 วันอีก ${rt.daysUntilLongOpen} วัน (${fmt(rt.next.longOpen)})`,
+        long: `วันนี้จองยาว 14 วันได้ ถึง ${fmt(longStep.to)} · ชำระเงินภายใน ${fmt(rt.next.paymentDeadline)}`,
+        daily: `จองรายวันได้แล้ว (ทีละวัน หรือขั้นต่ำ 3 วันติด) · เริ่มขายอีก ${rt.daysUntilSell} วัน`
+      }[rt.activeKey];
+    %>
+    <!-- รอบจองถัดไป: วันนี้อยู่ช่วงไหน (คำนวณจาก getRoundTimeline ใน utils/bookingRound.js ตัวเดียวกับฟอร์มจอง) -->
+    <section class="round-strip" aria-labelledby="roundStripTitle">
+      <div class="rs-head">
+        <div class="rs-title" id="roundStripTitle">
+          <span class="rs-kicker">รอบจองถัดไป · รอบที่ <%= rt.next.roundNumber %></span>
+          <b>ขาย <%= range(rt.next.cycleStart, rt.next.cycleEnd) %></b>
+        </div>
+        <p class="rs-now"><span class="rs-today">วันนี้ <%= fmt(rt.today) %></span> <%= nowText %></p>
+      </div>
+      <ol class="rs-steps">
+        <% rt.steps.forEach(function (st, i) {
+          const state = i < activeIdx ? 'is-past' : (i === activeIdx ? 'is-active' : 'is-future');
+        %>
+        <li class="rs-step rs-step--<%= st.key %> <%= state %>" <%= i === activeIdx ? 'aria-current="step"' : '' %>>
+          <span class="rs-index">0<%= i + 1 %></span>
+          <span class="rs-label"><%= st.label %></span>
+          <span class="rs-date"><%= range(st.from, st.to) %></span>
+          <% if (i === activeIdx) { %><span class="rs-here">วันนี้อยู่ช่วงนี้</span><% } %>
+        </li>
+        <% }); %>
+      </ol>
+      <% if (rt.current.dailyOpen) { %>
+      <p class="rs-current"><i class="fa-solid fa-circle-info"></i> ขายเร็วกว่านั้นได้: รอบปัจจุบัน (รอบที่ <%= rt.current.roundNumber %> ขายถึง <%= fmt(rt.current.cycleEnd) %>) ยังจองรายวันได้ ล่วงหน้า 1 วัน</p>
+      <% } %>
+    </section>
+    <% } %>
+
     <header class="map-page-header">
       <div class="zone-filter">
         <label for="zoneSelect" class="zone-filter__title">โซน</label>

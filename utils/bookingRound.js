@@ -131,7 +131,57 @@ function getPaymentDeadlineFromLockAssignedAt(lockAssignedAt) {
     return new Date(assigned.getTime() + PAYMENT_WINDOW_HOURS * 60 * 60 * 1000);
 }
 
+// แถบช่วงเวลาของรอบจองถัดไป (หน้าเลือกโซน) — คำนวณจาก getBookingPhaseForRound ตัวเดียวกับฟอร์มจองแผง
+// เพื่อให้ช่วงที่บอกผู้ขายตรงกับสิ่งที่ฟอร์มยอมให้จองจริงเสมอ
+//   closed = ยังไม่เปิด, long = จองยาว 14 วัน (จันทร์-อังคาร), daily = จองรายวันได้ (พุธ-ก่อนเริ่มขาย), selling = เริ่มขาย
+function getRoundTimeline(dateValue) {
+    const today = toStartOfDay(dateValue || new Date());
+    const current = getBookingRoundMetaForDate(today);
+    const nextNumber = current.roundNumber + 1;
+    const next = { roundNumber: nextNumber, ...getRoundWindow(nextNumber) };
+    const openAt = addDays(next.cycleStart, 1);
+    const longOpen = addDays(openAt, -5);
+    const dailyOpen = addDays(openAt, -3);
+    const nextPhase = getBookingPhaseForRound(next, today);
+    const currentPhase = getBookingPhaseForRound(current, today);
+
+    let activeKey = 'closed';
+    if (nextPhase.phase === 1) activeKey = 'long';
+    else if (nextPhase.phase === 2) activeKey = 'daily';
+
+    const dayDiff = (target) => Math.round((toStartOfDay(target) - today) / (24 * 60 * 60 * 1000));
+
+    return {
+        today,
+        activeKey,
+        current: {
+            roundNumber: current.roundNumber,
+            cycleStart: current.cycleStart,
+            cycleEnd: current.cycleEnd,
+            // รอบปัจจุบันยังจองรายวันได้ (ล่วงหน้า 1 วัน) จนถึงวันก่อนวันสุดท้ายของรอบ
+            dailyOpen: currentPhase.phase === 2 && today < toStartOfDay(current.cycleEnd)
+        },
+        next: {
+            roundNumber: nextNumber,
+            cycleStart: next.cycleStart,
+            cycleEnd: next.cycleEnd,
+            longOpen,
+            dailyOpen,
+            paymentDeadline: getPaymentDeadlineForRound(next)
+        },
+        steps: [
+            { key: 'closed', label: 'ยังไม่เปิดจอง', from: null, to: addDays(longOpen, -1) },
+            { key: 'long', label: 'จองยาว 14 วัน', from: longOpen, to: addDays(dailyOpen, -1) },
+            { key: 'daily', label: 'จองรายวันได้', from: dailyOpen, to: addDays(next.cycleStart, -1) },
+            { key: 'selling', label: 'เริ่มขาย', from: next.cycleStart, to: next.cycleEnd }
+        ],
+        daysUntilLongOpen: dayDiff(longOpen),
+        daysUntilSell: dayDiff(next.cycleStart)
+    };
+}
+
 module.exports = {
+    getRoundTimeline,
     BOOKING_ROUND_LENGTH_DAYS,
     PAYMENT_WINDOW_HOURS,
     getPaymentDeadlineFromLockAssignedAt,

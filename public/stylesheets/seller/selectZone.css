@@ -828,3 +828,90 @@ button { font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+/* ── รอบจองถัดไป: แถบ 4 ช่วง (ยังไม่เปิด → จองยาว 14 วัน → จองรายวัน → เริ่มขาย) ไฮไลต์ช่วงของวันนี้ ── */
+.round-strip {
+  margin-bottom: 20px;
+  border: 1px solid var(--navy);
+  background: #fff;
+}
+.rs-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--navy);
+}
+.rs-title { display: flex; flex-direction: column; gap: 2px; }
+.rs-kicker {
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+.rs-title b { font-size: 1.15rem; color: var(--navy); }
+.rs-now { margin: 0; font-size: .9rem; color: var(--navy); }
+.rs-today {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 8px;
+  background: var(--navy);
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 600;
+}
+.rs-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.rs-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px 12px;
+  border-right: 1px solid var(--line);
+  border-top: 4px solid var(--line);
+  color: var(--ink-soft);
+}
+.rs-step:last-child { border-right: 0; }
+.rs-index { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 11px; }
+.rs-label { font-weight: 700; font-size: .95rem; color: var(--navy); }
+.rs-date { font-size: .82rem; }
+.rs-step.is-past { background: var(--soft-bg); }
+.rs-step.is-past .rs-label { color: var(--ink-soft); text-decoration: line-through; text-decoration-thickness: 1px; }
+.rs-step.is-active { border-top-color: #e67e22; background: #fff8ee; }
+.rs-step.is-active .rs-label { color: #a84800; }
+.rs-step--selling { border-top-color: var(--navy); }
+.rs-here {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 1px 6px;
+  font-size: .72rem;
+  font-weight: 700;
+  color: #fff;
+  background: #e67e22;
+}
+.rs-current {
+  margin: 0;
+  padding: 8px 16px;
+  border-top: 1px solid var(--line);
+  font-size: .82rem;
+  color: var(--ink-soft);
+}
+.rs-current i { color: var(--primary); margin-right: 4px; }
+
+@media (max-width: 640px) {
+  .rs-head { padding: 10px 12px; }
+  .rs-steps { grid-template-columns: 1fr 1fr; }
+  .rs-step { padding: 8px 12px 10px; }
+  .rs-step:nth-child(2) { border-right: 0; }
+  .rs-step:nth-child(n + 3) { border-top-width: 4px; }
+  .rs-current { padding: 8px 12px; }
+}
