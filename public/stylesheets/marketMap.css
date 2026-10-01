@@ -14,6 +14,7 @@
     --sub: #5b7a84;
     --road: #eef1f2;
     --stripe1: #e2b83a;
+    --match: #22c55e;
     --stripe2: #262626;
     --zone-E-bg: #FFB5DA;
     --zone-E-cl: #c0006e;
@@ -395,8 +396,8 @@ body {
 }
 
 .zone-block.search-match {
-    border-color: var(--stripe1) !important;
-    box-shadow: 0 0 0 3px rgba(226, 184, 58, .35) !important;
+    border-color: var(--match) !important;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, .4) !important;
 }
 
 .zone-label {
@@ -1020,13 +1021,11 @@ body {
     opacity: .75;
 }
 
+/* ล็อกที่ตรงกับการค้นหา: กรอบเขียวสดรอบนอกล็อก ไม่ทับเส้นขอบดำ/สีหมวด จึงเห็นชัดทั้งล็อกว่างและล็อกที่ลงสีแล้ว */
 .stall-cell.s-match {
-    border: 2px solid var(--stripe1) !important;
+    outline: 3px solid var(--match);
+    outline-offset: 1px;
     z-index: 4;
-}
-
-.stall-cell.s-match.booked {
-    box-shadow: inset 0 0 0 2px var(--stripe1);
 }
 
 .stall-cell.deeplink-target {
