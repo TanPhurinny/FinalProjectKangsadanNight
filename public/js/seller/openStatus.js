@@ -1,4 +1,4 @@
-// เช็คอิน "ร้านเปิดแล้ว" / "ปิดร้าน" ในหน้าแรกผู้ขาย — POST /shop-status แล้วอัปเดตการ์ดทันที
+// "ปิดร้านวันนี้" ในหน้าแรกผู้ขาย — ร้านเปิดเป็นค่าเริ่มต้น กดปิดเมื่อไม่ได้มาขาย/เก็บร้านแล้ว (กดยกเลิกได้ถ้ากดพลาด)
 (function () {
     const card = document.getElementById('openCheckin');
     const btn = document.getElementById('openCheckinBtn');
@@ -10,11 +10,12 @@
     function render(status) {
         card.dataset.open = status.isOpen ? '1' : '0';
         card.classList.toggle('is-open', status.isOpen);
+        card.classList.toggle('is-closed', !status.isOpen);
         label.textContent = status.isOpen ? 'ร้านเปิดอยู่' : 'ปิดร้านแล้ววันนี้';
         sub.textContent = status.isOpen
-            ? `เปิดตั้งแต่ ${hhmm(status.openedAt)} น. · ลูกค้าเห็นป้าย "เปิดอยู่" บนผังตลาดแล้ว`
-            : `ปิดเมื่อ ${hhmm(status.closedAt || new Date())} น. · ถ้ายังขายต่อ กดเปิดใหม่ได้`;
-        btn.textContent = status.isOpen ? 'ปิดร้าน' : 'เปิดร้านอีกครั้ง';
+            ? 'ลูกค้าเห็นร้านคุณบนผังตลาดตามปกติ · วันนี้ไม่ได้มาขายหรือเก็บร้านแล้ว กดปิดร้าน'
+            : `ปิดเมื่อ ${hhmm(status.closedAt)} น. · ร้านจะกลับมาเปิดเองในวันขายถัดไป`;
+        btn.textContent = status.isOpen ? 'ปิดร้านวันนี้' : 'ยกเลิกการปิดร้าน';
     }
 
     async function save(open) {
@@ -36,12 +37,10 @@
     }
 
     btn.addEventListener('click', () => {
-        const isOpen = card.dataset.open === '1';
-        if (!isOpen) { save(true); return; }
-        // ปิดร้านต้องยืนยันก่อน กันกดพลาดตอนยังขายอยู่
+        if (card.dataset.open !== '1') { save(true); return; }
         window.showConfirmDialog({
             title: 'ปิดร้านวันนี้?',
-            message: 'ป้าย "เปิดอยู่" บนผังตลาดจะหายไป กดเปิดใหม่ได้ภายหลัง',
+            message: 'ลูกค้าจะเห็นบนผังตลาดว่าร้านปิดแล้ว ร้านจะกลับมาเปิดเองในวันขายถัดไป (กดยกเลิกได้ถ้ากดพลาด)',
             tone: 'warning',
             confirmText: 'ปิดร้าน',
             onConfirm: () => save(false)

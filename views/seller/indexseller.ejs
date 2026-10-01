@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
-  <link rel="stylesheet" href="/stylesheets/seller/sellerindex.css?v=20261002-open">
+  <link rel="stylesheet" href="/stylesheets/seller/sellerindex.css?v=20261002-close">
 </head>
 <body>
 <script src="/js/common/tabSession.js"></script>
@@ -74,20 +74,18 @@
         const os = locals.openStatus;
         const hhmm = (d) => new Date(d).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
       %>
-      <!-- เช็คอิน "ร้านเปิดแล้ว": ลูกค้าเห็นป้าย "เปิดอยู่" บนผังตลาด (public/js/seller/openStatus.js) -->
-      <section class="open-checkin <%= os.isOpen ? 'is-open' : '' %> mb-3" id="openCheckin" data-open="<%= os.isOpen ? '1' : '0' %>">
+      <!-- ร้านเปิดเป็นค่าเริ่มต้น กดแค่ "ปิดร้านวันนี้" ตอนไม่ได้มาขาย/เก็บร้านแล้ว (public/js/seller/openStatus.js) -->
+      <section class="open-checkin <%= os.isOpen ? 'is-open' : 'is-closed' %> mb-3" id="openCheckin" data-open="<%= os.isOpen ? '1' : '0' %>">
         <div class="open-checkin__state">
           <span class="open-checkin__dot" aria-hidden="true"></span>
           <div>
-            <p class="open-checkin__label" id="openCheckinLabel"><%= os.isOpen ? 'ร้านเปิดอยู่' : (os.closedAt ? 'ปิดร้านแล้ววันนี้' : 'ยังไม่ได้เปิดร้านวันนี้') %></p>
+            <p class="open-checkin__label" id="openCheckinLabel"><%= os.isOpen ? 'ร้านเปิดอยู่' : 'ปิดร้านแล้ววันนี้' %></p>
             <p class="open-checkin__sub" id="openCheckinSub"><%= os.isOpen
-              ? `เปิดตั้งแต่ ${hhmm(os.openedAt)} น. · ลูกค้าเห็นป้าย "เปิดอยู่" บนผังตลาดแล้ว`
-              : (os.closedAt
-                ? `ปิดเมื่อ ${hhmm(os.closedAt)} น. · ถ้ายังขายต่อ กดเปิดใหม่ได้`
-                : `ล็อก ${locals.myStallCodes.join(', ')} · กดเมื่อตั้งร้านพร้อมขาย ลูกค้าจะเห็นบนผังตลาดทันที`) %></p>
+              ? `ล็อก ${locals.myStallCodes.join(', ')} · วันนี้ไม่ได้มาขายหรือเก็บร้านแล้ว กดปิดร้าน ลูกค้าจะเห็นบนผังตลาดว่าร้านปิด`
+              : `ปิดเมื่อ ${hhmm(os.closedAt)} น. · ร้านจะกลับมาเปิดเองในวันขายถัดไป` %></p>
           </div>
         </div>
-        <button type="button" class="open-checkin__btn" id="openCheckinBtn"><%= os.isOpen ? 'ปิดร้าน' : (os.closedAt ? 'เปิดร้านอีกครั้ง' : 'เปิดร้านแล้ว') %></button>
+        <button type="button" class="open-checkin__btn" id="openCheckinBtn"><%= os.isOpen ? 'ปิดร้านวันนี้' : 'ยกเลิกการปิดร้าน' %></button>
       </section>
       <% } %>
 
@@ -296,7 +294,7 @@
     </div>
   </main>
   <script src="/js/common/dialogs.js"></script>
-  <script src="/js/seller/openStatus.js?v=20261002"></script>
+  <script src="/js/seller/openStatus.js?v=20261002-close"></script>
   <script>
     document.querySelectorAll('[data-confirm-logout]').forEach(function (link) {
       link.addEventListener('click', function (event) {

@@ -724,8 +724,8 @@ model ShopViewEvent {
   @@index([shopUserId, createdAt])
 }
 
-// เช็คอิน "ร้านเปิดแล้ว" ของผู้ขาย ต่อ 1 วันขาย (ตัดวันตอนตี 5 เพราะตลาดกลางคืนขายเลยเที่ยงคืน — ดู utils/shopOpenStatus.js)
-// แถวของวันก่อนหมดอายุเองโดยไม่ต้องกดปิด / closedAt = ผู้ขายกด "ปิดร้าน" ก่อนเวลา
+// "ปิดร้านวันนี้" ของผู้ขาย ต่อ 1 วันขาย (ตัดวันตอนตี 5 เพราะตลาดกลางคืนขายเลยเที่ยงคืน — ดู utils/shopOpenStatus.js)
+// ทุกร้านเปิดเป็นค่าเริ่มต้น แถวถูกสร้างเฉพาะตอนผู้ขายกดปิด (closedAt) / openedAt = เวลาสร้างแถว ไม่ได้ใช้แสดงผล
 model ShopOpenStatus {
   id           Int       @id @default(autoincrement())
   userId       Int

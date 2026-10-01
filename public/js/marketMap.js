@@ -67,7 +67,7 @@ if (new URLSearchParams(window.location.search).get('demo') === '1') {
                 if (n % 3 !== 0) return;
                 const [product, shop, productDetail] = DEMO_SHOPS[(n / 3) % DEMO_SHOPS.length | 0];
                 stall.status = 'BOOKED';
-                BOOKING_BY_STALL[stall.code] = { shop, product, productDetail, tags: productDetail.split(' ').join(','), image: null, openSince: n % 2 ? new Date(Date.now() - n * 60000).toISOString() : null };
+                BOOKING_BY_STALL[stall.code] = { shop, product, productDetail, tags: productDetail.split(' ').join(','), image: null, closedAt: n % 7 === 0 ? new Date(Date.now() - n * 60000).toISOString() : null };
             });
         });
     });
@@ -254,7 +254,7 @@ const LAYERS = {
                 </span>
                 <button type="button" class="qtag lf-btn lf-issue" data-layer-filter="INSP_ISSUE">! มีปัญหา <b>${issue}</b></button>
                 <button type="button" class="qtag lf-btn lf-pending" data-layer-filter="INSP_PENDING">ยังไม่ตรวจ <b>${pending}</b></button>
-                <button type="button" class="qtag lf-btn lf-notopen" data-layer-filter="INSP_NOT_OPEN" title="ร้านที่ชำระแล้วแต่ยังไม่กดเช็คอินเปิดร้านวันนี้">ยังไม่เช็คอินเปิดร้าน <b>${allStalls().filter((st) => st.status === 'BOOKED' && inspectionOf(st.code) && !isOpenNow(st.code)).length}</b></button>
+                <button type="button" class="qtag lf-btn lf-notopen" data-layer-filter="INSP_CLOSED" title="ร้านที่ผู้ขายกดปิดร้านวันนี้ ไม่ต้องเดินไปตรวจ">แจ้งปิดร้าน <b>${allStalls().filter((st) => st.status === 'BOOKED' && isClosedToday(st.code)).length}</b></button>
                 ${IS_STAFF ? `<button type="button" class="qtag lf-btn lf-walk${walkMode ? ' active' : ''}" data-action="walk"><i class="fa-solid fa-person-walking"></i> ${walkMode ? 'กำลังเดินตรวจ' : 'เริ่มเดินตรวจ'}</button>` : ''}`;
         }
     }
@@ -652,10 +652,10 @@ function toggleFavorite(code) {
     return favoriteShops.has(d.shop);
 }
 
-// เช็คอิน "ร้านเปิดแล้ว" ของวันขายนี้ (server ส่งเวลาเปิดมาเฉพาะร้านที่ยังไม่กดปิด)
-function isOpenNow(code) {
+// ร้านเปิดเป็นค่าเริ่มต้น — server ส่ง closedAt มาเฉพาะร้านที่ผู้ขายกด "ปิดร้านวันนี้"
+function isClosedToday(code) {
     const d = BOOKING_BY_STALL[code];
-    return !!(d && d.openSince);
+    return !!(d && d.closedAt);
 }
 
 function formatClock(value) {
@@ -675,7 +675,7 @@ function updateQuickTagCounts() {
         NEW: booked.filter((s) => BOOKING_BY_STALL[s.code] && BOOKING_BY_STALL[s.code].isNew).length,
         FAV: booked.filter((s) => isFavorite(s.code)).length,
         RECENT: booked.filter((s) => isRecent(s.code)).length,
-        OPEN: booked.filter((s) => isOpenNow(s.code)).length
+        OPEN: booked.filter((s) => !isClosedToday(s.code)).length
     };
     Object.keys(counts).forEach((key) => {
         const el = document.querySelector(`[data-qcount="${key}"]`);
@@ -688,8 +688,11 @@ function paintStallLayer(cell, code) {
     // เครื่องหมายเล็กบนล็อก: ดาว = ร้านโปรด (มุมซ้ายบน), สมุด = มีรูปเมนู (มุมขวาล่าง)
     if (isFavorite(code)) cell.insertAdjacentHTML('beforeend', '<i class="cell-mark cell-mark-fav fa-solid fa-star" aria-hidden="true"></i>');
     if (hasMenu(code)) cell.insertAdjacentHTML('beforeend', '<i class="cell-mark cell-mark-menu fa-solid fa-book-open" aria-hidden="true"></i>');
-    // จุดเขียวมุมซ้ายล่าง = ร้านเช็คอินเปิดแล้ววันนี้
-    if (isOpenNow(code)) cell.insertAdjacentHTML('beforeend', '<span class="cell-mark cell-mark-open" aria-hidden="true"></span>');
+    // ร้านที่แจ้งปิดวันนี้: จางลง + ป้าย "ปิด" มุมซ้ายล่าง
+    if (isClosedToday(code)) {
+        cell.classList.add('shop-closed');
+        cell.insertAdjacentHTML('beforeend', '<span class="cell-mark cell-mark-closed" aria-hidden="true">ปิด</span>');
+    }
 }
 
 // ตัวกรองที่มาจากแถบสรุปของชั้นข้อมูล (INSP_* = ผลตรวจ, EXP_* = หมดสัญญา) — เปลี่ยนชั้นแล้วล้างทิ้ง
@@ -798,11 +801,11 @@ function myStallHealthHtml(id, stall) {
 
     const os = VIEWER.openStatus || {};
     const openRow = `
-        <div class="ich-open${os.isOpen ? ' is-open' : ''}">
-            <span><b>${os.isOpen ? 'ร้านเปิดอยู่' : (os.closedAt ? 'ปิดร้านแล้ว' : 'ยังไม่เปิดร้านวันนี้')}</b>${os.isOpen
-                ? ` ตั้งแต่ ${formatClock(os.openedAt)} น.`
-                : (os.closedAt ? ` เมื่อ ${formatClock(os.closedAt)} น.` : ' ลูกค้าจะเห็นป้าย "เปิดอยู่" เมื่อกดเปิด')}</span>
-            <button type="button" class="ich-open-btn" data-open-toggle>${os.isOpen ? 'ปิดร้าน' : (os.closedAt ? 'เปิดอีกครั้ง' : 'เปิดร้านแล้ว')}</button>
+        <div class="ich-open${os.isOpen === false ? ' is-closed' : ''}">
+            <span><b>${os.isOpen === false ? 'ปิดร้านแล้ววันนี้' : 'ร้านเปิดอยู่'}</b>${os.isOpen === false
+                ? ` เมื่อ ${formatClock(os.closedAt)} น.`
+                : ' ไม่ได้มาขาย/เก็บร้านแล้ว กดปิดร้าน'}</span>
+            <button type="button" class="ich-open-btn" data-open-toggle>${os.isOpen === false ? 'ยกเลิกการปิด' : 'ปิดร้านวันนี้'}</button>
         </div>`;
     return openRow + `<div class="ic-health">${cells.map(([label, value, sub, tone]) => `
         <div class="ich ich-${tone}">
@@ -812,7 +815,7 @@ function myStallHealthHtml(id, stall) {
         </div>`).join('')}</div>`;
 }
 
-// ผู้ขายกดเปิด/ปิดร้านจากการ์ดล็อกตัวเอง — ใช้ endpoint เดียวกับหน้าแรกผู้ขาย (POST /shop-status)
+// ผู้ขายกดปิดร้านวันนี้ (หรือยกเลิกการปิด) จากการ์ดล็อกตัวเอง — ใช้ endpoint เดียวกับหน้าแรกผู้ขาย (POST /shop-status)
 async function saveMyShopOpen(open, code) {
     try {
         const response = await fetch('/shop-status', {
@@ -823,22 +826,22 @@ async function saveMyShopOpen(open, code) {
         const payload = await response.json();
         if (!response.ok || !payload.success) throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
         VIEWER.openStatus = payload;
-        MY_STALLS.forEach((c) => { if (BOOKING_BY_STALL[c]) BOOKING_BY_STALL[c].openSince = payload.isOpen ? payload.openedAt : null; });
+        MY_STALLS.forEach((c) => { if (BOOKING_BY_STALL[c]) BOOKING_BY_STALL[c].closedAt = payload.isOpen ? null : payload.closedAt; });
         updateQuickTagCounts();
         if (activeZone) renderGrid(activeZone);
         showInfo(code);
-        showMapToast(payload.isOpen ? 'เปิดร้านแล้ว ลูกค้าเห็นป้าย "เปิดอยู่" บนผัง' : 'ปิดร้านแล้ว');
+        showMapToast(payload.isOpen ? 'ยกเลิกการปิดแล้ว ร้านกลับมาเปิดตามปกติ' : 'ปิดร้านวันนี้แล้ว ลูกค้าเห็นบนผังว่าร้านปิด');
     } catch (error) {
         window.showAlertDialog({ title: 'บันทึกไม่สำเร็จ', message: error.message, tone: 'danger' });
     }
 }
 
 function toggleMyShopOpen(code) {
-    const isOpen = !!(VIEWER.openStatus && VIEWER.openStatus.isOpen);
+    const isOpen = !(VIEWER.openStatus && VIEWER.openStatus.isOpen === false);
     if (!isOpen) { saveMyShopOpen(true, code); return; }
     window.showConfirmDialog({
         title: 'ปิดร้านวันนี้?',
-        message: 'ป้าย "เปิดอยู่" บนผังตลาดจะหายไป กดเปิดใหม่ได้ภายหลัง',
+        message: 'ลูกค้าจะเห็นบนผังตลาดว่าร้านปิดแล้ว ร้านจะกลับมาเปิดเองในวันขายถัดไป (กดยกเลิกได้ถ้ากดพลาด)',
         tone: 'warning',
         confirmText: 'ปิดร้าน',
         onConfirm: () => saveMyShopOpen(false, code)
@@ -866,9 +869,7 @@ function renderRoleActions(id, zone, isVacant) {
         const insp = inspectionOf(id);
         if (!isVacant) {
             const d0 = BOOKING_BY_STALL[id] || {};
-            notes.push(d0.openSince
-                ? `<div>เช็คอินเปิดร้าน <b>${formatClock(d0.openSince)} น.</b></div>`
-                : '<div>ยังไม่เช็คอินเปิดร้านวันนี้</div>');
+            if (d0.closedAt) notes.push(`<div>ผู้ขายแจ้ง<b>ปิดร้านวันนี้</b> เมื่อ ${formatClock(d0.closedAt)} น.</div>`);
         }
         if (insp) {
             const st = INSPECTION_STATUS[insp.status];
@@ -1125,8 +1126,8 @@ function stallMatchesFilter(id, stall) {
         if (currentStatusFilter === 'NEW') return stall.status === 'BOOKED' && !!(BOOKING_BY_STALL[id] && BOOKING_BY_STALL[id].isNew);
         if (currentStatusFilter === 'FAV') return stall.status === 'BOOKED' && isFavorite(id);
         if (currentStatusFilter === 'RECENT') return stall.status === 'BOOKED' && isRecent(id);
-        if (currentStatusFilter === 'OPEN') return stall.status === 'BOOKED' && isOpenNow(id);
-        if (currentStatusFilter === 'INSP_NOT_OPEN') return stall.status === 'BOOKED' && !!inspectionOf(id) && !isOpenNow(id);
+        if (currentStatusFilter === 'OPEN') return stall.status === 'BOOKED' && !isClosedToday(id);
+        if (currentStatusFilter === 'INSP_CLOSED') return stall.status === 'BOOKED' && isClosedToday(id);
         if (currentStatusFilter === 'REP_ANY') return !!repairStatusOf(id);
         if (currentStatusFilter === 'EMPTY') {
             if (!CAN_SEE_VACANCY) return false;
@@ -1792,9 +1793,9 @@ function showInfo(id) {
 
     document.getElementById('ic-head').textContent = `แผง ${id} — ${d.shop}`;
     document.getElementById('icNewBadge').classList.toggle('d-none', !d.isNew);
-    const openBadge = document.getElementById('icOpenBadge');
-    openBadge.classList.toggle('d-none', !d.openSince);
-    if (d.openSince) openBadge.textContent = `เปิดอยู่ · ตั้งแต่ ${formatClock(d.openSince)} น.`;
+    const closedBadge = document.getElementById('icOpenBadge');
+    closedBadge.classList.toggle('d-none', !d.closedAt);
+    if (d.closedAt) closedBadge.textContent = `ปิดร้านแล้ววันนี้ · ปิดเมื่อ ${formatClock(d.closedAt)} น.`;
     renderCardTools(id);
     renderCardExtras(id, d);
     rememberRecent(id);
@@ -1983,7 +1984,7 @@ const STATUS_LABELS = {
     FAV: 'ร้านโปรดของคุณ',
     RECENT: 'ร้านที่ดูล่าสุด',
     OPEN: 'ร้านที่เปิดอยู่ตอนนี้',
-    INSP_NOT_OPEN: 'ร้านที่ยังไม่เช็คอินเปิดร้าน',
+    INSP_CLOSED: 'ร้านที่แจ้งปิดร้านวันนี้',
     REP_ANY: 'ล็อกที่มีงานซ่อมค้าง'
 };
 

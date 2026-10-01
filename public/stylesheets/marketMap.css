@@ -2137,19 +2137,21 @@ body.bulk-on .zoom-ctl, body.walk-on .zoom-ctl { bottom: 14px; }
 }
 
 /* ========================================
-   เช็คอิน "ร้านเปิดแล้ว"
+   ปิดร้านวันนี้ (ร้านเปิดเป็นค่าเริ่มต้น ผู้ขายกดปิดเมื่อไม่ได้มาขาย/เก็บร้านแล้ว)
    ======================================== */
-.stall-cell .cell-mark-open {
-    left: 2px;
-    bottom: 2px;
-    width: 8px;
-    height: 8px;
-    background: #2ecc71;
-    border: 1px solid #000;
-    border-radius: 50%;
-    box-shadow: 0 0 0 2px #fff;
+.stall-cell.shop-closed { opacity: .45; }
+.stall-cell.shop-closed.s-match { opacity: 1; }
+.stall-cell .cell-mark-closed {
+    left: 1px;
+    bottom: 1px;
+    padding: 0 3px;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.3;
+    background: #12303a;
+    color: #fff;
 }
-.stall-cell-small .cell-mark-open { width: 6px; height: 6px; }
+.stall-cell-small .cell-mark-closed { font-size: 7px; }
 .open-dot { display: inline-block; width: 8px; height: 8px; margin-right: 2px; background: #2ecc71; border: 1px solid #000; border-radius: 50%; vertical-align: middle; }
 .qtag-open.active { background: #1e7a45; border-color: #145c33; color: #fff; }
 .lf-notopen { color: var(--text); border-style: dashed; }
@@ -2161,17 +2163,16 @@ body.bulk-on .zoom-ctl, body.walk-on .zoom-ctl { bottom: 14px; }
     gap: 6px;
     margin: -2px 0 8px;
     padding: 3px 10px;
-    border: 1px solid #1e7a45;
-    background: #f1fbf5;
-    color: #1e7a45;
+    border: 1px solid var(--text);
+    background: #eef1f2;
+    color: var(--text);
     font-size: 12px;
     font-weight: 700;
 }
-.ic-open-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; border: 1px solid #000; animation: openBlink 1.6s ease-in-out infinite; }
-@keyframes openBlink { 50% { box-shadow: 0 0 0 4px rgba(46, 204, 113, .3); } }
+.ic-open-badge::before { content: '\f023'; font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 11px; }
 .ic-open-badge.d-none { display: none; }
 
-/* เจ้าของล็อก: แถบเปิด/ปิดร้านในการ์ดสุขภาพล็อก */
+/* เจ้าของล็อก: แถบปิดร้านวันนี้ในการ์ดสุขภาพล็อก */
 .ich-open {
     display: flex;
     align-items: center;
@@ -2180,22 +2181,22 @@ body.bulk-on .zoom-ctl, body.walk-on .zoom-ctl { bottom: 14px; }
     margin-top: 8px;
     padding: 8px 10px;
     border: 1px solid var(--text);
-    border-left: 5px solid var(--border);
-    background: #fff;
+    border-left: 5px solid #27ae60;
+    background: #f1fbf5;
     font-size: 12px;
 }
-.ich-open.is-open { border-left-color: #27ae60; background: #f1fbf5; }
+.ich-open.is-closed { border-left-color: var(--sub); background: #eef1f2; }
 .ich-open b { font-size: 14px; margin-right: 4px; }
 .ich-open-btn {
     flex-shrink: 0;
     min-height: 40px;
     padding: 6px 14px;
     border: 1px solid var(--text);
-    background: #27ae60;
-    color: #fff;
+    background: #fff;
+    color: var(--text);
     font-family: inherit;
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
 }
-.ich-open.is-open .ich-open-btn { background: #fff; color: var(--text); }
+.ich-open.is-closed .ich-open-btn { background: var(--text); color: #fff; }
