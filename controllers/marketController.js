@@ -4,6 +4,7 @@ const stallOccupancy = require('../utils/stallOccupancy');
 const zoneAccess = require('../utils/zoneAccess');
 const { getRenewalPhase, getRenewalOptions } = require('../utils/stallRenewal');
 const { buildTodayInspectionLayer } = require('../utils/inspectionToday');
+const { getOpenShopsNow, getOpenStatus } = require('../utils/shopOpenStatus');
 
 const ZONE_CATEGORY_META = {
     FASHION: { icon: 'fa-shirt', description: 'โซนแฟชั่น' },
@@ -540,6 +541,9 @@ exports.getMarketMapPage = async (req, res) => {
             });
         }
 
+        // เช็คอิน "ร้านเปิดแล้ว" ของวันขายนี้ — ลูกค้าเห็นป้าย "เปิดอยู่" / staff เห็นว่าร้านไหนยังไม่เช็คอิน
+        const openSinceByUserId = await getOpenShopsNow(Object.values(shopInfoByName).map((shop) => shop.userId));
+
         // โพสต์คอมมูนิตี้ล่าสุดของแต่ละร้าน โชว์ในการ์ดร้าน (ตัดข้อความสั้นๆ พอให้รู้ว่าร้านมีอะไรใหม่)
         const shopUserIds = Object.values(shopInfoByName).map((shop) => shop.userId);
         const latestPostByUserId = new Map();
@@ -603,6 +607,7 @@ exports.getMarketMapPage = async (req, res) => {
                     photos: (fallbackShop.productImages || []).map((img) => img.imageUrl),
                     isNew: newShopNames.has(request.sellerName),
                     subtype: fallbackShop.productSubtype || '',
+                    openSince: openSinceByUserId.get(fallbackShop.userId) || null,
                     post: latestPostByUserId.get(fallbackShop.userId) || null
                 };
             });
@@ -622,6 +627,7 @@ exports.getMarketMapPage = async (req, res) => {
             viewer.myStalls = [...new Set(myRequests.flatMap((r) => String(r.assignedStallCode || '')
                 .split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)))];
             viewer.stallHealth = await buildMyStallHealth(req.user.id, viewer.myStalls);
+            viewer.openStatus = await getOpenStatus(req.user.id);
         }
 
         // วันหมดสัญญา/ระดับเตือน และสถานะล็อกว่าง เป็นข้อมูลภายใน — วันหมดสัญญาส่งให้เฉพาะแอดมิน/staff และเจ้าของล็อก, ล็อกว่างเห็นเฉพาะแอดมิน/staff

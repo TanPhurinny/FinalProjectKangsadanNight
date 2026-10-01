@@ -9,6 +9,7 @@ const marketMapCtrl = require('../controllers/marketMapController');
 const { shopViewLimiter } = require('../middlewares/authRateLimit');
 const { isStaffOrAdmin } = require('../middlewares/auth');
 const { getShopViewStats } = require('../utils/shopViews');
+const { getOpenStatus, setOpenStatus } = require('../utils/shopOpenStatus');
 const { repairReportSchema, bookingStallInputSchema, sellerApplicationSchema, shopProfileSchema, THAI_BANK_NAMES } = require('../utils/validationSchemas');
 const { PRODUCT_SUBTYPE_GROUPS } = require('../utils/productSubtypes');
 const { buildPromptPayQrDataUrl, PROMPTPAY_ID } = require('../utils/promptpayQr');
@@ -806,6 +807,16 @@ const isSellerOrApplicant = async (req, res, next) => {
     return res.redirect('/shop-application?error=not_applied');
 };
 
+// ล็อกที่ร้านนี้มีบนผังตลาด (คำขอที่จัดล็อกแล้ว) — เทียบชื่อผู้ขายแบบเดียวกับผังตลาด เพราะคำขอส่วนใหญ่ไม่ได้ผูก sellerId
+async function getMapStallCodesForSeller(sellerName) {
+    if (!sellerName) return [];
+    const requests = await prisma.bookingRequest.findMany({
+        where: { sellerName, status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] }, assignedStallCode: { not: null } },
+        select: { assignedStallCode: true }
+    });
+    return [...new Set(requests.flatMap((r) => String(r.assignedStallCode || '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)))];
+}
+
 router.get('/seller', isSellerOnly, async (req, res) => {
     // ใช้ตัวเดียวกับหน้า /booking-status เพื่อให้เลขล็อก/สถานะตรงกันทั้งระบบ
     const { userRecord, bookingView } = await loadSellerBookingStatus(req.user.id);
@@ -851,10 +862,16 @@ router.get('/seller', isSellerOnly, async (req, res) => {
         nextOpenAt: formatDateThai(addDays(nextRoundMeta.cycleStart, 1))
     };
 
+    // ปุ่มเช็คอินเปิดร้าน: แสดงเฉพาะผู้ขายที่มีล็อกในผังแล้ว (ยังไม่มีล็อก ลูกค้าก็หาร้านบนผังไม่เจออยู่ดี)
+    const myStallCodes = await getMapStallCodesForSeller(user?.name);
+    const openStatus = myStallCodes.length ? await getOpenStatus(req.user.id) : null;
+
     return res.render('seller/indexseller', {
         user,
         dashboard: buildSellerDashboard(user, activeBookingCount, bookingView, latestRepairReport, latestAnnouncement),
-        bookingRound: bookingRoundView
+        bookingRound: bookingRoundView,
+        openStatus,
+        myStallCodes
     });
 });
 
@@ -1070,6 +1087,18 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
 // เปิดได้โดยไม่ต้องล็อกอิน — ลูกค้าหน้าตลาดสแกน QR ที่ป้ายหน้าร้านแล้วเข้ามาดูร้าน/เมนูได้ทันที
 // ข้อมูลภายใน (ล็อกว่าง/วันหมดสัญญา/ผลตรวจ/ราคา) server ตัดออกตาม role อยู่แล้ว ดู getMarketMapPage
 router.get('/market-map', getMarketMapPage);
+
+// เช็คอิน "ร้านเปิดแล้ว" / "ปิดร้าน" (ผู้ขาย) — เรียกจากหน้าแรกผู้ขายและการ์ดล็อกตัวเองบนผัง
+router.post('/shop-status', isSellerOnly, async (req, res) => {
+    try {
+        const open = req.body?.open === true || req.body?.open === 'true';
+        const status = await setOpenStatus(req.user.id, open);
+        return res.json({ success: true, ...status });
+    } catch (error) {
+        console.error('Shop open status error:', error);
+        return res.status(500).json({ success: false, message: 'บันทึกสถานะร้านไม่สำเร็จ กรุณาลองใหม่' });
+    }
+});
 router.get('/market-map/qr/:code.svg', marketMapCtrl.getStallQr);
 router.get('/market-map/sign/:code', marketMapCtrl.getStallSign);
 router.get('/market-map/print', isStaffOrAdmin, marketMapCtrl.getPrintableMap);

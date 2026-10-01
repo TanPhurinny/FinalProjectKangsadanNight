@@ -2135,3 +2135,67 @@ body.bulk-on .zoom-ctl, body.walk-on .zoom-ctl { bottom: 14px; }
     .nm-mark { font-size: 9px; padding: 1px 4px; }
     .nav-step { font-size: 13px; }
 }
+
+/* ========================================
+   เช็คอิน "ร้านเปิดแล้ว"
+   ======================================== */
+.stall-cell .cell-mark-open {
+    left: 2px;
+    bottom: 2px;
+    width: 8px;
+    height: 8px;
+    background: #2ecc71;
+    border: 1px solid #000;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px #fff;
+}
+.stall-cell-small .cell-mark-open { width: 6px; height: 6px; }
+.open-dot { display: inline-block; width: 8px; height: 8px; margin-right: 2px; background: #2ecc71; border: 1px solid #000; border-radius: 50%; vertical-align: middle; }
+.qtag-open.active { background: #1e7a45; border-color: #145c33; color: #fff; }
+.lf-notopen { color: var(--text); border-style: dashed; }
+.lf-notopen.active { background: var(--text); color: #fff; border-style: solid; }
+
+.ic-open-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: -2px 0 8px;
+    padding: 3px 10px;
+    border: 1px solid #1e7a45;
+    background: #f1fbf5;
+    color: #1e7a45;
+    font-size: 12px;
+    font-weight: 700;
+}
+.ic-open-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; border: 1px solid #000; animation: openBlink 1.6s ease-in-out infinite; }
+@keyframes openBlink { 50% { box-shadow: 0 0 0 4px rgba(46, 204, 113, .3); } }
+.ic-open-badge.d-none { display: none; }
+
+/* เจ้าของล็อก: แถบเปิด/ปิดร้านในการ์ดสุขภาพล็อก */
+.ich-open {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--text);
+    border-left: 5px solid var(--border);
+    background: #fff;
+    font-size: 12px;
+}
+.ich-open.is-open { border-left-color: #27ae60; background: #f1fbf5; }
+.ich-open b { font-size: 14px; margin-right: 4px; }
+.ich-open-btn {
+    flex-shrink: 0;
+    min-height: 40px;
+    padding: 6px 14px;
+    border: 1px solid var(--text);
+    background: #27ae60;
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.ich-open.is-open .ich-open-btn { background: #fff; color: var(--text); }
