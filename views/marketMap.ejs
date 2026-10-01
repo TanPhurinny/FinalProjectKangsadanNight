@@ -14,7 +14,7 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
             rel="stylesheet" />
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
-        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261002-black">
+        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261002-vacancy">
     </head>
     <body>
         <script src="/js/common/tabSession.js"></script>
@@ -63,9 +63,11 @@
             <!-- QUICK TAGS -->
             <div class="tag-bar">
                 <span class="tag-lbl">ค้นหาด่วน:</span>
+                <% if (canSeeVacancy) { %>
                 <button class="qtag qtag-empty"
                     onclick="quickStatusFilter(this,'EMPTY')"><i
                         class="fa-solid fa-circle-check fa-xs"></i> แผงว่าง</button>
+                <% } %>
                 <button class="qtag qtag-booked"
                     onclick="quickStatusFilter(this,'BOOKED')"><i
                         class="fa-solid fa-store fa-xs"></i> มีร้านค้าแล้ว</button>
@@ -205,8 +207,10 @@
                 </div>
 
                 <div class="drawer-legend">
+                    <% if (canSeeVacancy) { %>
                     <div class="leg"><div class="leg-box"
                             style="background:#fff;"></div>ว่าง</div>
+                    <% } %>
                     <div class="leg"><div class="leg-box"
                             style="background:#8a9aa0;border-color:#000;"></div>มีร้านค้าแล้ว</div>
                     <div class="leg"><div class="leg-box"
@@ -248,6 +252,6 @@
         <script type="application/json" id="zonesDataJson"><%- JSON.stringify(zoneByCode).replace(/</g, '\\u003c') %></script>
         <script type="application/json" id="bookingByStallJson"><%- JSON.stringify(locals.bookingByStallCode || {}).replace(/</g, '\\u003c') %></script>
         <script type="application/json" id="viewerJson"><%- JSON.stringify(locals.viewer || { role: 'CUSTOMER', allowedZones: [], myStalls: [] }).replace(/</g, '\\u003c') %></script>
-        <script src="/js/marketMap.js?v=20260925-cat"></script>
+        <script src="/js/marketMap.js?v=20261002-vacancy"></script>
     </body>
 </html>

@@ -1255,3 +1255,7 @@ body {
     .cat-actions { margin-left: 0; width: 100%; }
     .act-btn { flex: 1; }
 }
+
+/* ล็อกว่างสำหรับ role ที่ไม่ใช่แอดมิน/staff — แสดงเป็นช่องเปล่าในผังเท่านั้น ไม่บอกสถานะ กด/ชี้ไม่ได้ */
+.stall-cell.vacant-hidden { cursor: default; }
+.stall-cell.vacant-hidden:hover { background: #fff; transform: none; box-shadow: none; z-index: 1; }

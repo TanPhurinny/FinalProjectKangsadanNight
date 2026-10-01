@@ -18,6 +18,8 @@ const MY_STALLS = new Set(VIEWER.myStalls || []);
 const IS_SELLER = VIEWER.role === 'SELLER';
 const IS_ADMIN = VIEWER.role === 'ADMIN';
 const IS_STAFF = VIEWER.role === 'STAFF';
+// เฉพาะแอดมิน/staff ที่เห็นสถานะ "ว่าง" ของล็อก — role อื่นเห็นล็อกว่างเป็นช่องเปล่าในผัง กด/ชี้ไม่ได้ และไม่มีตัวเลขล็อกว่าง
+const CAN_SEE_VACANCY = IS_ADMIN || IS_STAFF;
 
 // ==========================================
 // หมวดสินค้า: ใน DB ชื่อประเภทปนหลายแบบ (FOOD / Food / อาหาร) จึงรวมเป็นหมวดเดียวกันก่อนใช้แสดงสี/กรอง
@@ -116,16 +118,6 @@ function renderRoleActions(id, zone, isVacant) {
             notes.push(`หมดสัญญา ${formatThaiDate(stall.bookingEndDate)}${leftText}`);
         }
         actions.push(['/booking-stall/extend', 'ต่อล็อก']);
-    } else if (IS_SELLER && isVacant) {
-        if ((VIEWER.allowedZones || []).includes(zone)) {
-            notes.push('แผงว่าง จองได้ตามประเภทสินค้าของคุณ');
-            actions.push([`/booking-stall?zone=${encodeURIComponent(zone)}`, `จองโซน ${zone}`]);
-        } else {
-            notes.push(`โซน ${zone} ไม่ตรงกับประเภทสินค้าของคุณ จึงจองไม่ได้`);
-        }
-    } else if (VIEWER.role === 'CUSTOMER' && isVacant) {
-        notes.push('แผงนี้ยังว่าง สนใจขายของที่ตลาดกังสดาล?');
-        actions.push(['/shop-application', 'สมัครเป็นผู้ขาย']);
     } else if (IS_ADMIN || IS_STAFF) {
         if (stall && stall.bookingEndDate) {
             const left = daysLeftUntil(stall.bookingEndDate);
@@ -242,6 +234,7 @@ function stallMatchesFilter(id, stall) {
     }
     if (currentStatusFilter) {
         if (currentStatusFilter === 'EMPTY') {
+            if (!CAN_SEE_VACANCY) return false;
             return stall.status !== 'BOOKED' && stall.status !== 'MAINTENANCE';
         }
         return stall.status === currentStatusFilter;
@@ -292,7 +285,8 @@ function renderZoneCards(z) {
             stat.className = 'zc-stat';
             stat.innerHTML = `ว่าง <b>${free}</b> / ${total}`;
 
-            btn.append(title, desc, stat);
+            btn.append(title, desc);
+            if (CAN_SEE_VACANCY) btn.appendChild(stat);
             if (IS_SELLER) {
                 const mine = (VIEWER.myStalls || []).filter((c) => ((ZONES_DATA[code].columns || []).some((col) => col.stalls.some((st) => st.code === c)))).length;
                 const badge = document.createElement('span');
@@ -359,6 +353,11 @@ const ZONE_D_LAYOUT = [
     { code: 'D209', col: 10, row: 2 }
 ];
 
+function drawerStatsHtml(total, booked, maintenance) {
+    const vacant = CAN_SEE_VACANCY ? ` &nbsp;·&nbsp; ว่าง <b>${total - booked - maintenance}</b>` : '';
+    return `ทั้งหมด <b>${total}</b> ล็อก &nbsp;·&nbsp; จอง <b>${booked}</b> &nbsp;·&nbsp; ซ่อมบำรุง <b>${maintenance}</b>${vacant}`;
+}
+
 function renderDZoneGrid(z, stallByCode) {
     const grid = document.getElementById('stallGrid');
     const layout = document.createElement('div');
@@ -403,22 +402,24 @@ function renderDZoneGrid(z, stallByCode) {
         } else if (stall.status === 'MAINTENANCE') {
             maintenance += 1;
             cell.classList.add('maintenance');
-        } else {
+        } else if (CAN_SEE_VACANCY) {
             cell.classList.add('vacant-clickable');
             cell.addEventListener('click', (e) => {
                 e.stopPropagation();
                 showVacantInfo(pos.code, z);
             });
+        } else {
+            cell.classList.add('vacant-hidden');
         }
 
         if ((currentQuery || currentStatusFilter || currentCategoryFilter) && stallMatchesFilter(pos.code, stall)) cell.classList.add('s-match');
         else if (currentCategoryFilter) cell.classList.add('dimmed');
-        bindStallTooltip(cell, pos.code, stall);
+        if (!cell.classList.contains('vacant-hidden')) bindStallTooltip(cell, pos.code, stall);
         layout.appendChild(cell);
     });
 
     grid.appendChild(layout);
-    document.getElementById('drawerStats').innerHTML = `ทั้งหมด <b>${ZONE_D_LAYOUT.length}</b> ล็อก &nbsp;·&nbsp; จอง <b>${booked}</b> &nbsp;·&nbsp; ซ่อมบำรุง <b>${maintenance}</b> &nbsp;·&nbsp; ว่าง <b>${ZONE_D_LAYOUT.length - booked - maintenance}</b>`;
+    document.getElementById('drawerStats').innerHTML = drawerStatsHtml(ZONE_D_LAYOUT.length, booked, maintenance);
 }
 
 function renderGrid(z) {
@@ -510,17 +511,19 @@ function renderGrid(z) {
             } else if (stall.status === 'MAINTENANCE') {
                 maintenance += 1;
                 cell.classList.add('maintenance');
-            } else {
+            } else if (CAN_SEE_VACANCY) {
                 cell.classList.add('vacant-clickable');
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     showVacantInfo(id, z);
                 });
+            } else {
+                cell.classList.add('vacant-hidden');
             }
 
             if ((currentQuery || currentStatusFilter || currentCategoryFilter) && stallMatchesFilter(id, stall)) cell.classList.add('s-match');
             else if (currentCategoryFilter) cell.classList.add('dimmed');
-            bindStallTooltip(cell, id, stall);
+            if (!cell.classList.contains('vacant-hidden')) bindStallTooltip(cell, id, stall);
             (isPaired(stall) ? getSmallWrap(stall.groupId) : col).appendChild(cell);
         });
 
@@ -528,7 +531,7 @@ function renderGrid(z) {
         grid.appendChild(wrap);
     });
 
-    document.getElementById('drawerStats').innerHTML = `ทั้งหมด <b>${total}</b> ล็อก &nbsp;·&nbsp; จอง <b>${booked}</b> &nbsp;·&nbsp; ซ่อมบำรุง <b>${maintenance}</b> &nbsp;·&nbsp; ว่าง <b>${total - booked - maintenance}</b>`;
+    document.getElementById('drawerStats').innerHTML = drawerStatsHtml(total, booked, maintenance);
 }
 
 function showVacantInfo(id, zone) {

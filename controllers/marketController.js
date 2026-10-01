@@ -505,7 +505,7 @@ exports.getMarketMapPage = async (req, res) => {
             }
         }
 
-        // วันหมดสัญญา/ระดับเตือนเป็นข้อมูลภายใน ส่งให้เฉพาะแอดมิน/staff และเจ้าของล็อกเท่านั้น
+        // วันหมดสัญญา/ระดับเตือน และสถานะล็อกว่าง เป็นข้อมูลภายใน — วันหมดสัญญาส่งให้เฉพาะแอดมิน/staff และเจ้าของล็อก, ล็อกว่างเห็นเฉพาะแอดมิน/staff
         const canSeeExpiry = role === 'ADMIN' || role === 'STAFF';
         const mySet = new Set(viewer.myStalls);
         zonesData.forEach((zone) => zone.columns.forEach((column) => column.stalls.forEach((stall) => {
@@ -518,6 +518,7 @@ exports.getMarketMapPage = async (req, res) => {
             zonesData,
             bookingByStallCode,
             viewer,
+            canSeeVacancy: canSeeExpiry,
             user: req.user
         });
     } catch (error) {
