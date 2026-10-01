@@ -1567,49 +1567,6 @@ function trackView(code, kind) {
 }
 
 // ==========================================
-// ผู้ขาย: แบนเนอร์รอบจองถัดไป + ป้ายโซนที่จองได้บนภาพรวมผัง
-// ==========================================
-function renderSellerBanner() {
-    const banner = document.getElementById('sellerBanner');
-    if (!banner || !IS_SELLER || !VIEWER.nextRound) return;
-    const r = VIEWER.nextRound;
-    const fmt = (v) => new Date(v).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
-    const views = VIEWER.viewStats ? VIEWER.viewStats.totals.card : null;
-    banner.innerHTML = `
-        <div class="sb-round">
-            <span class="sb-kicker">รอบจองถัดไป #${r.roundNumber}</span>
-            <b>ขาย ${fmt(r.sellStart)} – ${fmt(r.sellEnd)}</b>
-            <span class="sb-steps">จองยาว 14 วัน เปิด ${fmt(r.longBookingOpen)} · จองรายวันได้ตั้งแต่ ${fmt(r.dailyBookingOpen)}</span>
-        </div>
-        ${views !== null ? `<a class="sb-stat" href="/shop-profile"><span>คนเปิดดูร้านคุณ 7 วัน</span><b>${views}</b></a>` : ''}
-        <div class="sb-actions">
-            <button type="button" class="ad-btn ad-ghost" id="sbZonesBtn" aria-pressed="false"><i class="fa-solid fa-layer-group"></i> ดูโซนที่จองได้</button>
-            <a class="ad-btn" href="/select-zone"><i class="fa-solid fa-store"></i> จองแผง</a>
-        </div>`;
-    banner.hidden = false;
-    const btn = document.getElementById('sbZonesBtn');
-    btn.addEventListener('click', () => {
-        const on = !document.body.classList.contains('show-allowed');
-        document.body.classList.toggle('show-allowed', on);
-        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-        btn.classList.toggle('active', on);
-        if (on) document.querySelector('.map-shell').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-
-    // ป้ายบนบล็อกโซน: จองได้ (มีที่ว่าง/เต็ม) — โซนที่ประเภทสินค้าไม่ตรงจะจางลงตอนเปิด "ดูโซนที่จองได้"
-    document.querySelectorAll('.zone-block').forEach((block) => {
-        const code = block.id.replace('zone-', '');
-        const allowed = (VIEWER.allowedZones || []).includes(code);
-        block.classList.toggle('zone-allowed', allowed);
-        block.classList.toggle('zone-not-allowed', !allowed);
-        if (!allowed) return;
-        const free = (VIEWER.zoneHasVacancy || {})[code];
-        // ข้อความสั้นเพราะโซนเล็ก (D/X/E) บนมือถือกว้างไม่ถึง 90px — กรอบส้มรอบโซนบอกอยู่แล้วว่าจองได้
-        block.insertAdjacentHTML('beforeend', `<span class="zone-book-badge ${free ? 'zb-free' : 'zb-full'}" title="${free ? 'จองได้ มีล็อกว่าง' : 'จองได้ แต่ตอนนี้เต็ม'}">${free ? 'ว่าง' : 'เต็ม'}</span>`);
-    });
-}
-
-// ==========================================
 // แอดมิน: สถิติโซน (อัตราเช่า / รายได้คาดการณ์ต่อวัน / สัดส่วนหมวดสินค้า) ในลิ้นชักโซน
 // ==========================================
 function renderZoneInsights(z) {
@@ -2138,7 +2095,6 @@ buildCategoryBar();
 buildLayerTabs();
 renderLayerChrome();
 updateQuickTagCounts();
-renderSellerBanner();
 (function setupActions() {
     const mine = document.getElementById('btnMyStall');
     if (mine) {

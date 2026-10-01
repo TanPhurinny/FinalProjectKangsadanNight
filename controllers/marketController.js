@@ -4,8 +4,6 @@ const stallOccupancy = require('../utils/stallOccupancy');
 const zoneAccess = require('../utils/zoneAccess');
 const { getRenewalPhase, getRenewalOptions } = require('../utils/stallRenewal');
 const { buildTodayInspectionLayer } = require('../utils/inspectionToday');
-const { getShopViewStats } = require('../utils/shopViews');
-const { getBookingRoundMetaForDate, getRoundWindow, addDays } = require('../utils/bookingRound');
 
 const ZONE_CATEGORY_META = {
     FASHION: { icon: 'fa-shirt', description: 'โซนแฟชั่น' },
@@ -451,21 +449,7 @@ async function buildOpenRepairLayer() {
     return { byCode, unpinned };
 }
 
-// รอบจองถัดไปสำหรับแบนเนอร์ผู้ขายบนผัง — ใช้กติกาเดียวกับ getBookingPhaseForRound ใน utils/bookingRound.js
-// (ช่วง 1 จันทร์-อังคาร จอง 14 วัน = openAt-5, ช่วง 2 ตั้งแต่พุธ จองรายวันได้ = openAt-3, openAt = วันเริ่มรอบ+1)
-function buildNextRoundInfo() {
-    const current = getBookingRoundMetaForDate(new Date());
-    const roundNumber = current.roundNumber + 1;
-    const { cycleStart, cycleEnd } = getRoundWindow(roundNumber);
-    const openAt = addDays(cycleStart, 1);
-    return {
-        roundNumber,
-        sellStart: cycleStart,
-        sellEnd: cycleEnd,
-        longBookingOpen: addDays(openAt, -5),
-        dailyBookingOpen: addDays(openAt, -3)
-    };
-}
+
 const OPEN_REPAIR_STATUSES = ['PENDING', 'APPROVED', 'IN_PROGRESS'];
 
 // การ์ด "สุขภาพล็อกของฉัน" ฝั่งผู้ขาย: ผลตรวจความสะอาดล่าสุด, ไฟเกินที่ถูกบันทึกล่าสุด, งานแจ้งซ่อมที่ยังไม่เสร็จ
@@ -638,13 +622,6 @@ exports.getMarketMapPage = async (req, res) => {
             viewer.myStalls = [...new Set(myRequests.flatMap((r) => String(r.assignedStallCode || '')
                 .split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)))];
             viewer.stallHealth = await buildMyStallHealth(req.user.id, viewer.myStalls);
-            viewer.nextRound = buildNextRoundInfo();
-            // โซนที่จองได้มีล็อกว่างไหม (บอกแค่ ว่าง/เต็ม ระดับโซน เหมือนหน้าเลือกโซน ไม่บอกว่าล็อกไหนว่าง)
-            viewer.zoneHasVacancy = {};
-            rawZones.forEach((zone) => {
-                viewer.zoneHasVacancy[zone.code] = zone.columns.some((column) => column.stalls.some((stall) => stall.status === 'AVAILABLE'));
-            });
-            viewer.viewStats = await getShopViewStats(req.user.id);
         }
 
         // วันหมดสัญญา/ระดับเตือน และสถานะล็อกว่าง เป็นข้อมูลภายใน — วันหมดสัญญาส่งให้เฉพาะแอดมิน/staff และเจ้าของล็อก, ล็อกว่างเห็นเฉพาะแอดมิน/staff

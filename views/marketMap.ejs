@@ -14,7 +14,7 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
             rel="stylesheet" />
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
-        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261002-mobile">
+        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261002-nobanner">
         <link rel="stylesheet" href="/stylesheets/common/searchSuggest.css?v=20261002">
     </head>
     <body>
@@ -68,11 +68,6 @@
                 </div>
                 <span id="resultBadge"></span>
             </div>
-
-            <% if (user && user.role === 'SELLER') { %>
-            <!-- ผู้ขาย: รอบจองถัดไป + โซนที่จองได้ (เติมข้อมูลใน marketMap.js) -->
-            <div class="seller-banner" id="sellerBanner" hidden></div>
-            <% } %>
 
             <% if (canSeeVacancy) { %>
             <!-- ชั้นข้อมูล: สลับว่าสีบนผังบอกเรื่องอะไร (เฉพาะแอดมิน/staff) — ปุ่มสร้างใน marketMap.js -->
@@ -369,6 +364,6 @@
         <script type="application/json" id="inspectionLayerJson"><%- JSON.stringify(locals.inspectionLayer || null).replace(/</g, '\\u003c') %></script>
         <script src="/js/common/dialogs.js"></script>
         <script src="/js/common/searchSuggest.js?v=20261002"></script>
-        <script src="/js/marketMap.js?v=20261002-mobile"></script>
+        <script src="/js/marketMap.js?v=20261002-nobanner"></script>
     </body>
 </html>
