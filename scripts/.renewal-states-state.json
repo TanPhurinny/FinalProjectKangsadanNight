@@ -1,0 +1,41 @@
+{
+  "maxReq": 1780003,
+  "originals": [
+    {
+      "stallCode": "F636",
+      "status": "AVAILABLE",
+      "isAvailable": true,
+      "bookingStartDate": null,
+      "bookingEndDate": null
+    },
+    {
+      "stallCode": "F635",
+      "status": "AVAILABLE",
+      "isAvailable": true,
+      "bookingStartDate": null,
+      "bookingEndDate": null
+    },
+    {
+      "stallCode": "F634",
+      "status": "AVAILABLE",
+      "isAvailable": true,
+      "bookingStartDate": null,
+      "bookingEndDate": null
+    },
+    {
+      "stallCode": "F633",
+      "status": "AVAILABLE",
+      "isAvailable": true,
+      "bookingStartDate": null,
+      "bookingEndDate": null
+    },
+    {
+      "stallCode": "F631",
+      "status": "AVAILABLE",
+      "isAvailable": true,
+      "bookingStartDate": null,
+      "bookingEndDate": null
+    }
+  ],
+  "slotsUnavailable": 0
+}
