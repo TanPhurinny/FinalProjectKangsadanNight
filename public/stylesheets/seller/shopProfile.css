@@ -6,6 +6,128 @@
     padding: 28px 32px;
 }
 
+/* ── จัดกลุ่มฟอร์มเป็นหมวดชัดเจน (แนะนำร้าน / รูปภาพร้าน) คั่นด้วยเส้นบนแทนกรอบการ์ดซ้อนการ์ด ── */
+.form-section {
+    padding-top: 22px;
+    margin-top: 22px;
+    border-top: 1px solid var(--line);
+}
+.form-section:first-of-type {
+    padding-top: 0;
+    margin-top: 0;
+    border-top: none;
+}
+.form-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.form-section-title {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--navy);
+}
+.form-section-hint {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+/* ── ช่วยอธิบายใต้ input (แทนที่ text-muted small ที่ไม่สม่ำเสมอ) ── */
+.field-hint {
+    margin: 8px 0 0;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+}
+
+/* ── เมนูเด่น/คำค้นหา: ช่องเดียวพิมพ์แล้วเด้งเป็นป้ายแยก กดกากบาทลบทิ้งได้ ── */
+.tag-input-box {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 8px 10px;
+    background-color: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.tag-input-box:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(44, 147, 168, 0.12);
+}
+.tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 6px 5px 10px;
+    background-color: rgba(44, 147, 168, 0.08);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-sm);
+    color: var(--primary-dark);
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.tag-chip-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--primary-dark);
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+}
+.tag-chip-remove:hover {
+    background-color: var(--primary);
+    color: #fff;
+}
+.tag-input-field {
+    flex: 1 1 160px;
+    min-width: 160px;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: var(--ink);
+    padding: 4px 2px;
+}
+
+@media (max-width: 640px) {
+    .form-section-head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    /* นิ้วแตะพลาดง่ายกว่าเมาส์ ขยายพื้นที่กดปุ่มลบป้ายให้ถึงเกณฑ์ touch target (~32px) */
+    .tag-chip {
+        padding: 7px 6px 7px 12px;
+    }
+    .tag-chip-remove {
+        width: 22px;
+        height: 22px;
+        font-size: 15px;
+    }
+    .tag-input-field {
+        min-width: 100%;
+        padding: 8px 2px;
+    }
+}
+
 /* ── ป้ายระดับร้าน/โซน (อ่านอย่างเดียว กำหนดโดยแอดมิน) ── */
 .shop-status-row {
     display: flex;
@@ -73,16 +195,22 @@
     }
 }
 
-/* ── รูปหน้าปกร้าน: กล่องอัปโหลดเดี่ยว ใหญ่กว่ากล่องอัปโหลดทั่วไป ── */
-.upload-box--cover {
+/* ── รูปหน้าปกร้าน: แบนเนอร์กว้าง เห็นสัดส่วนจริงตอนอัปโหลด ── */
+.upload-box-frame {
+    position: relative;
+    display: block;
     width: 100%;
-    max-width: 220px;
-    height: 140px;
+}
+.upload-box--cover {
+    display: flex;
+    width: 100%;
+    height: 180px;
     overflow: hidden;
     background-color: var(--soft-bg);
     border: 1px dashed var(--line);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     position: relative;
+    cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
 }
 .upload-box--cover:hover {
@@ -94,27 +222,73 @@
     height: 100%;
     object-fit: cover;
 }
-/* กล่องยังไม่มีรูป: แสดงเครื่องหมาย + แทนกล่องว่างเปล่า */
-.upload-box-frame:not(.has-image) .upload-box--cover::before,
-.upload-box-frame:not(.has-image) .upload-box--cover::after {
-    content: '';
+/* กล่องยังไม่มีรูป: ไอคอน + ข้อความบอกชัดว่ากดเพื่ออัปโหลด แทนเครื่องหมาย + ลอยๆ */
+.cover-upload-placeholder {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    background-color: var(--ink-soft);
-    border-radius: 2px;
-    transform: translate(-50%, -50%);
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--ink-soft);
+    pointer-events: none;
 }
-.upload-box-frame:not(.has-image) .upload-box--cover::before { width: 26px; height: 3px; }
-.upload-box-frame:not(.has-image) .upload-box--cover::after { width: 3px; height: 26px; }
-
-.upload-box-frame {
-    position: relative;
-    display: inline-block;
+.cover-upload-placeholder i {
+    font-size: 1.6rem;
+    color: var(--primary);
+}
+.cover-upload-placeholder span {
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+.upload-box-frame.has-image .cover-upload-placeholder {
+    display: none;
 }
 
 @media (max-width: 640px) {
     .upload-box--cover {
-        max-width: 100%;
+        height: 150px;
+    }
+}
+
+/* ── แกลเลอรีรูปสินค้า: ไทล์ใหญ่ขึ้น กล่อง "เพิ่มรูป" มีไอคอน+ข้อความแทนขีด + ลอยๆ ── */
+#productImagesWrapper {
+    gap: 14px;
+}
+#productImagesWrapper .upload-thumb-item {
+    width: 108px;
+    height: 108px;
+    border-radius: var(--radius);
+}
+#productImagesWrapper .upload-add-icon {
+    width: 108px;
+    height: 108px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: var(--radius);
+}
+#productImagesWrapper .upload-add-icon::before,
+#productImagesWrapper .upload-add-icon::after {
+    content: none;
+}
+#productImagesWrapper .upload-add-icon i {
+    font-size: 1.3rem;
+    color: var(--primary);
+}
+#productImagesWrapper .upload-add-icon span {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+@media (max-width: 640px) {
+    #productImagesWrapper .upload-thumb-item,
+    #productImagesWrapper .upload-add-icon {
+        width: 92px;
+        height: 92px;
     }
 }

@@ -442,14 +442,14 @@ exports.getMarketMapPage = async (req, res) => {
             }
         });
 
-        const missingShopInfoNames = [...new Set(
-            approvedRequests.filter((r) => !r.seller?.productType?.name).map((r) => r.sellerName).filter(Boolean)
-        )];
+        // shopTags (คำค้นหาเจาะจง เช่น "ไก่ปิ้งมาเลย์") เก็บอยู่ที่ ShopDetail เท่านั้น ไม่ได้อยู่ใน
+        // Seller model เลย ต้องดึงจาก User+ShopDetail ให้ครบทุกร้าน ไม่ใช่แค่ร้านที่ fallback productType
+        const allSellerNames = [...new Set(approvedRequests.map((r) => r.sellerName).filter(Boolean))];
         const shopInfoByName = {};
-        if (missingShopInfoNames.length) {
+        if (allSellerNames.length) {
             const sellerUsers = await prisma.user.findMany({
-                where: { role: 'SELLER', name: { in: missingShopInfoNames } },
-                select: { name: true, shop: { select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true } } }
+                where: { role: 'SELLER', name: { in: allSellerNames } },
+                select: { name: true, shop: { select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true, shopTags: true } } }
             });
             sellerUsers.forEach((u) => {
                 if (u.shop) shopInfoByName[u.name] = u.shop;
@@ -472,12 +472,14 @@ exports.getMarketMapPage = async (req, res) => {
                 || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
             const productDetail = request.seller?.productDetail || fallbackShop.productDetail || request.description || '-';
             const shopImage = request.productImage || request.seller?.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
+            const tags = fallbackShop.shopTags || '';
 
             stallCodes.forEach((stallCode) => {
                 bookingByStallCode[stallCode] = {
                     shop: request.seller?.shopName || request.productName || '-',
                     product,
                     productDetail,
+                    tags,
                     image: shopImage
                 };
             });

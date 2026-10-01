@@ -249,7 +249,7 @@ function stallMatchesFilter(id, stall) {
     if (currentQuery) {
         const d = BOOKING_BY_STALL[id];
         if (!d) return false;
-        return (d.shop + d.product + d.productDetail).toLowerCase().includes(currentQuery.toLowerCase());
+        return (d.shop + d.product + d.productDetail + (d.tags || '')).toLowerCase().includes(currentQuery.toLowerCase());
     }
     return false;
 }

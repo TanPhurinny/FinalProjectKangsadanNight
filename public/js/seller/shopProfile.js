@@ -34,6 +34,73 @@ function bindImagePreview(inputId, previewId, removeBtnId, removeFlagId, frameId
 
 bindImagePreview('shopCoverImageUpload', 'shopCoverImagePreview', 'shopCoverImageRemoveBtn', 'removeShopCoverImageFlag', 'shopCoverImageFrame');
 
+// ── เมนูเด่น/คำค้นหา: พิมพ์แล้วกด Enter/, เพื่อเด้งเป็นป้ายแยก กดกากบาทที่ป้ายเพื่อลบทิ้ง ──
+// เก็บค่าจริงไว้ใน hidden input (คั่นด้วยจุลภาค) ให้ backend อ่านเหมือนเดิม ไม่ต้องแก้ฝั่ง server
+(function () {
+    const box = document.getElementById('shopTagsBox');
+    const field = document.getElementById('shopTagsField');
+    const hidden = document.getElementById('shopTagsHidden');
+    if (!box || !field || !hidden) return;
+
+    let tags = String(hidden.value || '')
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+
+    function syncHidden() {
+        hidden.value = tags.join(',');
+    }
+
+    function renderTags() {
+        box.querySelectorAll('.tag-chip').forEach((chip) => chip.remove());
+        tags.forEach((tag, index) => {
+            const chip = document.createElement('span');
+            chip.className = 'tag-chip';
+            const label = document.createElement('span');
+            label.textContent = tag;
+            chip.appendChild(label);
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'tag-chip-remove';
+            removeBtn.title = 'ลบป้ายนี้';
+            removeBtn.textContent = '×';
+            removeBtn.addEventListener('click', function () {
+                tags.splice(index, 1);
+                syncHidden();
+                renderTags();
+            });
+            chip.appendChild(removeBtn);
+            box.insertBefore(chip, field);
+        });
+    }
+
+    function addTagFromField() {
+        const value = field.value.trim();
+        if (!value) return;
+        if (!tags.includes(value)) tags.push(value);
+        field.value = '';
+        syncHidden();
+        renderTags();
+    }
+
+    field.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            addTagFromField();
+        } else if (e.key === 'Backspace' && !field.value && tags.length) {
+            tags.pop();
+            syncHidden();
+            renderTags();
+        }
+    });
+    field.addEventListener('blur', addTagFromField);
+    box.addEventListener('click', function (e) {
+        if (e.target === box) field.focus();
+    });
+
+    renderTags();
+})();
+
 // ── แกลเลอรีรูปสินค้า: มีรูปเดิมที่บันทึกไว้แล้ว + เพิ่ม/ลบได้หลายรูปก่อนกดบันทึก ──
 const productImagesUpload = document.getElementById('productImagesUpload');
 const productImagesUploadLabel = document.getElementById('productImagesUploadLabel');
@@ -78,6 +145,7 @@ if (productImagesUpload && productImagesUploadLabel) {
         if (selectedFiles.length < allowedNewCount()) {
             const addBox = document.createElement('div');
             addBox.className = 'upload-add-icon';
+            addBox.innerHTML = '<i class="fa-solid fa-camera"></i><span>เพิ่มรูป</span>';
             productImagesUploadLabel.appendChild(addBox);
         }
     }
