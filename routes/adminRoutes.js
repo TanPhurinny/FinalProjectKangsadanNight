@@ -15,6 +15,7 @@ const scoreReportCtrl = require('../controllers/scoreReportController');
 const { buildQuotationData } = require('../controllers/quotationController');
 const bannerCtrl = require('../controllers/communityBannerController');
 const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
+const bookingHolidayCtrl = require('../controllers/bookingHolidayController');
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
 const storage = createImageStorage({ folder: 'announcements', prefix: 'ann' });
@@ -90,6 +91,11 @@ router.get('/users/delete/:id', isAdminOnly, userCtrl.deleteUser);
 // --- 6.1 คะแนนร้านค้าจากการตรวจตลาด + Blacklist (เฉพาะ Admin) ---
 router.get('/sellers/scores', isAdminOnly, scoreReportCtrl.getSellerScoresPage);
 router.post('/sellers/blacklist', isAdminOnly, scoreReportCtrl.toggleBlacklist);
+
+// --- 6.2 วันหยุดรอบการจอง (เฉพาะ Admin เพราะกระทบราคา/การคิดเงิน) ---
+router.get('/booking-holidays', isAdminOnly, bookingHolidayCtrl.getAdminHolidays);
+router.post('/booking-holidays', isAdminOnly, bookingHolidayCtrl.createHoliday);
+router.post('/booking-holidays/:id/delete', isAdminOnly, bookingHolidayCtrl.deleteHoliday);
 
 // --- 7. Approvals & Requests ---
 router.get('/approvals', approvalCtrl.getApprovalsPage);

@@ -26,6 +26,7 @@ const {
     BOOKING_ROUND_LENGTH_DAYS
 } = require('../utils/bookingRound');
 const { getRenewalOptions, validateRenewal } = require('../utils/stallRenewal');
+const { getBillableDays, getHolidaysInRange } = require('../utils/bookingHolidays');
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
 const { buildQuotationData } = require('../controllers/quotationController');
 const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
@@ -1446,6 +1447,9 @@ router.get("/booking-stall", isAuthenticated, isSellerOrApplicant, async (req, r
         });
     }
 
+    // ดึงวันหยุดที่ทับช่วงรอบปัจจุบัน+รอบถัดไป มาให้ฟอร์มปิดวันที่เลือกไม่ได้ (ดู utils/bookingHolidays.js)
+    const holidaysInView = await getHolidaysInRange(bookingRoundInfo.cycleStart, nextRoundInfo.cycleEnd);
+
     res.render("seller/booking_stall", {
         user: userRecord,
         zone: zoneCode,
@@ -1458,6 +1462,7 @@ router.get("/booking-stall", isAuthenticated, isSellerOrApplicant, async (req, r
         currentPhase,
         nextPhase,
         cornerZoneValue,
+        holidaysInView,
         pricing: {
             lightUnitPrice: LIGHT_UNIT_PRICE,
             smallAppliancePrice: SMALL_APPLIANCE_PRICE,
@@ -1710,6 +1715,13 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
             return rejectBooking('จองล่วงหน้าได้แค่ 1 วันก่อนวันขายเท่านั้น');
         }
 
+        // วันหยุดที่แอดมินประกาศ (ปีใหม่/สงกรานต์ ฯลฯ) จองไม่ได้ ไม่คิดเงิน แต่ไม่กระทบโครงสร้างรอบ
+        // (ดู utils/bookingHolidays.js) — ถ้าทั้งช่วงที่เลือกเป็นวันหยุดหมดเลย (เช่น จองทีละวันตรงวันหยุด) ต้อง reject ทันที
+        const billableDays = await getBillableDays(startDate, endDate);
+        if (billableDays <= 0) {
+            return rejectBooking('ช่วงวันที่เลือกเป็นวันหยุดทั้งหมด ไม่สามารถจองได้ กรุณาเลือกวันอื่น');
+        }
+
         // จำกัดจำนวนล็อคต่อ user (นับรวมทุกโซนในรอบเดียวกัน) กันคนเดียวกวาดหลายล็อคแล้วปล่อยเช่าต่อ
         // เพื่อเปิดที่ให้ร้านใหม่ — FOOD บังคับไม่เกิน 2 เสมอ, FASHION ให้แอดมินใช้ดุลยพินิจ (ไม่บล็อกตรงนี้
         // แต่ปล่อยให้แอดมินเห็น/ตัดสินใจตอนจัดล็อก), ประเภทอื่น (เช่น EVENT_BOOTH) ใช้ cap แบบ FOOD ไว้ก่อน
@@ -1734,12 +1746,14 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
             }
         }
 
-        const rentTotal = zonePrice * stallCount * rentalDays;
-        const applianceTotal = (smallApplianceCount * SMALL_APPLIANCE_PRICE + largeApplianceCount * LARGE_APPLIANCE_PRICE) * stallCount * rentalDays;
-        const lightTotal = LIGHT_UNIT_PRICE * stallCount * rentalDays;
+        // คิดเงินตาม billableDays (วันปฏิทินของช่วงที่เลือก หักวันหยุดที่ประกาศออกแล้ว) ไม่ใช่ rentalDays ดิบ
+        // rentalDays ดิบยังเก็บไว้แสดง/เช็คความต่อเนื่องของการจองเหมือนเดิม — ดูหัวข้อวันหยุดด้านบน
+        const rentTotal = zonePrice * stallCount * billableDays;
+        const applianceTotal = (smallApplianceCount * SMALL_APPLIANCE_PRICE + largeApplianceCount * LARGE_APPLIANCE_PRICE) * stallCount * billableDays;
+        const lightTotal = LIGHT_UNIT_PRICE * stallCount * billableDays;
         // ค่าแผงหัวมุม/แผงพิเศษยังไม่คิดตอนจอง เป็นแค่การแจ้งความสนใจ
         // จะคิดเงินจริงต่อเมื่อแอดมินจัดแผงพิเศษให้ในขั้นตอน "จัดล็อก" เท่านั้น
-        const cornerZoneTotal = cornerZoneValue * stallCount * rentalDays;
+        const cornerZoneTotal = cornerZoneValue * stallCount * billableDays;
         const grandTotal = rentTotal + applianceTotal + lightTotal;
 
         // Slot (ตาราง legacy) เป็นแค่ที่เก็บ placeholder ให้ Booking.slotId ชี้ไปหา ไม่ใช่
@@ -1802,6 +1816,7 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
                         rentalStartDate: startDate,
                         rentalEndDate: endDate,
                         rentalDays,
+                        billableDays,
                         dailyStallPrice: zonePrice,
                         lightEnabled,
                         lightUnitPrice: LIGHT_UNIT_PRICE,
@@ -1934,10 +1949,17 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
 
         const extendStartDate = addDays(currentEndDate, 1);
         const rentalDays = getRentalDays(extendStartDate, newEndDate);
-        const rentTotal = currentBooking.dailyStallPrice * currentBooking.stallCount * rentalDays;
+
+        // วันหยุดที่แอดมินประกาศระหว่างช่วงต่อล็อก ไม่คิดเงิน (ดู utils/bookingHolidays.js เหมือนตอนจองใหม่)
+        const billableDays = await getBillableDays(extendStartDate, newEndDate);
+        if (billableDays <= 0) {
+            return res.redirect('/booking-stall/extend?error=all_days_are_holiday');
+        }
+
+        const rentTotal = currentBooking.dailyStallPrice * currentBooking.stallCount * billableDays;
         const applianceTotal = (currentBooking.smallApplianceCount * currentBooking.smallAppliancePrice
-            + currentBooking.largeApplianceCount * currentBooking.largeAppliancePrice) * currentBooking.stallCount * rentalDays;
-        const lightTotal = currentBooking.lightUnitPrice * currentBooking.stallCount * rentalDays;
+            + currentBooking.largeApplianceCount * currentBooking.largeAppliancePrice) * currentBooking.stallCount * billableDays;
+        const lightTotal = currentBooking.lightUnitPrice * currentBooking.stallCount * billableDays;
         const grandTotal = rentTotal + applianceTotal + lightTotal;
 
         const availableSlots = await prisma.slot.findMany({
@@ -1990,6 +2012,7 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
                         rentalStartDate: extendStartDate,
                         rentalEndDate: newEndDate,
                         rentalDays,
+                        billableDays,
                         dailyStallPrice: currentBooking.dailyStallPrice,
                         lightEnabled: currentBooking.lightEnabled,
                         lightUnitPrice: currentBooking.lightUnitPrice,

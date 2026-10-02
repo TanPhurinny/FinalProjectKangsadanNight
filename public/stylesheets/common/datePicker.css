@@ -1,0 +1,136 @@
+/* ========================================
+   CUSTOM DATE PICKER — gridgeist
+   ปฏิทินกำหนดเองสำหรับ input[type=date] ที่ต้องปิดทีละวัน (วันหยุด) ซึ่งปฏิทินเนทีฟทำไม่ได้
+   ======================================== */
+
+.dp-field-wrap {
+    position: relative;
+}
+
+.dp-input {
+    cursor: pointer;
+    background: #fff;
+}
+
+.dp-popup {
+    position: absolute;
+    z-index: 60;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 272px;
+    background: #fff;
+    border: 1px solid var(--line, #d7e3e6);
+    border-radius: 4px;
+    box-shadow: 0 10px 28px rgba(18, 48, 58, 0.12);
+    padding: 12px;
+    font-family: 'Kanit', sans-serif;
+}
+
+.dp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.dp-nav {
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--line, #d7e3e6);
+    background: #fff;
+    border-radius: 3px;
+    cursor: pointer;
+    color: var(--navy, #12303a);
+    line-height: 1;
+    transition: 0.15s;
+}
+
+.dp-nav:hover {
+    border-color: var(--primary, #2C93A8);
+    color: var(--primary, #2C93A8);
+}
+
+.dp-month-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy, #12303a);
+}
+
+.dp-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 11px;
+    color: var(--ink-soft, #5b7a84);
+    margin-bottom: 4px;
+}
+
+.dp-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.dp-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12.5px;
+    font-family: var(--mono, 'IBM Plex Mono', monospace);
+    border: 1px solid transparent;
+    border-radius: 3px;
+    background: #fff;
+    color: var(--ink, #16333c);
+    cursor: pointer;
+    transition: 0.1s;
+}
+
+.dp-day:hover:not(:disabled) {
+    border-color: var(--primary, #2C93A8);
+}
+
+.dp-day--outside {
+    color: var(--ink-faint, #93a8ae);
+}
+
+.dp-day--today {
+    box-shadow: inset 0 0 0 1px var(--primary, #2C93A8);
+}
+
+.dp-day--selected {
+    background: var(--primary, #2C93A8);
+    border-color: var(--primary, #2C93A8);
+    color: #fff;
+}
+
+.dp-day--disabled {
+    color: #c7d0d2;
+    cursor: not-allowed;
+}
+
+.dp-day--holiday {
+    color: #c0392b;
+    text-decoration: line-through;
+    background: rgba(192, 57, 43, 0.06);
+    cursor: not-allowed;
+}
+
+.dp-legend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--ink-soft, #5b7a84);
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line, #d7e3e6);
+}
+
+.dp-legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    background: rgba(192, 57, 43, 0.5);
+    display: inline-block;
+}

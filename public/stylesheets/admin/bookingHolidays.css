@@ -1,0 +1,276 @@
+/* ========================================
+   BOOKING HOLIDAYS PAGE — gridgeist
+   วันหยุดรอบการจอง: ledger เรียบๆ เน้นตัวเลข/วันที่เป็น mono ขอบบอกโครงสร้าง ไม่ใช้สัญลักษณ์ตกแต่ง
+   ======================================== */
+
+:root {
+    --primary: #2C93A8;
+    --primary-dark: #1f6f80;
+    --border: var(--line, #d7e3e6);
+    --text: var(--navy, #12303a);
+    --sub: var(--ink-soft, #5b7a84);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Kanit', sans-serif;
+    background: #fff;
+    margin: 0;
+}
+
+.holidays-page {
+    min-height: 100vh;
+    background: #fff;
+    color: var(--text);
+}
+
+.page-header {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+}
+
+.btn-back {
+    width: 40px;
+    height: 40px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 18px;
+    background: #fff;
+    border: 1px solid var(--border);
+    transition: 0.2s;
+}
+
+.btn-back:hover {
+    background: #f6f8f8;
+    border-color: var(--primary);
+}
+
+.header-title {
+    flex: 1;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.header-spacer { width: 40px; }
+
+.container {
+    max-width: 1100px;
+    margin: 20px auto 60px;
+    padding: 0 16px;
+}
+
+.page-sub {
+    color: var(--sub);
+    font-size: 13px;
+    margin: 0 0 20px;
+}
+
+.notice {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: 4px;
+    padding: 10px 16px;
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+.notice-success { border-left-color: #27AE60; color: #1E8449; }
+.notice-danger { border-left-color: #c0392b; color: #922B21; }
+
+.summary-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.summary-card {
+    flex: 1;
+    min-width: 160px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    background: #fff;
+    border-left-width: 4px;
+    border-left-color: var(--primary);
+}
+
+.summary-count {
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text);
+}
+
+.summary-label {
+    font-size: 13px;
+    color: var(--sub);
+    margin-top: 4px;
+}
+
+.summary-upcoming { border-left-color: var(--primary); }
+.summary-past { border-left-color: #90a0a6; }
+.summary-past .summary-count { color: #6b7a80; }
+
+.panel {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 28px;
+}
+
+.panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: #f6f8f8;
+}
+
+.panel-body {
+    padding: 20px;
+}
+
+.holiday-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.4fr auto;
+    gap: 14px;
+    align-items: end;
+}
+
+.field-label {
+    display: block;
+    font-size: 12px;
+    color: var(--sub);
+    margin-bottom: 6px;
+}
+
+.field-label span {
+    color: var(--sub);
+    font-weight: 400;
+}
+
+.field-input {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px 12px;
+    font-family: 'Kanit', sans-serif;
+    font-size: 14px;
+    background: #fff;
+}
+
+.field-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(44, 147, 168, 0.12);
+}
+
+.btn-submit {
+    border: 1px solid var(--text);
+    background: var(--text);
+    color: #fff;
+    border-radius: 3px;
+    padding: 10px 20px;
+    font-family: 'Kanit', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.15s;
+    white-space: nowrap;
+}
+
+.btn-submit:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+.table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+.holidays-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 560px;
+}
+
+.holidays-table thead th {
+    text-align: left;
+    padding: 12px 16px;
+    background: #f6f8f8;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    color: var(--sub);
+    white-space: nowrap;
+}
+
+.holidays-table tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+.holidays-table tbody tr:last-child td { border-bottom: none; }
+
+.cell-date {
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.state-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.state-upcoming { background: #e7f3f5; color: var(--primary-dark); }
+.state-past { background: #eef1f2; color: #6b7a80; }
+
+.cell-actions { white-space: nowrap; text-align: right; }
+
+.btn-row-delete {
+    padding: 6px 14px;
+    border-radius: 3px;
+    font-family: 'Kanit', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid #c0392b;
+    background: #fff;
+    color: #c0392b;
+    transition: 0.15s;
+}
+
+.btn-row-delete:hover {
+    background: #c0392b;
+    color: #fff;
+}
+
+.empty-row td {
+    text-align: center;
+    color: var(--sub);
+    padding: 40px 20px;
+}
+
+@media (max-width: 700px) {
+    .summary-cards { flex-direction: column; }
+    .holiday-form { grid-template-columns: 1fr; }
+}
