@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
   <link rel="stylesheet" href="/stylesheets/seller/bookingStall.css">
+  <link rel="stylesheet" href="/stylesheets/common/datePicker.css">
 </head>
 <body>
 <script src="/js/common/tabSession.js"></script>
@@ -156,6 +157,17 @@
           เลือกรอบการจองด้านบนเพื่อดูเงื่อนไขวันที่
         </div>
 
+        <% if (typeof holidaysInView !== 'undefined' && holidaysInView.length) { %>
+        <div class="note-block">
+          <span class="note-block__label">วันหยุด (จองไม่ได้ ไม่คิดเงิน)</span>
+          <ol class="note-block__body">
+            <% holidaysInView.forEach(function(h) { %>
+            <li><%= formatThaiDate(h.date) %> — <%= h.label %></li>
+            <% }) %>
+          </ol>
+        </div>
+        <% } %>
+
         <div class="note-block">
           <span class="note-block__label">หมายเหตุ</span>
           <ol class="note-block__body">
@@ -300,8 +312,12 @@
       maxStallsPerSeller: <%= Number(pricing.maxStallsPerSeller || 2) %>,
       isFashionSeller: <%= pricing.isFashionSeller ? 'true' : 'false' %>
     };
+    // วันหยุดที่แอดมินประกาศ (ทับช่วงรอบปัจจุบัน+รอบถัดไป) — ใช้ปิดวันที่เลือกไม่ได้ + หักออกจากราคา preview
+    // ดู utils/bookingHolidays.js ฝั่งเซิร์ฟเวอร์ (คำนวณจริงอีกทีตอน submit เสมอ)
+    window.BOOKING_HOLIDAYS = <%- JSON.stringify((typeof holidaysInView !== 'undefined' ? holidaysInView : []).map((h) => toDateInputValue(h.date))) %>;
   </script>
   <script src="/js/common/dialogs.js"></script>
+  <script src="/js/common/datePicker.js"></script>
   <script src="/js/seller/bookingStall.js"></script>
 </body>
 </html>

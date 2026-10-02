@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>วันหยุดรอบการจอง — Admin</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+            rel="stylesheet" />
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet" />
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/bookingHolidays.css">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body class="bg-light">
+        <script src="/js/common/tabSession.js"></script>
+        <%- include('../partials/navbar') %>
+
+        <div class="holidays-page">
+            <header class="page-header">
+                <a href="javascript:history.back()" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+                <h2 class="header-title">วันหยุดรอบการจอง</h2>
+                <div class="header-spacer"></div>
+            </header>
+
+            <div class="container">
+                <p class="page-sub">
+                    วันที่เพิ่มไว้นี้จะจองไม่ได้ในฟอร์มจองแผง และไม่ถูกคิดเงินถ้าตกอยู่ในช่วงที่ผู้ขายจองไปแล้ว —
+                    รอบการจองยังนับ 14 วันตามเดิมเสมอ เป็นรายการกลางใช้ร่วมกับทุกรอบ
+                </p>
+
+                <% if (error) { %>
+                <div class="notice notice-danger"><%= error %></div>
+                <% } %>
+                <% if (success) { %>
+                <div class="notice notice-success"><%= success %></div>
+                <% } %>
+
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="summary-count"><%= counts.total %></div>
+                        <div class="summary-label">วันหยุดทั้งหมด</div>
+                    </div>
+                    <div class="summary-card summary-upcoming">
+                        <div class="summary-count"><%= counts.upcoming %></div>
+                        <div class="summary-label">ยังไม่ถึง / วันนี้</div>
+                    </div>
+                    <div class="summary-card summary-past">
+                        <div class="summary-count"><%= counts.past %></div>
+                        <div class="summary-label">ผ่านไปแล้ว</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title">เพิ่มวันหยุด</div>
+                    <div class="panel-body">
+                        <form method="POST" action="/admin/booking-holidays" class="holiday-form">
+                            <div>
+                                <label class="field-label">วันที่เริ่ม</label>
+                                <input type="date" class="field-input" name="dateFrom" required>
+                            </div>
+                            <div>
+                                <label class="field-label">วันที่สิ้นสุด <span>(หยุดวันเดียวเว้นว่างได้)</span></label>
+                                <input type="date" class="field-input" name="dateTo">
+                            </div>
+                            <div>
+                                <label class="field-label">ชื่อวันหยุด</label>
+                                <input type="text" class="field-input" name="label" placeholder="เช่น สงกรานต์" required>
+                            </div>
+                            <button type="submit" class="btn-submit">เพิ่มวันหยุด</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="holidays-table">
+                        <thead>
+                            <tr>
+                                <th>วันที่</th>
+                                <th>ชื่อวันหยุด</th>
+                                <th>สถานะ</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (!holidays.length) { %>
+                            <tr class="empty-row">
+                                <td colspan="4">ยังไม่มีวันหยุดในระบบ</td>
+                            </tr>
+                            <% } %>
+                            <% holidays.forEach(function(holiday) {
+                                const isUpcoming = new Date(holiday.date).getTime() >= todayTime;
+                            %>
+                            <tr>
+                                <td class="cell-date"><%= new Date(holiday.date).toLocaleDateString('th-TH', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) %></td>
+                                <td><%= holiday.label %></td>
+                                <td><span class="state-badge <%= isUpcoming ? 'state-upcoming' : 'state-past' %>"><%= isUpcoming ? 'ยังไม่ถึง' : 'ผ่านไปแล้ว' %></span></td>
+                                <td class="cell-actions">
+                                    <form method="POST" action="/admin/booking-holidays/<%= holiday.id %>/delete" class="js-delete-holiday-form">
+                                        <button type="submit" class="btn-row-delete">ลบ</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <script src="/js/common/dialogs.js"></script>
+        <script>
+            document.querySelectorAll('.js-delete-holiday-form').forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    window.showConfirmDialog({
+                        title: 'ลบวันหยุด',
+                        message: 'ยืนยันการลบวันหยุดนี้ใช่หรือไม่ ลบแล้วผู้ขายจะกลับมาจองวันนี้ได้ตามปกติ',
+                        tone: 'danger',
+                        confirmText: 'ลบวันหยุด',
+                        onConfirm: function () {
+                            form.submit();
+                        }
+                    });
+                });
+            });
+        </script>
+    </body>
+</html>

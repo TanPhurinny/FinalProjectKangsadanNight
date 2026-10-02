@@ -247,6 +247,8 @@ model Booking {
   rentalStartDate DateTime?
   rentalEndDate DateTime?
   rentalDays Int      @default(1)
+  // จำนวนวันที่คิดเงินจริง (rentalDays หักวันหยุดที่แอดมินประกาศในช่วงนี้ออก) — null = จองก่อนมีระบบวันหยุด ให้ fallback ไปใช้ rentalDays
+  billableDays Int?
   dailyStallPrice Float @default(0)
   lightEnabled Boolean @default(false)
   lightUnitPrice Float @default(15)
@@ -271,6 +273,16 @@ model Booking {
   @@index([slotId], map: "Booking_slotId_fkey")
   @@index([userId], map: "Booking_userId_fkey")
   @@index([sellerId], map: "Booking_sellerId_fkey")
+}
+
+// วันหยุดที่แอดมินประกาศ (เช่น ปีใหม่, สงกรานต์) — รายการกลาง ใช้ร่วมกับทุกรอบการจอง
+// วันที่ตกในช่วงนี้จองไม่ได้ และถ้าตกอยู่ในช่วงที่จองไปแล้ว จะไม่ถูกคิดเงิน (ดู utils/bookingHolidays.js)
+model BookingHoliday {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @unique
+  label     String
+  createdBy Int?
+  createdAt DateTime @default(now())
 }
 
 model MaintenanceReport {

@@ -5,9 +5,20 @@ const SMALL_PRICE = Number(PRICING_DATA.smallAppliancePrice || 20);
 const LARGE_PRICE = Number(PRICING_DATA.largeAppliancePrice || 40);
 const MAX_STALLS_PER_SELLER = Number(PRICING_DATA.maxStallsPerSeller || 2);
 const IS_FASHION_SELLER = Boolean(PRICING_DATA.isFashionSeller);
+// วันหยุดที่แอดมินประกาศ (YYYY-MM-DD) — ตรงกับฟอร์แมตของ input type="date" ใช้ทั้งเช็ค validate และ preview ราคา
+const HOLIDAY_SET = new Set(window.BOOKING_HOLIDAYS || []);
 
 const dateStartInput = document.getElementById('dateStart');
 const dateEndInput = document.getElementById('dateEnd');
+
+// ปฏิทินกำหนดเอง (ดู public/js/common/datePicker.js) — ปฏิทินเนทีฟของเบราว์เซอร์ปิดได้แค่ช่วงต่อเนื่อง
+// (min/max) ปิดทีละวันกลางช่วงแบบวันหยุดไม่ได้ จึงต้องสร้างปฏิทินเองเพื่อเบลอวันหยุดให้กดไม่ได้จริง
+const dateStartPicker = window.createDatePicker
+    ? window.createDatePicker(dateStartInput, { disabledDates: HOLIDAY_SET })
+    : null;
+const dateEndPicker = window.createDatePicker
+    ? window.createDatePicker(dateEndInput, { disabledDates: HOLIDAY_SET })
+    : null;
 const stallCountInput = document.getElementById('stallCount');
 const stallCountNote = document.getElementById('stallCountNote');
 const smallApplianceInput = document.getElementById('smallApplianceCount');
@@ -57,6 +68,35 @@ function calculateDays() {
     return Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
 }
 
+function toDateInputValue(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// นับวันหยุดที่ทับช่วง [startVal, endVal] (string "YYYY-MM-DD" ทั้งคู่) — preview ฝั่ง client เท่านั้น
+// ของจริงคำนวณซ้ำฝั่งเซิร์ฟเวอร์เสมอ (ดู getBillableDays ใน utils/bookingHolidays.js)
+function countHolidaysBetween(startVal, endVal) {
+    if (!startVal || !endVal || !HOLIDAY_SET.size) return 0;
+    const cursor = new Date(startVal);
+    const end = new Date(endVal);
+    if (Number.isNaN(cursor.getTime()) || Number.isNaN(end.getTime())) return 0;
+
+    let count = 0;
+    while (cursor.getTime() <= end.getTime()) {
+        if (HOLIDAY_SET.has(toDateInputValue(cursor))) count += 1;
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    return count;
+}
+
+function calculateBillableDays() {
+    const days = calculateDays();
+    const holidayCount = countHolidaysBetween(dateStartInput.value, dateEndInput.value);
+    return Math.max(0, days - holidayCount);
+}
+
 function readCount(input, fallback = 0) {
     const parsed = parseInt(input.value, 10);
     if (!Number.isFinite(parsed)) return fallback;
@@ -69,16 +109,20 @@ function formatBaht(value) {
 
 function recalcSummary() {
     const days = calculateDays();
+    const billableDays = calculateBillableDays();
     const stallCount = Math.max(1, readCount(stallCountInput, 1));
     const smallCount = readCount(smallApplianceInput);
     const largeCount = readCount(largeApplianceInput);
 
-    const rentTotal = PRICE_PER_STALL_PER_DAY * stallCount * days;
-    const lightTotal = LIGHT_UNIT_PRICE * stallCount * days;
-    const applianceTotal = ((smallCount * SMALL_PRICE) + (largeCount * LARGE_PRICE)) * days;
+    const rentTotal = PRICE_PER_STALL_PER_DAY * stallCount * billableDays;
+    const lightTotal = LIGHT_UNIT_PRICE * stallCount * billableDays;
+    const applianceTotal = ((smallCount * SMALL_PRICE) + (largeCount * LARGE_PRICE)) * billableDays;
     const grandTotal = rentTotal + lightTotal + applianceTotal;
 
-    document.getElementById('rentalDaysText').textContent = days + ' วัน';
+    const holidayCount = days - billableDays;
+    document.getElementById('rentalDaysText').textContent = holidayCount > 0
+        ? `${days} วัน (หักวันหยุด ${holidayCount} วัน เหลือจ่าย ${billableDays} วัน)`
+        : days + ' วัน';
     document.getElementById('rentTotalText').textContent = formatBaht(rentTotal);
     document.getElementById('lightTotalText').textContent = formatBaht(lightTotal);
     document.getElementById('applianceTotalText').textContent = formatBaht(applianceTotal);
@@ -128,10 +172,14 @@ function applySelectedRound() {
     // ช่วงที่ 2 (พุธ-จบรอบ): เลือกวันที่เองในกรอบรอบ ขั้นต่ำ 3 วัน หรือจองทีละวัน วันเริ่มล่วงหน้าได้แค่พรุ่งนี้เท่านั้น
     const today = todayDateInputValue();
     const effectiveMin = cycleStart > today ? cycleStart : today;
+    const startMax = (phase === 2 || phase === '2') && maxAdvanceStart ? maxAdvanceStart : cycleEnd;
     dateStartInput.min = effectiveMin;
-    dateStartInput.max = (phase === 2 || phase === '2') && maxAdvanceStart ? maxAdvanceStart : cycleEnd;
+    dateStartInput.max = startMax;
     dateEndInput.min = effectiveMin;
     dateEndInput.max = cycleEnd;
+    // ปฏิทินกำหนดเองอ่าน min/max ของตัวเองแยกจาก attribute ของ input ต้องอัปเดตคู่กันเสมอ
+    if (dateStartPicker) dateStartPicker.setOptions({ min: effectiveMin, max: startMax });
+    if (dateEndPicker) dateEndPicker.setOptions({ min: effectiveMin, max: cycleEnd });
 
     if (phase === 1 || phase === '1') {
         dateStartInput.value = cycleStart;
@@ -231,6 +279,12 @@ bookingForm.addEventListener('submit', (event) => {
             window.showAlertDialog({ title: 'จองได้แค่เต็มรอบ', message: 'ช่วงจันทร์-อังคารก่อนเปิดรอบ จองได้เฉพาะเต็มรอบ 14 วันเท่านั้น (รวมถึงล็อคเต็งด้วย)', tone: 'warning' });
             return;
         }
+    }
+
+    if (calculateBillableDays() <= 0) {
+        event.preventDefault();
+        window.showAlertDialog({ title: 'ช่วงนี้เป็นวันหยุดทั้งหมด', message: 'ช่วงวันที่เลือกเป็นวันหยุดทั้งหมด ไม่สามารถจองได้ กรุณาเลือกวันอื่น', tone: 'warning' });
+        return;
     }
 
     if (diffDays < minDays && !(allowSingleDay && diffDays === 1)) {

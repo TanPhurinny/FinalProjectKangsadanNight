@@ -98,17 +98,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const categoriesHtml = CHECKLIST.map((category) => {
             const itemsHtml = category.items.map((item) => {
+                // ค่าเริ่มต้นตั้งเป็น "ผ่าน" ไว้ก่อนทุกข้อ (ข้อไหนมีปัญหาค่อยติ๊ก "ไม่ผ่าน" เอง) — เร็วกว่าตอนเดินตรวจจริง
+                // ที่ส่วนใหญ่ผ่านหมดอยู่แล้ว ยกเว้นเคยบันทึกผลร้านนี้ไว้แล้วว่าข้อไหนไม่ผ่าน ให้เคารพค่าที่บันทึกไว้
                 const current = itemResults[item.id];
+                const isFail = current === false;
                 return `
                     <div class="cleanliness-item-row" data-item-id="${item.id}">
                         <div class="cleanliness-item-label">${item.id} ${item.label}</div>
                         <div class="cleanliness-item-options">
                             <label class="cleanliness-radio-option">
-                                <input type="radio" name="cleanliness-item-${item.id}" value="pass" ${current === true ? 'checked' : ''}>
+                                <input type="radio" name="cleanliness-item-${item.id}" value="pass" ${!isFail ? 'checked' : ''}>
                                 ผ่าน
                             </label>
                             <label class="cleanliness-radio-option">
-                                <input type="radio" name="cleanliness-item-${item.id}" value="fail" ${current === false ? 'checked' : ''}>
+                                <input type="radio" name="cleanliness-item-${item.id}" value="fail" ${isFail ? 'checked' : ''}>
                                 ไม่ผ่าน
                             </label>
                         </div>
