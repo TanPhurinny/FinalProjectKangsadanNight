@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
-  <link rel="stylesheet" href="/stylesheets/seller/sellerHome.css?v=20261002c">
+  <link rel="stylesheet" href="/stylesheets/seller/sellerHome.css?v=20261002d">
 </head>
 <body>
 <script src="/js/common/tabSession.js"></script>
@@ -100,10 +100,27 @@
         </div>
         <% } %>
 
+        <% if (h.promo) { %>
+        <!-- โปรวันนี้: ลูกค้าเห็นในการ์ดร้านบนผัง หมดอายุเองตอนตี 5 (public/js/seller/sellerHome.js) -->
+        <form class="sh-promo <%= h.promo.text ? 'has-promo' : '' %>" id="promoForm" autocomplete="off">
+          <label for="promoText" class="sh-label">โปรวันนี้ <span>ลูกค้าเห็นในการ์ดร้านบนผัง · หมดอายุเองตอนตี 5</span></label>
+          <div class="sh-promo__row">
+            <input type="text" id="promoText" name="text" maxlength="<%= h.promo.maxLength %>" value="<%= h.promo.text %>"
+              placeholder="เช่น ซื้อ 2 แถม 1 ถึง 3 ทุ่ม">
+            <button type="submit" class="sh-btn">บันทึก</button>
+            <button type="button" class="sh-btn sh-btn--ghost" id="promoClear" <%= h.promo.text ? '' : 'hidden' %>>ลบโปร</button>
+          </div>
+          <p class="sh-promo__meta"><span id="promoCount"><%= h.promo.text.length %></span>/<%= h.promo.maxLength %> <span id="promoStatus"><%= h.promo.text ? '· กำลังแสดงบนผังตลาด' : '' %></span></p>
+        </form>
+        <% } %>
+
         <% if (h.countdown) { %>
         <!-- นับถอยหลังถึง 20:00 ของวันขายสุดท้าย (เลยเวลาแล้วล็อกหมดสิทธิ์) — public/js/seller/sellerHome.js -->
         <div class="sh-countdown" data-cutoff="<%= new Date(h.countdown.cutoffAt).toISOString() %>">
-          <p class="sh-label">สัญญาล็อก <%= h.countdown.code %> · ต่อได้ถึง 20:00 น. <%= h.countdown.endLabel %></p>
+          <div class="sh-countdown__head">
+            <p class="sh-label">สัญญาล็อก <%= h.countdown.code %> · ต่อได้ถึง 20:00 น. <%= h.countdown.endLabel %></p>
+            <a href="/seller/calendar.ics" class="sh-link"><i class="bi bi-calendar-plus"></i> เพิ่มลงปฏิทิน</a>
+          </div>
           <div class="sh-countdown__digits" role="timer" aria-live="off">
             <span><b data-cd="d">--</b><small>วัน</small></span>
             <span><b data-cd="h">--</b><small>ชม.</small></span>
@@ -173,6 +190,51 @@
         </div>
         <span class="sh-cell__sub">ดูเมนู <%= vs.totals.menu %> · แชร์ <%= vs.totals.share %></span>
       </div>
+    </section>
+
+    <% const vi = h.viewInsights; const maxHour = Math.max(1, ...vi.hours); %>
+    <!-- 03b ลูกค้าดูร้านคุณช่วงไหน (รายชั่วโมง) + เทียบค่าเฉลี่ยโซน -->
+    <section class="sh-grid sh-insights">
+      <article class="sh-panel sh-panel--wide" aria-labelledby="hoursTitle">
+        <div class="sh-sechead">
+          <h2 id="hoursTitle">ลูกค้าเปิดดูร้านคุณช่วงไหน</h2>
+          <span class="sh-kicker"><%= vi.windowDays %> วันล่าสุด · <%= vi.total %> ครั้ง</span>
+        </div>
+        <% if (vi.total) { %>
+        <p class="sh-peak">ช่วงที่คนดูมากสุด <b><%= String(vi.peakHour).padStart(2, '0') %>:00–<%= String((vi.peakHour + 1) % 24).padStart(2, '0') %>:00 น.</b> ตั้งร้านให้พร้อมก่อนช่วงนี้</p>
+        <% } %>
+        <div class="sh-hours" role="img" aria-label="จำนวนครั้งที่เปิดดูร้านรายชั่วโมง <%= vi.hours.map((c, hr) => c ? `${hr}:00 ${c} ครั้ง` : '').filter(Boolean).join(', ') || 'ยังไม่มีข้อมูล' %>">
+          <% vi.hours.forEach(function (c, hr) { %>
+          <div class="sh-hours__col<%= hr === vi.peakHour ? ' is-peak' : '' %>" data-tip="<%= String(hr).padStart(2, '0') %>:00 · <%= c %> ครั้ง">
+            <span class="sh-hours__bar" style="height: <%= c ? Math.max(6, Math.round((c / maxHour) * 100)) : 0 %>%"></span>
+            <span class="sh-hours__label"><%= hr % 3 === 0 ? String(hr).padStart(2, '0') : '' %></span>
+          </div>
+          <% }); %>
+        </div>
+        <% if (!vi.total) { %>
+        <p class="sh-empty">ยังไม่มีคนเปิดดูร้านใน <%= vi.windowDays %> วันนี้ พิมพ์ป้าย QR ติดหน้าร้านหรือแชร์ลิงก์ร้าน ลูกค้าจะเจอร้านง่ายขึ้น</p>
+        <% } %>
+      </article>
+
+      <aside class="sh-panel" aria-labelledby="zoneCompareTitle">
+        <div class="sh-sechead">
+          <h2 id="zoneCompareTitle">เทียบกับร้านในโซน</h2>
+          <span class="sh-kicker">7 วัน</span>
+        </div>
+        <% if (vi.zone && vi.zone.diffPct !== null) { const z = vi.zone; const top = Math.max(z.myCount, z.avg, 1); %>
+        <p class="sh-compare__headline <%= z.diffPct >= 0 ? 'is-up' : 'is-down' %>">
+          <b><%= z.diffPct >= 0 ? '+' : '' %><%= z.diffPct %>%</b>
+          <span><%= z.diffPct >= 0 ? 'คนดูร้านคุณมากกว่าค่าเฉลี่ย' : 'คนดูร้านคุณน้อยกว่าค่าเฉลี่ย' %>โซน <%= z.zones.join(', ') %></span>
+        </p>
+        <div class="sh-compare">
+          <div><span>ร้านคุณ</span><i style="width: <%= Math.round((z.myCount / top) * 100) %>%" class="is-mine"></i><b><%= z.myCount %></b></div>
+          <div><span>เฉลี่ยโซน</span><i style="width: <%= Math.round((z.avg / top) * 100) %>%"></i><b><%= z.avg %></b></div>
+        </div>
+        <p class="sh-cell__sub">เทียบจาก <%= z.shopCount %> ร้านในโซนเดียวกัน ไม่แสดงตัวเลขของร้านอื่นรายร้าน</p>
+        <% } else { %>
+        <p class="sh-empty">ยังไม่มีข้อมูลพอให้เทียบ<%= vi.zone ? ` (โซน ${vi.zone.zones.join(', ')})` : '' %></p>
+        <% } %>
+      </aside>
     </section>
 
     <!-- 04 ล็อกของฉัน + ลูกค้าเห็นร้านคุณแบบนี้ -->
@@ -287,7 +349,10 @@
           </li>
           <% }); %>
         </ol>
-        <a href="/select-zone" class="sh-link">ดูรายละเอียดและจองแผง <i class="bi bi-arrow-right"></i></a>
+        <div class="sh-round__links">
+          <a href="/select-zone" class="sh-link">ดูรายละเอียดและจองแผง <i class="bi bi-arrow-right"></i></a>
+          <a href="/seller/calendar.ics" class="sh-link"><i class="bi bi-calendar-plus"></i> เพิ่มลงปฏิทิน</a>
+        </div>
 
         <% if (h.announcement) { %>
         <div class="sh-ann">
@@ -317,6 +382,6 @@
 
   <script src="/js/common/dialogs.js"></script>
   <script src="/js/seller/openStatus.js?v=20261002-home"></script>
-  <script src="/js/seller/sellerHome.js?v=20261002"></script>
+  <script src="/js/seller/sellerHome.js?v=20261002d"></script>
 </body>
 </html>

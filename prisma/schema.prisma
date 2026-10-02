@@ -749,3 +749,17 @@ model ShopOpenStatus {
   @@unique([userId, businessDate])
   @@index([businessDate])
 }
+
+// โปรวันนี้ของร้าน (ข้อความสั้น) ต่อ 1 วันขาย — ตัดวันตอนตี 5 เหมือน ShopOpenStatus แถวของวันก่อนไม่แสดงแล้ว
+// ผู้ขายตั้ง/ลบที่หน้าหลักผู้ขาย ลูกค้าเห็นในการ์ดร้านบนผังตลาด (ดู utils/shopPromo.js)
+model ShopPromo {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  businessDate DateTime
+  text         String   @db.VarChar(120)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, businessDate])
+  @@index([businessDate])
+}

@@ -67,7 +67,7 @@ if (new URLSearchParams(window.location.search).get('demo') === '1') {
                 if (n % 3 !== 0) return;
                 const [product, shop, productDetail] = DEMO_SHOPS[(n / 3) % DEMO_SHOPS.length | 0];
                 stall.status = 'BOOKED';
-                BOOKING_BY_STALL[stall.code] = { shop, product, productDetail, tags: productDetail.split(' ').join(','), image: null, closedAt: n % 7 === 0 ? new Date(Date.now() - n * 60000).toISOString() : null };
+                BOOKING_BY_STALL[stall.code] = { shop, product, productDetail, tags: productDetail.split(' ').join(','), image: null, closedAt: n % 7 === 0 ? new Date(Date.now() - n * 60000).toISOString() : null, promo: n % 5 === 0 ? 'ซื้อ 2 แถม 1 ถึง 3 ทุ่ม' : null };
             });
         });
     });
@@ -625,7 +625,7 @@ let currentLayer = LAYER_KEYS.includes(layerParam)
 
 // ตัวกรองที่ทำให้ล็อกอื่นจางลง (ให้เห็นเฉพาะที่ตรง) — ตัวกรองหมวดสินค้าใช้เงื่อนไขแยกอยู่แล้ว
 function isDimmingFilter(status) {
-    return isLayerFilter(status) || ['HAS_MENU', 'NEW', 'FAV', 'RECENT', 'OPEN'].includes(status);
+    return isLayerFilter(status) || ['HAS_MENU', 'NEW', 'FAV', 'RECENT', 'OPEN', 'PROMO'].includes(status);
 }
 
 // ==========================================
@@ -662,6 +662,11 @@ function formatClock(value) {
     return new Date(value).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
 }
 
+function hasPromo(code) {
+    const d = BOOKING_BY_STALL[code];
+    return !!(d && d.promo && !d.closedAt);
+}
+
 function hasMenu(code) {
     const d = BOOKING_BY_STALL[code];
     return !!(d && (d.menuImages || []).length);
@@ -675,7 +680,8 @@ function updateQuickTagCounts() {
         NEW: booked.filter((s) => BOOKING_BY_STALL[s.code] && BOOKING_BY_STALL[s.code].isNew).length,
         FAV: booked.filter((s) => isFavorite(s.code)).length,
         RECENT: booked.filter((s) => isRecent(s.code)).length,
-        OPEN: booked.filter((s) => !isClosedToday(s.code)).length
+        OPEN: booked.filter((s) => !isClosedToday(s.code)).length,
+        PROMO: booked.filter((s) => hasPromo(s.code)).length
     };
     Object.keys(counts).forEach((key) => {
         const el = document.querySelector(`[data-qcount="${key}"]`);
@@ -688,6 +694,8 @@ function paintStallLayer(cell, code) {
     // เครื่องหมายเล็กบนล็อก: ดาว = ร้านโปรด (มุมซ้ายบน), สมุด = มีรูปเมนู (มุมขวาล่าง)
     if (isFavorite(code)) cell.insertAdjacentHTML('beforeend', '<i class="cell-mark cell-mark-fav fa-solid fa-star" aria-hidden="true"></i>');
     if (hasMenu(code)) cell.insertAdjacentHTML('beforeend', '<i class="cell-mark cell-mark-menu fa-solid fa-book-open" aria-hidden="true"></i>');
+    // โปรวันนี้: ป้าย "โปร" มุมขวาบน (ไม่แสดงในชั้นผลตรวจ ซึ่งใช้มุมนี้บอกว่ามีปัญหา)
+    if (hasPromo(code) && currentLayer !== 'inspection') cell.insertAdjacentHTML('beforeend', '<span class="cell-mark cell-mark-promo" aria-hidden="true">โปร</span>');
     // ร้านที่แจ้งปิดวันนี้: จางลง + ป้าย "ปิด" มุมซ้ายล่าง
     if (isClosedToday(code)) {
         cell.classList.add('shop-closed');
@@ -1127,6 +1135,7 @@ function stallMatchesFilter(id, stall) {
         if (currentStatusFilter === 'FAV') return stall.status === 'BOOKED' && isFavorite(id);
         if (currentStatusFilter === 'RECENT') return stall.status === 'BOOKED' && isRecent(id);
         if (currentStatusFilter === 'OPEN') return stall.status === 'BOOKED' && !isClosedToday(id);
+        if (currentStatusFilter === 'PROMO') return stall.status === 'BOOKED' && hasPromo(id);
         if (currentStatusFilter === 'INSP_CLOSED') return stall.status === 'BOOKED' && isClosedToday(id);
         if (currentStatusFilter === 'REP_ANY') return !!repairStatusOf(id);
         if (currentStatusFilter === 'EMPTY') {
@@ -1775,6 +1784,7 @@ function showVacantInfo(id, zone) {
     document.getElementById('icMenuBtn').classList.add('d-none');
     document.getElementById('icNewBadge').classList.add('d-none');
     document.getElementById('icOpenBadge').classList.add('d-none');
+    document.getElementById('icPromo').classList.add('d-none');
     document.getElementById('icTools').classList.add('d-none');
     document.getElementById('icQuickInspect').innerHTML = '';
     ['icPost', 'icNeighbors', 'icFacilities'].forEach((elId) => document.getElementById(elId).classList.add('d-none'));
@@ -1796,6 +1806,9 @@ function showInfo(id) {
     const closedBadge = document.getElementById('icOpenBadge');
     closedBadge.classList.toggle('d-none', !d.closedAt);
     if (d.closedAt) closedBadge.textContent = `ปิดร้านแล้ววันนี้ · ปิดเมื่อ ${formatClock(d.closedAt)} น.`;
+    const promoEl = document.getElementById('icPromo');
+    promoEl.classList.toggle('d-none', !hasPromo(id));
+    if (hasPromo(id)) promoEl.querySelector('span').textContent = d.promo;
     renderCardTools(id);
     renderCardExtras(id, d);
     rememberRecent(id);
@@ -1984,6 +1997,7 @@ const STATUS_LABELS = {
     FAV: 'ร้านโปรดของคุณ',
     RECENT: 'ร้านที่ดูล่าสุด',
     OPEN: 'ร้านที่เปิดอยู่ตอนนี้',
+    PROMO: 'ร้านที่มีโปรวันนี้',
     INSP_CLOSED: 'ร้านที่แจ้งปิดร้านวันนี้',
     REP_ANY: 'ล็อกที่มีงานซ่อมค้าง'
 };

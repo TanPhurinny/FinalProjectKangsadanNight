@@ -60,4 +60,42 @@ async function getShopViewStats(shopUserId, days = 7) {
     return { days, totals, daily };
 }
 
-module.exports = { getStallOwnerIndex, recordShopView, getShopViewStats, VIEW_KINDS };
+// ช่วงเวลาที่ลูกค้าเปิดดูร้าน (รายชั่วโมง ย้อนหลัง HOUR_WINDOW_DAYS วัน) + เทียบกับค่าเฉลี่ยของร้านในโซนเดียวกัน (7 วัน)
+// เทียบโซนบอกแค่ค่าเฉลี่ย ไม่เปิดเผยตัวเลขของร้านอื่นรายร้าน
+const HOUR_WINDOW_DAYS = 14;
+async function getShopViewInsights(shopUserId, zoneCodes, now = new Date()) {
+    const hourSince = addDays(toStartOfDay(now), -(HOUR_WINDOW_DAYS - 1));
+    const mine = await prisma.shopViewEvent.findMany({
+        where: { shopUserId, kind: 'card', createdAt: { gte: hourSince } },
+        select: { createdAt: true }
+    });
+    const hours = Array(24).fill(0);
+    mine.forEach((event) => { hours[new Date(event.createdAt).getHours()] += 1; });
+    const peakCount = Math.max(...hours);
+    const peakHour = peakCount > 0 ? hours.indexOf(peakCount) : null;
+
+    let zone = null;
+    const zones = [...new Set((zoneCodes || []).map((z) => String(z).toUpperCase()).filter(Boolean))];
+    if (zones.length) {
+        const weekSince = addDays(toStartOfDay(now), -6);
+        const events = await prisma.shopViewEvent.findMany({
+            where: { kind: 'card', createdAt: { gte: weekSince }, OR: zones.map((z) => ({ stallCode: { startsWith: z } })) },
+            select: { shopUserId: true }
+        });
+        const shops = new Set(events.map((e) => e.shopUserId));
+        shops.add(shopUserId);
+        const myCount = events.filter((e) => e.shopUserId === shopUserId).length;
+        const avg = events.length / shops.size;
+        zone = {
+            zones,
+            myCount,
+            avg: Math.round(avg * 10) / 10,
+            shopCount: shops.size,
+            diffPct: avg > 0 ? Math.round(((myCount - avg) / avg) * 100) : null
+        };
+    }
+
+    return { windowDays: HOUR_WINDOW_DAYS, hours, peakHour, peakCount, total: mine.length, zone };
+}
+
+module.exports = { getStallOwnerIndex, recordShopView, getShopViewStats, getShopViewInsights, VIEW_KINDS };

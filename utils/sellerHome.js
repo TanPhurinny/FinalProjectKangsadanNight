@@ -3,7 +3,8 @@ const { buildMyStallHealth } = require('../controllers/marketController');
 const { getRenewalPhase, getRenewalOptions } = require('./stallRenewal');
 const { getPaymentDeadlineFromLockAssignedAt, getRoundTimeline, toStartOfDay } = require('./bookingRound');
 const { getOpenStatus } = require('./shopOpenStatus');
-const { getShopViewStats } = require('./shopViews');
+const { getShopViewStats, getShopViewInsights } = require('./shopViews');
+const { getPromo, PROMO_MAX_LENGTH } = require('./shopPromo');
 const { buildProfileChecks } = require('./shopCompleteness');
 const { getAnnouncementsForUser } = require('../controllers/announcementController');
 
@@ -115,6 +116,11 @@ async function buildSellerHome(userId, now = new Date()) {
     const countdownStall = stalls.find((s) => s.cutoffAt && (s.phase === 'active' || s.phase === 'grace') && s.requestStatus === 'SUCCESS');
 
     const profile = buildProfileChecks(shop);
+    const currentZones = stalls.filter((s) => s.isCurrent).map((s) => s.zone);
+    const [viewInsights, promo] = await Promise.all([
+        getShopViewInsights(userId, currentZones.length ? currentZones : stalls.map((s) => s.zone), now),
+        getPromo(userId, now)
+    ]);
 
     // ---------- สิ่งที่ต้องทำ เรียงจากด่วนสุด ----------
     const todo = [];
@@ -225,6 +231,9 @@ async function buildSellerHome(userId, now = new Date()) {
             pendingCount: requests.filter((r) => ['PENDING', 'APPROVED', 'IN_PROGRESS'].includes(r.status)).length
         },
         viewStats,
+        viewInsights,
+        // โปรวันนี้ตั้งได้เฉพาะร้านที่มีล็อกใช้งาน (ลูกค้าเห็นบนผัง)
+        promo: stalls.some((st) => st.isCurrent) ? { text: promo ? promo.text : '', maxLength: PROMO_MAX_LENGTH } : null,
         profile,
         roundTimeline: getRoundTimeline(now),
         announcement: announcement ? { ...announcement, when: fmtDate(announcement.createdAt) } : null,

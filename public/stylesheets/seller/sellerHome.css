@@ -357,3 +357,63 @@ body { background: var(--sh-bg); font-family: 'Kanit', sans-serif; color: var(--
     .sh-nextround__row { grid-template-columns: 1fr 1fr; }
     .sh-nextround__row > div:first-child { grid-column: 1 / -1; border-right: 0; border-bottom: 1px solid var(--sh-line); }
 }
+
+/* ---------- โปรวันนี้ ---------- */
+.sh-promo { border-top: 1px solid var(--sh-line); padding-top: 12px; }
+.sh-promo .sh-label span { text-transform: none; letter-spacing: 0; margin-left: 6px; }
+.sh-promo__row { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-top: 8px; }
+.sh-promo__row input {
+    grid-column: 1 / -1;
+    min-height: 46px;
+    padding: 8px 12px;
+    border: 1px solid var(--sh-ink);
+    font-family: inherit;
+    font-size: 16px;
+}
+.sh-promo__row input:focus { outline: 3px solid rgba(230, 126, 34, .35); outline-offset: 0; border-color: var(--sh-accent-ink); }
+.sh-promo.has-promo .sh-promo__row input { background: #fff8ee; border-left: 5px solid var(--sh-accent); }
+.sh-promo__row .sh-btn[hidden] { display: none; }
+.sh-promo__meta { margin: 4px 0 0; font-family: var(--sh-mono); font-size: 11px; color: var(--sh-soft); }
+.sh-promo__meta #promoStatus { font-family: 'Kanit', sans-serif; color: var(--sh-accent-ink); font-weight: 600; }
+.sh-countdown__head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.sh-round__links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; }
+
+/* ---------- ลูกค้าดูร้านช่วงไหน (24 ชม.) ---------- */
+.sh-peak { margin: 0 0 10px; font-size: 14px; }
+.sh-peak b { color: var(--sh-accent-ink); }
+.sh-hours { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; height: 120px; align-items: end; border-bottom: 1px solid var(--sh-ink); }
+.sh-hours__col { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+.sh-hours__bar { display: block; background: #f0b27a; border-radius: 3px 3px 0 0; }
+.sh-hours__col.is-peak .sh-hours__bar { background: var(--sh-accent-ink); }
+.sh-hours__label { position: absolute; top: calc(100% + 4px); left: 0; font-family: var(--sh-mono); font-size: 10px; color: var(--sh-soft); }
+.sh-hours { margin-bottom: 20px; }
+.sh-hours__col:hover .sh-hours__bar { filter: brightness(.85); }
+.sh-hours__col:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2px 6px;
+    background: var(--sh-ink);
+    color: #fff;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 2;
+}
+
+/* ---------- เทียบกับร้านในโซน ---------- */
+.sh-compare__headline { margin: 0 0 10px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.sh-compare__headline b { font-family: var(--sh-mono); font-size: 30px; line-height: 1; }
+.sh-compare__headline.is-up b { color: var(--sh-good); }
+.sh-compare__headline.is-down b { color: var(--sh-bad); }
+.sh-compare__headline span { font-size: 13px; color: var(--sh-soft); }
+.sh-compare { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.sh-compare > div { display: grid; grid-template-columns: 64px 1fr 40px; align-items: center; gap: 8px; font-size: 12px; }
+.sh-compare i { display: block; height: 12px; background: #c9d3d6; border-radius: 0 3px 3px 0; min-width: 2px; }
+.sh-compare i.is-mine { background: var(--sh-accent); }
+.sh-compare b { font-family: var(--sh-mono); text-align: right; }
+
+@media (max-width: 480px) {
+    .sh-hours { height: 96px; }
+}

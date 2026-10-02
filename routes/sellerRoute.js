@@ -10,8 +10,10 @@ const { shopViewLimiter } = require('../middlewares/authRateLimit');
 const { isStaffOrAdmin } = require('../middlewares/auth');
 const { getShopViewStats } = require('../utils/shopViews');
 const { setOpenStatus } = require('../utils/shopOpenStatus');
+const { setPromo } = require('../utils/shopPromo');
 const { buildProfileChecks } = require('../utils/shopCompleteness');
 const { buildSellerHome } = require('../utils/sellerHome');
+const { buildSellerCalendar } = require('../utils/sellerCalendar');
 const { repairReportSchema, bookingStallInputSchema, sellerApplicationSchema, shopProfileSchema, THAI_BANK_NAMES } = require('../utils/validationSchemas');
 const { PRODUCT_SUBTYPE_GROUPS } = require('../utils/productSubtypes');
 const { buildPromptPayQrDataUrl, PROMPTPAY_ID } = require('../utils/promptpayQr');
@@ -717,6 +719,21 @@ const isSellerOrApplicant = async (req, res, next) => {
     return res.redirect('/shop-application?error=not_applied');
 };
 
+// ไฟล์ปฏิทิน .ics ของผู้ขาย (เส้นตายต่อล็อก + วันสำคัญรอบจองถัดไป) — ปุ่ม "เพิ่มลงปฏิทิน" ในหน้าหลักผู้ขาย
+router.get('/seller/calendar.ics', isSellerOnly, async (req, res) => {
+    try {
+        const home = await buildSellerHome(req.user.id);
+        const baseUrl = (process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+        const { text } = buildSellerCalendar(home, baseUrl);
+        res.set('Content-Type', 'text/calendar; charset=utf-8');
+        res.set('Content-Disposition', 'attachment; filename="kangsadan-night.ics"');
+        return res.send(text);
+    } catch (error) {
+        console.error('Seller calendar error:', error);
+        return res.status(500).send('สร้างไฟล์ปฏิทินไม่สำเร็จ');
+    }
+});
+
 router.get('/seller', isSellerOnly, async (req, res) => {
     // ข้อมูลหน้าแรกผู้ขายรวมอยู่ที่ utils/sellerHome.js (สถานะร้านคืนนี้, สิ่งที่ต้องทำ, ล็อกของฉัน, ตัวเลขสรุป, ความเคลื่อนไหว)
     const home = await buildSellerHome(req.user.id);
@@ -938,7 +955,18 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
 // ข้อมูลภายใน (ล็อกว่าง/วันหมดสัญญา/ผลตรวจ/ราคา) server ตัดออกตาม role อยู่แล้ว ดู getMarketMapPage
 router.get('/market-map', getMarketMapPage);
 
-// เช็คอิน "ร้านเปิดแล้ว" / "ปิดร้าน" (ผู้ขาย) — เรียกจากหน้าแรกผู้ขายและการ์ดล็อกตัวเองบนผัง
+// โปรวันนี้ (ผู้ขาย) — ข้อความว่าง = ลบโปร / หมดอายุเองวันขายถัดไป
+router.post('/shop-promo', isSellerOnly, async (req, res) => {
+    try {
+        const promo = await setPromo(req.user.id, req.body?.text);
+        return res.json({ success: true, text: promo ? promo.text : null });
+    } catch (error) {
+        console.error('Shop promo error:', error);
+        return res.status(500).json({ success: false, message: 'บันทึกโปรไม่สำเร็จ กรุณาลองใหม่' });
+    }
+});
+
+// "ปิดร้านวันนี้" / ยกเลิกการปิด (ผู้ขาย) — เรียกจากหน้าแรกผู้ขายและการ์ดล็อกตัวเองบนผัง
 router.post('/shop-status', isSellerOnly, async (req, res) => {
     try {
         const open = req.body?.open === true || req.body?.open === 'true';

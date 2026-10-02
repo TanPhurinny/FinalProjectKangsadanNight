@@ -2201,3 +2201,35 @@ body.bulk-on .zoom-ctl, body.walk-on .zoom-ctl { bottom: 14px; }
 }
 .ich-open-btn:hover { background: #962d22; }
 .ich-open.is-closed .ich-open-btn { background: var(--text); color: #fff; }
+
+/* ========================================
+   โปรวันนี้
+   ======================================== */
+.stall-cell .cell-mark-promo {
+    top: 1px;
+    right: 1px;
+    padding: 0 3px;
+    font-size: 8px;
+    font-weight: 700;
+    line-height: 1.4;
+    background: #e67e22;
+    color: #fff;
+    border: 1px solid #000;
+}
+.stall-cell-small .cell-mark-promo { font-size: 6px; }
+.qtag-promo { color: #a84800; }
+.qtag-promo.active { background: #e67e22; border-color: #a84800; color: #fff; }
+.ic-promo {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: -2px 0 10px;
+    padding: 8px 12px;
+    border: 1px solid #a84800;
+    border-left: 5px solid #e67e22;
+    background: #fff8ee;
+    font-size: 14px;
+    color: var(--text);
+}
+.ic-promo b { flex-shrink: 0; font-size: 11px; padding: 1px 6px; background: #e67e22; color: #fff; }
+.ic-promo.d-none { display: none; }

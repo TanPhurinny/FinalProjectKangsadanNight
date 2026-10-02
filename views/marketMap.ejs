@@ -14,7 +14,7 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
             rel="stylesheet" />
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
-        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261002-red">
+        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261002-promo">
         <link rel="stylesheet" href="/stylesheets/common/searchSuggest.css?v=20261002">
     </head>
     <body>
@@ -91,6 +91,8 @@
                         class="fa-solid fa-store fa-xs"></i> มีร้านค้าแล้ว</button>
                 <button class="qtag qtag-open" onclick="quickStatusFilter(this,'OPEN')" title="ซ่อนร้านที่แจ้งปิดร้านวันนี้"><span
                         class="open-dot" aria-hidden="true"></span> เปิดอยู่ตอนนี้ <small data-qcount="OPEN"></small></button>
+                <button class="qtag qtag-promo" onclick="quickStatusFilter(this,'PROMO')"><i
+                        class="fa-solid fa-tag fa-xs"></i> มีโปรวันนี้ <small data-qcount="PROMO"></small></button>
                 <button class="qtag qtag-menu" onclick="quickStatusFilter(this,'HAS_MENU')"><i
                         class="fa-solid fa-book-open fa-xs"></i> มีรูปเมนู <small data-qcount="HAS_MENU"></small></button>
                 <button class="qtag qtag-new" onclick="quickStatusFilter(this,'NEW')"><i
@@ -262,6 +264,7 @@
                             class="fa-solid fa-store fa-xs"></i><span
                             id="ic-head"></span><span class="ic-new-badge d-none" id="icNewBadge">ร้านใหม่</span></div>
                     <div class="ic-open-badge d-none" id="icOpenBadge"></div>
+                    <div class="ic-promo d-none" id="icPromo"><b>โปรวันนี้</b><span></span></div>
                     <div class="ic-tools d-none" id="icTools">
                         <button type="button" class="ic-tool" id="icFavBtn" aria-pressed="false"></button>
                         <button type="button" class="ic-tool" id="icShareBtn"><i class="fa-solid fa-share-nodes"></i> แชร์ร้าน</button>
@@ -390,7 +393,7 @@
         <script type="application/json" id="inspectionLayerJson"><%- JSON.stringify(locals.inspectionLayer || null).replace(/</g, '\\u003c') %></script>
         <script src="/js/common/dialogs.js"></script>
         <script src="/js/common/searchSuggest.js?v=20261002"></script>
-        <script src="/js/marketMap.js?v=20261002-closeonly"></script>
+        <script src="/js/marketMap.js?v=20261002-promo"></script>
         <script src="/js/marketNav.js?v=20261002"></script>
     </body>
 </html>

@@ -60,6 +60,49 @@
         });
     });
 
+    // ---------- โปรวันนี้ ----------
+    const promoForm = document.getElementById('promoForm');
+    if (promoForm) {
+        const input = document.getElementById('promoText');
+        const clearBtn = document.getElementById('promoClear');
+        const count = document.getElementById('promoCount');
+        const status = document.getElementById('promoStatus');
+        const saveBtn = promoForm.querySelector('button[type="submit"]');
+        input.addEventListener('input', () => { count.textContent = input.value.length; });
+
+        async function savePromo(text) {
+            saveBtn.disabled = true;
+            clearBtn.disabled = true;
+            try {
+                const response = await fetch('/shop-promo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const payload = await response.json();
+                if (!response.ok || !payload.success) throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
+                const has = !!payload.text;
+                input.value = payload.text || '';
+                count.textContent = input.value.length;
+                promoForm.classList.toggle('has-promo', has);
+                clearBtn.hidden = !has;
+                status.textContent = has ? '· กำลังแสดงบนผังตลาด' : '';
+                toast(has ? 'บันทึกโปรแล้ว ลูกค้าเห็นบนผังตลาดทันที' : 'ลบโปรวันนี้แล้ว');
+            } catch (error) {
+                if (window.showAlertDialog) window.showAlertDialog({ title: 'บันทึกไม่สำเร็จ', message: error.message, tone: 'danger' });
+            } finally {
+                saveBtn.disabled = false;
+                clearBtn.disabled = false;
+            }
+        }
+
+        promoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            savePromo(input.value);
+        });
+        clearBtn.addEventListener('click', () => savePromo(''));
+    }
+
     // ---------- QR ร้าน ----------
     const dialog = document.getElementById('qrDialog');
     if (dialog) {

@@ -5,6 +5,7 @@ const zoneAccess = require('../utils/zoneAccess');
 const { getRenewalPhase, getRenewalOptions } = require('../utils/stallRenewal');
 const { buildTodayInspectionLayer } = require('../utils/inspectionToday');
 const { getClosedShopsToday, getOpenStatus } = require('../utils/shopOpenStatus');
+const { getPromosToday } = require('../utils/shopPromo');
 
 const ZONE_CATEGORY_META = {
     FASHION: { icon: 'fa-shirt', description: 'โซนแฟชั่น' },
@@ -544,7 +545,12 @@ exports.getMarketMapPage = async (req, res) => {
         }
 
         // ร้านที่ผู้ขายกด "ปิดร้านวันนี้" (ทุกร้านเปิดเป็นค่าเริ่มต้น) — ลูกค้าเห็นร้านนั้นจางลงพร้อมป้ายปิด
-        const closedAtByUserId = await getClosedShopsToday(Object.values(shopInfoByName).map((shop) => shop.userId));
+        const shopUserIdList = Object.values(shopInfoByName).map((shop) => shop.userId);
+        const [closedAtByUserId, promoByUserId] = await Promise.all([
+            getClosedShopsToday(shopUserIdList),
+            // โปรวันนี้ที่ผู้ขายตั้งจากหน้าหลักผู้ขาย
+            getPromosToday(shopUserIdList)
+        ]);
 
         // โพสต์คอมมูนิตี้ล่าสุดของแต่ละร้าน โชว์ในการ์ดร้าน (ตัดข้อความสั้นๆ พอให้รู้ว่าร้านมีอะไรใหม่)
         const shopUserIds = Object.values(shopInfoByName).map((shop) => shop.userId);
@@ -610,6 +616,7 @@ exports.getMarketMapPage = async (req, res) => {
                     isNew: newShopNames.has(request.sellerName),
                     subtype: fallbackShop.productSubtype || '',
                     closedAt: closedAtByUserId.get(fallbackShop.userId) || null,
+                    promo: promoByUserId.get(fallbackShop.userId) || null,
                     post: latestPostByUserId.get(fallbackShop.userId) || null
                 };
             });
