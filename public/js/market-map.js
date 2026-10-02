@@ -84,7 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
       size: fromServer.size || fallback.size,
       price: `ราคา ${dailyPrice.toLocaleString('th-TH')} บาท /วัน`,
       description: fromServer.description || fallback.description,
-      hasAvailableStalls: typeof fromServer.hasAvailableStalls === 'boolean' ? fromServer.hasAvailableStalls : null
+      hasAvailableStalls: typeof fromServer.hasAvailableStalls === 'boolean' ? fromServer.hasAvailableStalls : null,
+      availableCount: typeof fromServer.availableCount === 'number' ? fromServer.availableCount : null
     };
   }
 
@@ -101,13 +102,16 @@ document.addEventListener('DOMContentLoaded', () => {
     modalSize.textContent = details.size;
     modalPrice.textContent = details.price;
     if (modalAvailability) {
-      // บอกแค่ "ว่าง/เต็ม" ไม่บอกจำนวนล็อกที่เหลือ
       if (details.hasAvailableStalls === null) {
         modalAvailability.textContent = '';
         modalAvailability.className = 'stall-modal__availability';
+      } else if (details.hasAvailableStalls) {
+        const countText = typeof details.availableCount === 'number' ? ` (เหลือ ${details.availableCount.toLocaleString('th-TH')} ล็อก)` : '';
+        modalAvailability.textContent = `ยังมีล็อกว่าง จองได้${countText}`;
+        modalAvailability.className = 'stall-modal__availability is-available';
       } else {
-        modalAvailability.textContent = details.hasAvailableStalls ? 'ยังมีล็อกว่าง จองได้' : 'ล็อกเต็มแล้ว';
-        modalAvailability.className = 'stall-modal__availability ' + (details.hasAvailableStalls ? 'is-available' : 'is-full');
+        modalAvailability.textContent = 'ล็อกเต็มแล้ว';
+        modalAvailability.className = 'stall-modal__availability is-full';
       }
     }
     modal.classList.add('is-open');
@@ -127,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // บอกแค่ "ว่าง/เต็ม" ไม่บอกจำนวนล็อกที่เหลือ (ดู hasAvailableStalls จาก ZONE_DETAILS ฝั่งเซิร์ฟเวอร์)
+  // แสดง "ว่าง/เต็ม" พร้อมจำนวนล็อกว่างต่อโซน (ดูจาก hasAvailableStalls/availableCount จาก ZONE_DETAILS ฝั่งเซิร์ฟเวอร์)
   zones.forEach((z) => {
     const key = String(z.dataset.zone || '').toLowerCase();
     const details = ZONE_DETAILS[key];
@@ -135,7 +139,12 @@ document.addEventListener('DOMContentLoaded', () => {
     z.classList.add(details.hasAvailableStalls ? 'zone--available' : 'zone--full');
     const label = document.createElement('span');
     label.className = 'zone__availability';
-    label.textContent = details.hasAvailableStalls ? 'ว่าง' : 'เต็ม';
+    if (details.hasAvailableStalls) {
+      const countText = typeof details.availableCount === 'number' ? ` ${details.availableCount.toLocaleString('th-TH')}` : '';
+      label.textContent = `ว่าง${countText}`;
+    } else {
+      label.textContent = 'เต็ม';
+    }
     z.appendChild(label);
   });
 

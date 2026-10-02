@@ -202,13 +202,16 @@ async function loadZoneDetailsMap() {
         }
     });
 
-    // เช็คแค่ "มีล็อกว่างไหม" (boolean) ไม่บอกจำนวนเหลือ — ดึงล็อกว่างทั้งหมดมาครั้งเดียว
-    // แล้ว map เป็น zoneId ที่มีล็อกว่างอย่างน้อย 1 ล็อก ไม่ query ทีละโซน
+    // นับจำนวนล็อกว่างต่อโซน — ดึงล็อกว่างทั้งหมดมาครั้งเดียวแล้วนับทีละ zoneId ไม่ query ทีละโซน
     const availableStalls = await prisma.stall.findMany({
         where: { isAvailable: true, status: 'AVAILABLE' },
         select: { row: { select: { zoneId: true } } }
     });
-    const zoneIdsWithAvailability = new Set(availableStalls.map((s) => s.row.zoneId));
+    const availableCountByZoneId = new Map();
+    for (const stall of availableStalls) {
+        const zoneId = stall.row.zoneId;
+        availableCountByZoneId.set(zoneId, (availableCountByZoneId.get(zoneId) || 0) + 1);
+    }
 
     const map = {};
     for (const zone of zones) {
@@ -216,6 +219,7 @@ async function loadZoneDetailsMap() {
         if (!zoneCode) continue;
 
         const size = zone.rows.find((row) => row.size)?.size || zone.size || '-';
+        const availableCount = availableCountByZoneId.get(zone.id) || 0;
 
         map[zoneCode] = {
             label: `โซน ${zone.code}`,
@@ -223,7 +227,8 @@ async function loadZoneDetailsMap() {
             size,
             dailyPrice: dominantRowPrice(zone.rows),
             electricityFee: Number(zone.electricityFee || LIGHT_UNIT_PRICE),
-            hasAvailableStalls: zoneIdsWithAvailability.has(zone.id)
+            hasAvailableStalls: availableCount > 0,
+            availableCount
         };
     }
 
