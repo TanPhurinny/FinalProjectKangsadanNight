@@ -9,7 +9,9 @@ const marketMapCtrl = require('../controllers/marketMapController');
 const { shopViewLimiter } = require('../middlewares/authRateLimit');
 const { isStaffOrAdmin } = require('../middlewares/auth');
 const { getShopViewStats } = require('../utils/shopViews');
-const { getOpenStatus, setOpenStatus } = require('../utils/shopOpenStatus');
+const { setOpenStatus } = require('../utils/shopOpenStatus');
+const { buildProfileChecks } = require('../utils/shopCompleteness');
+const { buildSellerHome } = require('../utils/sellerHome');
 const { repairReportSchema, bookingStallInputSchema, sellerApplicationSchema, shopProfileSchema, THAI_BANK_NAMES } = require('../utils/validationSchemas');
 const { PRODUCT_SUBTYPE_GROUPS } = require('../utils/productSubtypes');
 const { buildPromptPayQrDataUrl, PROMPTPAY_ID } = require('../utils/promptpayQr');
@@ -397,38 +399,7 @@ function getBookingStatusText(status, awaitingPaymentVerification) {
     }
 }
 
-// ใช้ label เดียวกับหน้า views/seller/repair.ejs เพื่อให้สถานะแจ้งซ่อมสื่อความหมายตรงกันทั้งระบบ
-function getRepairStatusText(status) {
-    switch (status) {
-        case 'PENDING':
-            return 'รอดำเนินการ';
-        case 'IN_PROGRESS':
-            return 'กำลังดำเนินการ';
-        case 'APPROVED':
-            return 'อนุมัติแล้ว';
-        case 'SUCCESS':
-            return 'ซ่อมเสร็จแล้ว';
-        case 'REJECTED':
-            return 'ถูกปฏิเสธ';
-        default:
-            return 'ไม่ทราบสถานะ';
-    }
-}
 
-function getRepairStatusClass(status) {
-    switch (status) {
-        case 'SUCCESS':
-        case 'APPROVED':
-            return 'status-pill--success';
-        case 'REJECTED':
-            return 'status-pill--danger';
-        case 'IN_PROGRESS':
-            return 'status-pill--warning';
-        case 'PENDING':
-        default:
-            return 'status-pill--neutral';
-    }
-}
 
 // รายการ "วันที่ขาย" แบบแจกแจงทีละวัน (เอาเฉพาะเลขวันที่ ไม่เอาเดือน) ตามฟอร์แมตใบเสนอราคาเดิม
 // เช่น จอง 29 ส.ค. - 10 ก.ย. -> "29,30,31,1,2,3,4,5,6,7,8,9,10"
@@ -674,12 +645,6 @@ function buildRepairNotifications(reports) {
         });
 }
 
-function parseShopTags(rawTags) {
-    return String(rawTags || '')
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean);
-}
 
 function getBookingStatusClass(status) {
     switch (status) {
@@ -696,68 +661,7 @@ function getBookingStatusClass(status) {
     }
 }
 
-// แตก slotLabel (เช่น "A901,A902" ตอนจองหลายแผงในคำขอเดียว) เป็นรายล็อก
-// ใช้ pattern เดียวกับ parseStallCodes ที่ควบคุมโดย marketController/communityController ฝั่งแอดมิน
-function parseStallCodesForDashboard(assignedStallCodeText) {
-    return String(assignedStallCodeText || '')
-        .split(',')
-        .map((code) => code.trim())
-        .filter(Boolean);
-}
 
-function buildSellerDashboard(userRecord, activeBookingCount, bookingView, latestRepairReport, latestAnnouncement) {
-    const shop = userRecord?.shop || {};
-    const shopName = shop.shopName || 'ยังไม่ได้ตั้งชื่อร้าน';
-    const displayLetter = String(shopName || userRecord?.name || 'ร').trim().charAt(0).toUpperCase();
-
-    // bookingView มาจาก loadSellerBookingStatus() แหล่งข้อมูลเดียวกับหน้า /booking-status
-    // เพื่อไม่ให้แดชบอร์ดกับหน้าสถานะการจองแสดงข้อมูลไม่ตรงกัน (เดิมแดชบอร์ดคิวรี Booking model
-    // แบบเก่าเอง ทำให้ไม่เห็นล็อกที่จองหลายแผง/ตกหล่นเวลาแอดมินจัดล็อกผ่าน BookingRequest)
-    const stallCodes = bookingView ? parseStallCodesForDashboard(bookingView.slotLabel) : [];
-    const latestBookingView = bookingView
-        ? {
-            ...bookingView,
-            statusClass: getBookingStatusClass(bookingView.status),
-            stallCodes
-        }
-        : null;
-
-    const latestRepairReportView = latestRepairReport
-        ? {
-            ...latestRepairReport,
-            statusText: getRepairStatusText(latestRepairReport.status),
-            statusClass: getRepairStatusClass(latestRepairReport.status),
-            createdAt: formatDateThai(latestRepairReport.createdAt)
-        }
-        : null;
-
-    const latestAnnouncementView = latestAnnouncement
-        ? {
-            ...latestAnnouncement,
-            createdAt: formatDateThai(latestAnnouncement.createdAt)
-        }
-        : null;
-
-    return {
-        shopName,
-        displayLetter,
-        shopDescription: shop.shopSummary || shop.productDetail || 'ยังไม่มีรายละเอียดร้านค้าในระบบ',
-        productType: shop.productType || 'ยังไม่ระบุประเภทสินค้า',
-        coverImage: shop.shopCoverImage || null,
-        productImage: shop.productImage || null,
-        sellerTier: shop.sellerTier || 'General Seller',
-        zoneLabel: shop.shopZoneLabel || 'ยังไม่ได้ระบุโซนร้าน',
-        isVerified: Boolean(shop.isVerified),
-        tags: parseShopTags(shop.shopTags),
-        activeBookingCount,
-        latestBooking: latestBookingView,
-        latestRepairReport: latestRepairReportView,
-        latestAnnouncement: latestAnnouncementView,
-        memberSince: userRecord?.createdAt || null,
-        email: userRecord?.email || '-',
-        phoneNumber: userRecord?.phoneNumber || '-'
-    };
-}
 
 // Middleware ตรวจสอบการ Login
 const isAuthenticated = (req, res, next) => {
@@ -807,72 +711,10 @@ const isSellerOrApplicant = async (req, res, next) => {
     return res.redirect('/shop-application?error=not_applied');
 };
 
-// ล็อกที่ร้านนี้มีบนผังตลาด (คำขอที่จัดล็อกแล้ว) — เทียบชื่อผู้ขายแบบเดียวกับผังตลาด เพราะคำขอส่วนใหญ่ไม่ได้ผูก sellerId
-async function getMapStallCodesForSeller(sellerName) {
-    if (!sellerName) return [];
-    const requests = await prisma.bookingRequest.findMany({
-        where: { sellerName, status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] }, assignedStallCode: { not: null } },
-        select: { assignedStallCode: true }
-    });
-    return [...new Set(requests.flatMap((r) => String(r.assignedStallCode || '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)))];
-}
-
 router.get('/seller', isSellerOnly, async (req, res) => {
-    // ใช้ตัวเดียวกับหน้า /booking-status เพื่อให้เลขล็อก/สถานะตรงกันทั้งระบบ
-    const { userRecord, bookingView } = await loadSellerBookingStatus(req.user.id);
-    const user = userRecord || await prisma.user.findUnique({
-        where: { id: req.user.id },
-        include: { shop: true }
-    });
-
-    // นับ "การจองที่กำลังดำเนินการ" จาก BookingRequest (คำขอจริง 1 ใบ) ไม่ใช่ Booking model เดิม
-    // ที่สร้างแยกเป็นหลายแถวต่อ 1 คำขอเมื่อจองหลายแผง (ทำให้นับเกินจำนวนจริง)
-    const sellerProfileId = userRecord?.sellerProfile?.id || null;
-    const sellerName = String(userRecord?.name || '').trim();
-    const activeBookingCount = await prisma.bookingRequest.count({
-        where: {
-            status: { in: ['PENDING', 'APPROVED', 'IN_PROGRESS'] },
-            ...(sellerProfileId
-                ? { sellerId: sellerProfileId }
-                : { sellerName })
-        }
-    });
-
-    const latestRepairReport = await prisma.maintenanceReport.findFirst({
-        where: { userId: req.user.id },
-        orderBy: { createdAt: 'desc' }
-    });
-
-    // ประกาศล่าสุดที่แอดมิน/สตาฟส่งถึงกลุ่มผู้ขาย (role: SELLER)
-    const sellerAnnouncements = await getAnnouncementsForUser('SELLER');
-    const latestAnnouncement = sellerAnnouncements[0] || null;
-
-    const bookingRoundSummary = getBookingRoundStatusDetails(new Date());
-    const nextRoundMeta = getBookingRoundMetaForDate(addDays(bookingRoundSummary.cycleEnd, 1));
-    // นับ "เหลืออีกกี่วันก่อนหมดรอบ" แบบรวมวันนี้ (พรุ่งนี้ปิดรอบ = เหลือ 1 วัน ไม่ใช่ 0)
-    const daysRemainingInRound = Math.max(0, Math.round((toStartOfDay(bookingRoundSummary.cycleEnd).getTime() - toStartOfDay(new Date()).getTime()) / 86400000) + 1);
-    const bookingRoundView = {
-        roundNumber: bookingRoundSummary.roundNumber,
-        cycleStart: formatDateThai(bookingRoundSummary.cycleStart),
-        cycleEnd: formatDateThai(bookingRoundSummary.cycleEnd),
-        status: bookingRoundSummary.status,
-        statusText: bookingRoundSummary.statusText,
-        daysRemaining: daysRemainingInRound,
-        nextRoundNumber: nextRoundMeta.roundNumber,
-        nextOpenAt: formatDateThai(addDays(nextRoundMeta.cycleStart, 1))
-    };
-
-    // ปุ่มเช็คอินเปิดร้าน: แสดงเฉพาะผู้ขายที่มีล็อกในผังแล้ว (ยังไม่มีล็อก ลูกค้าก็หาร้านบนผังไม่เจออยู่ดี)
-    const myStallCodes = await getMapStallCodesForSeller(user?.name);
-    const openStatus = myStallCodes.length ? await getOpenStatus(req.user.id) : null;
-
-    return res.render('seller/indexseller', {
-        user,
-        dashboard: buildSellerDashboard(user, activeBookingCount, bookingView, latestRepairReport, latestAnnouncement),
-        bookingRound: bookingRoundView,
-        openStatus,
-        myStallCodes
-    });
+    // ข้อมูลหน้าแรกผู้ขายรวมอยู่ที่ utils/sellerHome.js (สถานะร้านคืนนี้, สิ่งที่ต้องทำ, ล็อกของฉัน, ตัวเลขสรุป, ความเคลื่อนไหว)
+    const home = await buildSellerHome(req.user.id);
+    return res.render('seller/indexseller', { user: req.user, home });
 });
 
 // --- หน้าประวัติการจองย้อนหลังทั้งหมดของผู้ขาย (ทุกรอบ ไม่ใช่แค่รายการล่าสุด) ---
@@ -943,6 +785,7 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
     res.render('seller/shopProfile', {
         user: req.user,
         shop: userRecord?.shop || null,
+        profile: buildProfileChecks(userRecord?.shop),
         maxProductImages: MAX_SHOP_PRODUCT_IMAGES,
         maxMenuImages: MAX_SHOP_MENU_IMAGES,
         viewStats,
@@ -963,6 +806,7 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
         return res.render('seller/shopProfile', {
             user: req.user,
             shop: userRecord?.shop || null,
+            profile: buildProfileChecks(userRecord?.shop),
             maxProductImages: MAX_SHOP_PRODUCT_IMAGES,
             maxMenuImages: MAX_SHOP_MENU_IMAGES,
             error: errorCode,

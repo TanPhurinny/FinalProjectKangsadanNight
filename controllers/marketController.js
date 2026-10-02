@@ -485,6 +485,8 @@ async function buildMyStallHealth(userId, stallCodes) {
     return health;
 }
 
+exports.buildMyStallHealth = buildMyStallHealth;
+
 exports.getMarketMapPage = async (req, res) => {
     try {
         // มุมมองตาม role: ผู้ขายเห็นล็อกของตัวเอง+โซนที่จองได้, แอดมิน/staff เห็นสถานะใกล้หมดอายุ, ลูกค้าดูอย่างเดียว

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Market Seller Center — แดชบอร์ดผู้ขาย</title>
+  <title>หน้าหลักผู้ขาย — กังสดาลไนท์</title>
   <link rel="icon" type="image/png" href="/img/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -11,303 +11,312 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
-  <link rel="stylesheet" href="/stylesheets/seller/sellerindex.css?v=20261002-red">
+  <link rel="stylesheet" href="/stylesheets/seller/sellerHome.css?v=20261002c">
 </head>
 <body>
 <script src="/js/common/tabSession.js"></script>
   <%- include('../partials/navbarSeller') %>
 
   <%
-    // เลือกโทนสี/ข้อความ/ปุ่ม CTA ของแถบสถานะบนสุดตามสถานะการจองล่าสุด
-    // (จุดที่สำคัญที่สุดของแดชบอร์ด — ผู้ขายต้องรู้ทันทีว่าต้องทำอะไรต่อ)
-    let statusTone = 'neutral';
-    let statusIcon = 'bi-info-circle-fill';
-    let statusTitle = 'ยังไม่มีการจองแผงในระบบ';
-    let statusDesc = 'เลือกโซนและแผงที่ต้องการ เพื่อเริ่มขายในตลาดกังสดาลไนท์';
-    let statusCtaHref = '/select-zone';
-    let statusCtaLabel = 'เลือกโซน';
-
-    if (dashboard.latestBooking) {
-      const lb = dashboard.latestBooking;
-      if (lb.status === 'PENDING') {
-        statusTone = 'neutral'; statusIcon = 'bi-hourglass-split';
-        statusTitle = 'รอการตรวจสอบร้านค้า';
-        statusDesc = 'แอดมินกำลังตรวจสอบคำขอจองของคุณ ระบบจะแจ้งผลเมื่อดำเนินการเสร็จ';
-        statusCtaHref = '/booking-status'; statusCtaLabel = 'ดูสถานะการจอง';
-      } else if (lb.status === 'APPROVED') {
-        statusTone = 'neutral'; statusIcon = 'bi-check-circle';
-        statusTitle = 'ร้านผ่านการตรวจสอบแล้ว';
-        statusDesc = 'รอแอดมินจัดสรรล็อกให้ ระบบจะแจ้งเตือนเมื่อได้รับล็อก';
-        statusCtaHref = '/booking-status'; statusCtaLabel = 'ดูสถานะการจอง';
-      } else if (lb.status === 'IN_PROGRESS') {
-        statusTone = 'warning'; statusIcon = 'bi-exclamation-triangle-fill';
-        statusTitle = 'ได้รับล็อกแล้ว กรุณาชำระเงิน';
-        statusDesc = 'อัปโหลดสลิปโอนเงินเพื่อยืนยันการจอง มิฉะนั้นล็อกอาจถูกปล่อยให้ผู้ขายรายอื่น';
-        statusCtaHref = '/booking-status'; statusCtaLabel = 'ชำระเงินตอนนี้';
-      } else if (lb.status === 'SUCCESS') {
-        statusTone = 'success'; statusIcon = 'bi-patch-check-fill';
-        statusTitle = lb.slotLabel ? `ชำระเงินสำเร็จ · ล็อก ${lb.slotLabel} เป็นของร้านคุณ` : 'ชำระเงินสำเร็จ เสร็จสิ้นการจอง';
-        statusDesc = 'ยืนยันเรียบร้อยแล้ว พร้อมขายได้ตามวันที่จองไว้';
-        statusCtaHref = '/booking-status'; statusCtaLabel = 'ดูรายละเอียดการจอง';
-      } else if (lb.status === 'REJECTED') {
-        statusTone = 'danger'; statusIcon = 'bi-x-circle-fill';
-        statusTitle = 'คำขอจองไม่ผ่านการตรวจสอบ';
-        statusDesc = 'ติดต่อแอดมินเพื่อสอบถามรายละเอียด หรือส่งคำขอจองใหม่อีกครั้ง';
-        statusCtaHref = '/select-zone'; statusCtaLabel = 'ส่งคำขอใหม่';
-      }
-    }
+    // หน้าหลักผู้ขาย: ข้อมูลทั้งหมดมาจาก utils/sellerHome.js (buildSellerHome)
+    const h = home;
+    const currentStalls = h.stalls.filter((s) => s.isCurrent);
+    const pastStalls = h.stalls.filter((s) => !s.isCurrent);
+    const mapStall = currentStalls[0] || h.stalls[0] || null;
+    const hhmm = (d) => new Date(d).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    const fmt = (d) => new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    const vs = h.viewStats;
+    const maxDay = Math.max(1, ...vs.daily.map((d) => d.card));
+    const rt = h.roundTimeline;
+    const rtIdx = rt.steps.findIndex((st) => st.key === rt.activeKey);
+    const stallStatus = (s) => {
+      if (s.phase === 'released') return { text: 'ถูกปล่อยแล้ว', tone: 'muted' };
+      if (s.phase === 'lapsed') return { text: 'หมดสัญญา', tone: 'muted' };
+      if (s.requestStatus === 'IN_PROGRESS') return { text: 'รอชำระเงิน', tone: 'warn' };
+      if (s.requestStatus === 'APPROVED') return { text: 'รอจัดล็อก', tone: 'info' };
+      if (s.phase === 'grace') return { text: 'วันสุดท้าย', tone: 'bad' };
+      if (s.daysLeft !== null && s.daysLeft <= 3) return { text: `เหลือ ${s.daysLeft} วัน`, tone: 'warn' };
+      return { text: s.daysLeft !== null ? `เหลือ ${s.daysLeft} วัน` : 'ใช้งานอยู่', tone: 'good' };
+    };
   %>
 
-  <main class="seller-dashboard-page">
-    <div class="seller-dashboard-shell container-xxl">
-      <header class="seller-dashboard-header">
-        <div>
-          <p class="seller-dashboard-header__eyebrow">Seller Center</p>
-          <h1 class="seller-dashboard-header__title">แดชบอร์ดผู้ขาย</h1>
-        </div>
-        <div class="seller-dashboard-header__actions">
-          <a href="/shop-profile" class="btn btn-outline-primary"><i class="bi bi-person-lines-fill me-2"></i>แก้ไขโปรไฟล์</a>
-        </div>
-      </header>
+  <main class="sh">
+    <!-- 01 หัวหน้า: ทักทาย + ร้าน -->
+    <header class="sh-head">
+      <div>
+        <p class="sh-kicker"><%= h.todayLabel %></p>
+        <h1 class="sh-title"><%= h.greeting %> คุณ<%= h.sellerName %></h1>
+        <p class="sh-shopline">
+          <b><%= h.shop.name %></b>
+          <% if (h.shop.isVerified) { %><i class="bi bi-patch-check-fill sh-verified" title="ยืนยันตัวตนแล้ว"></i><% } %>
+          <span><%= h.shop.productType %></span>
+        </p>
+      </div>
+      <nav class="sh-head-actions" aria-label="ทางลัด">
+        <a href="<%= mapStall ? `/market-map?stall=${mapStall.code}` : '/market-map' %>" class="sh-btn sh-btn--ghost"><i class="bi bi-map"></i> ร้านฉันบนผัง</a>
+        <a href="/shop-profile" class="sh-btn sh-btn--ghost"><i class="bi bi-shop"></i> ร้านค้าของฉัน</a>
+        <a href="/select-zone" class="sh-btn"><i class="bi bi-plus-lg"></i> จองแผง</a>
+      </nav>
+    </header>
 
-      <% if (locals.openStatus) {
-        const os = locals.openStatus;
-        const hhmm = (d) => new Date(d).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-      %>
-      <!-- ร้านเปิดเป็นค่าเริ่มต้น กดแค่ "ปิดร้านวันนี้" ตอนไม่ได้มาขาย/เก็บร้านแล้ว (public/js/seller/openStatus.js) -->
-      <section class="open-checkin <%= os.isOpen ? 'is-open' : 'is-closed' %> mb-3" id="openCheckin" data-open="<%= os.isOpen ? '1' : '0' %>">
-        <div class="open-checkin__state">
-          <span class="open-checkin__dot" aria-hidden="true"></span>
-          <div>
-            <p class="open-checkin__label" id="openCheckinLabel"><%= os.isOpen ? 'ร้านเปิดอยู่' : 'ปิดร้านแล้ววันนี้' %></p>
-            <p class="open-checkin__sub" id="openCheckinSub"><%= os.isOpen
-              ? `ล็อก ${locals.myStallCodes.join(', ')} · วันนี้ไม่ได้มาขายหรือเก็บร้านแล้ว กดปิดร้าน ลูกค้าจะเห็นบนผังตลาดว่าร้านปิด`
-              : `ปิดเมื่อ ${hhmm(os.closedAt)} น. · ร้านจะกลับมาเปิดเองในวันขายถัดไป` %></p>
+    <!-- 02 คืนนี้ (ส่วนหลักของหน้า) + สิ่งที่ต้องทำ -->
+    <section class="sh-hero">
+      <div class="sh-tonight">
+        <p class="sh-label">คืนนี้</p>
+
+        <% if (h.openStatus) { const os = h.openStatus; %>
+        <div class="sh-open <%= os.isOpen ? 'is-open' : 'is-closed' %>" id="openCheckin" data-open="<%= os.isOpen ? '1' : '0' %>">
+          <div class="sh-open__state">
+            <span class="sh-open__dot" aria-hidden="true"></span>
+            <div>
+              <p class="sh-open__label" id="openCheckinLabel"><%= os.isOpen ? 'ร้านเปิดอยู่' : 'ปิดร้านแล้ววันนี้' %></p>
+              <p class="sh-open__sub" id="openCheckinSub"><%= os.isOpen
+                ? 'ลูกค้าเห็นร้านคุณบนผังตลาดตามปกติ · ไม่ได้มาขายหรือเก็บร้านแล้ว กดปิดร้าน'
+                : `ปิดเมื่อ ${hhmm(os.closedAt)} น. · ร้านจะกลับมาเปิดเองในวันขายถัดไป` %></p>
+            </div>
+          </div>
+          <button type="button" class="sh-open__btn" id="openCheckinBtn"><%= os.isOpen ? 'ปิดร้านวันนี้' : 'ยกเลิกการปิดร้าน' %></button>
+        </div>
+        <% } else { const nextStep = rt.steps[rtIdx]; %>
+        <!-- ยังไม่มีล็อกที่ใช้งาน: ชวนจองรอบถัดไป พร้อมบอกว่าวันนี้อยู่ช่วงไหนของรอบจอง -->
+        <div class="sh-open is-empty">
+          <div class="sh-open__state">
+            <span class="sh-open__dot" aria-hidden="true"></span>
+            <div>
+              <p class="sh-open__label"><%= h.stalls.length ? 'ยังไม่มีล็อกที่ใช้งานอยู่' : 'ยังไม่มีล็อกในตลาด' %></p>
+              <p class="sh-open__sub">ลูกค้ายังไม่เห็นร้านคุณบนผังตลาด จองแผงรอบถัดไปเพื่อกลับมาขาย</p>
+            </div>
+          </div>
+          <a href="/select-zone" class="sh-open__btn sh-open__btn--go">จองแผง</a>
+        </div>
+        <div class="sh-nextround">
+          <p class="sh-label">รอบจองถัดไป · รอบที่ <%= rt.next.roundNumber %> · ขาย <%= fmt(rt.next.cycleStart) %> – <%= fmt(rt.next.cycleEnd) %></p>
+          <div class="sh-nextround__row">
+            <div><span>วันนี้</span><b><%= nextStep ? nextStep.label : '-' %></b></div>
+            <div><span>เปิดจองยาว 14 วัน</span><b><%= fmt(rt.next.longOpen) %></b><% if (rt.daysUntilLongOpen > 0) { %><small>อีก <%= rt.daysUntilLongOpen %> วัน</small><% } %></div>
+            <div><span>จองรายวันได้</span><b><%= fmt(rt.next.dailyOpen) %></b></div>
+          </div>
+          <% if (rt.current.dailyOpen) { %><p class="sh-nextround__note">ขายเร็วกว่านั้นได้: รอบปัจจุบัน (รอบที่ <%= rt.current.roundNumber %>) ยังจองรายวันได้ ล่วงหน้า 1 วัน</p><% } %>
+        </div>
+        <% } %>
+
+        <% if (h.countdown) { %>
+        <!-- นับถอยหลังถึง 20:00 ของวันขายสุดท้าย (เลยเวลาแล้วล็อกหมดสิทธิ์) — public/js/seller/sellerHome.js -->
+        <div class="sh-countdown" data-cutoff="<%= new Date(h.countdown.cutoffAt).toISOString() %>">
+          <p class="sh-label">สัญญาล็อก <%= h.countdown.code %> · ต่อได้ถึง 20:00 น. <%= h.countdown.endLabel %></p>
+          <div class="sh-countdown__digits" role="timer" aria-live="off">
+            <span><b data-cd="d">--</b><small>วัน</small></span>
+            <span><b data-cd="h">--</b><small>ชม.</small></span>
+            <span><b data-cd="m">--</b><small>นาที</small></span>
+            <span><b data-cd="s">--</b><small>วิ</small></span>
           </div>
         </div>
-        <button type="button" class="open-checkin__btn" id="openCheckinBtn"><%= os.isOpen ? 'ปิดร้านวันนี้' : 'ยกเลิกการปิดร้าน' %></button>
-      </section>
-      <% } %>
-
-      <section class="status-alert status-alert--<%= statusTone %> mb-3">
-        <div class="status-alert__icon"><i class="bi <%= statusIcon %>"></i></div>
-        <div class="status-alert__body">
-          <h3><%= statusTitle %></h3>
-          <p><%= statusDesc %></p>
-        </div>
-        <a href="<%= statusCtaHref %>" class="status-alert__cta"><%= statusCtaLabel %> <i class="bi bi-arrow-right"></i></a>
-      </section>
-
-      <% if (typeof bookingRound !== 'undefined' && bookingRound) { %>
-        <section class="round-strip mb-4">
-          <i class="bi bi-calendar-range"></i>
-          <span>รอบที่ <%= bookingRound.roundNumber %> · <%= bookingRound.cycleStart %> - <%= bookingRound.cycleEnd %> · <b><%= bookingRound.status %></b></span>
-          <span class="round-strip__sep"></span>
-          <span>
-            <% if (bookingRound.daysRemaining <= 0) { %>
-              <b>ปิดรอบวันนี้</b>
-            <% } else { %>
-              เหลืออีก <b><%= bookingRound.daysRemaining %> วัน</b> ก่อนปิดรอบ
-            <% } %>
-          </span>
-          <span class="round-strip__sep"></span>
-          <span>รอบถัดไป: รอบที่ <%= bookingRound.nextRoundNumber %> เปิดจอง <%= bookingRound.nextOpenAt %></span>
-        </section>
-        <% if (bookingRound.statusText) { %>
-          <p class="round-strip__note mb-4"><i class="bi bi-info-circle"></i> <%= bookingRound.statusText %></p>
         <% } %>
-      <% } %>
 
-      <section class="identity-bar mb-4">
-        <div class="identity-bar__logo">
-          <span class="identity-bar__fallback"><%= dashboard.displayLetter %></span>
-          <% if (dashboard.productImage) { %>
-            <img src="<%= dashboard.productImage %>" alt="<%= dashboard.shopName %>" onerror="this.remove()">
-          <% } %>
+        <% if (currentStalls.length) { %>
+        <div class="sh-chips" aria-label="ล็อกที่ใช้งานอยู่">
+          <% currentStalls.forEach(function (s) { const st = stallStatus(s); %>
+          <a href="/market-map?stall=<%= s.code %>" class="sh-chip sh-chip--<%= st.tone %>"><b><%= s.code %></b><span><%= st.text %></span></a>
+          <% }); %>
         </div>
-        <div class="identity-bar__body">
-          <h2>
-            <%= dashboard.shopName %>
-            <% if (dashboard.isVerified) { %>
-              <i class="bi bi-patch-check-fill verify-tick" title="ร้านค้ายืนยันตัวตนแล้ว"></i>
-            <% } %>
-          </h2>
-          <div class="identity-bar__tags">
-            <span class="tier-badge tier-badge--info"><i class="bi bi-grid-1x2-fill"></i> <%= dashboard.productType %></span>
-            <span class="tier-badge tier-badge--primary"><i class="bi bi-geo-alt-fill"></i> <%= dashboard.zoneLabel %></span>
-            <span class="status-pill <%= dashboard.isVerified ? 'status-pill--success' : 'status-pill--neutral' %>">
-              <i class="bi <%= dashboard.isVerified ? 'bi-patch-check-fill' : 'bi-hourglass-split' %>"></i>
-              <%= dashboard.isVerified ? 'ยืนยันตัวตนแล้ว' : 'รอตรวจสอบตัวตน' %>
+        <% } %>
+      </div>
+
+      <aside class="sh-todo" aria-labelledby="todoTitle">
+        <div class="sh-sechead">
+          <h2 id="todoTitle">ต้องทำ</h2>
+          <span class="sh-count"><%= h.todo.length %></span>
+        </div>
+        <% if (h.todo.length) { %>
+        <ol class="sh-todo__list">
+          <% h.todo.forEach(function (t, i) { %>
+          <li class="sh-todo__item sh-tone--<%= t.tone %>">
+            <span class="sh-todo__num"><%= String(i + 1).padStart(2, '0') %></span>
+            <div class="sh-todo__body">
+              <p class="sh-todo__title"><i class="bi <%= t.icon %>"></i> <%= t.title %></p>
+              <p class="sh-todo__desc"><%= t.desc %></p>
+            </div>
+            <a href="<%= t.href %>" class="sh-todo__cta"><%= t.cta %> <i class="bi bi-arrow-right"></i></a>
+          </li>
+          <% }); %>
+        </ol>
+        <% } else { %>
+        <p class="sh-empty"><i class="bi bi-check2-all"></i> ไม่มีอะไรค้าง พร้อมขายคืนนี้</p>
+        <% } %>
+      </aside>
+    </section>
+
+    <!-- 03 ตัวเลขสรุป (ledger) -->
+    <section class="sh-ledger" aria-label="ตัวเลขสรุป">
+      <div class="sh-cell">
+        <span class="sh-cell__label">ล็อกที่ใช้งาน</span>
+        <b class="sh-cell__value"><%= h.kpi.stallCount %></b>
+        <span class="sh-cell__sub"><%= h.stalls.length ? `จากทั้งหมด ${h.stalls.length} ล็อกที่เคยได้` : 'ยังไม่มีล็อก' %></span>
+      </div>
+      <div class="sh-cell">
+        <span class="sh-cell__label">สัญญาใกล้หมดสุด</span>
+        <b class="sh-cell__value"><%= h.kpi.minDaysLeft !== null ? h.kpi.minDaysLeft : '–' %><% if (h.kpi.minDaysLeft !== null) { %><small> วัน</small><% } %></b>
+        <span class="sh-cell__sub"><%= h.kpi.minDaysLeft !== null ? 'นับถึงวันขายสุดท้าย' : 'ไม่มีสัญญาที่ใช้งานอยู่' %></span>
+      </div>
+      <div class="sh-cell">
+        <span class="sh-cell__label">คำขอรอดำเนินการ</span>
+        <b class="sh-cell__value"><%= h.kpi.pendingCount %></b>
+        <a class="sh-cell__sub sh-link" href="/booking-status">ดูสถานะการจอง</a>
+      </div>
+      <div class="sh-cell sh-cell--views">
+        <span class="sh-cell__label">คนเปิดดูร้าน 7 วัน</span>
+        <b class="sh-cell__value"><%= vs.totals.card %></b>
+        <div class="sh-spark" role="img" aria-label="เปิดดูร้านรายวัน <%= vs.daily.map((d) => d.date.toLocaleDateString('th-TH', { weekday: 'short' }) + ' ' + d.card).join(', ') %>">
+          <% vs.daily.forEach(function (d) { %>
+          <span class="sh-spark__bar" style="height: <%= Math.max(6, Math.round((d.card / maxDay) * 100)) %>%" data-tip="<%= d.date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) %> · <%= d.card %> ครั้ง"></span>
+          <% }); %>
+        </div>
+        <span class="sh-cell__sub">ดูเมนู <%= vs.totals.menu %> · แชร์ <%= vs.totals.share %></span>
+      </div>
+    </section>
+
+    <!-- 04 ล็อกของฉัน + ลูกค้าเห็นร้านคุณแบบนี้ -->
+    <section class="sh-grid">
+      <article class="sh-panel sh-panel--wide" aria-labelledby="stallsTitle">
+        <div class="sh-sechead">
+          <h2 id="stallsTitle">ล็อกของฉัน</h2>
+          <a href="/booking-history" class="sh-link">ประวัติการจอง <i class="bi bi-arrow-right"></i></a>
+        </div>
+        <% if (currentStalls.length) { %>
+        <div class="sh-table" role="table" aria-label="ล็อกที่ใช้งานอยู่">
+          <div class="sh-tr sh-tr--head" role="row">
+            <span role="columnheader">ล็อก</span><span role="columnheader">สถานะ</span><span role="columnheader">สัญญาถึง</span>
+            <span role="columnheader">ความสะอาด</span><span role="columnheader">ไฟเกิน</span><span role="columnheader"></span>
+          </div>
+          <% currentStalls.forEach(function (s) { const st = stallStatus(s); const hl = s.health; %>
+          <div class="sh-tr" role="row">
+            <span role="cell" class="sh-code"><b><%= s.code %></b><small>โซน <%= s.zone %></small></span>
+            <span role="cell"><em class="sh-tag sh-tone--<%= st.tone %>"><%= st.text %></em></span>
+            <span role="cell" data-label="สัญญาถึง"><%= s.endLabel %></span>
+            <span role="cell" data-label="ความสะอาด"><%= hl.cleanliness ? (hl.cleanliness.passed ? 'ผ่าน' : 'ไม่ผ่าน') + ' · ' + fmt(hl.cleanliness.at) : '–' %></span>
+            <span role="cell" data-label="ไฟเกิน"><%= hl.excess ? `฿${Number(hl.excess.subtotal || 0).toLocaleString('th-TH')}` : 'ไม่มี' %></span>
+            <span role="cell" class="sh-actions">
+              <% if (s.canExtend && s.renewalOpen) { %><a href="/booking-stall/extend" class="sh-mini sh-mini--accent">ต่อล็อก</a><% } %>
+              <a href="/market-map?stall=<%= s.code %>" class="sh-mini">ดูบนผัง</a>
+              <a href="/repair?stall=<%= s.code %>" class="sh-mini">แจ้งซ่อม</a>
             </span>
           </div>
+          <% }); %>
         </div>
-        <div class="identity-bar__stat">
-          <strong><%= dashboard.activeBookingCount %></strong>
-          <span>การจองที่กำลังดำเนินการ</span>
+        <% } else { %>
+        <p class="sh-empty"><i class="bi bi-inbox"></i> ยังไม่มีล็อกที่ใช้งานอยู่ <a href="/select-zone" class="sh-link">เลือกโซนจองแผง</a></p>
+        <% } %>
+        <% if (pastStalls.length) { %>
+        <details class="sh-past">
+          <summary>ล็อกที่หมดสัญญา / ถูกปล่อยแล้ว (<%= pastStalls.length %>)</summary>
+          <ul>
+            <% pastStalls.forEach(function (s) { const st = stallStatus(s); %>
+            <li><b><%= s.code %></b> <span><%= st.text %><%= s.endDate ? ` · สัญญาถึง ${s.endLabel}` : '' %></span></li>
+            <% }); %>
+          </ul>
+        </details>
+        <% } %>
+      </article>
+
+      <aside class="sh-panel" aria-labelledby="previewTitle">
+        <div class="sh-sechead">
+          <h2 id="previewTitle">ลูกค้าเห็นร้านคุณแบบนี้</h2>
         </div>
-      </section>
-
-      <section class="mb-4">
-        <article class="info-card">
-          <div class="info-card__head">
-            <h2>การดำเนินการด่วน</h2>
+        <div class="sh-preview">
+          <div class="sh-preview__img">
+            <% if (h.shop.image) { %><img src="<%= h.shop.image %>" alt="รูปร้าน <%= h.shop.name %>" loading="lazy" onerror="this.remove()"><% } %>
+            <span><%= (h.shop.name || 'ร').charAt(0) %></span>
           </div>
-
-          <div class="quick-action-grid">
-            <a href="/select-zone" class="quick-action-card">
-              <i class="bi bi-map"></i>
-              <span>เลือกโซน</span>
-            </a>
-            <a href="/booking-status" class="quick-action-card">
-              <i class="bi bi-journal-check"></i>
-              <span>สถานะการจอง</span>
-            </a>
-            <a href="/booking-history" class="quick-action-card">
-              <i class="bi bi-clock-history"></i>
-              <span>ประวัติการจอง</span>
-            </a>
-            <a href="/repair" class="quick-action-card">
-              <i class="bi bi-wrench-adjustable-circle"></i>
-              <span>แจ้งซ่อม</span>
-            </a>
-          </div>
-
-          <div class="quick-action-footer">
-            <a href="/logout" class="logout-link-subtle" data-confirm-logout>
-              <i class="bi bi-box-arrow-right"></i>
-              <span>ออกจากระบบ</span>
-            </a>
-          </div>
-        </article>
-      </section>
-
-      <section class="row g-4">
-        <div class="col-lg-8">
-          <article class="booking-card">
-            <div class="info-card__head">
-              <h2>รายละเอียดการจองล่าสุด</h2>
-              <% if (dashboard.latestBooking) { %>
-                <span class="status-pill <%= dashboard.latestBooking.statusClass %>">
-                  <i class="bi bi-record-circle-fill"></i> <%= dashboard.latestBooking.statusText %>
-                </span>
-              <% } %>
-            </div>
-
-            <% if (dashboard.latestBooking) { %>
-              <% const lb = dashboard.latestBooking; %>
-              <div class="booking-card__content">
-                <div>
-                  <p class="booking-card__eyebrow"><%= lb.stallCodes.length ? 'แผงของคุณ' : 'โซนที่จอง' %></p>
-                  <% if (lb.stallCodes.length) { %>
-                    <div class="booking-card__lot-chips">
-                      <% lb.stallCodes.forEach(function (code) { %>
-                        <span class="lot-chip">ล็อก <%= code %></span>
-                      <% }) %>
-                    </div>
-                  <% } else { %>
-                    <h3 class="booking-card__title"><%= lb.zoneLabel || '-' %></h3>
-                  <% } %>
-                  <p class="booking-card__sub">จองเมื่อ <%= lb.createdAt %></p>
-                </div>
-                <div class="booking-card__meta">
-                  <div>
-                    <span class="booking-card__label">โซน</span>
-                    <strong><%= lb.zoneLabel || '-' %></strong>
-                  </div>
-                  <div>
-                    <span class="booking-card__label">จำนวนแผง</span>
-                    <strong><%= lb.stallCount %> แผง</strong>
-                  </div>
-                  <% if (lb.rentalStartDate && lb.rentalStartDate !== '-') { %>
-                    <div>
-                      <span class="booking-card__label">ระยะเวลาเช่า</span>
-                      <strong><%= lb.rentalStartDate %> - <%= lb.rentalEndDate %></strong>
-                    </div>
-                  <% } %>
-                  <div>
-                    <span class="booking-card__label">ไฟฟ้า/เครื่องใช้ไฟฟ้า</span>
-                    <strong>
-                      <%= lb.lightEnabled ? 'มีไฟส่องสว่าง' : 'ไม่มีไฟส่องสว่าง' %>
-                      <% if ((lb.smallApplianceCount || 0) + (lb.largeApplianceCount || 0) > 0) { %>
-                        · เครื่องใช้ไฟฟ้า <%= (lb.smallApplianceCount || 0) + (lb.largeApplianceCount || 0) %> ชิ้น
-                      <% } %>
-                    </strong>
-                  </div>
-                  <div>
-                    <span class="booking-card__label">ยอดชำระรวม</span>
-                    <strong><%= Number(lb.grandTotal || 0).toLocaleString('th-TH') %> บาท</strong>
-                  </div>
-                </div>
-              </div>
-            <% } else { %>
-              <p class="empty-state">
-                <i class="bi bi-inbox"></i>
-                ยังไม่มีประวัติการจองแผงในระบบ
-                <a href="/select-zone" class="empty-state__cta">เริ่มจองแผงเลย</a>
-              </p>
-            <% } %>
-          </article>
-        </div>
-
-        <div class="col-lg-4 d-flex flex-column gap-4">
-          <% if (dashboard.latestAnnouncement) { %>
-            <article class="announcement-banner">
-              <div class="announcement-banner__icon"><i class="bi bi-megaphone-fill"></i></div>
-              <div class="announcement-banner__body">
-                <p class="announcement-banner__eyebrow">
-                  ประกาศล่าสุด · <%= dashboard.latestAnnouncement.category %> · <%= dashboard.latestAnnouncement.createdAt %>
-                </p>
-                <h3 class="announcement-banner__title"><%= dashboard.latestAnnouncement.title %></h3>
-                <p class="announcement-banner__content"><%= dashboard.latestAnnouncement.content %></p>
-              </div>
-            </article>
+          <p class="sh-preview__name"><%= mapStall ? `แผง ${mapStall.code} — ` : '' %><%= h.shop.name %></p>
+          <% if (h.shop.tags.length) { %>
+          <div class="sh-preview__tags"><% h.shop.tags.slice(0, 5).forEach(function (t) { %><span><%= t %></span><% }); %></div>
+          <% } else { %>
+          <p class="sh-preview__hint">ยังไม่มีป้ายเมนูเด่น ลูกค้าค้นหาร้านคุณจากชื่อเมนูไม่เจอ</p>
           <% } %>
-
-          <article class="repair-card flex-fill">
-            <div class="info-card__head">
-              <h2>แจ้งซ่อมล่าสุด</h2>
-              <% if (dashboard.latestRepairReport) { %>
-                <span class="status-pill <%= dashboard.latestRepairReport.statusClass %>">
-                  <i class="bi bi-record-circle-fill"></i> <%= dashboard.latestRepairReport.statusText %>
-                </span>
-              <% } %>
-            </div>
-
-            <% if (dashboard.latestRepairReport) { %>
-              <p class="repair-card__category"><i class="bi bi-tools"></i> <%= dashboard.latestRepairReport.category %></p>
-              <p class="repair-card__desc"><%= dashboard.latestRepairReport.description %></p>
-              <div class="repair-card__meta">
-                <span><i class="bi bi-geo-alt"></i> <%= dashboard.latestRepairReport.location %></span>
-                <span><i class="bi bi-calendar3"></i> <%= dashboard.latestRepairReport.createdAt %></span>
-              </div>
-              <a href="/repair" class="repair-card__link">ดูรายการแจ้งซ่อมทั้งหมด <i class="bi bi-arrow-right"></i></a>
-            <% } else { %>
-              <p class="empty-state">
-                <i class="bi bi-check2-circle"></i>
-                ยังไม่มีการแจ้งซ่อม
-                <a href="/repair" class="empty-state__cta">แจ้งซ่อมตอนนี้</a>
-              </p>
-            <% } %>
-          </article>
+          <% if (h.shop.summary) { %><p class="sh-preview__summary"><%= h.shop.summary %></p><% } %>
+          <p class="sh-preview__menu"><i class="bi bi-book"></i> <%= h.shop.menuCount ? `มีรูปเมนู ${h.shop.menuCount} รูป` : 'ยังไม่มีรูปเมนู' %></p>
         </div>
-      </section>
-    </div>
+        <div class="sh-complete">
+          <div class="sh-complete__bar" aria-hidden="true">
+            <% h.profile.checks.forEach(function (c) { %><span class="<%= c.done ? 'on' : '' %>" title="<%= c.label %>"></span><% }); %>
+          </div>
+          <p>ข้อมูลร้านครบ <b><%= h.profile.done %>/<%= h.profile.total %></b> <a href="/shop-profile" class="sh-link">เติมข้อมูล</a></p>
+        </div>
+        <% if (mapStall) { %>
+        <div class="sh-share">
+          <button type="button" class="sh-btn sh-btn--ghost" data-qr="<%= mapStall.code %>"><i class="bi bi-qr-code"></i> QR ร้าน</button>
+          <button type="button" class="sh-btn sh-btn--ghost" data-copy="/market-map?stall=<%= mapStall.code %>"><i class="bi bi-link-45deg"></i> คัดลอกลิงก์ร้าน</button>
+        </div>
+        <% } %>
+      </aside>
+    </section>
+
+    <!-- 05 ความเคลื่อนไหว + รอบจองถัดไป + ประกาศ -->
+    <section class="sh-grid">
+      <article class="sh-panel sh-panel--wide" aria-labelledby="activityTitle">
+        <div class="sh-sechead">
+          <h2 id="activityTitle">ความเคลื่อนไหวล่าสุด</h2>
+          <a href="/notifications" class="sh-link">แจ้งเตือนทั้งหมด <i class="bi bi-arrow-right"></i></a>
+        </div>
+        <% if (h.activity.length) { %>
+        <ol class="sh-feed">
+          <% h.activity.forEach(function (a) { %>
+          <li class="sh-feed__item sh-tone--<%= a.tone %>">
+            <span class="sh-feed__when"><%= a.when %></span>
+            <i class="bi <%= a.icon %> sh-feed__icon" aria-hidden="true"></i>
+            <a href="<%= a.href %>" class="sh-feed__text"><b><%= a.title %></b><span><%= a.sub %></span></a>
+          </li>
+          <% }); %>
+        </ol>
+        <% } else { %>
+        <p class="sh-empty"><i class="bi bi-clock-history"></i> ยังไม่มีความเคลื่อนไหว</p>
+        <% } %>
+      </article>
+
+      <aside class="sh-panel" aria-labelledby="roundTitle">
+        <div class="sh-sechead">
+          <h2 id="roundTitle">รอบจองถัดไป · รอบที่ <%= rt.next.roundNumber %></h2>
+        </div>
+        <p class="sh-round__sell">ขาย <b><%= fmt(rt.next.cycleStart) %> – <%= fmt(rt.next.cycleEnd) %></b></p>
+        <ol class="sh-round">
+          <% rt.steps.forEach(function (st, i) { const state = i < rtIdx ? 'is-past' : (i === rtIdx ? 'is-active' : ''); %>
+          <li class="<%= state %>">
+            <span class="sh-round__label"><%= st.label %></span>
+            <span class="sh-round__date"><%= st.from ? (fmt(st.from) === fmt(st.to) ? fmt(st.from) : `${fmt(st.from)} – ${fmt(st.to)}`) : `ถึง ${fmt(st.to)}` %></span>
+            <% if (i === rtIdx) { %><em>วันนี้</em><% } %>
+          </li>
+          <% }); %>
+        </ol>
+        <a href="/select-zone" class="sh-link">ดูรายละเอียดและจองแผง <i class="bi bi-arrow-right"></i></a>
+
+        <% if (h.announcement) { %>
+        <div class="sh-ann">
+          <p class="sh-label"><i class="bi bi-megaphone"></i> ประกาศล่าสุด · <%= h.announcement.when %></p>
+          <p class="sh-ann__title"><%= h.announcement.title %></p>
+          <p class="sh-ann__body"><%= h.announcement.content %></p>
+          <a href="/announcements" class="sh-link">อ่านประกาศทั้งหมด <i class="bi bi-arrow-right"></i></a>
+        </div>
+        <% } %>
+      </aside>
+    </section>
   </main>
+
+  <!-- QR ร้าน (native dialog) -->
+  <dialog class="sh-dialog" id="qrDialog" aria-labelledby="qrDialogTitle">
+    <div class="sh-sechead">
+      <h2 id="qrDialogTitle">QR ร้าน · แผง <span data-qr-code></span></h2>
+      <button type="button" class="sh-dialog__close" data-qr-close aria-label="ปิด"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <img alt="QR เปิดร้านในผังตลาด" data-qr-img>
+    <p>ลูกค้าสแกนแล้วเปิดผังตลาดที่ร้านคุณ ไม่ต้องล็อกอิน</p>
+    <div class="sh-share">
+      <a class="sh-btn" data-qr-sign target="_blank" rel="noopener"><i class="bi bi-printer"></i> พิมพ์ป้ายหน้าร้าน (A5)</a>
+      <a class="sh-btn sh-btn--ghost" data-qr-download><i class="bi bi-download"></i> ดาวน์โหลด QR</a>
+    </div>
+  </dialog>
+
   <script src="/js/common/dialogs.js"></script>
-  <script src="/js/seller/openStatus.js?v=20261002-close"></script>
-  <script>
-    document.querySelectorAll('[data-confirm-logout]').forEach(function (link) {
-      link.addEventListener('click', function (event) {
-        event.preventDefault();
-        window.showConfirmDialog({
-          title: 'ยืนยันออกจากระบบ',
-          message: 'ต้องการออกจากระบบใช่หรือไม่?',
-          tone: 'danger',
-          confirmText: 'ออกจากระบบ',
-          onConfirm: function () { window.location.href = link.href; }
-        });
-      });
-    });
-  </script>
+  <script src="/js/seller/openStatus.js?v=20261002-home"></script>
+  <script src="/js/seller/sellerHome.js?v=20261002"></script>
 </body>
 </html>
