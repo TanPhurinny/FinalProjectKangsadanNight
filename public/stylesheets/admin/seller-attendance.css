@@ -1,0 +1,57 @@
+/* หน้า "การมาขายของร้านค้า" — การ์ดสรุปกรองได้ / แถบ 14 วัน / แถบเทียบเกณฑ์ / แถวขยาย / หน้าต่างยืนยัน */
+.att-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0; border: 1px solid #1c2b33; margin-bottom: 14px; background: #fff; }
+.att-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 12px 14px; border: none; border-right: 1px solid #d7e0e4; border-bottom: 3px solid transparent; background: #fff; cursor: pointer; font: inherit; }
+.att-card:last-child { border-right: none; }
+.att-card:hover { background: #f4f8fa; }
+.att-card.active { background: #eef6f9; border-bottom-color: #1c2b33; }
+.att-card-count { font-family: 'IBM Plex Mono', monospace; font-size: 1.8rem; font-weight: 700; line-height: 1; }
+.att-card-label { font-size: .8rem; color: #5b6b73; }
+.att-card-danger .att-card-count { color: #c0392b; }
+.att-card-warn .att-card-count { color: #b7791f; }
+.att-card-ok .att-card-count { color: #2e9e5b; }
+.att-card-info .att-card-count { color: #2c93a8; }
+
+.att-legend { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; font-size: .8rem; color: #5b6b73; margin-bottom: 8px; }
+.att-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.att-legend-hint { margin-left: auto; }
+
+.att-dot { display: inline-block; width: 14px; height: 14px; border: 1px solid transparent; flex: 0 0 auto; font-style: normal; }
+.att-dot-present { background: #2e9e5b; }
+.att-dot-absent { background: #d64545; }
+.att-dot-none { background: #cfd8dc; }
+.att-dot-future { background: transparent; border: 1px dashed #b0bec5; }
+.att-dot.is-today { outline: 2px solid #1c2b33; outline-offset: 1px; }
+.att-strip { display: flex; gap: 2px; flex-wrap: nowrap; }
+.att-strip-lg .att-dot { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 600; color: #fff; font-family: 'IBM Plex Mono', monospace; }
+.att-strip-lg .att-dot-none, .att-strip-lg .att-dot-future { color: #5b6b73; }
+
+.att-bar { height: 8px; background: #e5ecef; margin-bottom: 4px; overflow: hidden; }
+.att-bar > span { display: block; height: 100%; transition: width .3s; }
+.att-bar-ok > span { background: #2e9e5b; }
+.att-bar-warn > span { background: #e0a526; }
+.att-bar-danger > span { background: #d64545; }
+
+.att-table > tbody > tr.att-row-blacklist > td { background: #fdecea; }
+.att-table > tbody > tr.att-row-watch > td { background: #fff7e0; }
+.att-toggle { border: 1px solid #c5d1d6; background: #fff; width: 26px; height: 26px; cursor: pointer; padding: 0; line-height: 1; }
+.att-toggle i { font-size: .7rem; transition: transform .15s; }
+.att-toggle[aria-expanded="true"] i { transform: rotate(90deg); }
+
+.att-detail > td { background: #f7fafb; border-left: 4px solid #1c2b33; padding: 14px 18px; }
+.att-stalls { display: flex; flex-wrap: wrap; gap: 14px 28px; }
+.att-stall { min-width: 260px; }
+.att-stall-head { margin-bottom: 6px; font-family: 'IBM Plex Mono', monospace; }
+.att-problems { margin: 8px 0 0; padding-left: 18px; font-size: .85rem; }
+.att-problem-day { font-weight: 600; margin-right: 6px; }
+
+.att-dialog { border: 1px solid #1c2b33; padding: 22px; width: min(460px, 92vw); }
+.att-dialog::backdrop { background: rgba(10, 20, 26, .5); }
+.att-dl { display: grid; grid-template-columns: 90px 1fr; gap: 4px 10px; font-size: .9rem; margin-bottom: 12px; }
+.att-dl dt { color: #5b6b73; font-weight: 500; }
+.att-dl dd { margin: 0; }
+.att-dialog-note { padding: 8px 12px; margin-bottom: 12px; background: #fdecea; border-left: 4px solid #d64545; font-size: .88rem; }
+.att-dialog-note.is-warning { background: #fff7e0; border-left-color: #e0a526; }
+
+@media (max-width: 640px) {
+    .att-legend-hint { margin-left: 0; width: 100%; }
+}

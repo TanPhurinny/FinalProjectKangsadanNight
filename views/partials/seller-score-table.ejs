@@ -1,13 +1,51 @@
+<%
+    const STATUS_BADGES = {
+        blacklist: { cls: 'badge-danger', text: 'ควรพิจารณา Blacklist' },
+        watch: { cls: 'badge-warning', text: 'เฝ้าระวัง' },
+        ok: { cls: 'badge-success', text: 'ปกติ' },
+        nodata: { cls: 'badge-info', text: 'ยังไม่มีข้อมูลรอบนี้' }
+    };
+    const DOT_TITLES = { present: 'มาขาย', absent: 'ขายไม่มา (ขาด)', none: 'ยังไม่มีบันทึกตรวจ', future: 'ยังไม่ถึงวัน' };
+    const countOf = (status) => rows.filter((row) => row.status === status).length;
+    const cards = [
+        { filter: 'all', label: 'ร้านที่ถือล็อกทั้งหมด', count: rows.length, tone: 'all' },
+        { filter: 'blacklist', label: 'ควรพิจารณา Blacklist (ขาด > ' + blacklistThreshold + ' วัน)', count: countOf('blacklist'), tone: 'danger' },
+        { filter: 'watch', label: 'เฝ้าระวัง (ขาด ' + watchThreshold + '–' + blacklistThreshold + ' วัน)', count: countOf('watch'), tone: 'warn' },
+        { filter: 'ok', label: 'ปกติ', count: countOf('ok'), tone: 'ok' },
+        { filter: 'nodata', label: 'ยังไม่มีข้อมูลรอบนี้', count: countOf('nodata'), tone: 'info' }
+    ];
+    const colCount = isAdmin ? 10 : 9;
+%>
+<div class="att-cards" id="attCards" role="group" aria-label="กรองตามสถานะ">
+    <% cards.forEach((card) => { %>
+    <button type="button" class="att-card att-card-<%= card.tone %><%= card.filter === 'all' ? ' active' : '' %>" data-filter="<%= card.filter %>" aria-pressed="<%= card.filter === 'all' ? 'true' : 'false' %>">
+        <span class="att-card-count"><%= card.count %></span>
+        <span class="att-card-label"><%= card.label %></span>
+    </button>
+    <% }) %>
+</div>
+
+<div class="att-legend">
+    <span><i class="att-dot att-dot-present"></i> มาขาย</span>
+    <span><i class="att-dot att-dot-absent"></i> ขายไม่มา</span>
+    <span><i class="att-dot att-dot-none"></i> ยังไม่มีบันทึก</span>
+    <span><i class="att-dot att-dot-future"></i> ยังไม่ถึงวัน</span>
+    <span class="att-legend-hint">กดลูกศรหน้าชื่อร้านเพื่อดูรายละเอียดแต่ละล็อก</span>
+</div>
+
 <div class="table-responsive">
-    <table class="table table-hover align-middle bg-white">
+    <table class="table align-middle bg-white att-table" id="attTable">
         <thead>
             <tr>
+                <th style="width:36px;"></th>
                 <th>ร้านค้า</th>
-                <th>คะแนนรอบที่เลือก</th>
-                <th>คะแนนสะสม</th>
-                <th>คะแนนรอบล่าสุด</th>
-                <th>จำนวนรอบที่เคยขาย</th>
-                <th>สถานะ</th>
+                <th>ล็อกที่ถือ</th>
+                <th>รอบที่เคยขาย</th>
+                <th>14 วันของรอบนี้</th>
+                <th>มาขายรอบนี้</th>
+                <th>ขายไม่มา (เทียบเกณฑ์)</th>
+                <th>ตรวจล่าสุด</th>
+                <th>สถานะรอบนี้</th>
                 <% if (isAdmin) { %>
                 <th>จัดการ</th>
                 <% } %>
@@ -16,64 +54,145 @@
         <tbody>
             <% if (!rows.length) { %>
             <tr>
-                <td colspan="<%= isAdmin ? 7 : 6 %>" class="text-center text-muted py-4">ยังไม่มีข้อมูลคะแนนร้านค้า</td>
+                <td colspan="<%= colCount %>" class="text-center text-muted py-4">ยังไม่มีร้านค้าที่ถือล็อก</td>
             </tr>
             <% } %>
-            <% rows.forEach((row) => { %>
-            <tr class="<%= row.isBlacklisted ? 'table-danger' : '' %>">
-                <td><%= row.sellerName %></td>
-                <td class="fw-bold">
-                    <% if (typeof row.selectedRoundScore !== 'undefined' && row.selectedRoundScore) { %>
-                        <%= row.selectedRoundScore.score.toFixed(1) %>
-                        <span class="text-muted small">(<%= row.selectedRoundScore.daysInspected %> วัน)</span>
-                    <% } else { %>
-                        <span class="text-muted">ไม่มีข้อมูลรอบนี้</span>
-                    <% } %>
-                </td>
-                <td><%= row.cumulativeScore !== null ? row.cumulativeScore.toFixed(1) : '-' %></td>
+            <% rows.forEach((row, index) => {
+                const badge = STATUS_BADGES[row.status] || STATUS_BADGES.ok;
+                const level = row.absentDays > blacklistThreshold ? 'danger' : (row.absentDays >= watchThreshold ? 'warn' : 'ok');
+                const barPercent = Math.min(row.absentDays / (blacklistThreshold + 1), 1) * 100;
+                const spare = Math.max(blacklistThreshold - row.absentDays, 0);
+            %>
+            <tr class="att-row att-row-<%= row.status %>" data-status="<%= row.status %>" data-detail="attDetail<%= index %>">
                 <td>
-                    <% if (row.latestRoundScore) { %>
-                        รอบ <%= row.latestRoundScore.roundNumber %>: <%= row.latestRoundScore.score.toFixed(1) %>
-                    <% } else { %>
-                        -
-                    <% } %>
+                    <button type="button" class="att-toggle" aria-expanded="false" aria-controls="attDetail<%= index %>" aria-label="ดูรายละเอียดร้าน <%= row.sellerName %>"><i class="fas fa-chevron-right"></i></button>
                 </td>
+                <td class="fw-bold"><%= row.sellerName %></td>
+                <td><%= row.stallCodes.join(', ') %></td>
                 <td><%= row.roundsCount %></td>
                 <td>
-                    <% if (row.isBlacklisted) { %>
-                    <span class="badge badge-danger">Blacklist</span>
-                    <% } else { %>
-                    <span class="badge badge-success">ปกติ</span>
-                    <% } %>
+                    <div class="att-strip" aria-label="สถานะ 14 วันของรอบ">
+                        <% row.dayStrip.forEach((day) => { %>
+                        <i class="att-dot att-dot-<%= day.status %><%= day.isToday ? ' is-today' : '' %>" title="<%= day.label %> — <%= DOT_TITLES[day.status] %>"></i>
+                        <% }) %>
+                    </div>
                 </td>
+                <td><%= row.presentDays %> <span class="text-muted small">/ <%= row.elapsedDays %> วัน</span></td>
+                <td style="min-width:150px;">
+                    <div class="att-bar att-bar-<%= level %>" role="progressbar" aria-valuemin="0" aria-valuemax="<%= blacklistThreshold + 1 %>" aria-valuenow="<%= row.absentDays %>"><span style="width:<%= barPercent %>%"></span></div>
+                    <div class="small <%= level === 'danger' ? 'text-danger fw-bold' : 'text-muted' %>">
+                        ขาด <%= row.absentDays %> วัน ·
+                        <% if (row.absentDays > blacklistThreshold) { %>เกินเกณฑ์<% } else { %>ขาดได้อีก <%= spare %> วัน<% } %>
+                    </div>
+                </td>
+                <td><%= row.lastDateLabel || '-' %></td>
+                <td><span class="badge <%= badge.cls %>"><%= badge.text %></span></td>
                 <% if (isAdmin) { %>
                 <td>
                     <% if (!row.userId) { %>
                     <span class="text-muted small">-</span>
-                    <% } else if (row.isBlacklisted) { %>
+                    <% } else { %>
+                    <button type="button" class="btn btn-outline-danger btn-sm att-bl-btn"
+                        data-user-id="<%= row.userId %>"
+                        data-name="<%= row.sellerName %>"
+                        data-stalls="<%= row.stallCodes.join(', ') %>"
+                        data-absent="<%= row.absentDays %>"
+                        data-absent-dates="<%= row.absentLabels.join(', ') %>"
+                        data-flagged="<%= row.status === 'blacklist' ? '1' : '0' %>"
+                        data-reason="<%= row.status === 'blacklist' ? 'ขายไม่มา ' + row.absentDays + ' วันในรอบที่ ' + roundNumber : '' %>">Blacklist</button>
+                    <% } %>
+                </td>
+                <% } %>
+            </tr>
+            <tr class="att-detail" id="attDetail<%= index %>" hidden>
+                <td colspan="<%= colCount %>">
+                    <div class="att-stalls">
+                        <% row.stallDetails.forEach((stall) => { %>
+                        <div class="att-stall">
+                            <div class="att-stall-head"><strong><%= stall.code %></strong></div>
+                            <div class="att-strip att-strip-lg">
+                                <% stall.strip.forEach((day) => { %>
+                                <i class="att-dot att-dot-<%= day.status %><%= day.isToday ? ' is-today' : '' %>" title="<%= day.label %> — <%= DOT_TITLES[day.status] %>"><%= Number(day.dateKey.slice(8)) %></i>
+                                <% }) %>
+                            </div>
+                            <% if (stall.problems.length) { %>
+                            <ul class="att-problems">
+                                <% stall.problems.forEach((problem) => { %>
+                                <li><span class="att-problem-day"><%= problem.label %></span> <%= problem.text %></li>
+                                <% }) %>
+                            </ul>
+                            <% } else { %>
+                            <div class="text-muted small">ไม่พบปัญหาที่บันทึกไว้ในรอบนี้</div>
+                            <% } %>
+                        </div>
+                        <% }) %>
+                    </div>
+                </td>
+            </tr>
+            <% }) %>
+            <tr id="attEmpty" hidden>
+                <td colspan="<%= colCount %>" class="text-center text-muted py-4">ไม่มีร้านในสถานะนี้</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<% if (isAdmin) { %>
+<dialog id="blacklistDialog" class="att-dialog">
+    <form method="POST" action="/admin/sellers/blacklist" id="blacklistForm">
+        <h2 class="h5 fw-bold mb-3"><i class="fas fa-ban me-2 text-danger"></i>ยืนยัน Blacklist ร้าน <span id="blName"></span></h2>
+        <dl class="att-dl">
+            <dt>รอบที่ตรวจ</dt><dd>รอบที่ <%= roundNumber %></dd>
+            <dt>ล็อกที่ถือ</dt><dd id="blStalls"></dd>
+            <dt>ขายไม่มา</dt><dd><span id="blAbsent"></span> วัน <span class="text-muted small" id="blDates"></span></dd>
+        </dl>
+        <div class="att-dialog-note" id="blNote"></div>
+        <ul class="small text-muted ps-3 mb-3">
+            <li>ร้านจะจองแผงใหม่และต่อล็อกไม่ได้</li>
+            <li>ร้านจะหายจากรายการตรวจตลาดนี้ (ปิดบัญชีร้าน)</li>
+            <li>ยกเลิกได้ภายหลังจากส่วน "ร้านที่ถูก Blacklist" ด้านล่างของหน้านี้</li>
+        </ul>
+        <input type="hidden" name="userId" id="blUserId">
+        <input type="hidden" name="action" value="blacklist">
+        <label class="form-label small fw-bold" for="blReason">เหตุผล</label>
+        <textarea name="reason" id="blReason" class="form-control form-control-sm mb-3" rows="2" maxlength="300"></textarea>
+        <label class="d-flex gap-2 align-items-start small mb-3">
+            <input type="checkbox" id="blConfirmCheck" class="mt-1">
+            <span>ฉันตรวจสอบข้อมูลการขาดขายของร้านนี้แล้ว และต้องการ Blacklist</span>
+        </label>
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="blCancel">ยกเลิก</button>
+            <button type="submit" class="btn btn-danger btn-sm" id="blSubmit" disabled>ยืนยัน Blacklist</button>
+        </div>
+    </form>
+</dialog>
+<% } %>
+
+<% if (isAdmin && typeof blacklistedRows !== 'undefined' && blacklistedRows.length) { %>
+<h2 class="h5 fw-bold mt-4"><i class="fas fa-ban me-2"></i>ร้านที่ถูก Blacklist (ปิดบัญชีแล้ว ไม่แสดงในรายการตรวจตลาด)</h2>
+<div class="table-responsive">
+    <table class="table align-middle bg-white">
+        <thead>
+            <tr><th>ร้านค้า</th><th>เหตุผล</th><th>วันที่</th><th>จัดการ</th></tr>
+        </thead>
+        <tbody>
+            <% blacklistedRows.forEach((row) => { %>
+            <tr>
+                <td><%= row.sellerName %></td>
+                <td><%= row.reason || '-' %></td>
+                <td><%= row.blacklistedAt ? new Date(row.blacklistedAt).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) : '-' %></td>
+                <td>
                     <form method="POST" action="/admin/sellers/blacklist" class="d-inline">
                         <input type="hidden" name="userId" value="<%= row.userId %>">
                         <input type="hidden" name="action" value="unblacklist">
                         <button type="submit" class="btn btn-outline-primary btn-sm">ยกเลิก Blacklist</button>
                     </form>
-                    <% if (row.blacklistReason) { %>
-                    <div class="small text-muted mt-1"><%= row.blacklistReason %></div>
-                    <% } %>
-                    <% } else { %>
-                    <details>
-                        <summary class="text-danger" style="cursor:pointer;">Blacklist ร้านนี้</summary>
-                        <form method="POST" action="/admin/sellers/blacklist" class="mt-2">
-                            <input type="hidden" name="userId" value="<%= row.userId %>">
-                            <input type="hidden" name="action" value="blacklist">
-                            <textarea name="reason" class="form-control form-control-sm mb-2" placeholder="เหตุผล (ถ้ามี)" rows="2"></textarea>
-                            <button type="submit" class="btn btn-danger btn-sm">ยืนยัน Blacklist</button>
-                        </form>
-                    </details>
-                    <% } %>
                 </td>
-                <% } %>
             </tr>
             <% }) %>
         </tbody>
     </table>
 </div>
+<% } %>
+
+<script src="/js/admin/seller-attendance.js"></script>

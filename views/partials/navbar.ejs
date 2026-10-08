@@ -34,7 +34,7 @@ const isStaff = user && user.role === 'STAFF';
             </a>
             <a href="/staff/seller-scores"
                 class="nav-item <%= currentPath.includes('/staff/seller-scores') ? 'active' : '' %>">
-                <i class="fas fa-star"></i> คะแนนร้านค้า
+                <i class="fas fa-calendar-check"></i> การมาขายร้านค้า
             </a>
             <% } else { %>
             <a href="/admin/approvals"
@@ -54,7 +54,7 @@ const isStaff = user && user.role === 'STAFF';
                     { href: '/admin/tax-invoice-requests', icon: 'fa-file-invoice', label: 'คำขอใบกำกับภาษี', match: 'tax-invoice-requests' },
                     { href: '/admin/announcements', icon: 'fa-bullhorn', label: 'จัดการประกาศ', match: 'announcements' },
                     { href: '/admin/community-banners', icon: 'fa-images', label: 'แบนเนอร์คอมมูนิตี้', match: '/community-banners' },
-                    { href: '/admin/sellers/scores', icon: 'fa-star', label: 'คะแนนร้านค้า', match: '/sellers/scores' },
+                    { href: '/admin/sellers/scores', icon: 'fa-calendar-check', label: 'การมาขายร้านค้า', match: '/sellers/scores' },
                     { href: '/admin/booking-holidays', icon: 'fa-calendar-xmark', label: 'วันหยุดรอบจอง', match: '/booking-holidays' }
                 ];
                 const isMoreActive = moreLinks.some(function(link) { return currentPath.includes(link.match); });

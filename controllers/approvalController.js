@@ -1036,35 +1036,75 @@ function resolveReturnPath(returnTo) {
 // ในระบบ เพราะหมดสัญญาในระบบไม่ได้แปลว่าร้านออกจากพื้นที่จริงแล้วเสมอไป (อาจกำลังต่อ/รอจ่ายเพิ่ม) จึงให้
 // แอดมินเป็นคนตัดสินใจกดปล่อยเองหลังเช็คหน้างานแล้วว่าร้านออกจริง (ดูปุ่ม "ปล่อยล็อก" ที่หน้า /admin/slots
 // และ /admin/slots/expiring) ไม่แตะสถานะ Booking/BookingRequest เดิม แค่ปลดล็อกให้จองใหม่ได้
+// แกนของ "ปล่อยล็อก" คืนรหัสผลลัพธ์ (ใช้ร่วมกันทั้งปุ่มเดี่ยวและปุ่มทำหลายล็อกพร้อมกัน)
+async function releaseExpiredStallCore(rawCode) {
+    const stallCode = String(rawCode || '').trim().toUpperCase();
+    if (!stallCode) return { code: 'missing_stall_code', ok: false };
+
+    const stall = await prisma.stall.findUnique({ where: { stallCode } });
+    if (!stall) return { code: 'stall_not_found', ok: false };
+
+    // เช็คซ้ำฝั่ง server ว่าหมดสัญญาจริง ไม่เชื่อ client เฉยๆ — กันปล่อยล็อกที่ยังจองอยู่จริงผิดพลาด/ตั้งใจ
+    const isExpired = stall.status === 'BOOKED' && stall.bookingEndDate && getRenewalPhase(stall.bookingEndDate) === 'lapsed';
+    if (!isExpired) return { code: 'stall_not_expired', ok: false };
+
+    await prisma.$transaction([
+        prisma.stall.update({ where: { id: stall.id }, data: { isAvailable: true, status: 'AVAILABLE' } }),
+        prisma.slot.updateMany({ where: { slotNumber: stallCode }, data: { isAvailable: true } })
+    ]);
+    return { code: 'stall_released', ok: true };
+}
+
+// ปล่อยล็อกที่หมดสัญญาแล้ว (bookingEndDate เลยมาแล้ว) กลับเป็นว่างด้วยตนเอง — ไม่มี auto-release อัตโนมัติ
+// ในระบบ เพราะหมดสัญญาในระบบไม่ได้แปลว่าร้านออกจากพื้นที่จริงแล้วเสมอไป (อาจกำลังต่อ/รอจ่ายเพิ่ม) จึงให้
+// แอดมินเป็นคนตัดสินใจกดปล่อยเองหลังเช็คหน้างานแล้วว่าร้านออกจริง (ดูปุ่ม "ปล่อยล็อก" ที่หน้า /admin/slots
+// และ /admin/slots/expiring) ไม่แตะสถานะ Booking/BookingRequest เดิม แค่ปลดล็อกให้จองใหม่ได้
 exports.releaseExpiredStall = async (req, res) => {
     const returnPath = resolveReturnPath(req.body.returnTo);
     try {
-        const stallCode = String(req.body.stallCode || '').trim().toUpperCase();
-        if (!stallCode) {
-            return res.redirect(`${returnPath}?error=missing_stall_code`);
-        }
-
-        const stall = await prisma.stall.findUnique({ where: { stallCode } });
-        if (!stall) {
-            return res.redirect(`${returnPath}?error=stall_not_found`);
-        }
-
-        // เช็คซ้ำฝั่ง server ว่าหมดสัญญาจริง ไม่เชื่อ client เฉยๆ — กันปล่อยล็อกที่ยังจองอยู่จริงผิดพลาด/ตั้งใจ
-        const isExpired = stall.status === 'BOOKED' && stall.bookingEndDate && getRenewalPhase(stall.bookingEndDate) === 'lapsed';
-        if (!isExpired) {
-            return res.redirect(`${returnPath}?error=stall_not_expired`);
-        }
-
-        await prisma.$transaction([
-            prisma.stall.update({ where: { id: stall.id }, data: { isAvailable: true, status: 'AVAILABLE' } }),
-            prisma.slot.updateMany({ where: { slotNumber: stallCode }, data: { isAvailable: true } })
-        ]);
-
-        return res.redirect(`${returnPath}?success=stall_released`);
+        const result = await releaseExpiredStallCore(req.body.stallCode);
+        return res.redirect(`${returnPath}?${result.ok ? 'success' : 'error'}=${result.code}`);
     } catch (err) {
         return res.redirect(`${returnPath}?error=release_stall_failed`);
     }
 };
+
+// แกนของ "แจ้งเตือนร้านค้า" คืนรหัสผลลัพธ์ (success=notify_sent / notify_sent_in_app, error=อื่นๆ)
+async function notifyStallExpiringCore(rawCode) {
+    const stallCode = String(rawCode || '').trim().toUpperCase();
+    if (!stallCode) return { code: 'missing_stall_code', ok: false };
+
+    const stall = await prisma.stall.findUnique({ where: { stallCode } });
+    if (!stall || stall.status !== 'BOOKED' || !stall.bookingEndDate) return { code: 'stall_not_expiring', ok: false };
+
+    const daysLeft = Math.round((new Date(stall.bookingEndDate).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / (24 * 60 * 60 * 1000));
+
+    // หาผู้เช่าล็อกนี้จริง (Slot -> Booking ล่าสุดที่ยังไม่ถูกปฏิเสธ -> User) เอาแค่อีเมล ไม่ต้องเช็ค subtype/shop
+    const slot = await prisma.slot.findUnique({
+        where: { slotNumber: stallCode },
+        select: {
+            bookings: {
+                where: { status: { in: ['IN_PROGRESS', 'SUCCESS', 'APPROVED'] } },
+                orderBy: { id: 'desc' },
+                take: 1,
+                select: { userId: true, user: { select: { email: true } } }
+            }
+        }
+    });
+    const renter = slot?.bookings[0];
+    if (!renter) return { code: 'notify_no_email', ok: false };
+
+    // แจ้งเตือนในระบบ (การ์ดใน /notifications + badge กระดิ่งผู้ขาย) ก่อนส่งอีเมลเสมอ — อีเมลพังหรือไม่มีอีเมลก็ยังแจ้งในระบบได้
+    await prisma.stallRenewalNotice.create({
+        data: { stallCode, userId: renter.userId, bookingEndDate: stall.bookingEndDate }
+    });
+
+    const email = renter.user?.email;
+    if (!email) return { code: 'notify_sent_in_app', ok: true };
+
+    await sendStallExpiringSoonEmail(email, stallCode, daysLeft);
+    return { code: 'notify_sent', ok: true };
+}
 
 // แจ้งเตือนร้านค้าทางอีเมลว่าล็อกใกล้หมดสัญญา ให้มาต่อสัญญาก่อนโดนปล่อยล็อกคืน — แอดมินกดเองเป็นครั้งๆ ไป
 // (ดูปุ่ม "แจ้งเตือนร้านค้า" ที่หน้า /admin/slots และ /admin/slots/expiring) ไม่มีระบบส่งอัตโนมัติ/ตามรอบ
@@ -1072,48 +1112,39 @@ exports.releaseExpiredStall = async (req, res) => {
 exports.notifyStallExpiring = async (req, res) => {
     const returnPath = resolveReturnPath(req.body.returnTo);
     try {
-        const stallCode = String(req.body.stallCode || '').trim().toUpperCase();
-        if (!stallCode) {
-            return res.redirect(`${returnPath}?error=missing_stall_code`);
-        }
-
-        const stall = await prisma.stall.findUnique({ where: { stallCode } });
-        if (!stall || stall.status !== 'BOOKED' || !stall.bookingEndDate) {
-            return res.redirect(`${returnPath}?error=stall_not_expiring`);
-        }
-
-        const daysLeft = Math.round((new Date(stall.bookingEndDate).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / (24 * 60 * 60 * 1000));
-
-        // หาผู้เช่าล็อกนี้จริง (Slot -> Booking ล่าสุดที่ยังไม่ถูกปฏิเสธ -> User) เอาแค่อีเมล ไม่ต้องเช็ค subtype/shop
-        const slot = await prisma.slot.findUnique({
-            where: { slotNumber: stallCode },
-            select: {
-                bookings: {
-                    where: { status: { in: ['IN_PROGRESS', 'SUCCESS', 'APPROVED'] } },
-                    orderBy: { id: 'desc' },
-                    take: 1,
-                    select: { userId: true, user: { select: { email: true } } }
-                }
-            }
-        });
-        const renter = slot?.bookings[0];
-        if (!renter) {
-            return res.redirect(`${returnPath}?error=notify_no_email`);
-        }
-
-        // แจ้งเตือนในระบบ (การ์ดใน /notifications + badge กระดิ่งผู้ขาย) ก่อนส่งอีเมลเสมอ — อีเมลพังหรือไม่มีอีเมลก็ยังแจ้งในระบบได้
-        await prisma.stallRenewalNotice.create({
-            data: { stallCode, userId: renter.userId, bookingEndDate: stall.bookingEndDate }
-        });
-
-        const email = renter.user?.email;
-        if (!email) {
-            return res.redirect(`${returnPath}?success=notify_sent_in_app`);
-        }
-
-        await sendStallExpiringSoonEmail(email, stallCode, daysLeft);
-        return res.redirect(`${returnPath}?success=notify_sent`);
+        const result = await notifyStallExpiringCore(req.body.stallCode);
+        return res.redirect(`${returnPath}?${result.ok ? 'success' : 'error'}=${result.code}`);
     } catch (err) {
         return res.redirect(`${returnPath}?error=notify_failed`);
     }
+};
+
+// ทำหลายล็อกพร้อมกันจากโหมด "เลือกหลายล็อก" บนผัง — ใช้แกนเดียวกับปุ่มเดี่ยว (เช็คเงื่อนไขซ้ำทีละล็อกฝั่ง server)
+// ตอบเป็น JSON รายล็อก ล็อกที่ไม่เข้าเงื่อนไขแค่ถูกข้าม ไม่ทำให้ล็อกอื่นล้ม
+const BULK_STALL_ACTION_LIMIT = 60;
+exports.bulkStallAction = async (req, res) => {
+    const action = String(req.body.action || '');
+    const core = action === 'release' ? releaseExpiredStallCore : (action === 'notify' ? notifyStallExpiringCore : null);
+    if (!core) return res.status(400).json({ error: 'invalid_action' });
+
+    const codes = [...new Set((Array.isArray(req.body.stallCodes) ? req.body.stallCodes : [])
+        .map((code) => String(code || '').trim().toUpperCase())
+        .filter(Boolean))].slice(0, BULK_STALL_ACTION_LIMIT);
+    if (!codes.length) return res.status(400).json({ error: 'missing_stall_codes' });
+
+    const results = [];
+    for (const code of codes) {
+        try {
+            const result = await core(code);
+            results.push({ stallCode: code, ok: result.ok, code: result.code });
+        } catch (err) {
+            results.push({ stallCode: code, ok: false, code: action === 'release' ? 'release_stall_failed' : 'notify_failed' });
+        }
+    }
+    return res.json({
+        action,
+        okCount: results.filter((r) => r.ok).length,
+        failCount: results.filter((r) => !r.ok).length,
+        results
+    });
 };

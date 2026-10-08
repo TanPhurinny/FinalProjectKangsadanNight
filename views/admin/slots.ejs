@@ -19,6 +19,7 @@
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261008-font">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/admin/slots.css?v=20261002-match">
+        <link rel="stylesheet" href="/stylesheets/admin/slots-extras.css?v=20261008">
         <link rel="stylesheet" href="/stylesheets/common/searchSuggest.css?v=20261002">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
@@ -112,9 +113,29 @@
                         class="fa-solid fa-palette fa-xs"></i> สีมุมพิเศษ</button>
             </div>
 
+            <!-- สรุปตัวเลขทั้งตลาด (กดเพื่อกรอง) -->
+            <div class="stats-strip" id="statsStrip" aria-label="สรุปสถานะแผง"></div>
+
+            <!-- เครื่องมือ: ชั้นผลตรวจ / เลือกหลายล็อก / พิมพ์ / CSV / ซูม -->
+            <div class="tool-bar">
+                <button type="button" class="tool-btn" id="toolInspect" title="แสดงสีผลตรวจวันนี้บนผัง">
+                    <i class="fa-solid fa-clipboard-check"></i> ผลตรวจวันนี้</button>
+                <button type="button" class="tool-btn" id="toolMulti" title="เลือกหลายล็อกที่ใกล้หมด/หมดสัญญาแล้วทำพร้อมกัน">
+                    <i class="fa-solid fa-square-check"></i> เลือกหลายล็อก</button>
+                <button type="button" class="tool-btn" id="toolPrint"><i class="fa-solid fa-print"></i> พิมพ์ผัง</button>
+                <button type="button" class="tool-btn" id="toolCsv"><i class="fa-solid fa-file-csv"></i> ส่งออก CSV</button>
+                <button type="button" class="tool-btn" id="toolLastZone" hidden></button>
+                <button type="button" class="tool-btn tool-btn-clear" id="toolClearAll"><i class="fa-solid fa-rotate-left"></i> ล้างตัวกรองทั้งหมด</button>
+                <span class="tool-spacer"></span>
+                <span class="zoom-ctl" id="mapZoomCtl"></span>
+            </div>
+            <div class="inspect-legend" id="inspectLegend" hidden></div>
+
             <!-- PAGE BODY -->
             <div class="page-body">
-                <div class="map-shell">
+                <div class="print-head">ผังตลาดกังสดาลไนท์ — สถานะแผง <span id="printStamp"></span></div>
+                <div class="map-zoom-wrap" id="mapZoomWrap">
+                <div class="map-shell" id="mapShell">
                     <div class="road-top">
                         <span class="road-top-label">ถนน</span>
                         <div class="sign-charoen"><div class="sign-dot"></div>
@@ -197,6 +218,7 @@
                         <span class="sign-inout">เข้า-ออก</span>
                     </div>
                 </div>
+                </div>
 
                 <% if (otherZones.length) { %>
                 <div class="other-zones-bar">
@@ -229,6 +251,7 @@
                         <div class="head-sub" id="drawerSub"></div>
                     </div>
                     <div class="head-right">
+                        <span class="zoom-ctl" id="gridZoomCtl"></span>
                         <div class="drawer-stats" id="drawerStats"></div>
                         <button class="btn-close-drawer"
                             onclick="closeZone()">✕</button>
@@ -287,6 +310,12 @@
                         <div class="ig ic-span2"><label>หมายเหตุ</label><span
                                 id="ic-note"></span></div>
                     </div>
+                    <div class="ic-history d-none" id="icHistory">
+                        <div class="ic-history-title"><i class="fa-solid fa-clock-rotate-left fa-xs"></i> ผลตรวจ 7 วันล่าสุด</div>
+                        <div class="ic-history-days" id="icHistoryDays"></div>
+                        <ul class="ic-history-notes" id="icHistoryNotes"></ul>
+                        <div class="ic-history-repairs" id="icHistoryRepairs"></div>
+                    </div>
                     <div class="ic-approvals-link-wrap d-none" id="icApprovalsLinkWrap">
                         <a id="icApprovalsLink" href="#" target="_blank" rel="noopener" class="ic-approvals-link">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i> ดูคำขอนี้ที่หน้าอนุมัติ
@@ -317,15 +346,27 @@
 
             </div>
 
+            <!-- แถบทำหลายล็อกพร้อมกัน (โหมดเลือกหลายล็อก) -->
+            <div class="bulk-bar" id="bulkBar" hidden>
+                <span class="bulk-count" id="bulkCount"></span>
+                <button type="button" class="bulk-btn" id="bulkPickExpiring"><i class="fa-solid fa-list-check"></i> เลือกทั้งหมดที่ใกล้/หมดสัญญา</button>
+                <button type="button" class="bulk-btn bulk-notify" id="bulkNotify"><i class="fa-solid fa-envelope"></i> <span>แจ้งเตือน</span></button>
+                <button type="button" class="bulk-btn bulk-release" id="bulkRelease"><i class="fa-solid fa-door-open"></i> <span>ปล่อยล็อก</span></button>
+                <button type="button" class="bulk-btn" id="bulkClear">ล้างที่เลือก</button>
+                <button type="button" class="bulk-btn" id="bulkExit">ออกจากโหมด</button>
+            </div>
+
         </div>
 
         <script type="application/json" id="zonesDataJson"><%- JSON.stringify(zoneByCode).replace(/</g, '\\u003c') %></script>
         <script type="application/json" id="bookingByStallJson"><%- JSON.stringify(locals.bookingByStallCode || {}).replace(/</g, '\\u003c') %></script>
+        <script type="application/json" id="inspectionTodayJson"><%- JSON.stringify(locals.inspectionToday || { byCode: {}, dateLabel: '' }).replace(/</g, '\\u003c') %></script>
         <script
             src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
         <script src="/js/common/dialogs.js"></script>
         <script src="/js/common/searchSuggest.js?v=20261002"></script>
-        <script src="/js/admin/slots.js?v=20261002-suggest2"></script>
+        <script src="/js/admin/slots.js?v=20261008-hooks"></script>
+        <script src="/js/admin/slots-extras.js?v=20261008"></script>
         <script>
             // แจ้งผลลัพธ์ปุ่ม "ปล่อยล็อก"/"แจ้งเตือนร้านค้า" (ดู releaseStall()/notifyExpiring() ใน slots.js)
             // หลัง redirect กลับมาที่หน้านี้ แล้วล้าง query ทิ้ง

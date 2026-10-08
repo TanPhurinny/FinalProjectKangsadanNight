@@ -91,6 +91,7 @@ async function buildTodayInspectionLayer() {
         byCode[String(stall.stallCode).trim().toUpperCase()] = {
             stallId: stall.id,
             status,
+            problems,
             cleanlinessPassed: clean ? Boolean(clean.overallPassed) : null,
             // ค่าปัจจุบันของวันนี้ ใช้เติมฟอร์ม "บันทึกผลตรวจด่วน" บนผังของ staff
             issue: {

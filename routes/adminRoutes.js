@@ -62,6 +62,8 @@ router.get('/slots', marketCtrl.getSlotsPage);
 router.get('/slots/expiring', marketCtrl.getExpiringStallsPage);
 router.post('/slots/release-stall', approvalCtrl.releaseExpiredStall);
 router.post('/slots/notify-expiring', approvalCtrl.notifyStallExpiring);
+router.post('/slots/bulk-action', approvalCtrl.bulkStallAction);
+router.get('/slots/stall-history/:code', marketCtrl.getStallHistory);
 
 // --- 5. Announcements (จัดการประกาศ) ---
 // ดึงข้อมูลหน้าประกาศ
