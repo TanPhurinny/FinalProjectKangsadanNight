@@ -48,7 +48,9 @@
                 </td>
                 <% if (isAdmin) { %>
                 <td>
-                    <% if (row.isBlacklisted) { %>
+                    <% if (!row.userId) { %>
+                    <span class="text-muted small">-</span>
+                    <% } else if (row.isBlacklisted) { %>
                     <form method="POST" action="/admin/sellers/blacklist" class="d-inline">
                         <input type="hidden" name="userId" value="<%= row.userId %>">
                         <input type="hidden" name="action" value="unblacklist">

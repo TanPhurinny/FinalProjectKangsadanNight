@@ -4,6 +4,7 @@ const { isStaffOnly } = require('../middlewares/auth');
 const staffInspectionCtrl = require('../controllers/staffInspectionController');
 const staffDashboardCtrl = require('../controllers/staffDashboardController');
 const scoreReportCtrl = require('../controllers/scoreReportController');
+const inspectionReportCtrl = require('../controllers/inspectionReportController');
 
 router.use(isStaffOnly);
 
@@ -14,8 +15,8 @@ router.post('/marketinspection/inspection-check', staffInspectionCtrl.saveInspec
 router.post('/marketinspection/issue', staffInspectionCtrl.saveStallIssue);
 router.post('/marketinspection/cleanliness', staffInspectionCtrl.saveCleanlinessInspection);
 router.post('/marketinspection/submit-day', staffInspectionCtrl.submitDay);
-router.get('/marketinspection/report', scoreReportCtrl.getStaffReportPage);
-router.get('/marketinspection/report/export', scoreReportCtrl.exportStaffReportExcel);
+router.get('/marketinspection/report', inspectionReportCtrl.getStaffReportPage);
+router.get('/marketinspection/report/export', inspectionReportCtrl.exportStaffReportExcel);
 router.get('/seller-scores', scoreReportCtrl.getSellerScoresPage);
 
 module.exports = router;

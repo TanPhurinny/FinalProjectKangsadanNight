@@ -11,197 +11,258 @@
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20260826-7">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/admin/dashboard.css">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+        <link rel="stylesheet" href="/stylesheets/staff/inspection-report.css">
     </head>
     <body class="bg-light">
         <script src="/js/common/tabSession.js"></script>
         <%- include('./partials/navbar') %>
 
-        <div class="container py-4">
+        <div class="container py-4 report-page">
             <% if (typeof error !== 'undefined' && error) { %>
             <div class="alert alert-danger mb-3"><%= error %></div>
             <% } %>
 
             <% if (report) {
-                const selectedDay = report.dailyOverview.find((d) => d.dateKey === report.selectedDateKey) || null;
+                const s = report.summary;
+                const dayIndex = report.days.findIndex((d) => d.dateKey === report.selectedDateKey);
+                const prevDay = dayIndex > 0 ? report.days[dayIndex - 1] : null;
+                const nextDay = dayIndex < report.days.length - 1 ? report.days[dayIndex + 1] : null;
+                const reportUrl = (round, date) => `/staff/marketinspection/report?round=${round}${date ? `&date=${date}` : ''}`;
+                const attendanceLabel = { noShow: 'ไม่มาขาย', present: 'มาขาย', unchecked: 'ยังไม่ตรวจ' };
+                const cleanLabel = { passed: 'ผ่าน', failed: 'ไม่ผ่าน', pending: 'ยังไม่ตรวจ', skipped: 'ข้าม (ไม่มาขาย)' };
+                const fmtTime = (value) => new Date(value).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
             %>
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                 <div>
-                    <h1 class="fw-bold mb-1">
-                        <i class="fas fa-chart-line me-2"></i>รายงานตรวจตลาด รอบที่ <%= report.roundNumber %>
-                        <% if (selectedDay) { %><span class="text-muted fw-normal">&middot; <%= selectedDay.dateLabel %><%= selectedDay.dateKey === report.todayKey ? ' (วันนี้)' : '' %></span><% } %>
+                    <h1 class="fw-bold mb-1 report-title">
+                        <i class="fas fa-chart-line me-2"></i>รายงานตรวจตลาด
                     </h1>
-                    <p class="text-muted mb-0">
-                        <%= report.cycleStart.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>
-                        &ndash;
-                        <%= report.cycleEnd.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>
-                    </p>
+                    <p class="text-muted mb-0">รอบที่ <%= report.roundNumber %> &middot; วันที่ <%= report.selectedDateLabel %><%= report.selectedDateKey === report.todayKey ? ' (วันนี้)' : '' %></p>
                 </div>
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <select id="dateFilterSelect" class="form-select form-select-sm" style="width: auto;">
-                        <option value="" <%= !report.selectedDateKey ? 'selected' : '' %>>ทั้งรอบ (เฉลี่ยทุกวัน)</option>
-                        <% report.dailyOverview.forEach((day) => { %>
-                        <option value="<%= day.dateKey %>" <%= report.selectedDateKey === day.dateKey ? 'selected' : '' %>><%= day.dateLabel %><%= day.dateKey === report.todayKey ? ' (วันนี้)' : '' %></option>
+                    <a class="hero-btn <%= prevDay ? '' : 'disabled' %>" <% if (prevDay) { %>href="<%= reportUrl(roundNumber, prevDay.dateKey) %>"<% } %> aria-label="วันก่อนหน้า"><i class="fas fa-chevron-left"></i></a>
+                    <select id="dateFilterSelect" class="form-select form-select-sm report-date-select" data-round="<%= roundNumber %>">
+                        <% report.days.forEach((day) => { %>
+                        <option value="<%= day.dateKey %>" <%= report.selectedDateKey === day.dateKey ? 'selected' : '' %> <%= day.isFuture ? 'disabled' : '' %>><%= day.label %><%= day.isToday ? ' (วันนี้)' : '' %></option>
                         <% }) %>
                     </select>
-                    <a class="hero-btn" href="/staff/marketinspection/report?round=<%= roundNumber - 1 %>"><i class="fas fa-arrow-left"></i> รอบก่อนหน้า</a>
-                    <a class="hero-btn" href="/staff/marketinspection/report?round=<%= currentRoundNumber %>">รอบปัจจุบัน</a>
-                    <a class="hero-btn" href="/staff/marketinspection/report?round=<%= roundNumber + 1 %>">รอบถัดไป <i class="fas fa-arrow-right"></i></a>
-                    <a class="hero-btn" href="/staff/marketinspection/report/export?round=<%= roundNumber %><%= report.selectedDateKey ? `&date=${report.selectedDateKey}` : '' %>"><i class="fas fa-file-excel"></i> ดาวน์โหลด .xlsx</a>
+                    <a class="hero-btn <%= nextDay && !nextDay.isFuture ? '' : 'disabled' %>" <% if (nextDay && !nextDay.isFuture) { %>href="<%= reportUrl(roundNumber, nextDay.dateKey) %>"<% } %> aria-label="วันถัดไป"><i class="fas fa-chevron-right"></i></a>
+                    <a class="hero-btn" href="<%= reportUrl(roundNumber - 1) %>"><i class="fas fa-arrow-left"></i> รอบก่อนหน้า</a>
+                    <a class="hero-btn" href="<%= reportUrl(currentRoundNumber) %>">รอบปัจจุบัน</a>
+                    <a class="hero-btn" href="<%= reportUrl(roundNumber + 1) %>">รอบถัดไป <i class="fas fa-arrow-right"></i></a>
+                    <a class="hero-btn" href="/staff/marketinspection/report/export?round=<%= roundNumber %>&date=<%= report.selectedDateKey %>"><i class="fas fa-file-excel"></i> ดาวน์โหลด .xlsx</a>
                 </div>
             </div>
 
-            <% if (report.inspectionProgressToday.total > 0) { %>
-            <div class="alert <%= report.inspectionProgressToday.isComplete ? 'alert-success' : 'alert-warning' %> mb-4">
-                <% const progressDayLabel = selectedDay ? selectedDay.dateLabel : 'วันนี้'; %>
-                <% if (report.inspectionProgressToday.isComplete) { %>
-                    <i class="fas fa-circle-check me-1"></i> ตรวจครบทุกร้านของ<%= progressDayLabel %>แล้ว (<%= report.inspectionProgressToday.inspected %>/<%= report.inspectionProgressToday.total %> ล็อค)
-                <% } else { %>
-                    <i class="fas fa-triangle-exclamation me-1"></i> <%= progressDayLabel %>ยังตรวจไม่ครบ: ตรวจแล้ว <%= report.inspectionProgressToday.inspected %> จาก <%= report.inspectionProgressToday.total %> ล็อค
-                <% } %>
-            </div>
+            <% if (report.isFutureDay) { %>
+            <div class="alert alert-secondary">ยังไม่ถึงวันนี้ จึงยังไม่มีข้อมูลตรวจ</div>
+            <% } else if (!s.totalStalls) { %>
+            <div class="alert alert-secondary">ไม่มีร้านในวันนี้</div>
+            <% } else if (s.unchecked > 0) { %>
+            <div class="alert alert-warning"><i class="fas fa-triangle-exclamation me-1"></i> ยังตรวจไม่ครบ: ตรวจแล้ว <%= s.checked %> จาก <%= s.totalStalls %> ล็อค</div>
+            <% } else { %>
+            <div class="alert alert-success"><i class="fas fa-circle-check me-1"></i> ตรวจครบทุกร้านของวันนี้แล้ว (<%= s.checked %>/<%= s.totalStalls %> ล็อค)</div>
             <% } %>
 
-            <section class="row g-3 mb-4">
-                <div class="col-6 col-lg-3">
-                    <article class="kpi-card c-primary">
-                        <div class="kpi-icon"><i class="fas fa-star"></i></div>
-                        <div class="kpi-label"><%= selectedDay ? 'คะแนนเฉลี่ยวันนี้' : 'คะแนนเฉลี่ยรอบนี้' %></div>
-                        <h3 class="kpi-value"><%= report.overallAverageScore !== null ? report.overallAverageScore.toFixed(1) : '-' %></h3>
-                    </article>
-                </div>
-                <div class="col-6 col-lg-3">
-                    <article class="kpi-card c-info">
-                        <div class="kpi-icon"><i class="fas fa-store"></i></div>
-                        <div class="kpi-label"><%= selectedDay ? 'ร้านที่มีข้อมูลวันนี้' : 'ร้านที่มีข้อมูลรอบนี้' %></div>
-                        <h3 class="kpi-value"><%= report.sellerRows.length %></h3>
-                    </article>
-                </div>
-                <div class="col-6 col-lg-3">
-                    <article class="kpi-card c-warning">
-                        <div class="kpi-icon"><i class="fas fa-bolt"></i></div>
-                        <div class="kpi-label">เครื่องใช้ไฟฟ้าเกิน (เครื่อง)</div>
-                        <h3 class="kpi-value"><%= report.electricSmallTotal + report.electricLargeTotal %></h3>
-                    </article>
-                </div>
-                <div class="col-6 col-lg-3">
-                    <article class="kpi-card c-success">
-                        <div class="kpi-icon"><i class="fas fa-ban"></i></div>
-                        <div class="kpi-label">ร้านที่ถูก Blacklist</div>
-                        <h3 class="kpi-value"><%= report.sellerRows.filter((row) => row.isBlacklisted).length %></h3>
-                    </article>
-                </div>
+            <section class="report-kpis mb-3">
+                <div class="report-kpi"><div class="report-kpi-label">ล็อคที่มีร้าน</div><div class="report-kpi-value"><%= s.totalStalls %></div></div>
+                <div class="report-kpi is-ok"><div class="report-kpi-label">มาขาย</div><div class="report-kpi-value"><%= s.present %></div></div>
+                <div class="report-kpi is-bad"><div class="report-kpi-label">ไม่มาขาย</div><div class="report-kpi-value"><%= s.noShow %></div></div>
+                <div class="report-kpi is-warn"><div class="report-kpi-label">มาขายแต่พบปัญหา</div><div class="report-kpi-value"><%= s.presentWithIssue %></div></div>
+                <div class="report-kpi is-ok"><div class="report-kpi-label">ความสะอาดผ่าน</div><div class="report-kpi-value"><%= s.clean.passed %><span class="report-kpi-sub">/<%= s.clean.foodTotal %></span></div></div>
+                <div class="report-kpi is-bad"><div class="report-kpi-label">ความสะอาดไม่ผ่าน</div><div class="report-kpi-value"><%= s.clean.failed %></div></div>
             </section>
 
-            <section class="row g-3 mb-4">
-                <div class="col-lg-7">
-                    <div class="insight-card h-100">
-                        <h5 class="fw-bold mb-3"><i class="fas fa-wave-square me-2"></i>คะแนนเฉลี่ยรายวันในรอบ</h5>
-                        <canvas id="dailyScoreChart" height="120"></canvas>
-                    </div>
-                </div>
-                <div class="col-lg-5">
-                    <div class="insight-card h-100">
-                        <h5 class="fw-bold mb-3"><i class="fas fa-chart-bar me-2"></i>สรุปปัญหาที่พบทั้งรอบ</h5>
-                        <canvas id="issueBarChart" height="150"></canvas>
-                    </div>
-                </div>
-            </section>
+            <div class="view-toggle report-tabs mb-3" id="reportTabs">
+                <button type="button" class="view-toggle-btn active" data-report-tab="stores"><i class="fas fa-store"></i> แยกตามร้าน</button>
+                <button type="button" class="view-toggle-btn" data-report-tab="issues"><i class="fas fa-clipboard-list"></i> หมวดปัญหา</button>
+                <button type="button" class="view-toggle-btn" data-report-tab="clean"><i class="fas fa-broom"></i> หมวดความสะอาด</button>
+            </div>
 
-            <section class="mb-3">
-                <h3 class="fw-bold mb-3"><i class="fas fa-list me-2"></i>คะแนนร้านค้า<%= selectedDay ? `วันที่ ${selectedDay.dateLabel}` : 'รอบนี้' %></h3>
+            <%# ───────── แท็บ: แยกตามร้าน ───────── %>
+            <section id="reportTab-stores" class="report-tab-panel">
+                <div class="report-filters">
+                    <input type="text" id="storeSearch" class="form-control form-control-sm" placeholder="ค้นหาล็อค/ร้าน/ผู้ขาย">
+                    <select id="storeZone" class="form-select form-select-sm">
+                        <option value="ALL">ทุกโซน</option>
+                        <% Array.from(new Set(report.rows.map((r) => r.zone).filter(Boolean))).sort().forEach((zone) => { %>
+                        <option value="<%= zone %>">โซน <%= zone %></option>
+                        <% }) %>
+                    </select>
+                    <select id="storeStatus" class="form-select form-select-sm">
+                        <option value="ALL">ทุกสถานะ</option>
+                        <option value="problem">มีปัญหา</option>
+                        <option value="noShow">ไม่มาขาย</option>
+                        <option value="cleanFailed">ความสะอาดไม่ผ่าน</option>
+                        <option value="unchecked">ยังไม่ตรวจ</option>
+                    </select>
+                </div>
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle bg-white">
+                    <table class="table align-middle bg-white report-table">
                         <thead>
-                            <tr>
-                                <th>ร้านค้า</th>
-                                <th><%= selectedDay ? 'คะแนนวันนี้' : 'คะแนนรอบนี้' %></th>
-                                <th>จำนวนล็อค</th>
-                                <% if (!selectedDay) { %><th>จำนวนวันที่ตรวจ</th><% } %>
-                                <th>สถานะ</th>
-                            </tr>
+                            <tr><th>ล็อค / ร้าน</th><th>สถานะ</th><th>ปัญหาที่พบ</th><th>ความสะอาด</th></tr>
                         </thead>
                         <tbody>
-                            <% if (!report.sellerRows.length) { %>
-                            <tr><td colspan="<%= selectedDay ? 4 : 5 %>" class="text-center text-muted py-4"><%= selectedDay ? 'ยังไม่มีข้อมูลตรวจในวันนี้' : 'ยังไม่มีข้อมูลตรวจในรอบนี้' %></td></tr>
-                            <% } %>
-                            <% report.sellerRows.forEach((row) => { %>
-                            <tr class="<%= row.isBlacklisted ? 'table-danger' : '' %>">
-                                <td><%= row.sellerName %></td>
-                                <td class="fw-bold"><%= row.roundScore !== null ? row.roundScore.toFixed(1) : '-' %></td>
-                                <td><%= row.stallCount %> ล็อค</td>
-                                <% if (!selectedDay) { %><td><%= row.daysInspected %></td><% } %>
+                            <% report.rows.forEach((row) => {
+                                const hasProblem = row.issueKeys.length > 0;
+                                const cleanFailed = row.cleanliness && row.cleanliness.status === 'failed';
+                            %>
+                            <tr class="store-row"
+                                data-zone="<%= row.zone %>"
+                                data-search="<%= `${row.stallCode} ${row.shopName} ${row.sellerName}`.toLowerCase() %>"
+                                data-problem="<%= hasProblem ? '1' : '0' %>"
+                                data-attendance="<%= row.attendance %>"
+                                data-clean="<%= row.cleanliness ? row.cleanliness.status : '' %>">
                                 <td>
-                                    <% if (row.isBlacklisted) { %>
-                                    <span class="badge badge-danger">Blacklist</span>
+                                    <div class="report-stall-code"><%= row.stallCode %> <span class="report-zone">โซน <%= row.zone || '-' %></span></div>
+                                    <div class="report-meta"><%= row.shopName %> &middot; <%= row.sellerName %></div>
+                                </td>
+                                <td><span class="report-badge att-<%= row.attendance %>"><%= attendanceLabel[row.attendance] %></span></td>
+                                <td>
+                                    <% if (!row.issueKeys.length) { %>
+                                    <span class="text-muted">-</span>
+                                    <% } %>
+                                    <% issueCategories.forEach((category) => { if (!row.issueKeys.includes(category.key)) return; %>
+                                    <div class="report-issue-line">
+                                        <span class="report-badge issue"><%= category.label %></span>
+                                        <% if (category.key === 'electric') { %>
+                                        <span class="report-meta">เล็ก <%= row.issues.electric.smallCount %> / ใหญ่ <%= row.issues.electric.largeCount %> &middot; <%= row.issues.electric.subtotal %> บาท</span>
+                                        <% } else if (category.key === 'other') { %>
+                                        <span class="report-meta"><%= row.issues.otherNote %></span>
+                                        <% } %>
+                                    </div>
+                                    <% }) %>
+                                </td>
+                                <td>
+                                    <% if (!row.cleanliness) { %>
+                                    <span class="text-muted">-</span>
                                     <% } else { %>
-                                    <span class="badge badge-success">ปกติ</span>
+                                    <span class="report-badge clean-<%= row.cleanliness.status %>"><%= cleanLabel[row.cleanliness.status] %></span>
+                                    <% if (row.cleanliness.failedItems) { %>
+                                    <div class="report-meta">ผ่าน <%= row.cleanliness.passedCount %>/<%= row.cleanliness.totalCount %> ข้อ</div>
+                                    <% if (row.cleanliness.failedItems.length) { %>
+                                    <details class="report-details">
+                                        <summary>ข้อที่ไม่ผ่าน <%= row.cleanliness.failedItems.length %> ข้อ</summary>
+                                        <ul>
+                                            <% row.cleanliness.failedItems.forEach((item) => { %>
+                                            <li><b><%= item.id %></b> <%= item.label %></li>
+                                            <% }) %>
+                                        </ul>
+                                    </details>
+                                    <% } %>
+                                    <% } %>
                                     <% } %>
                                 </td>
                             </tr>
                             <% }) %>
+                            <% if (!report.rows.length) { %>
+                            <tr><td colspan="4" class="text-center text-muted py-4">ไม่มีข้อมูลในวันนี้</td></tr>
+                            <% } %>
                         </tbody>
                     </table>
+                    <div id="storeNoResults" class="text-center text-muted py-4 d-none">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
+                </div>
+            </section>
+
+            <%# ───────── แท็บ: หมวดปัญหา ───────── %>
+            <section id="reportTab-issues" class="report-tab-panel d-none">
+                <p class="text-muted">งานตรวจปัญหา: เช็คว่ามาขายหรือไม่ พร้อมปัญหาย่อยที่พบ ไม่คิดเป็นคะแนน (ตัวเลขนับเป็นจำนวนล็อคของวันนี้)</p>
+                <% issueCategories.forEach((category) => {
+                    const catRows = report.rows.filter((r) => r.issueKeys.includes(category.key));
+                %>
+                <div class="report-card">
+                    <div class="report-card-head">
+                        <div class="report-card-title"><%= category.label %></div>
+                        <div class="report-count <%= catRows.length ? 'has' : '' %>"><%= catRows.length %> ล็อค</div>
+                    </div>
+                    <% if (category.key === 'electric' && catRows.length) { %>
+                    <div class="report-meta mb-2">รวมเครื่องเล็ก <%= s.electric.small %> / เครื่องใหญ่ <%= s.electric.large %> &middot; <%= s.electric.subtotal %> บาท</div>
+                    <% } %>
+                    <% if (!catRows.length) { %>
+                    <div class="text-muted">ไม่พบ</div>
+                    <% } else { %>
+                    <ul class="report-list">
+                        <% catRows.forEach((row) => { %>
+                        <li>
+                            <b><%= row.stallCode %></b> <%= row.shopName %> <span class="report-meta">(<%= row.sellerName %>)</span>
+                            <% if (category.key === 'electric') { %>
+                            <div class="report-meta">เล็ก <%= row.issues.electric.smallCount %> / ใหญ่ <%= row.issues.electric.largeCount %> &middot; <%= row.issues.electric.subtotal %> บาท<%= row.issues.electric.note ? ` · ${row.issues.electric.note}` : '' %></div>
+                            <% } else if (category.key === 'other') { %>
+                            <div class="report-meta"><%= row.issues.otherNote %></div>
+                            <% } %>
+                        </li>
+                        <% }) %>
+                    </ul>
+                    <% } %>
+                </div>
+                <% }) %>
+            </section>
+
+            <%# ───────── แท็บ: หมวดความสะอาด ───────── %>
+            <section id="reportTab-clean" class="report-tab-panel d-none">
+                <p class="text-muted">งานตรวจความสะอาด (เฉพาะร้านอาหาร): ผ่าน/ไม่ผ่านตามผลรวมที่บันทึก และแสดงข้อย่อยที่ไม่ผ่านทุกร้าน ไม่ว่าผลรวมจะผ่านหรือไม่</p>
+                <div class="report-kpis mb-3">
+                    <div class="report-kpi"><div class="report-kpi-label">ร้านอาหารทั้งหมด</div><div class="report-kpi-value"><%= s.clean.foodTotal %></div></div>
+                    <div class="report-kpi is-ok"><div class="report-kpi-label">ผ่าน</div><div class="report-kpi-value"><%= s.clean.passed %></div></div>
+                    <div class="report-kpi is-bad"><div class="report-kpi-label">ไม่ผ่าน</div><div class="report-kpi-value"><%= s.clean.failed %></div></div>
+                    <div class="report-kpi"><div class="report-kpi-label">ยังไม่ตรวจ</div><div class="report-kpi-value"><%= s.clean.pending %></div></div>
+                    <div class="report-kpi"><div class="report-kpi-label">ข้าม (ไม่มาขาย)</div><div class="report-kpi-value"><%= s.clean.skipped %></div></div>
+                </div>
+
+                <div class="report-card">
+                    <div class="report-card-head"><div class="report-card-title">ข้อที่ไม่ผ่านบ่อยวันนี้</div></div>
+                    <% if (!s.clean.failedItemRanking.length) { %>
+                    <div class="text-muted">ไม่มีข้อที่ไม่ผ่าน</div>
+                    <% } else { %>
+                    <ul class="report-list">
+                        <% s.clean.failedItemRanking.forEach((item) => { %>
+                        <li><b><%= item.id %></b> <%= item.label %> <span class="report-meta">(<%= item.categoryTitle %>)</span> <span class="report-badge clean-failed"><%= item.count %> ร้าน</span></li>
+                        <% }) %>
+                    </ul>
+                    <% } %>
+                </div>
+
+                <div class="report-filters">
+                    <select id="cleanStatus" class="form-select form-select-sm">
+                        <option value="ALL">ทุกสถานะ</option>
+                        <option value="passed">ผ่าน</option>
+                        <option value="failed">ไม่ผ่าน</option>
+                        <option value="pending">ยังไม่ตรวจ</option>
+                        <option value="skipped">ข้าม (ไม่มาขาย)</option>
+                    </select>
+                </div>
+                <div class="report-card-stack">
+                    <% report.rows.filter((r) => r.isFood).forEach((row) => { const c = row.cleanliness; %>
+                    <div class="report-card clean-row" data-clean="<%= c.status %>">
+                        <div class="report-card-head">
+                            <div>
+                                <div class="report-stall-code"><%= row.stallCode %> <span class="report-zone">โซน <%= row.zone || '-' %></span></div>
+                                <div class="report-meta"><%= row.shopName %> &middot; <%= row.sellerName %></div>
+                            </div>
+                            <span class="report-badge clean-<%= c.status %>"><%= cleanLabel[c.status] %></span>
+                        </div>
+                        <% if (c.failedItems) { %>
+                        <div class="report-meta">ผ่าน <%= c.passedCount %>/<%= c.totalCount %> ข้อ &middot; ตรวจเมื่อ <%= fmtTime(c.checkedAt) %></div>
+                        <% if (c.failedItems.length) { %>
+                        <ul class="report-fail-list">
+                            <% c.failedItems.forEach((item) => { %>
+                            <li><b><%= item.id %></b> <%= item.label %> <span class="report-meta">(<%= item.categoryTitle %>)</span></li>
+                            <% }) %>
+                        </ul>
+                        <% } else { %>
+                        <div class="report-pass-all"><i class="fas fa-check-circle"></i> ผ่านครบทุกข้อ</div>
+                        <% } %>
+                        <% if (c.note) { %><div class="report-meta">หมายเหตุ: <%= c.note %></div><% } %>
+                        <% } %>
+                    </div>
+                    <% }) %>
+                    <% if (!s.clean.foodTotal) { %><div class="text-muted">ไม่มีร้านอาหารในวันนี้</div><% } %>
+                    <div id="cleanNoResults" class="text-center text-muted py-3 d-none">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
                 </div>
             </section>
             <% } %>
         </div>
 
-        <% if (report) { %>
-        <script>
-            const dateFilterSelect = document.getElementById('dateFilterSelect');
-            if (dateFilterSelect) {
-                dateFilterSelect.addEventListener('change', () => {
-                    const params = new URLSearchParams(window.location.search);
-                    params.set('round', <%= roundNumber %>);
-                    if (dateFilterSelect.value) {
-                        params.set('date', dateFilterSelect.value);
-                    } else {
-                        params.delete('date');
-                    }
-                    window.location.href = `/staff/marketinspection/report?${params.toString()}`;
-                });
-            }
-
-            const dailyOverview = <%- JSON.stringify(report.dailyOverview) %>;
-            const issueCounts = <%- JSON.stringify(report.issueCounts) %>;
-
-            new Chart(document.getElementById('dailyScoreChart'), {
-                type: 'line',
-                data: {
-                    labels: dailyOverview.map((day) => day.dateLabel),
-                    datasets: [{
-                        label: 'คะแนนเฉลี่ย',
-                        data: dailyOverview.map((day) => day.averageScore),
-                        borderColor: '#2C93A8',
-                        backgroundColor: 'rgba(44, 147, 168, 0.15)',
-                        spanGaps: true,
-                        tension: 0.25,
-                        fill: true
-                    }]
-                },
-                options: {
-                    scales: { y: { min: 0, max: 100 } },
-                    plugins: { legend: { display: false } }
-                }
-            });
-
-            new Chart(document.getElementById('issueBarChart'), {
-                type: 'bar',
-                data: {
-                    labels: ['ไม่มาขาย', 'ปล่อยเช่าช่วง', 'เปิดท้ายขายอื่น', 'ขายไม่ตรง', 'ปัญหาอื่นๆ'],
-                    datasets: [{
-                        label: 'จำนวนครั้งที่พบ',
-                        data: [issueCounts.noShow, issueCounts.sublease, issueCounts.otherMarket, issueCounts.wrongSeller, issueCounts.otherIssueNote],
-                        backgroundColor: '#c98a2e'
-                    }]
-                },
-                options: {
-                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        </script>
-        <% } %>
+        <script src="/js/staff/inspection-report.js"></script>
     </body>
 </html>

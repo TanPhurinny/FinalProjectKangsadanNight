@@ -310,6 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
             doneIds.add(it.id);
             persistDone();
             saving = false;
+            if (walkMap) walkMap.refresh();
 
             const next = findNextPending();
             if (next === -1) {
@@ -397,6 +398,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (zoneSelect) zoneSelect.addEventListener('change', applyZone);
     if (jumpSelect) jumpSelect.addEventListener('change', () => goTo(Number(jumpSelect.value)));
+
+    // --- ผังตลาด (ตัวสร้างผังเดียวกับโหมดอื่น) สีตามความคืบหน้าการเดินตรวจ กดล็อกเพื่อกระโดดไปการ์ดร้านนั้น ---
+    const itemByCode = {};
+    items.forEach((it) => { itemByCode[it.code] = it; });
+
+    function hasAnyProblem(it) {
+        const d = it.draft;
+        const cleanFailed = it.isFood && !d.noShow && failCount(it) > 0;
+        return d.noShow || d.sublease || d.otherMarket || d.wrongSeller || !!d.otherIssueNote || !!electricLabel(it) || cleanFailed;
+    }
+
+    const walkMap = typeof window.createInspectionMap === 'function' ? window.createInspectionMap({
+        ids: {
+            toggleTable: 'walkViewToggleCard', toggleZone: 'walkViewToggleMap',
+            tableWrap: 'walkCardWrap', mapWrap: 'walkMapWrap',
+            overview: 'walkZoneOverview', detail: 'walkZoneDetail',
+            detailTitle: 'walkZoneDetailTitle', canvas: 'walkZoneCanvas'
+        },
+        resolveStatus(code) {
+            const it = itemByCode[code];
+            if (!it) return 'vacant';
+            if (!doneIds.has(it.id)) return 'pending';
+            return hasAnyProblem(it) ? 'failed' : 'passed';
+        },
+        statusLabel(status) {
+            if (status === 'passed') return 'ตรวจแล้ว ปกติ';
+            if (status === 'failed') return 'ตรวจแล้ว มีปัญหา';
+            if (status === 'pending') return 'ยังไม่ตรวจ';
+            return 'ว่าง';
+        },
+        tooltipMeta: (status) => (status === 'vacant' ? 'ล็อคว่าง' : 'คลิกเพื่อตรวจร้านนี้'),
+        isClickable: (status) => status !== 'vacant',
+        onCellClick(code, api) {
+            const it = itemByCode[code];
+            if (!it) return;
+            if (!visible.includes(it)) {
+                if (zoneSelect) zoneSelect.value = 'ALL';
+                visible = items.slice();
+            }
+            index = visible.indexOf(it);
+            api.setViewMode('table');
+            renderCard();
+        }
+    }) : null;
 
     applyZone();
 

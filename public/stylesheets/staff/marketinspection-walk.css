@@ -2,9 +2,9 @@
    โหมด "เดินตรวจ" — การ์ดเดียวต่อร้าน ตรวจสถานะร้าน + ความสะอาดพร้อมกัน (ใช้บนมือถือเป็นหลัก)
    ใช้โทเคนสีจาก admin/theme.css สไตล์ gridgeist: ขอบชัด เหลี่ยม ไม่มุมมน
    ======================================== */
-#walkModePanel {
+#walkModePanel .walk-wrap {
     max-width: 720px;
-    margin: 0 auto;
+    margin: 12px auto 0;
 }
 
 .walk-toolbar {

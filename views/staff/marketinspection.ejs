@@ -46,20 +46,89 @@
 
             <% if (isCurrentRound) { %>
             <div id="walkModePanel" class="d-none">
-                <div class="walk-toolbar">
-                    <select id="walkZoneFilter" class="filter-select">
-                        <option value="ALL">ทุกโซน</option>
-                        <% zones.forEach((zone) => { %>
-                        <option value="<%= zone %>">โซน <%= zone %></option>
-                        <% }) %>
-                    </select>
-                    <select id="walkJump" class="filter-select" aria-label="ข้ามไปล็อก"></select>
+                <div class="inspection-header row g-3 align-items-end">
+                    <div class="col-12 col-lg-6">
+                        <h1 class="inspection-title"><%= inspectionRoundLabel %></h1>
+                        <p class="inspection-subtitle">วันที่: <%= inspectionDateLabel %></p>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="inspection-toolbar">
+                            <div class="toolbar-top-row">
+                                <div class="view-toggle">
+                                    <button type="button" class="view-toggle-btn active" id="walkViewToggleCard" data-mode="table">
+                                        <i class="fas fa-clone"></i> การ์ด</button>
+                                    <button type="button" class="view-toggle-btn" id="walkViewToggleMap" data-mode="zone">
+                                        <i class="fas fa-border-all"></i> ผัง</button>
+                                </div>
+                                <select id="walkZoneFilter" class="filter-select toolbar-zone-select">
+                                    <option value="ALL">โซนทั้งหมด</option>
+                                    <% zones.forEach((zone) => { %>
+                                    <option value="<%= zone %>">โซน <%= zone %></option>
+                                    <% }) %>
+                                </select>
+                            </div>
+                            <div class="filter-row">
+                                <span class="filter-label">ข้ามไปล็อก</span>
+                                <select id="walkJump" class="filter-select" aria-label="ข้ามไปล็อก"></select>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="walk-progress">
-                    <div class="walk-progress-text" id="walkProgressText"></div>
-                    <div class="walk-progress-bar"><div class="walk-progress-fill" id="walkProgressFill"></div></div>
+
+                <div id="walkCardWrap" class="walk-wrap">
+                    <div class="walk-progress">
+                        <div class="walk-progress-text" id="walkProgressText"></div>
+                        <div class="walk-progress-bar"><div class="walk-progress-fill" id="walkProgressFill"></div></div>
+                    </div>
+                    <div class="walk-card" id="walkCard"></div>
                 </div>
-                <div class="walk-card" id="walkCard"></div>
+
+            <div class="inspection-map-wrap d-none" id="walkMapWrap">
+                <div class="inspection-map-legend">
+                    <span class="map-legend-item"><span class="legend-swatch legend-normal"></span> ตรวจแล้ว ปกติ</span>
+                    <span class="map-legend-item"><span class="legend-swatch legend-issue"></span> ตรวจแล้ว มีปัญหา</span>
+                    <span class="map-legend-item"><span class="legend-swatch legend-pending"></span> ยังไม่ตรวจ</span>
+                    <span class="map-legend-item"><span class="legend-swatch legend-vacant"></span> ว่าง</span>
+                </div>
+
+                <div class="insp-zone-overview" id="walkZoneOverview">
+                    <div class="insp-ov-zone-canvas" id="walkOverviewCanvas">
+                        <div class="insp-ov-zone-block insp-ov-zone-E" data-zone="E"><span class="insp-ov-zone-title">โซน E</span></div>
+                        <div class="insp-ov-zone-block insp-ov-zone-D" data-zone="D"><span class="insp-ov-zone-title">โซน D</span></div>
+                        <div class="insp-ov-zone-block insp-ov-zone-X" data-zone="X"><span class="insp-ov-zone-title">โซน X</span></div>
+                        <div class="insp-ov-zone-block insp-ov-zone-A" data-zone="A"><span class="insp-ov-zone-title">โซน A</span></div>
+                        <div class="insp-ov-zone-block insp-ov-zone-F" data-zone="F"><span class="insp-ov-zone-title">โซน F</span></div>
+                        <div class="insp-ov-zone-block insp-ov-zone-B" data-zone="B"><span class="insp-ov-zone-title">โซน B</span></div>
+                        <div class="insp-ov-zone-block insp-ov-zone-C" data-zone="C"><span class="insp-ov-zone-title">โซน C</span></div>
+                    </div>
+                </div>
+
+                <div class="insp-zone-detail" id="walkZoneDetail">
+                    <h3 class="zone-detail-title" id="walkZoneDetailTitle">โซน</h3>
+                    <div class="insp-map-outer">
+                        <div class="insp-road-left">
+                            <div class="insp-road-left-stripe"></div>
+                            <span class="insp-road-left-text">ทางเข้าตลาด 62 บล็อค</span>
+                            <i class="fa-solid fa-arrow-down" style="position:absolute; bottom:20px; color:#555;"></i>
+                        </div>
+                        <div class="insp-map-inner">
+                            <div class="insp-road-top">
+                                <div class="insp-road-top-sign"><i class="fa-solid fa-location-dot" style="color:red;"></i> U Seoul Grill</div>
+                            </div>
+                            <div class="inspection-zone-canvas-wrap">
+                                <div class="inspection-zone-canvas" id="walkZoneCanvas"></div>
+                            </div>
+                            <div class="insp-road-bottom">
+                                <div class="insp-road-bottom-stripe"></div>
+                                <span style="font-weight: 700; font-size: 14px;">เข้า-ออก</span>
+                            </div>
+                        </div>
+                        <div class="insp-road-right">
+                            <span class="insp-road-right-text">ลานจอดรถ กังสดาลไนท์</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
             </div>
             <% } %>
 

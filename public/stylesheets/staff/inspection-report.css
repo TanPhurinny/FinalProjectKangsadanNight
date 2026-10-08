@@ -1,0 +1,226 @@
+/* ========================================
+   รายงานตรวจตลาดรายวัน (staff) — ไม่เน้นคะแนน เน้นสถานะ/ปัญหา/ความสะอาด
+   สไตล์ gridgeist: ขอบชัด เหลี่ยม ใช้โทเคนสีจาก admin/theme.css
+   ======================================== */
+.report-title {
+    font-size: 1.6rem;
+}
+
+.report-date-select {
+    width: auto;
+    min-width: 130px;
+}
+
+.hero-btn.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.report-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+}
+
+.report-kpi {
+    border: 1px solid var(--line);
+    background: #fff;
+    padding: 10px 12px;
+}
+
+.report-kpi-label {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+}
+
+.report-kpi-value {
+    font-family: var(--mono);
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--navy);
+}
+
+.report-kpi-sub {
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+}
+
+.report-kpi.is-ok { border-left: 4px solid var(--success-color); }
+.report-kpi.is-bad { border-left: 4px solid var(--danger-color); }
+.report-kpi.is-warn { border-left: 4px solid var(--warning-color); }
+
+.report-tabs {
+    display: inline-flex;
+    flex-wrap: wrap;
+    border: 1px solid var(--line);
+    background: #fff;
+}
+
+.report-tabs .view-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 14px;
+    border: none;
+    border-right: 1px solid var(--line);
+    background: #fff;
+    color: var(--navy);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.report-tabs .view-toggle-btn:last-child {
+    border-right: none;
+}
+
+.report-tabs .view-toggle-btn.active {
+    background: var(--navy);
+    color: #fff;
+}
+
+.report-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.report-filters .form-control,
+.report-filters .form-select {
+    width: auto;
+    min-width: 150px;
+    border-radius: 0;
+}
+
+.report-table {
+    border: 1px solid var(--line);
+}
+
+.report-table th {
+    background: var(--soft-bg);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.report-stall-code {
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--navy);
+}
+
+.report-zone {
+    font-family: 'Kanit', sans-serif;
+    font-weight: 400;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+}
+
+.report-meta {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+}
+
+.report-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--soft-bg);
+    color: var(--ink-soft);
+}
+
+.report-badge.att-present,
+.report-badge.clean-passed {
+    background: rgba(39, 174, 96, 0.12);
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+.report-badge.att-noShow,
+.report-badge.clean-failed,
+.report-badge.issue {
+    background: rgba(214, 69, 65, 0.12);
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+}
+
+.report-badge.att-unchecked,
+.report-badge.clean-pending {
+    background: rgba(201, 138, 46, 0.12);
+    border-color: var(--warning-color);
+    color: var(--warning-dark);
+}
+
+.report-issue-line {
+    margin-bottom: 4px;
+}
+
+.report-details summary {
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.report-details ul,
+.report-fail-list {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    font-size: 0.88rem;
+}
+
+.report-card {
+    border: 1px solid var(--line);
+    background: #fff;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+}
+
+.report-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.report-card-title {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.report-count {
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+.report-count.has {
+    color: var(--danger-color);
+}
+
+.report-list {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.report-list li {
+    margin-bottom: 4px;
+}
+
+.report-pass-all {
+    color: var(--success-color);
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+@media (max-width: 576px) {
+    .report-filters .form-control,
+    .report-filters .form-select {
+        flex: 1;
+        min-width: 0;
+    }
+}

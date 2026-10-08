@@ -21,64 +21,68 @@
             <% if (typeof error !== 'undefined' && error) { %>
             <div class="alert alert-danger mb-3"><%= error %></div>
             <% } %>
+            <%
+            const sm = report ? report.summary : null;
+            const pct = (n, d) => (d > 0 ? ((n / d) * 100).toFixed(1) : '0.0');
+            const issueLabel = {};
+            issueCategories.forEach((c) => { issueLabel[c.key] = c.label; });
+            %>
 
             <section class="db-hero mb-4">
                 <div class="hero-main">
                     <div>
-                        <h1 class="hero-title mb-2">
-                            <i class="fas fa-clipboard-user me-2"></i>แดชบอร์ดพนักงาน
-                        </h1>
-                        <p class="hero-subtitle mb-0">ภาพรวมงานแจ้งซ่อมและงานตรวจตลาดที่ต้องดำเนินการวันนี้</p>
+                        <h1 class="hero-title mb-2"><i class="fas fa-clipboard-user me-2"></i>แดชบอร์ดพนักงาน</h1>
+                        <p class="hero-subtitle mb-0">
+                            งานตรวจตลาดวันนี้<% if (report) { %> · <%= report.selectedDateLabel %> · รอบที่ <%= roundNumber %><% } %>
+                        </p>
                     </div>
                 </div>
                 <div class="hero-side">
                     <div id="live-date" class="hero-date"></div>
                     <div class="hero-actions">
-                        <a href="/staff/marketinspection" class="hero-btn"><i class="fas fa-clipboard-check"></i> ตรวจตลาด</a>
-                        <a href="/admin/requests" class="hero-btn"><i class="fas fa-tools"></i> งานแจ้งซ่อม</a>
+                        <a href="/staff/marketinspection" class="hero-btn"><i class="fas fa-person-walking"></i> เดินตรวจ</a>
+                        <a href="/staff/marketinspection/report" class="hero-btn"><i class="fas fa-file-lines"></i> รายงานรายวัน</a>
+                        <a href="/staff/seller-scores" class="hero-btn"><i class="fas fa-star"></i> คะแนนร้านค้า</a>
                     </div>
                 </div>
             </section>
 
+            <% if (!sm) { %>
+            <div class="alert alert-warning">ยังไม่มีข้อมูลงานตรวจวันนี้</div>
+            <% } else { %>
             <section class="kpi-group mb-3">
-                <div class="kpi-group-label needs-action"><i class="fas fa-triangle-exclamation"></i>ต้องดำเนินการ</div>
+                <div class="kpi-group-label needs-action"><i class="fas fa-triangle-exclamation"></i>ต้องดำเนินการวันนี้</div>
                 <div class="row g-3">
-                    <div class="col-6 col-lg-6">
+                    <div class="col-6 col-lg-3">
+                        <article class="kpi-card needs-action c-warning">
+                            <div class="kpi-icon"><i class="fas fa-magnifying-glass"></i></div>
+                            <div class="kpi-label">ร้านที่ยังไม่ได้ตรวจ</div>
+                            <h3 class="kpi-value count-up" data-target="<%= sm.unchecked %>"><%= sm.unchecked %></h3>
+                            <small class="kpi-meta">จากทั้งหมด <%= sm.totalStalls %> ร้าน</small>
+                        </article>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <article class="kpi-card needs-action c-primary">
+                            <div class="kpi-icon"><i class="fas fa-user-slash"></i></div>
+                            <div class="kpi-label">ร้านที่ไม่มาขาย</div>
+                            <h3 class="kpi-value count-up" data-target="<%= sm.noShow %>"><%= sm.noShow %></h3>
+                            <small class="kpi-meta">ตรวจพบวันนี้</small>
+                        </article>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <article class="kpi-card needs-action c-info">
+                            <div class="kpi-icon"><i class="fas fa-broom"></i></div>
+                            <div class="kpi-label">ความสะอาดไม่ผ่าน</div>
+                            <h3 class="kpi-value count-up" data-target="<%= sm.clean.failed %>"><%= sm.clean.failed %></h3>
+                            <small class="kpi-meta">ร้านอาหาร รอตรวจอีก <%= sm.clean.pending %> ร้าน</small>
+                        </article>
+                    </div>
+                    <div class="col-6 col-lg-3">
                         <article class="kpi-card needs-action c-info">
                             <div class="kpi-icon"><i class="fas fa-screwdriver-wrench"></i></div>
                             <div class="kpi-label">งานซ่อมรอรับเรื่อง</div>
                             <h3 class="kpi-value count-up" data-target="<%= repair.pending %>"><%= repair.pending %></h3>
-                            <small class="kpi-meta">ต้องดำเนินการ</small>
-                        </article>
-                    </div>
-                    <div class="col-6 col-lg-6">
-                        <article class="kpi-card needs-action c-warning">
-                            <div class="kpi-icon"><i class="fas fa-magnifying-glass"></i></div>
-                            <div class="kpi-label">ล็อคยังไม่ได้ตรวจ</div>
-                            <h3 class="kpi-value count-up" data-target="<%= inspection.notInspected %>"><%= inspection.notInspected %></h3>
-                            <small class="kpi-meta">จากทั้งหมด <%= inspection.totalToday %> ล็อคที่จองไว้</small>
-                        </article>
-                    </div>
-                </div>
-            </section>
-
-            <section class="kpi-group mb-4">
-                <div class="kpi-group-label"><i class="fas fa-chart-pie"></i>ภาพรวมงานตรวจตลาด</div>
-                <div class="row g-3">
-                    <div class="col-6 col-lg-6">
-                        <article class="kpi-card c-success">
-                            <div class="kpi-icon"><i class="fas fa-circle-check"></i></div>
-                            <div class="kpi-label">ล็อคที่ตรวจแล้ว</div>
-                            <h3 class="kpi-value count-up" data-target="<%= inspection.inspected %>"><%= inspection.inspected %></h3>
-                            <small class="kpi-meta">จากทั้งหมด <%= inspection.totalToday %> ล็อค</small>
-                        </article>
-                    </div>
-                    <div class="col-6 col-lg-6">
-                        <article class="kpi-card c-primary">
-                            <div class="kpi-icon"><i class="fas fa-bolt"></i></div>
-                            <div class="kpi-label">ล็อคที่พบปัญหา</div>
-                            <h3 class="kpi-value count-up" data-target="<%= inspection.issuesFound %>"><%= inspection.issuesFound %></h3>
-                            <small class="kpi-meta">ไม่มาขาย/ปล่อยเช่าช่วง/ไฟฟ้าเกิน ฯลฯ</small>
+                            <small class="kpi-meta">กำลังดำเนินการ <%= repair.inProgress %> งาน</small>
                         </article>
                     </div>
                 </div>
@@ -87,44 +91,31 @@
             <section class="row g-3 mb-4">
                 <div class="col-lg-8">
                     <div class="insight-card h-100">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h5 class="mb-0 fw-bold"><i class="fas fa-wave-square me-2"></i>ความคืบหน้าการตรวจตลาดวันนี้</h5>
-                            <span class="badge text-bg-light">อัปเดตอัตโนมัติ</span>
-                        </div>
-                        <%
-                        const inspectionRate = inspection.totalToday > 0
-                            ? ((inspection.inspected / inspection.totalToday) * 100).toFixed(1)
-                            : 0;
-                        %>
+                        <h5 class="mb-0 fw-bold"><i class="fas fa-wave-square me-2"></i>ความคืบหน้าการตรวจวันนี้</h5>
                         <div class="progress-track mt-3">
                             <div class="progress-head">
-                                <span>สัดส่วนล็อคที่ตรวจแล้ว</span>
-                                <strong><%= inspectionRate %>%</strong>
+                                <span>ตรวจสถานะแล้ว <%= sm.checked %> / <%= sm.totalStalls %> ร้าน</span>
+                                <strong><%= pct(sm.checked, sm.totalStalls) %>%</strong>
                             </div>
                             <div class="progress">
-                                <div class="progress-bar" role="progressbar"
-                                    style="--occupancy: <%= inspectionRate %>;"
-                                    aria-valuenow="<%= inspectionRate %>"
-                                    aria-valuemin="0" aria-valuemax="100"></div>
+                                <div class="progress-bar" role="progressbar" style="--occupancy: <%= pct(sm.checked, sm.totalStalls) %>;"></div>
+                            </div>
+                        </div>
+                        <% const cleanDone = sm.clean.passed + sm.clean.failed; %>
+                        <div class="progress-track mt-3">
+                            <div class="progress-head">
+                                <span>ตรวจความสะอาดแล้ว <%= cleanDone %> / <%= sm.clean.foodTotal %> ร้านอาหาร</span>
+                                <strong><%= pct(cleanDone, sm.clean.foodTotal) %>%</strong>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="--occupancy: <%= pct(cleanDone, sm.clean.foodTotal) %>;"></div>
                             </div>
                         </div>
                         <div class="quick-stats-grid mt-3">
-                            <div class="mini-stat">
-                                <span>งานซ่อมกำลังดำเนินการ</span>
-                                <strong class="count-up" data-target="<%= repair.inProgress %>"><%= repair.inProgress %></strong>
-                            </div>
-                            <div class="mini-stat">
-                                <span>งานซ่อมทั้งหมด</span>
-                                <strong class="count-up" data-target="<%= repair.total %>"><%= repair.total %></strong>
-                            </div>
-                            <div class="mini-stat">
-                                <span>ล็อคที่จองไว้ทั้งหมด</span>
-                                <strong class="count-up" data-target="<%= inspection.totalToday %>"><%= inspection.totalToday %></strong>
-                            </div>
-                            <div class="mini-stat">
-                                <span>ล็อคที่พบปัญหา</span>
-                                <strong class="count-up" data-target="<%= inspection.issuesFound %>"><%= inspection.issuesFound %></strong>
-                            </div>
+                            <div class="mini-stat"><span>มาขาย</span><strong><%= sm.present %></strong></div>
+                            <div class="mini-stat"><span>ไม่มาขาย</span><strong><%= sm.noShow %></strong></div>
+                            <div class="mini-stat"><span>ความสะอาดผ่าน</span><strong><%= sm.clean.passed %></strong></div>
+                            <div class="mini-stat"><span>ไฟฟ้าเกิน (ร้าน)</span><strong><%= sm.electric.stalls %></strong></div>
                         </div>
                     </div>
                 </div>
@@ -132,12 +123,87 @@
                     <div class="insight-card h-100">
                         <h5 class="mb-3 fw-bold"><i class="fas fa-bolt me-2"></i>ทางลัดการทำงาน</h5>
                         <div class="d-grid gap-2 quick-links">
-                            <a href="/staff/marketinspection" class="quick-link-item"><i class="fas fa-clipboard-check"></i> เดินตรวจตลาด</a>
+                            <a href="/staff/marketinspection" class="quick-link-item"><i class="fas fa-person-walking"></i> เดินตรวจตลาด</a>
+                            <a href="/staff/marketinspection/report" class="quick-link-item"><i class="fas fa-file-lines"></i> รายงานตรวจตลาดรายวัน</a>
+                            <a href="/staff/seller-scores" class="quick-link-item"><i class="fas fa-star"></i> คะแนนร้านค้า</a>
                             <a href="/admin/requests" class="quick-link-item"><i class="fas fa-screwdriver-wrench"></i> อัปเดตสถานะงานซ่อม</a>
                         </div>
                     </div>
                 </div>
             </section>
+
+            <section class="row g-3 mb-4">
+                <div class="col-lg-6">
+                    <div class="insight-card h-100">
+                        <h5 class="mb-3 fw-bold"><i class="fas fa-flag me-2"></i>ปัญหาที่พบวันนี้ (แยกหมวด)</h5>
+                        <div class="quick-stats-grid">
+                            <% issueCategories.forEach((c) => { %>
+                            <div class="mini-stat"><span><%= c.label %></span><strong><%= sm.issueCounts[c.key] || 0 %></strong></div>
+                            <% }) %>
+                        </div>
+                        <% if (sm.electric.stalls > 0) { %>
+                        <p class="text-muted small mt-3 mb-0">ไฟฟ้าเกิน: เล็ก <%= sm.electric.small %> / ใหญ่ <%= sm.electric.large %> ชิ้น รวม <%= sm.electric.subtotal %> บาท</p>
+                        <% } %>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="insight-card h-100">
+                        <h5 class="mb-3 fw-bold"><i class="fas fa-broom me-2"></i>ข้อสะอาดที่ไม่ผ่านบ่อยวันนี้</h5>
+                        <% if (!sm.clean.failedItemRanking.length) { %>
+                        <p class="text-muted mb-0">ยังไม่พบข้อที่ไม่ผ่าน</p>
+                        <% } else { %>
+                        <ol class="mb-0 ps-3">
+                            <% sm.clean.failedItemRanking.slice(0, 5).forEach((item) => { %>
+                            <li class="mb-1"><%= item.label %> <span class="badge text-bg-light"><%= item.count %> ร้าน</span></li>
+                            <% }) %>
+                        </ol>
+                        <% } %>
+                    </div>
+                </div>
+            </section>
+
+            <section class="row g-3 mb-4">
+                <div class="col-lg-6">
+                    <h5 class="fw-bold mb-2"><i class="fas fa-route me-2"></i>ร้านที่ต้องเดินตรวจต่อ (ตามเส้นทาง)</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle bg-white mb-0">
+                            <thead><tr><th>ล็อก</th><th>โซน</th><th>ร้าน</th></tr></thead>
+                            <tbody>
+                                <% if (!nextToCheck.length) { %>
+                                <tr><td colspan="3" class="text-center text-muted py-3">ตรวจครบทุกร้านแล้ว</td></tr>
+                                <% } %>
+                                <% nextToCheck.forEach((r) => { %>
+                                <tr><td class="fw-bold"><%= r.stallCode %></td><td><%= r.zone || '-' %></td><td><%= r.shopName %></td></tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <h5 class="fw-bold mb-2"><i class="fas fa-triangle-exclamation me-2"></i>ร้านที่พบปัญหาวันนี้</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle bg-white mb-0">
+                            <thead><tr><th>ล็อก</th><th>ร้าน</th><th>ปัญหา</th></tr></thead>
+                            <tbody>
+                                <% if (!problemRows.length) { %>
+                                <tr><td colspan="3" class="text-center text-muted py-3">ยังไม่พบปัญหา</td></tr>
+                                <% } %>
+                                <% problemRows.forEach((r) => { %>
+                                <tr>
+                                    <td class="fw-bold"><%= r.stallCode %></td>
+                                    <td><%= r.shopName %></td>
+                                    <td class="small">
+                                        <% r.issueKeys.forEach((k) => { %><span class="badge badge-danger me-1"><%= issueLabel[k] || k %></span><% }) %>
+                                        <% if (r.cleanStatus === 'failed') { %><span class="badge badge-warning">สะอาดไม่ผ่าน <%= r.failedCount %> ข้อ</span><% } %>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            <% } %>
 
             <section class="zone-panel mb-3">
                 <div class="zone-panel-head">
@@ -149,34 +215,23 @@
                 <div class="table-responsive">
                     <table class="table table-hover align-middle bg-white">
                         <thead>
-                            <tr>
-                                <th>สถานที่</th>
-                                <th>ประเภท</th>
-                                <th>ผู้แจ้ง</th>
-                                <th>สถานะ</th>
-                                <th>วันที่แจ้ง</th>
-                            </tr>
+                            <tr><th>สถานที่</th><th>ประเภท</th><th>ผู้แจ้ง</th><th>สถานะ</th><th>วันที่แจ้ง</th></tr>
                         </thead>
                         <tbody>
                             <% if (!repair.recent.length) { %>
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-4">ยังไม่มีงานแจ้งซ่อม</td>
-                            </tr>
+                            <tr><td colspan="5" class="text-center text-muted py-4">ยังไม่มีงานแจ้งซ่อม</td></tr>
                             <% } %>
-                            <% repair.recent.forEach((report) => { %>
+                            <% repair.recent.forEach((r) => { %>
                             <tr>
-                                <td><%= report.location %></td>
-                                <td><%= report.category %></td>
-                                <td><%= report.reporterName %></td>
-                                <td>
-                                    <span class="badge
-                                        <%= report.status === 'PENDING' ? 'badge-warning' : '' %>
-                                        <%= report.status === 'IN_PROGRESS' ? 'badge-info' : '' %>
-                                        <%= report.status === 'SUCCESS' ? 'badge-success' : '' %>
-                                        <%= report.status === 'REJECTED' ? 'badge-danger' : '' %>
-                                    "><%= report.statusLabel %></span>
-                                </td>
-                                <td class="text-muted"><%= report.createdAtText %></td>
+                                <td><%= r.location %></td>
+                                <td><%= r.category %></td>
+                                <td><%= r.reporterName %></td>
+                                <td><span class="badge
+                                    <%= r.status === 'PENDING' ? 'badge-warning' : '' %>
+                                    <%= r.status === 'IN_PROGRESS' ? 'badge-info' : '' %>
+                                    <%= r.status === 'SUCCESS' ? 'badge-success' : '' %>
+                                    <%= r.status === 'REJECTED' ? 'badge-danger' : '' %>"><%= r.statusLabel %></span></td>
+                                <td class="text-muted"><%= r.createdAtText %></td>
                             </tr>
                             <% }) %>
                         </tbody>

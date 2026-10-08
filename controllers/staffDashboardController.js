@@ -32,15 +32,16 @@ function parseStallCodes(assignedStallCodeText) {
 
 exports.getStaffDashboard = async (req, res) => {
     try {
+        const { buildDailyReport, ISSUE_CATEGORIES } = require('./inspectionReportController');
+        const { getBookingRoundMetaForDate } = require('../utils/bookingRound');
+        const roundNumber = getBookingRoundMetaForDate(new Date()).roundNumber;
+
         const [
             pendingRepairs,
             inProgressRepairs,
             totalRepairs,
             recentReports,
-            paidBookingRequests,
-            inspectionCheckRecords,
-            excessRecords,
-            issueRecords
+            today
         ] = await Promise.all([
             prisma.maintenanceReport.count({ where: { status: 'PENDING' } }),
             prisma.maintenanceReport.count({ where: { status: 'IN_PROGRESS' } }),
@@ -50,77 +51,8 @@ exports.getStaffDashboard = async (req, res) => {
                 orderBy: { createdAt: 'desc' },
                 take: 5
             }),
-            prisma.bookingRequest.findMany({
-                where: { status: 'SUCCESS', assignedStallCode: { not: null } },
-                select: { assignedStallCode: true }
-            }),
-            prisma.stallInspectionCheckRecord.findMany({
-                orderBy: { createdAt: 'desc' },
-                select: { stallCode: true, isInspected: true, createdAt: true }
-            }),
-            prisma.stallElectricExcessRecord.findMany({
-                orderBy: { createdAt: 'desc' },
-                select: { stallCode: true, smallCount: true, largeCount: true, createdAt: true }
-            }),
-            prisma.stallIssueRecord.findMany({
-                orderBy: { createdAt: 'desc' },
-                select: {
-                    stallCode: true,
-                    noShow: true,
-                    sublease: true,
-                    otherMarket: true,
-                    wrongSeller: true,
-                    otherIssueNote: true,
-                    createdAt: true
-                }
-            })
+            buildDailyReport(roundNumber, null)
         ]);
-
-        // ล็อคที่ต้องเดินตรวจรอบนี้ = ล็อคที่อนุมัติและชำระเงินแล้วจริง (เดียวกับ staffInspectionController)
-        const paidStallCodes = new Set();
-        paidBookingRequests.forEach((request) => {
-            parseStallCodes(request.assignedStallCode).forEach((code) => paidStallCodes.add(code));
-        });
-
-        const latestInspectionByCode = new Map();
-        inspectionCheckRecords.forEach((record) => {
-            if (!latestInspectionByCode.has(record.stallCode)) {
-                latestInspectionByCode.set(record.stallCode, record.isInspected);
-            }
-        });
-
-        const latestExcessByCode = new Map();
-        excessRecords.forEach((record) => {
-            if (!latestExcessByCode.has(record.stallCode)) {
-                latestExcessByCode.set(record.stallCode, record);
-            }
-        });
-
-        const latestIssueByCode = new Map();
-        issueRecords.forEach((record) => {
-            if (!latestIssueByCode.has(record.stallCode)) {
-                latestIssueByCode.set(record.stallCode, record);
-            }
-        });
-
-        let inspectedCount = 0;
-        let issuesFoundCount = 0;
-        paidStallCodes.forEach((code) => {
-            if (latestInspectionByCode.get(code)) inspectedCount += 1;
-
-            const excess = latestExcessByCode.get(code);
-            const issue = latestIssueByCode.get(code);
-            const hasExcess = Boolean(excess && (excess.smallCount > 0 || excess.largeCount > 0));
-            const hasIssueFlag = Boolean(issue && (issue.noShow || issue.sublease || issue.otherMarket || issue.wrongSeller || (issue.otherIssueNote && issue.otherIssueNote.trim())));
-            if (hasExcess || hasIssueFlag) issuesFoundCount += 1;
-        });
-
-        const inspection = {
-            totalToday: paidStallCodes.size,
-            inspected: inspectedCount,
-            notInspected: paidStallCodes.size - inspectedCount,
-            issuesFound: issuesFoundCount
-        };
 
         const repair = {
             pending: pendingRepairs,
@@ -140,17 +72,41 @@ exports.getStaffDashboard = async (req, res) => {
             })
         };
 
+        const toBrief = (row) => ({
+            stallCode: row.stallCode,
+            zone: row.zone,
+            shopName: row.shopName,
+            issueKeys: row.issueKeys,
+            attendance: row.attendance,
+            cleanStatus: row.isFood ? row.cleanliness?.status : null,
+            failedCount: (row.cleanliness?.failedItems || []).length
+        });
+
+        // ร้านที่ยังไม่ได้ตรวจ (เรียงตามเส้นทางเดินแล้ว) / ร้านที่พบปัญหาวันนี้ / ร้านที่ความสะอาดไม่ผ่าน
+        const nextToCheck = today.rows.filter((row) => row.attendance === 'unchecked').slice(0, 8).map(toBrief);
+        const problemRows = today.rows
+            .filter((row) => row.issueKeys.length > 0 || row.cleanliness?.status === 'failed')
+            .slice(0, 10).map(toBrief);
+
         return res.render('staff/dashboard', {
             user: req.user,
             repair,
-            inspection
+            report: today,
+            nextToCheck,
+            problemRows,
+            issueCategories: ISSUE_CATEGORIES,
+            roundNumber
         });
     } catch (error) {
         console.error('Staff dashboard error:', error);
         return res.status(500).render('staff/dashboard', {
             user: req.user,
             repair: { pending: 0, inProgress: 0, total: 0, recent: [] },
-            inspection: { totalToday: 0, inspected: 0, notInspected: 0, issuesFound: 0 },
+            report: null,
+            nextToCheck: [],
+            problemRows: [],
+            issueCategories: [],
+            roundNumber: null,
             error: 'ไม่สามารถโหลดข้อมูลแดชบอร์ดได้'
         });
     }
