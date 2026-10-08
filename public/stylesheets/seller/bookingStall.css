@@ -13,13 +13,13 @@
     --amber-wash: rgba(201, 138, 46, 0.08);
     --danger: #c0392b;
     --danger-wash: rgba(192, 57, 43, 0.06);
-    --mono: 'IBM Plex Mono', 'Courier New', monospace;
+    --mono: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
     --radius: 4px;
     --radius-sm: 3px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Kanit', sans-serif; background: #fff; color: var(--ink); min-height: 100vh; }
+body { font-family: 'IBM Plex Sans Thai', sans-serif; background: #fff; color: var(--ink); min-height: 100vh; }
 
 .site-header {
     background: #fff;
@@ -122,7 +122,7 @@ body { font-family: 'Kanit', sans-serif; background: #fff; color: var(--ink); mi
     padding: 11px 12px;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     font-size: 0.95rem;
     color: var(--ink);
     background: #fff;
@@ -291,7 +291,7 @@ body { font-family: 'Kanit', sans-serif; background: #fff; color: var(--ink); mi
     border: 1px solid transparent;
     border-radius: var(--radius-sm);
     padding: 12px 0;
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     font-size: 0.98rem;
     font-weight: 600;
     cursor: pointer;

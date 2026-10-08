@@ -8,11 +8,11 @@
     --line-soft: #e7eeef;
     --soft-bg: #f6f8f8;
     --accent: #c98a2e;
-    --mono: 'IBM Plex Mono', 'Courier New', monospace;
+    --mono: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
 }
 
 body {
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     color: var(--ink);
     margin: 0;
     background: #fff;

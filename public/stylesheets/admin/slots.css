@@ -38,7 +38,7 @@
 }
 
 .slots-page {
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
@@ -57,7 +57,7 @@
 }
 
 .bar-title {
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     font-size: 16px;
     font-weight: 600;
     white-space: nowrap;
@@ -117,7 +117,7 @@
 #resultBadge {
     font-size: 12px;
     font-weight: 600;
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
     padding: 4px 10px;
     border-radius: 3px;
     background: #fdf7ef;
@@ -141,7 +141,7 @@
     border: 1px solid #c0392b;
     color: #c0392b;
     background: #fff;
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     font-size: 12px;
     font-weight: 600;
     text-decoration: none;
@@ -270,7 +270,7 @@
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
     font-weight: 700;
     font-size: 14px;
     letter-spacing: 2px;
@@ -279,7 +279,7 @@
 
 .sign-charoen {
     background: var(--stripe1);
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     font-weight: 700;
     font-size: 13px;
     padding: 5px 12px;
@@ -434,7 +434,7 @@
 }
 
 .z-title {
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     font-size: 22px;
     font-weight: 700;
 }
@@ -502,7 +502,7 @@
 
 .btn-facility {
     color: var(--text);
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     font-weight: 600;
     font-size: 11px;
     padding: 4px 9px;
@@ -605,7 +605,7 @@
     gap: 8px;
     padding: 5px 14px 5px 8px;
     border-radius: 3px;
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     font-size: 15px;
     font-weight: 700;
 }
@@ -630,7 +630,7 @@
 
 .drawer-stats {
     font-size: 12px;
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
     color: var(--sub);
     text-align: right;
     line-height: 1.7;
@@ -760,7 +760,7 @@
 }
 
 .ic-title {
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     font-size: 13px;
     font-weight: 600;
     color: var(--primary-dark);
@@ -847,7 +847,7 @@
     border: 1px solid var(--primary, #2C93A8);
     background: #fff;
     color: var(--primary, #2C93A8);
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -886,7 +886,7 @@
     border: 1px solid #c0392b;
     background: #fff;
     color: #c0392b;
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -924,7 +924,7 @@
 .col-lbl {
     font-size: 10px;
     font-weight: 700;
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
     color: var(--sub);
     letter-spacing: .04em;
     padding: 3px 0 4px;
@@ -956,7 +956,7 @@
     justify-content: center;
     font-size: 11px;
     font-weight: 700;
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
     color: var(--text);
     cursor: pointer;
     margin-top: -1px;
@@ -1182,7 +1182,7 @@
     justify-content: center;
     font-size: 11px;
     font-weight: 700;
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
     color: var(--sub);
     background: var(--road);
     margin: -1px 0 0 -1px;
@@ -1207,7 +1207,7 @@
     color: var(--text);
     cursor: pointer;
     transition: all .15s;
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
 }
 
 .other-zones-bar .zone-chip:first-of-type {
@@ -1344,7 +1344,7 @@
     background: var(--navy, #12303a);
     color: #fff;
     padding: 12px 16px;
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     font-size: 18px;
     font-weight: 600;
     transition: background .1s;
@@ -1407,7 +1407,7 @@
 
 .zc-title { font-size: 15px; font-weight: 700; }
 .zc-desc { font-size: 11px; opacity: .8; line-height: 1.3; }
-.zc-stat { font-size: 12px; font-family: 'IBM Plex Mono', 'Courier New', monospace; margin-top: 4px; }
+.zc-stat { font-size: 12px; font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace; margin-top: 4px; }
 
 @media (max-width: 768px) {
     .drawer-body { flex-direction: column; }

@@ -15,11 +15,11 @@
     --sh-warn: #a0620f;
     --sh-bad: #c0392b;
     --sh-info: #1f6f80;
-    --sh-mono: 'IBM Plex Mono', 'Courier New', monospace;
+    --sh-mono: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
     --sh-gap: 14px;
 }
 
-body { background: var(--sh-bg); font-family: 'Kanit', sans-serif; color: var(--sh-ink); }
+body { background: var(--sh-bg); font-family: 'IBM Plex Sans Thai', sans-serif; color: var(--sh-ink); }
 
 .sh {
     max-width: 1240px;
@@ -196,7 +196,7 @@ body { background: var(--sh-bg); font-family: 'Kanit', sans-serif; color: var(--
 .sh-cell:nth-child(n + 3) { border-bottom: 0; }
 .sh-cell__label { font-size: 12px; color: var(--sh-soft); }
 .sh-cell__value { font-family: var(--sh-mono); font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.sh-cell__value small { font-family: 'Kanit', sans-serif; font-size: 14px; color: var(--sh-soft); }
+.sh-cell__value small { font-family: 'IBM Plex Sans Thai', sans-serif; font-size: 14px; color: var(--sh-soft); }
 .sh-cell__sub { font-size: 12px; color: var(--sh-soft); }
 .sh-spark { display: flex; align-items: flex-end; gap: 3px; height: 34px; margin: 4px 0 2px; border-bottom: 1px solid var(--sh-line); }
 .sh-spark__bar { position: relative; flex: 1; background: var(--sh-accent); border-radius: 3px 3px 0 0; min-height: 3px; }
@@ -374,7 +374,7 @@ body { background: var(--sh-bg); font-family: 'Kanit', sans-serif; color: var(--
 .sh-promo.has-promo .sh-promo__row input { background: #fff8ee; border-left: 5px solid var(--sh-accent); }
 .sh-promo__row .sh-btn[hidden] { display: none; }
 .sh-promo__meta { margin: 4px 0 0; font-family: var(--sh-mono); font-size: 11px; color: var(--sh-soft); }
-.sh-promo__meta #promoStatus { font-family: 'Kanit', sans-serif; color: var(--sh-accent-ink); font-weight: 600; }
+.sh-promo__meta #promoStatus { font-family: 'IBM Plex Sans Thai', sans-serif; color: var(--sh-accent-ink); font-weight: 600; }
 .sh-countdown__head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .sh-round__links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; }
 

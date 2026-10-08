@@ -21,7 +21,7 @@
     top: 0;
     z-index: 1000;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
 }
 
 /* จังหวะระยะห่างของ navbar ทั้งแถบ (ทุก role) — ยึดสเกลเดียวกัน ไม่ผสมเลขมั่ว
@@ -282,7 +282,7 @@
     background: #c0392b;
     color: #fff;
     font-size: 0.66rem;
-    font-family: var(--mono, monospace);
+    font-family: var(--mono, 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace);
     font-weight: 700;
     display: inline-flex;
     align-items: center;
@@ -308,7 +308,7 @@
     border-radius: 3px;
     border: 1px solid rgba(255, 255, 255, 0.24);
     font-size: 0.74rem;
-    font-family: var(--mono, monospace);
+    font-family: var(--mono, 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -353,7 +353,7 @@
     color: #2C93A8;
     background: transparent;
     font-size: 0.74rem;
-    font-family: var(--mono, monospace);
+    font-family: var(--mono, 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace);
     font-weight: 600;
     text-decoration: none;
     white-space: nowrap;

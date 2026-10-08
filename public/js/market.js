@@ -63,7 +63,7 @@ function renderVerticalColumns(containerId, columns) {
       writingMode: 'vertical-rl', transform: 'rotate(180deg)',
       fontSize: '11px', fontWeight: '700', color: '#0d4a99',
       whiteSpace: 'nowrap', letterSpacing: '0.02em',
-      fontFamily: "'Sarabun', sans-serif", userSelect: 'none'
+      fontFamily: "'IBM Plex Sans Thai', sans-serif", userSelect: 'none'
     });
 
     colEl.appendChild(labelEl);
@@ -114,7 +114,7 @@ function renderHorizontalRow(containerId, stalls) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: '10px', fontWeight: '700', color: '#0d4a99',
       cursor: 'pointer', transition: 'background 0.15s',
-      fontFamily: "'Sarabun', sans-serif", whiteSpace: 'nowrap', userSelect: 'none'
+      fontFamily: "'IBM Plex Sans Thai', sans-serif", whiteSpace: 'nowrap', userSelect: 'none'
     });
 
     el.addEventListener('mouseenter', () => {
@@ -215,7 +215,7 @@ writingMode:"vertical-rl",
 transform:"rotate(180deg)",
 fontWeight:"700",
 color:"#0d4a99",
-fontFamily:"'Sarabun', sans-serif"
+fontFamily:"'IBM Plex Sans Thai', sans-serif"
 });
 
 col.appendChild(label);
@@ -252,7 +252,7 @@ borderRadius:"6px",
 padding:"10px",
 fontWeight:"700",
 color:"#0d4a99",
-fontFamily:"'Sarabun', sans-serif",
+fontFamily:"'IBM Plex Sans Thai', sans-serif",
 writingMode:"vertical-rl",
 transform:"rotate(180deg)",
 display:"flex",
@@ -314,7 +314,7 @@ borderRadius:"6px",
 padding:"8px 18px",
 fontWeight:"700",
 color:"#0d4a99",
-fontFamily:"'Sarabun', sans-serif",
+fontFamily:"'IBM Plex Sans Thai', sans-serif",
 cursor:"pointer"
 });
 

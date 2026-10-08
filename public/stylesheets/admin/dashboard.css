@@ -9,12 +9,12 @@
     --ink-soft: #5b7a84;
     --line: #d7e3e6;
     --soft-bg: #f6f8f8;
-    --mono: 'IBM Plex Mono', 'Courier New', monospace;
+    --mono: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
     --transition: all 0.15s ease;
 }
 
 body {
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     background: #fff;
     min-height: 100vh;
 }

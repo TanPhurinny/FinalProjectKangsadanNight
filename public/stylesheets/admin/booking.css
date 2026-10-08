@@ -1,5 +1,5 @@
 body {
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     background: #fff;
     margin: 0;
 }
@@ -28,7 +28,7 @@ body {
     background: white;
     color: var(--ink-soft);
     cursor: pointer;
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
 }
 
 .filter button:last-child {
