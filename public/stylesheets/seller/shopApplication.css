@@ -23,8 +23,13 @@ select.input-white {
     padding: 12px 14px;
 }
 @media (max-width: 640px) {
+    /* minmax(0, ...) กันชื่อธนาคารยาว ๆ ใน <select> ดันคอลัมน์จนล้นจอ */
     .form-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
+    }
+    /* full-width ใน repair.css ใช้ span 2 — กริดคอลัมน์เดียวจะงอกคอลัมน์ที่สองจนล้นจอ */
+    .form-grid .form-group.full-width {
+        grid-column: 1 / -1;
     }
 }
 
@@ -328,4 +333,173 @@ select.input-white {
     background-color: var(--ink-soft);
     border-color: var(--ink-soft);
     cursor: not-allowed;
+}
+
+/* ── แบ่งฟอร์มเป็นหมวด (ข้อมูลร้าน / ติดต่อ / บัญชีธนาคาร) ให้รู้ว่าข้อมูลแต่ละส่วนไปโผล่ที่ไหน ── */
+.form-section {
+    padding-top: 24px;
+    margin-top: 8px;
+    border-top: 1px solid var(--line);
+}
+.form-section:first-of-type {
+    padding-top: 0;
+    margin-top: 0;
+    border-top: none;
+}
+.form-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.form-section-title {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--navy);
+}
+.form-section-hint {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+.form-section > .form-grid {
+    margin-bottom: 20px;
+}
+.form-grid .form-group.full-width {
+    margin-bottom: 4px;
+}
+.field-hint {
+    margin: 6px 0 0;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+}
+.label-optional {
+    margin-left: 6px;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+}
+.input-white.input-short {
+    min-height: 70px;
+}
+
+/* ── เมนูเด่น: พิมพ์แล้วเด้งเป็นป้ายแยก (หน้าตาเดียวกับหน้าร้านค้าของฉัน shopProfile.css) ── */
+.tag-input-box {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 8px 10px;
+    background-color: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+.tag-input-box:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(44, 147, 168, 0.12);
+}
+.tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 6px 5px 10px;
+    background-color: rgba(44, 147, 168, 0.08);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-sm);
+    color: var(--primary-dark);
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.tag-chip-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--primary-dark);
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+}
+.tag-chip-remove:hover {
+    background-color: var(--primary);
+    color: #fff;
+}
+.tag-input-field {
+    flex: 1 1 160px;
+    min-width: 160px;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: var(--ink);
+    padding: 4px 2px;
+}
+@media (max-width: 640px) {
+    .form-section-head {
+        flex-direction: column;
+        gap: 4px;
+    }
+    .tag-chip {
+        padding: 7px 6px 7px 12px;
+    }
+    .tag-chip-remove {
+        width: 22px;
+        height: 22px;
+        font-size: 15px;
+    }
+    .tag-input-field {
+        min-width: 100%;
+        padding: 8px 2px;
+    }
+}
+
+/* ── แกลเลอรีรูปสินค้า/รูปเมนู (หน้าตาเดียวกับหน้าร้านค้าของฉัน shopProfile.css) ── */
+.gallery-wrapper {
+    gap: 14px;
+}
+.gallery-wrapper .upload-thumb-item,
+.gallery-wrapper .upload-add-icon {
+    width: 108px;
+    height: 108px;
+    border-radius: var(--radius);
+}
+.gallery-wrapper .upload-add-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.gallery-wrapper .upload-add-icon::before,
+.gallery-wrapper .upload-add-icon::after {
+    content: none;
+}
+.gallery-wrapper .upload-add-icon i {
+    font-size: 1.3rem;
+    color: var(--primary);
+}
+.gallery-wrapper .upload-add-icon span {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+@media (max-width: 640px) {
+    .gallery-wrapper .upload-thumb-item,
+    .gallery-wrapper .upload-add-icon {
+        width: 92px;
+        height: 92px;
+    }
 }

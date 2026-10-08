@@ -518,6 +518,41 @@ exports.confirmApproval = async (req, res) => {
 // แอดมินตรวจสลิปโอนเงินที่ผู้ขายส่งมาแล้วกดยืนยัน — จุดเดียวที่ทำให้ status เป็น SUCCESS
 // และตั้ง paymentConfirmedAt ซึ่งเป็นเงื่อนไขที่ระบบใช้เปิดเผยเลขล็อกให้ลูกค้าเห็น
 // (ก่อนหน้านี้ไม่มีปุ่มนี้เลย ทำให้สถานะค้างที่ IN_PROGRESS และเลขล็อกไม่ถูกเปิดเผยตลอดไป)
+// SellerApplication.productImages/menuImages เก็บ URL เป็น JSON array — แปลงกลับแบบไม่พังถ้าข้อมูลเสีย
+function parseImageUrlList(value) {
+    try {
+        const list = JSON.parse(value || '[]');
+        return Array.isArray(list) ? list.filter((url) => typeof url === 'string' && url) : [];
+    } catch (_) {
+        return [];
+    }
+}
+
+// รูปสินค้า/รูปเมนูจากใบสมัคร → แกลเลอรีร้าน (ShopProductImage/ShopMenuImage) เฉพาะแกลเลอรีที่ยังว่าง
+// ผู้ขายจัดการรูปเองต่อใน /shop-profile แล้ว ยืนยันสลิปรอบหลัง ๆ จะไม่เพิ่มรูปเดิมซ้ำ
+async function copyApplicationGalleries(shop, application) {
+    const productUrls = parseImageUrlList(application.productImages);
+    const menuUrls = parseImageUrlList(application.menuImages);
+    if (!productUrls.length && !menuUrls.length) return;
+
+    const [productCount, menuCount] = await Promise.all([
+        prisma.shopProductImage.count({ where: { shopDetailId: shop.id } }),
+        prisma.shopMenuImage.count({ where: { shopDetailId: shop.id } })
+    ]);
+    if (productUrls.length && productCount === 0) {
+        await prisma.shopProductImage.createMany({
+            data: productUrls.map((imageUrl) => ({ shopDetailId: shop.id, imageUrl }))
+        });
+        // productImage (รูปเดี่ยว) ต้องเป็นรูปแรกของแกลเลอรีเสมอ — กติกาเดียวกับ POST /shop-profile
+        await prisma.shopDetail.update({ where: { id: shop.id }, data: { productImage: productUrls[0] } });
+    }
+    if (menuUrls.length && menuCount === 0) {
+        await prisma.shopMenuImage.createMany({
+            data: menuUrls.map((imageUrl) => ({ shopDetailId: shop.id, imageUrl }))
+        });
+    }
+}
+
 exports.confirmPayment = async (req, res) => {
     try {
         const requestId = Number.parseInt(req.body.requestId, 10);
@@ -617,32 +652,59 @@ exports.confirmPayment = async (req, res) => {
                     orderBy: { createdAt: 'desc' }
                 });
                 if (latestApplication) {
-                    if (String(latestApplication.status || '').toUpperCase() === 'PENDING') {
+                    const isFirstApproval = String(latestApplication.status || '').toUpperCase() === 'PENDING';
+                    if (isFirstApproval) {
                         await prisma.sellerApplication.update({
                             where: { id: latestApplication.id },
                             data: { status: 'APPROVED', reviewedAt: new Date() }
                         });
                     }
-                    await prisma.shopDetail.upsert({
+                    // ชื่อร้าน/ประเภทสินค้า(+เฉพาะ) ยึดตามใบสมัครเสมอ (ผู้ขายแก้เองไม่ได้ ใช้จัดโซน/ระยะห่างล็อก)
+                    // ส่วนรายละเอียด/แนะนำร้าน/เมนูเด่น/รูปปก ผู้ขายแก้ต่อได้ใน /shop-profile — เติมจากใบสมัครเฉพาะช่องที่ยังว่าง
+                    // ไม่งั้นทุกครั้งที่ยืนยันสลิปรอบใหม่จะเขียนทับของที่ผู้ขายแก้ไว้กลับเป็นค่าตอนสมัคร
+                    const existingShop = await prisma.shopDetail.findUnique({
+                        where: { userId: paidBooking.userId },
+                        select: { productDetail: true, shopSummary: true, shopTags: true, shopCoverImage: true }
+                    });
+                    const fillIfEmpty = (field) => (existingShop?.[field] ? {} : { [field]: latestApplication[field] || null });
+                    const applicationShopData = {
+                        shopName: latestApplication.shopName,
+                        productType: latestApplication.productType,
+                        productSubtype: latestApplication.productSubtype,
+                        productSubtypeOther: latestApplication.productSubtypeOther
+                    };
+                    const syncedShop = await prisma.shopDetail.upsert({
                         where: { userId: paidBooking.userId },
                         update: {
-                            shopName: latestApplication.shopName,
-                            productType: latestApplication.productType,
-                            productDetail: latestApplication.productDetail,
-                            shopCoverImage: latestApplication.shopCoverImage,
+                            ...applicationShopData,
+                            ...fillIfEmpty('productDetail'),
+                            ...fillIfEmpty('shopSummary'),
+                            ...fillIfEmpty('shopTags'),
+                            ...fillIfEmpty('shopCoverImage'),
                             isVerified: true,
                             ...(paidZoneLabel ? { shopZoneLabel: paidZoneLabel } : {})
                         },
                         create: {
                             userId: paidBooking.userId,
-                            shopName: latestApplication.shopName,
-                            productType: latestApplication.productType,
+                            ...applicationShopData,
                             productDetail: latestApplication.productDetail,
+                            shopSummary: latestApplication.shopSummary,
+                            shopTags: latestApplication.shopTags,
                             shopCoverImage: latestApplication.shopCoverImage,
                             isVerified: true,
                             shopZoneLabel: paidZoneLabel || null
                         }
                     });
+                    await copyApplicationGalleries(syncedShop, latestApplication);
+                    // เบอร์ในใบสมัครคือเบอร์ที่ผู้สมัครยืนยันตอนสมัคร — ที่อื่นอ่านจาก User.phoneNumber
+                    // (การ์ดล็อกบนผังตลาด, จับคู่คำขอจองล็อกกับผู้ใช้ด้านบน) ซิงก์แค่ตอนอนุมัติครั้งแรก
+                    // รอบต่อ ๆ ไปผู้ขายอาจแก้เบอร์ในโปรไฟล์แล้ว ไม่เขียนทับ
+                    if (isFirstApproval && latestApplication.phoneNumber) {
+                        await prisma.user.update({
+                            where: { id: paidBooking.userId },
+                            data: { phoneNumber: latestApplication.phoneNumber }
+                        });
+                    }
                 } else if (paidZoneLabel) {
                     // ไม่มีใบสมัครใหม่ (เช่น ผู้ขายเดิมต่อ/จองล็อกใหม่ในรอบถัดไป) แต่มี ShopDetail อยู่แล้ว
                     // ก็ยังต้องอัปเดตโซนให้ตรงกับล็อกล่าสุดที่จ่ายเงินจริง

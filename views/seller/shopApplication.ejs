@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261008-font">
   <link rel="stylesheet" href="/stylesheets/seller/repair.css">
-  <link rel="stylesheet" href="/stylesheets/seller/shopApplication.css">
+  <link rel="stylesheet" href="/stylesheets/seller/shopApplication.css?v=20261008-gallery">
     </head>
 
     <body>
@@ -90,119 +90,136 @@
                     enctype="multipart/form-data">
                     <input type="hidden" name="termsAccepted" id="termsAcceptedInput" value="<%= termsAlreadyAccepted ? 'true' : '' %>">
 
-                    <div class="form-grid">
-                        <div class="form-group full-width">
-                            <label>ชื่อร้านค้า</label>
-                            <input type="text" name="shopName" class="input-white"
-                                value="<%= fd.shopName || '' %>"
-                                placeholder="เช่น ร้านส้มตำป้าแดง" required>
+                    <%
+                    const zonesByTypeMap = (typeof zonesByType !== 'undefined' && zonesByType) ? zonesByType : {};
+                    const productTypeOptions = [
+                        { value: 'FOOD', label: 'อาหาร/เครื่องดื่ม' },
+                        { value: 'FASHION', label: 'เสื้อผ้า/แฟชั่น' },
+                        { value: 'อื่นๆ', label: 'อื่นๆ' }
+                    ];
+                    %>
+                    <div class="form-section">
+                        <div class="form-section-head">
+                            <span class="form-section-title">ข้อมูลร้าน</span>
+                            <span class="form-section-hint">แสดงบนผังตลาดหลังอนุมัติ</span>
                         </div>
 
-                        <div class="form-group full-width">
-                            <label>ชื่อผู้ขาย</label>
-                            <input type="text" name="sellerName" class="input-white"
-                                value="<%= user && user.name ? user.name : '' %>" readonly required>
-                        </div>
+                        <div class="form-grid">
+                            <div class="form-group full-width">
+                                <label>ชื่อร้านค้า</label>
+                                <input type="text" name="shopName" class="input-white"
+                                    value="<%= fd.shopName || '' %>" maxlength="200"
+                                    placeholder="เช่น ร้านส้มตำป้าแดง" required>
+                                <p class="field-hint">ชื่อนี้ขึ้นบนการ์ดล็อกในผังตลาดและป้ายหน้าร้าน — หลังอนุมัติแล้วแก้เองไม่ได้ ต้องติดต่อแอดมิน</p>
+                            </div>
 
-                        <div class="form-group">
-                            <label>เบอร์โทรศัพท์</label>
-                            <input type="tel" name="phoneNumber" class="input-white"
-                                value="<%= fd.phoneNumber || (user && user.phoneNumber ? user.phoneNumber : '') %>"
-                                inputmode="numeric" maxlength="10" pattern="0[0-9]{8,9}"
-                                placeholder="เช่น 0812345678" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>ธนาคาร</label>
-                            <select name="bankName" class="input-white" required>
-                                <option value="" <%= !fd.bankName ? 'selected' : '' %> disabled>เลือกธนาคาร...</option>
-                                <% (typeof bankNames !== 'undefined' ? bankNames : []).forEach((bank) => { %>
-                                <option value="<%= bank %>" <%= fd.bankName === bank ? 'selected' : '' %>><%= bank %></option>
-                                <% }) %>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label>เลขบัญชีธนาคาร</label>
-                            <input type="text" name="bankAccountNumber" class="input-white"
-                                value="<%= fd.bankAccountNumber || '' %>"
-                                placeholder="เช่น 1234567890" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>ชื่อบัญชีธนาคาร</label>
-                            <input type="text" name="bankAccountName" class="input-white"
-                                value="<%= fd.bankAccountName || '' %>"
-                                placeholder="เช่น นายสมชาย ใจดี" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>ประเภทสินค้า</label>
-                            <select name="productType" class="input-white" required>
-                                <option value="" <%= !fd.productType ? 'selected' : '' %>>เลือกประเภท...</option>
-                                <option value="FOOD" <%= fd.productType === 'FOOD' ? 'selected' : '' %>>อาหาร/เครื่องดื่ม</option>
-                                <option value="FASHION" <%= fd.productType === 'FASHION' ? 'selected' : '' %>>เสื้อผ้า/แฟชั่น</option>
-                                <option value="อื่นๆ" <%= fd.productType === 'อื่นๆ' ? 'selected' : '' %>>อื่นๆ</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group full-width" id="productSubtypeSection">
-                        <div class="subtype-section__head">
-                            <label>ประเภทสินค้าเฉพาะ <span class="subtype-count" id="subtypeCount" hidden>0</span></label>
-                            <p class="text-muted small mb-0">เลือกได้มากกว่า 1 รายการ — ใช้จัดระยะห่างล็อกไม่ให้ร้านขายของซ้ำกันอยู่ติดกัน</p>
-                        </div>
-                        <%
-                        const selectedSubtypes = (fd.productSubtype || '').split(',').map((s) => s.trim()).filter(Boolean);
-                        const subtypeGroupsByType = (typeof productSubtypeGroups !== 'undefined' && productSubtypeGroups) ? productSubtypeGroups : {};
-                        %>
-                        <% Object.keys(subtypeGroupsByType).forEach((typeKey) => { %>
-                        <div class="subtype-panel" data-product-type="<%= typeKey %>" hidden>
-                            <% subtypeGroupsByType[typeKey].forEach((groupEntry) => {
-                                const groupCheckedCount = groupEntry.items.filter((item) => selectedSubtypes.includes(item)).length;
-                            %>
-                            <details class="subtype-group" <%= groupCheckedCount > 0 ? 'open' : '' %>>
-                                <summary class="subtype-group__title">
-                                    <%= groupEntry.group %>
-                                    <span class="subtype-group__count" <%= groupCheckedCount > 0 ? '' : 'hidden' %>><%= groupCheckedCount %></span>
-                                </summary>
-                                <div class="subtype-group__items">
-                                    <% groupEntry.items.forEach((item) => { %>
-                                    <label class="subtype-checkbox">
-                                        <input type="checkbox" name="productSubtype" value="<%= item %>"
-                                            <%= selectedSubtypes.includes(item) ? 'checked' : '' %>>
-                                        <span><%= item %></span>
-                                    </label>
+                            <div class="form-group full-width">
+                                <label>ประเภทสินค้า</label>
+                                <select name="productType" id="productTypeSelect" class="input-white" required>
+                                    <option value="" <%= !fd.productType ? 'selected' : '' %>>เลือกประเภท...</option>
+                                    <% productTypeOptions.forEach((opt) => { %>
+                                    <option value="<%= opt.value %>" data-zones="<%= (zonesByTypeMap[opt.value] || []).join(', ') %>"
+                                        <%= fd.productType === opt.value ? 'selected' : '' %>><%= opt.label %></option>
                                     <% }) %>
+                                </select>
+                                <p class="field-hint" id="productTypeZoneHint">ประเภทสินค้ากำหนดโซนที่จองล็อกได้หลังอนุมัติ และแก้เองไม่ได้ภายหลัง</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width" id="productSubtypeSection">
+                            <div class="subtype-section__head">
+                                <label>ประเภทสินค้าเฉพาะ <span class="subtype-count" id="subtypeCount" hidden>0</span></label>
+                                <p class="text-muted small mb-0">เลือกได้มากกว่า 1 รายการ — ใช้จัดระยะห่างล็อกไม่ให้ร้านขายของซ้ำกันอยู่ติดกัน</p>
+                            </div>
+                            <%
+                            const selectedSubtypes = (fd.productSubtype || '').split(',').map((s) => s.trim()).filter(Boolean);
+                            const subtypeGroupsByType = (typeof productSubtypeGroups !== 'undefined' && productSubtypeGroups) ? productSubtypeGroups : {};
+                            %>
+                            <% Object.keys(subtypeGroupsByType).forEach((typeKey) => { %>
+                            <div class="subtype-panel" data-product-type="<%= typeKey %>" hidden>
+                                <% subtypeGroupsByType[typeKey].forEach((groupEntry) => {
+                                    const groupCheckedCount = groupEntry.items.filter((item) => selectedSubtypes.includes(item)).length;
+                                %>
+                                <details class="subtype-group" <%= groupCheckedCount > 0 ? 'open' : '' %>>
+                                    <summary class="subtype-group__title">
+                                        <%= groupEntry.group %>
+                                        <span class="subtype-group__count" <%= groupCheckedCount > 0 ? '' : 'hidden' %>><%= groupCheckedCount %></span>
+                                    </summary>
+                                    <div class="subtype-group__items">
+                                        <% groupEntry.items.forEach((item) => { %>
+                                        <label class="subtype-checkbox">
+                                            <input type="checkbox" name="productSubtype" value="<%= item %>"
+                                                <%= selectedSubtypes.includes(item) ? 'checked' : '' %>>
+                                            <span><%= item %></span>
+                                        </label>
+                                        <% }) %>
+                                    </div>
+                                </details>
+                                <% }) %>
+                            </div>
+                            <% }) %>
+                            <details class="subtype-group subtype-group--other" <%= (fd.productSubtypeOther || '') ? 'open' : '' %>>
+                                <summary class="subtype-group__title">อื่นๆ (ระบุเอง)</summary>
+                                <div class="subtype-group__items">
+                                    <label class="subtype-checkbox subtype-checkbox--other">
+                                        <input type="checkbox" id="subtypeOtherToggle" <%= (fd.productSubtypeOther || '') ? 'checked' : '' %>>
+                                        <span>มีสินค้าอื่นนอกลิสต์ด้านบน</span>
+                                    </label>
+                                    <input type="text" name="productSubtypeOther" id="subtypeOtherInput" class="input-white"
+                                        value="<%= fd.productSubtypeOther || '' %>"
+                                        placeholder="เช่น หมูสะเต๊ะ" maxlength="200"
+                                        <%= (fd.productSubtypeOther || '') ? '' : 'hidden' %>>
                                 </div>
                             </details>
-                            <% }) %>
+                            <p class="text-muted small mb-0" id="productSubtypeHint">กรุณาเลือกประเภทสินค้าด้านบนก่อน</p>
                         </div>
-                        <% }) %>
-                        <details class="subtype-group subtype-group--other" <%= (fd.productSubtypeOther || '') ? 'open' : '' %>>
-                            <summary class="subtype-group__title">อื่นๆ (ระบุเอง)</summary>
-                            <div class="subtype-group__items">
-                                <label class="subtype-checkbox subtype-checkbox--other">
-                                    <input type="checkbox" id="subtypeOtherToggle" <%= (fd.productSubtypeOther || '') ? 'checked' : '' %>>
-                                    <span>มีสินค้าอื่นนอกลิสต์ด้านบน</span>
-                                </label>
-                                <input type="text" name="productSubtypeOther" id="subtypeOtherInput" class="input-white"
-                                    value="<%= fd.productSubtypeOther || '' %>"
-                                    placeholder="เช่น หมูสะเต๊ะ" maxlength="200"
-                                    <%= (fd.productSubtypeOther || '') ? '' : 'hidden' %>>
+
+                        <div class="form-group full-width">
+                            <label>เมนูเด่น (คำค้นหา) <span class="label-optional">ไม่บังคับ</span></label>
+                            <div class="tag-input-box" id="shopTagsBox">
+                                <input type="text" id="shopTagsField" class="tag-input-field"
+                                    placeholder="พิมพ์ชื่อเมนู แล้วกด Enter เช่น หมูปิ้งนมสด">
                             </div>
-                        </details>
-                        <p class="text-muted small mb-0" id="productSubtypeHint">กรุณาเลือกประเภทสินค้าด้านบนก่อน</p>
-                    </div>
+                            <input type="hidden" name="shopTags" id="shopTagsHidden" value="<%= fd.shopTags || '' %>">
+                            <p class="field-hint">ลูกค้าพิมพ์ชื่อเมนูในผังตลาดแล้วเจอร้านคุณ — ใส่แบบเจาะจง เช่น "หมูปิ้งนมสด" แทน "หมูปิ้ง" กด Enter หรือ , เพื่อเพิ่มทีละป้าย</p>
+                        </div>
 
-                    <div class="form-group full-width">
-                        <label>รายละเอียดสินค้า</label>
-                        <textarea name="productDetail" class="input-white"
-                            placeholder="เพิ่มรายละเอียดสินค้าที่จะขาย..." required><%= fd.productDetail || '' %></textarea>
-                    </div>
+                        <div class="form-group full-width">
+                            <label>แนะนำร้านสั้น ๆ <span class="label-optional">ไม่บังคับ</span></label>
+                            <textarea name="shopSummary" class="input-white input-short" maxlength="500"
+                                placeholder="เช่น ส้มตำปูปลาร้าสูตรอีสานแท้ ตำสดทุกครก"><%= fd.shopSummary || '' %></textarea>
+                            <p class="field-hint">ขึ้นในการ์ดร้านบนผังตลาดและหน้าคอมมูนิตี้ (ไม่เกิน 500 ตัวอักษร)</p>
+                        </div>
 
-                    <div class="form-group full-width">
-                        <label>รูปหน้าร้าน (ถ้ามี)</label>
+                        <div class="form-group full-width">
+                            <label>รายละเอียดสินค้า</label>
+                            <textarea name="productDetail" class="input-white" maxlength="2000"
+                                placeholder="สินค้าที่จะขาย ราคาโดยประมาณ วิธีทำ/วัตถุดิบหลัก..." required><%= fd.productDetail || '' %></textarea>
+                            <p class="field-hint">แอดมินใช้พิจารณาใบสมัคร และขึ้นในหน้าร้านให้ลูกค้ารู้ว่าขายอะไร</p>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label>รูปสินค้า/โลโก้ร้าน <span class="label-optional">ไม่บังคับ · สูงสุด <%= maxProductImagesCount %> รูป</span></label>
+                            <div class="upload-wrapper gallery-wrapper" id="productImagesWrapper">
+                                <label for="productImagesUpload" class="upload-box" id="productImagesUploadLabel"></label>
+                            </div>
+                            <input type="file" name="productImages" id="productImagesUpload"
+                                class="upload-input" accept="image/*" multiple data-max="<%= maxProductImagesCount %>">
+                            <p class="field-hint">รูปแรกใช้เป็นรูปย่อของร้านบนผังตลาดและคอมมูนิตี้</p>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label>รูปเมนูร้าน <span class="label-optional">ไม่บังคับ · สูงสุด <%= maxMenuImagesCount %> รูป</span></label>
+                            <div class="upload-wrapper gallery-wrapper" id="menuImagesWrapper">
+                                <label for="menuImagesUpload" class="upload-box" id="menuImagesUploadLabel"></label>
+                            </div>
+                            <input type="file" name="menuImages" id="menuImagesUpload"
+                                class="upload-input" accept="image/*" multiple data-max="<%= maxMenuImagesCount %>">
+                            <p class="field-hint">ถ่ายป้ายเมนู/ใบราคาให้อ่านชื่อเมนูและราคาได้ชัด — ลูกค้ากด "ดูเมนูร้าน" บนผังตลาดเพื่อดูรูปนี้</p>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label>รูปหน้าปกร้าน <span class="label-optional">ไม่บังคับ</span></label>
                         <div class="upload-wrapper" id="coverUploadWrapper">
                             <label for="imageUpload" class="upload-box upload-box--cover"
                                 id="uploadLabel">
@@ -215,7 +232,68 @@
                             <input type="file" name="shopCoverImage" id="imageUpload"
                                 class="upload-input" accept="image/*">
                         </div>
-                        <p class="text-muted small mb-0">หมายเหตุ: ต้องแนบรูปใหม่อีกครั้งหากส่งฟอร์มไม่สำเร็จ เนื่องจากเหตุผลด้านความปลอดภัยของเบราว์เซอร์ ไฟล์ที่เลือกไว้จะไม่ถูกเก็บค้างไว้ให้</p>
+                            <p class="field-hint">ใช้เป็นรูปหน้าปกร้าน (ถ้าไม่มีรูปสินค้า จะใช้รูปนี้เป็นรูปย่อบนผังตลาดแทน) — ถ้าส่งฟอร์มไม่สำเร็จต้องแนบรูปทุกช่องใหม่อีกครั้ง (เบราว์เซอร์ไม่เก็บไฟล์ค้างไว้ให้)</p>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-head">
+                            <span class="form-section-title">ผู้ขายและการติดต่อ</span>
+                            <span class="form-section-hint">เจ้าหน้าที่ใช้ติดต่อ</span>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>ชื่อผู้ขาย</label>
+                                <input type="text" name="sellerName" class="input-white"
+                                    value="<%= user && user.name ? user.name : '' %>" readonly required>
+                                <p class="field-hint">ใช้ชื่อตามบัญชีผู้ใช้ แก้ได้ที่หน้าโปรไฟล์</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label>เบอร์โทรศัพท์</label>
+                                <input type="tel" name="phoneNumber" class="input-white"
+                                    value="<%= fd.phoneNumber || (typeof userPhoneNumber !== 'undefined' ? userPhoneNumber : '') %>"
+                                    inputmode="numeric" maxlength="10" pattern="0[0-9]{8,9}"
+                                    placeholder="เช่น 0812345678" required>
+                                <p class="field-hint">อนุมัติแล้วจะบันทึกเป็นเบอร์ของบัญชีนี้ ใช้จับคู่คำขอจองล็อกและให้เจ้าหน้าที่ติดต่อ</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-head">
+                            <span class="form-section-title">บัญชีธนาคาร</span>
+                            <span class="form-section-hint">ไม่แสดงบนผังตลาด</span>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group full-width">
+                                <label>ธนาคาร</label>
+                                <select name="bankName" class="input-white" required>
+                                    <option value="" <%= !fd.bankName ? 'selected' : '' %> disabled>เลือกธนาคาร...</option>
+                                    <% (typeof bankNames !== 'undefined' ? bankNames : []).forEach((bank) => { %>
+                                    <option value="<%= bank %>" <%= fd.bankName === bank ? 'selected' : '' %>><%= bank %></option>
+                                    <% }) %>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>เลขบัญชีธนาคาร</label>
+                                <input type="text" name="bankAccountNumber" class="input-white"
+                                    value="<%= fd.bankAccountNumber || '' %>"
+                                    inputmode="numeric" minlength="4" maxlength="30"
+                                    placeholder="เช่น 1234567890" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>ชื่อบัญชีธนาคาร</label>
+                                <input type="text" name="bankAccountName" class="input-white"
+                                    value="<%= fd.bankAccountName || '' %>" maxlength="200"
+                                    placeholder="เช่น นายสมชาย ใจดี" required>
+                            </div>
+                        </div>
+                        <p class="field-hint">ไม่แสดงบนผังตลาดหรือหน้าร้าน — ชื่อบัญชีควรตรงกับชื่อผู้ขาย</p>
                     </div>
 
                     <button type="submit"
@@ -317,6 +395,6 @@
         </div>
         <% } %>
 
-        <script src="/js/seller/shopApplication.js"></script>
+        <script src="/js/seller/shopApplication.js?v=20261008-gallery"></script>
     </body>
 </html>

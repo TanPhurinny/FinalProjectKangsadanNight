@@ -123,6 +123,8 @@ model SellerApplication {
   productSubtype    String?
   productSubtypeOther String? // "อื่นๆ (ระบุ)" พิมพ์เอง — เก็บไว้เฉยๆ ไม่เอาเข้ากฎเว้นระยะล็อก (ดู utils/productSubtypes.js)
   productDetail     String?   @db.Text
+  shopSummary       String?   @db.Text // แนะนำร้านสั้น ๆ — คัดลอกเข้า ShopDetail.shopSummary ตอนอนุมัติ (โชว์ในการ์ดร้านบนผังตลาด)
+  shopTags          String?   @db.Text // เมนูเด่นคั่นด้วยจุลภาค — คัดลอกเข้า ShopDetail.shopTags ตอนอนุมัติ (ลูกค้าค้นร้านในผังตลาด)
   sellerName        String?
   idCardNumber      String?
   bankName          String?
@@ -134,6 +136,8 @@ model SellerApplication {
   district          String?
   province          String?
   shopCoverImage    String?
+  productImages     String?   @db.Text // JSON array ของ URL รูปสินค้า — สร้างเป็น ShopProductImage ตอนอนุมัติ (ถ้าร้านยังไม่มีรูป)
+  menuImages        String?   @db.Text // JSON array ของ URL รูปเมนู — สร้างเป็น ShopMenuImage ตอนอนุมัติ (ถ้าร้านยังไม่มีรูป)
   termsAcceptedAt   DateTime?
   status            Status    @default(PENDING)
   rejectReason      String?   @db.Text

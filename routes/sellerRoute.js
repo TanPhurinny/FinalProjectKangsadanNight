@@ -997,6 +997,21 @@ router.get('/announcements', isAuthenticated, async (req, res) => {
 });
 
 // --- สมัครเปิดร้านค้า (CUSTOMER สมัครแล้วรออนุมัติเป็น SELLER) ---
+// ประเภทสินค้าที่เลือกในใบสมัครกำหนดโซนที่จองได้หลังอนุมัติ (utils/zoneAccess.js) — โชว์ให้ผู้สมัครเห็นก่อนเลือก
+const SHOP_APPLICATION_PRODUCT_TYPES = ['FOOD', 'FASHION', 'อื่นๆ'];
+// req.user มาจาก JWT ซึ่งไม่มีเบอร์โทร — ดึงจาก DB เพื่อเติมช่องเบอร์ในฟอร์มให้ล่วงหน้า
+async function getUserPhoneNumber(userId) {
+    const record = await prisma.user.findUnique({ where: { id: userId }, select: { phoneNumber: true } });
+    return record?.phoneNumber || '';
+}
+
+function getApplicationZonesByType() {
+    return Object.fromEntries(SHOP_APPLICATION_PRODUCT_TYPES.map((type) => [
+        type,
+        zoneAccess.allowedZonesFor(type).map((z) => String(z).toUpperCase())
+    ]));
+}
+
 router.get('/shop-application', isAuthenticated, async (req, res) => {
     const latestApplication = await prisma.sellerApplication.findFirst({
         where: { userId: req.user.id },
@@ -1008,13 +1023,23 @@ router.get('/shop-application', isAuthenticated, async (req, res) => {
         latestApplication,
         bankNames: THAI_BANK_NAMES,
         productSubtypeGroups: PRODUCT_SUBTYPE_GROUPS,
+        zonesByType: getApplicationZonesByType(),
+        maxProductImagesCount: MAX_SHOP_PRODUCT_IMAGES,
+        maxMenuImagesCount: MAX_SHOP_MENU_IMAGES,
+        userPhoneNumber: await getUserPhoneNumber(req.user.id),
         error: req.query.error || null,
         success: req.query.success || null
     });
 });
 
 router.post('/shop-application', isAuthenticated, (req, res) => {
+    // ส่งไม่ผ่าน = ไม่มีใบสมัครอ้างถึงรูปที่เพิ่งอัปโหลด ลบทิ้งกันไฟล์ค้างใน Cloudinary/uploads
+    function uploadedFileUrls() {
+        return Object.values(req.files || {}).flat().map((file) => file.url).filter(Boolean);
+    }
+
     async function renderWithError(errorCode) {
+        await Promise.all(uploadedFileUrls().map((url) => deleteImage(url).catch(() => {})));
         const latestApplication = await prisma.sellerApplication.findFirst({
             where: { userId: req.user.id },
             orderBy: { createdAt: 'desc' }
@@ -1031,6 +1056,10 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
             latestApplication,
             bankNames: THAI_BANK_NAMES,
             productSubtypeGroups: PRODUCT_SUBTYPE_GROUPS,
+            zonesByType: getApplicationZonesByType(),
+            maxProductImagesCount: MAX_SHOP_PRODUCT_IMAGES,
+            maxMenuImagesCount: MAX_SHOP_MENU_IMAGES,
+            userPhoneNumber: await getUserPhoneNumber(req.user.id),
             error: errorCode,
             success: null,
             formData
@@ -1041,7 +1070,11 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
         return res.redirect('/shop-application?error=not_customer');
     }
 
-    uploadShopApplication.single('shopCoverImage')(req, res, async (err) => {
+    uploadShopApplication.fields([
+        { name: 'shopCoverImage', maxCount: 1 },
+        { name: 'productImages', maxCount: MAX_SHOP_PRODUCT_IMAGES },
+        { name: 'menuImages', maxCount: MAX_SHOP_MENU_IMAGES }
+    ])(req, res, async (err) => {
         if (err) {
             return renderWithError('upload_failed');
         }
@@ -1065,13 +1098,16 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
                 productSubtype,
                 productSubtypeOther,
                 productDetail,
+                shopSummary,
+                shopTags,
                 sellerName,
                 bankName,
                 bankAccountNumber,
                 bankAccountName,
                 phoneNumber
             } = parsed.data;
-            const shopCoverImage = req.file ? req.file.url : null;
+            const shopCoverImage = req.files?.shopCoverImage?.[0]?.url || null;
+            const toUrlList = (files) => (files && files.length ? JSON.stringify(files.map((file) => file.url)) : null);
 
             await prisma.sellerApplication.create({
                 data: {
@@ -1081,12 +1117,16 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
                     productSubtype,
                     productSubtypeOther,
                     productDetail,
+                    shopSummary: shopSummary || null,
+                    shopTags: shopTags || null,
                     sellerName,
                     bankName,
                     bankAccountNumber,
                     bankAccountName,
                     phoneNumber,
                     shopCoverImage,
+                    productImages: toUrlList(req.files?.productImages),
+                    menuImages: toUrlList(req.files?.menuImages),
                     termsAcceptedAt: new Date(),
                     status: 'PENDING'
                 }

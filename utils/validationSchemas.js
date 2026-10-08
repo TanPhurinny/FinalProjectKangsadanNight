@@ -122,6 +122,9 @@ const sellerApplicationSchema = z.object({
     productSubtype: productSubtypeField,
     productSubtypeOther: z.string().trim().max(200).optional(),
     productDetail: z.string().trim().min(1, 'กรุณากรอกรายละเอียดสินค้า').max(2000),
+    // สองช่องนี้ไม่บังคับ — ตอนอนุมัติคัดลอกเข้า ShopDetail ตรง ๆ (ขอบเขตเดียวกับ shopProfileSchema)
+    shopSummary: z.string().trim().max(500).optional(),
+    shopTags: z.string().trim().max(300).optional(),
     termsAccepted: z.literal('true', { errorMap: () => ({ message: 'กรุณายอมรับกฎระเบียบร้านค้าก่อนสมัคร' }) })
 });
 
