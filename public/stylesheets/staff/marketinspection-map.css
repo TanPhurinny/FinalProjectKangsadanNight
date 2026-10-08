@@ -74,6 +74,7 @@
 .legend-swatch.legend-issue { background: var(--danger-color); }
 .legend-swatch.legend-normal { background: var(--success-color); }
 .legend-swatch.legend-vacant { background: var(--muted-color); }
+.legend-swatch.legend-pending { background: var(--warning-color, #f0ad4e); }
 
 /* ── ZONE OVERVIEW (มินิแผนผังตำแหน่งโซนจริง — ค่า % คัดลอกจาก admin/bookingStall.css .ov-zone-*) ── */
 .insp-zone-overview {
@@ -381,6 +382,19 @@
 
 .insp-stall-cell.status-issue {
     background: var(--danger-color);
+}
+
+/* สถานะผลตรวจความสะอาด (โหมดงานตรวจความสะอาด) */
+.insp-stall-cell.status-passed {
+    background: var(--success-color);
+}
+
+.insp-stall-cell.status-failed {
+    background: var(--danger-color);
+}
+
+.insp-stall-cell.status-pending {
+    background: var(--warning-color, #f0ad4e);
 }
 
 .insp-zone-d-layout {

@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+(function () {
     function readJsonScript(id) {
         const el = document.getElementById(id);
         if (!el) return {};
@@ -12,17 +12,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const ZONES_DATA = readJsonScript('inspectionZonesDataJson');
     const STATUS_BY_CODE = readJsonScript('inspectionStatusByCodeJson');
 
-    const toggleTableBtn = document.getElementById('viewToggleTable');
-    const toggleZoneBtn = document.getElementById('viewToggleZone');
-    const tableWrap = document.getElementById('inspectionTableWrap');
-    const mapWrap = document.getElementById('inspectionMapWrap');
-    const overviewEl = document.getElementById('inspectionZoneOverview');
-    const detailEl = document.getElementById('inspectionZoneDetail');
-    const detailTitleEl = document.getElementById('zoneDetailTitle');
-    const canvasEl = document.getElementById('inspectionZoneCanvas');
+    // สร้างผังตลาดแบบเลือกโซน + กริดล็อก — ใช้ร่วมกันทั้งโหมดงานตรวจปัญหาและงานตรวจความสะอาด
+    // cfg: ids (id ของ element), resolveStatus(code) → ชื่อสถานะ (ใช้เป็น class status-xxx),
+    //      statusLabel(status), tooltipMeta(status), isClickable(status), onCellClick(code, api)
+    function createInspectionMap(cfg) {
+    const ids = cfg.ids;
+    const toggleTableBtn = document.getElementById(ids.toggleTable);
+    const toggleZoneBtn = document.getElementById(ids.toggleZone);
+    const tableWrap = document.getElementById(ids.tableWrap);
+    const mapWrap = document.getElementById(ids.mapWrap);
+    const overviewEl = document.getElementById(ids.overview);
+    const detailEl = document.getElementById(ids.detail);
+    const detailTitleEl = document.getElementById(ids.detailTitle);
+    const canvasEl = document.getElementById(ids.canvas);
     const tooltip = document.getElementById('inspectionMapTooltip');
 
-    if (!toggleTableBtn || !toggleZoneBtn || !tableWrap || !mapWrap || !overviewEl || !detailEl || !canvasEl) return;
+    if (!toggleTableBtn || !toggleZoneBtn || !tableWrap || !mapWrap || !overviewEl || !detailEl || !canvasEl) return null;
 
     // โซน D ในผังจริงเป็นรูปตัว L — ตำแหน่งเดียวกับที่ใช้ในหน้า admin/booking_stall.ejs (ยึดผังจริง)
     const ZONE_D_LAYOUT = [
@@ -42,40 +47,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return !!(stall && stall.small && stall.groupSize === 2);
     }
 
-    // ลำดับความสำคัญของสี: มีปัญหา > ปกติ > ว่าง
-    function resolveStatus(code) {
-        const info = STATUS_BY_CODE[code];
-        if (!info || info.isVacant || !info.inspectionEnabled) return 'vacant';
-        if (info.hasIssue) return 'issue';
-        return 'normal';
-    }
-
-    function statusLabel(status) {
-        if (status === 'issue') return 'มีปัญหา';
-        if (status === 'normal') return 'ปกติ';
-        return 'ว่าง';
-    }
-
-    function scrollToTableRow(code) {
-        const row = document.querySelector(`.inspection-row[data-stall-code="${window.CSS && CSS.escape ? CSS.escape(code) : code}"]`);
-        if (!row) return;
-
-        setViewMode('table'); // คลิกล็อคในผัง (ไม่ว่าจะอยู่ใน zone ไหน) กลับไปตารางเสมอ ไม่ใช่กลับไป overview
-        window.requestAnimationFrame(() => {
-            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            row.classList.remove('stall-cell-flash');
-            // force reflow เพื่อให้ animation เล่นซ้ำได้ทุกครั้งที่คลิก
-            void row.offsetWidth;
-            row.classList.add('stall-cell-flash');
-            setTimeout(() => row.classList.remove('stall-cell-flash'), 1500);
-        });
-    }
+    const resolveStatus = cfg.resolveStatus;
+    const statusLabel = cfg.statusLabel;
 
     function showTooltip(e, code, status) {
         tooltip.innerHTML = `
             <div class="imt-code">${code}</div>
             <div class="imt-status">${statusLabel(status)}</div>
-            <div class="imt-meta">${status === 'vacant' ? 'ล็อคว่าง' : 'คลิกเพื่อเลื่อนไปแถวในตาราง'}</div>
+            <div class="imt-meta">${cfg.tooltipMeta(status)}</div>
         `;
         tooltip.style.display = 'block';
         moveTooltip(e);
@@ -114,8 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
         cell.addEventListener('mousemove', moveTooltip);
         cell.addEventListener('mouseleave', hideTooltip);
 
-        if (status !== 'vacant') {
-            cell.addEventListener('click', () => scrollToTableRow(code));
+        if (cfg.isClickable(status)) {
+            cell.addEventListener('click', () => cfg.onCellClick(code, api));
         }
 
         return cell;
@@ -261,4 +240,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
     toggleTableBtn.addEventListener('click', () => setViewMode('table'));
     toggleZoneBtn.addEventListener('click', () => setViewMode('zone'));
-});
+
+    // วาดกริดโซนปัจจุบันใหม่ (เรียกหลังสถานะล็อกเปลี่ยน เช่น บันทึกผลตรวจแล้ว)
+    function refresh() {
+        if (mapRendered && activeZone) renderGrid(activeZone);
+    }
+
+    const api = { setViewMode, refresh };
+    return api;
+    }
+
+    window.createInspectionMap = createInspectionMap;
+
+    // โหมดงานตรวจปัญหา
+    document.addEventListener('DOMContentLoaded', () => {
+        createInspectionMap({
+            ids: {
+                toggleTable: 'viewToggleTable', toggleZone: 'viewToggleZone',
+                tableWrap: 'inspectionTableWrap', mapWrap: 'inspectionMapWrap',
+                overview: 'inspectionZoneOverview', detail: 'inspectionZoneDetail',
+                detailTitle: 'zoneDetailTitle', canvas: 'inspectionZoneCanvas'
+            },
+            // ลำดับความสำคัญของสี: มีปัญหา > ปกติ > ว่าง
+            resolveStatus(code) {
+                const info = STATUS_BY_CODE[code];
+                if (!info || info.isVacant || !info.inspectionEnabled) return 'vacant';
+                if (info.hasIssue) return 'issue';
+                return 'normal';
+            },
+            statusLabel(status) {
+                if (status === 'issue') return 'มีปัญหา';
+                if (status === 'normal') return 'ปกติ';
+                return 'ว่าง';
+            },
+            tooltipMeta: (status) => (status === 'vacant' ? 'ล็อคว่าง' : 'คลิกเพื่อเลื่อนไปแถวในตาราง'),
+            isClickable: (status) => status !== 'vacant',
+            onCellClick(code, api) {
+                const row = document.querySelector(`#inspectionTable .inspection-row[data-stall-code="${window.CSS && CSS.escape ? CSS.escape(code) : code}"]`);
+                if (!row) return;
+
+                api.setViewMode('table'); // คลิกล็อคในผัง (ไม่ว่าจะอยู่ใน zone ไหน) กลับไปตารางเสมอ ไม่ใช่กลับไป overview
+                window.requestAnimationFrame(() => {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    row.classList.remove('stall-cell-flash');
+                    // force reflow เพื่อให้ animation เล่นซ้ำได้ทุกครั้งที่คลิก
+                    void row.offsetWidth;
+                    row.classList.add('stall-cell-flash');
+                    setTimeout(() => row.classList.remove('stall-cell-flash'), 1500);
+                });
+            }
+        });
+    });
+})();

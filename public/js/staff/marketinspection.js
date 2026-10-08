@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const visibleCountEl = document.getElementById('visibleCount');
     const vacantCountEl = document.getElementById('vacantCount');
     const flaggedCountEl = document.getElementById('flaggedCount');
-    const rows = Array.from(document.querySelectorAll('.inspection-row'));
+    const rows = Array.from(document.querySelectorAll('#inspectionTable .inspection-row'));
     const noResults = document.getElementById('noResults');
     const smallPrice = Number(document.body.dataset.smallAppliancePrice || 20);
     const largePrice = Number(document.body.dataset.largeAppliancePrice || 40);
@@ -319,6 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (excessBackdrop) excessBackdrop.addEventListener('click', closeExcessPanel);
 
     applyFilter();
+    window.inspectionRefreshIssueView = applyFilter; // ให้โหมดเดินตรวจเรียกคำนวณตัวเลข/ไฮไลต์ใหม่หลังบันทึก
 
     // --- ปุ่ม "ส่งงาน" ตรวจตลาดรายวัน — popup ยืนยันสรุปยอดร้านที่พบปัญหา/ทั้งหมด ก่อนส่งจริง ---
     const submitDayBtn = document.getElementById('submitDayBtn');

@@ -13,72 +13,167 @@ document.addEventListener('DOMContentLoaded', () => {
     const RESULTS_BY_STALL_ID = readJsonScript('cleanlinessByStallIdJson') || {};
     const ITEM_IDS = CHECKLIST.flatMap((category) => category.items.map((item) => item.id));
 
-    // --- สลับโหมด งานตรวจปัญหา / งานตรวจความสะอาด ---
-    const modeTabIssue = document.getElementById('modeTabIssue');
-    const modeTabCleanliness = document.getElementById('modeTabCleanliness');
-    const issueModePanel = document.getElementById('issueModePanel');
-    const cleanlinessModePanel = document.getElementById('cleanlinessModePanel');
+    // --- สลับโหมด เดินตรวจ / งานตรวจปัญหา / งานตรวจความสะอาด ---
+    const MODE_PANELS = {
+        walk: { tab: document.getElementById('modeTabWalk'), panel: document.getElementById('walkModePanel') },
+        issue: { tab: document.getElementById('modeTabIssue'), panel: document.getElementById('issueModePanel') },
+        cleanliness: { tab: document.getElementById('modeTabCleanliness'), panel: document.getElementById('cleanlinessModePanel') }
+    };
+    const cleanlinessModePanel = MODE_PANELS.cleanliness.panel;
 
     function setInspectionMode(mode) {
-        const showCleanliness = mode === 'cleanliness';
-        if (issueModePanel) issueModePanel.classList.toggle('d-none', showCleanliness);
-        if (cleanlinessModePanel) cleanlinessModePanel.classList.toggle('d-none', !showCleanliness);
-        if (modeTabIssue) modeTabIssue.classList.toggle('active', !showCleanliness);
-        if (modeTabCleanliness) modeTabCleanliness.classList.toggle('active', showCleanliness);
+        Object.keys(MODE_PANELS).forEach((key) => {
+            const { tab, panel } = MODE_PANELS[key];
+            if (panel) panel.classList.toggle('d-none', key !== mode);
+            if (tab) tab.classList.toggle('active', key === mode);
+        });
     }
 
-    if (modeTabIssue) modeTabIssue.addEventListener('click', () => setInspectionMode('issue'));
-    if (modeTabCleanliness) modeTabCleanliness.addEventListener('click', () => setInspectionMode('cleanliness'));
+    Object.keys(MODE_PANELS).forEach((key) => {
+        if (MODE_PANELS[key].tab) MODE_PANELS[key].tab.addEventListener('click', () => setInspectionMode(key));
+    });
 
     if (!cleanlinessModePanel) return; // ไม่มีโหมดความสะอาดในหน้านี้ (เช่น error state) — ไม่ต้องทำอะไรต่อ
 
-    // --- ค้นหา + สถิติในตารางความสะอาด ---
+    // --- ค้นหา + กรองโซน/สถานะ + สถิติในตารางความสะอาด ---
     const cleanlinessSearch = document.getElementById('cleanlinessSearch');
+    const cleanlinessZoneFilter = document.getElementById('cleanlinessZoneFilter');
+    const cleanlinessStatusFilter = document.getElementById('cleanlinessStatusFilter');
     const cleanlinessRows = Array.from(document.querySelectorAll('.cleanliness-row'));
     const cleanlinessNoResults = document.getElementById('cleanlinessNoResults');
     const cleanTotalCountEl = document.getElementById('cleanTotalCount');
+    const cleanVisibleCountEl = document.getElementById('cleanVisibleCount');
     const cleanPassedCountEl = document.getElementById('cleanPassedCount');
     const cleanFailedCountEl = document.getElementById('cleanFailedCount');
     const cleanPendingCountEl = document.getElementById('cleanPendingCount');
 
-    function syncCleanlinessStats() {
-        const total = cleanlinessRows.length;
+    function getRowStatus(row) {
+        const badge = row.querySelector('[data-role="cleanliness-status"]');
+        if (!badge) return 'pending';
+        if (badge.classList.contains('status-passed')) return 'passed';
+        if (badge.classList.contains('status-failed')) return 'failed';
+        return 'pending';
+    }
+
+    // สถิตินับตามแถวที่ผ่านตัวกรองโซน/ค้นหา (ไม่นับตัวกรองสถานะ เพื่อให้ยังเห็นภาพรวมของโซนนั้น)
+    function syncCleanlinessStats(scopeRows, visibleCount) {
         let passed = 0;
         let failed = 0;
         let pending = 0;
 
-        cleanlinessRows.forEach((row) => {
-            const badge = row.querySelector('[data-role="cleanliness-status"]');
-            if (!badge) return;
-            if (badge.classList.contains('status-passed')) passed += 1;
-            else if (badge.classList.contains('status-failed')) failed += 1;
+        scopeRows.forEach((row) => {
+            const status = getRowStatus(row);
+            if (status === 'passed') passed += 1;
+            else if (status === 'failed') failed += 1;
             else pending += 1;
         });
 
-        if (cleanTotalCountEl) cleanTotalCountEl.textContent = String(total);
+        if (cleanTotalCountEl) cleanTotalCountEl.textContent = String(cleanlinessRows.length);
+        if (cleanVisibleCountEl) cleanVisibleCountEl.textContent = String(visibleCount);
         if (cleanPassedCountEl) cleanPassedCountEl.textContent = String(passed);
         if (cleanFailedCountEl) cleanFailedCountEl.textContent = String(failed);
         if (cleanPendingCountEl) cleanPendingCountEl.textContent = String(pending);
     }
 
-    function applyCleanlinessSearch() {
+    function applyCleanlinessFilter() {
         const search = String(cleanlinessSearch?.value || '').trim().toLowerCase();
+        const zone = String(cleanlinessZoneFilter?.value || 'ALL').toUpperCase();
+        const statusFilter = String(cleanlinessStatusFilter?.value || 'ALL');
+        const scopeRows = [];
         let visibleCount = 0;
 
         cleanlinessRows.forEach((row) => {
             const searchText = String(row.dataset.search || '').toLowerCase();
-            const shouldShow = !search || searchText.includes(search);
+            const rowZone = String(row.dataset.zone || '').toUpperCase();
+            const inScope = (!search || searchText.includes(search)) && (zone === 'ALL' || rowZone === zone);
+            const shouldShow = inScope && (statusFilter === 'ALL' || getRowStatus(row) === statusFilter);
             row.style.display = shouldShow ? '' : 'none';
+            if (inScope) scopeRows.push(row);
             if (shouldShow) visibleCount += 1;
         });
 
+        syncCleanlinessStats(scopeRows, visibleCount);
         if (cleanlinessNoResults) cleanlinessNoResults.classList.toggle('d-none', visibleCount > 0 || !cleanlinessRows.length);
     }
 
-    if (cleanlinessSearch) cleanlinessSearch.addEventListener('input', applyCleanlinessSearch);
+    if (cleanlinessSearch) cleanlinessSearch.addEventListener('input', applyCleanlinessFilter);
+    if (cleanlinessZoneFilter) cleanlinessZoneFilter.addEventListener('change', applyCleanlinessFilter);
+    if (cleanlinessStatusFilter) cleanlinessStatusFilter.addEventListener('change', applyCleanlinessFilter);
 
-    syncCleanlinessStats();
-    applyCleanlinessSearch();
+    // --- ผังตลาด (ใช้ตัวสร้างผังเดียวกับโหมดงานตรวจปัญหา) สีล็อกตามผลตรวจความสะอาด ---
+    const rowByStallCode = {};
+    cleanlinessRows.forEach((row) => { rowByStallCode[row.dataset.stallCode] = row; });
+
+    const cleanlinessMap = typeof window.createInspectionMap === 'function' ? window.createInspectionMap({
+        ids: {
+            toggleTable: 'cleanViewToggleTable', toggleZone: 'cleanViewToggleZone',
+            tableWrap: 'cleanlinessTableWrap', mapWrap: 'cleanlinessMapWrap',
+            overview: 'cleanlinessZoneOverview', detail: 'cleanlinessZoneDetail',
+            detailTitle: 'cleanlinessZoneDetailTitle', canvas: 'cleanlinessZoneCanvas'
+        },
+        // ล็อกที่ไม่ใช่ร้านอาหารไม่มีแถวในตาราง จึงแสดงเป็นสีเทา (ไม่ต้องตรวจ)
+        resolveStatus(code) {
+            const row = rowByStallCode[code];
+            return row ? getRowStatus(row) : 'vacant';
+        },
+        statusLabel(status) {
+            if (status === 'passed') return 'ผ่าน';
+            if (status === 'failed') return 'ไม่ผ่าน';
+            if (status === 'pending') return 'ยังไม่ตรวจ';
+            return 'ไม่ใช่ร้านอาหาร/ว่าง';
+        },
+        tooltipMeta: (status) => (status === 'vacant' ? 'ไม่ต้องตรวจความสะอาด' : 'คลิกเพื่อเปิดเช็คลิสต์ร้านนี้'),
+        isClickable: (status) => status !== 'vacant',
+        onCellClick(code, api) {
+            const row = rowByStallCode[code];
+            if (!row) return;
+            if (row.querySelector('[data-role="open-cleanliness-form"]')) {
+                openCleanlinessForm(row);
+                return;
+            }
+            // รอบย้อนหลังเปิดฟอร์มไม่ได้ — กลับไปตารางแล้วเลื่อนไปแถวนั้นแทน
+            api.setViewMode('table');
+            window.requestAnimationFrame(() => {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.classList.remove('stall-cell-flash');
+                void row.offsetWidth;
+                row.classList.add('stall-cell-flash');
+                setTimeout(() => row.classList.remove('stall-cell-flash'), 1500);
+            });
+        }
+    }) : null;
+
+    applyCleanlinessFilter();
+
+    // อัปเดตผลตรวจของร้านหนึ่งในตาราง/ผัง/สถิติ — ใช้ทั้งตอนบันทึกจากฟอร์มนี้และจากโหมดเดินตรวจ
+    function applyInspectionResult(stallId, inspection, rowOverride) {
+        RESULTS_BY_STALL_ID[stallId] = inspection;
+        const row = rowOverride || cleanlinessRows.find((r) => r.dataset.stallId === String(stallId));
+        if (!row) return;
+
+        const badge = row.querySelector('[data-role="cleanliness-status"]');
+        if (badge) {
+            badge.classList.remove('status-passed', 'status-failed', 'status-pending');
+            badge.classList.add(inspection.overallPassed ? 'status-passed' : 'status-failed');
+            badge.textContent = inspection.overallPassed ? 'ผ่าน' : 'ไม่ผ่าน';
+        }
+        const checkedAtCell = row.querySelector('[data-role="cleanliness-checked-at"]');
+        if (checkedAtCell) {
+            checkedAtCell.textContent = new Date(inspection.checkedAt).toLocaleString('th-TH');
+        }
+        // ผ่านตัวกรองใหม่ + วาดผังใหม่ — ถ้าเรียกจากฟอร์ม (rowOverride) จะหาร้านถัดไปก่อนแล้วค่อย apply เอง
+        if (!rowOverride) {
+            applyCleanlinessFilter();
+            if (cleanlinessMap) cleanlinessMap.refresh();
+        }
+    }
+
+    window.cleanlinessInspection = {
+        checklist: CHECKLIST,
+        itemIds: ITEM_IDS,
+        results: RESULTS_BY_STALL_ID,
+        applyResult: (stallId, inspection) => applyInspectionResult(stallId, inspection)
+    };
 
     // --- ฟอร์มเช็คลิสต์ (modal ต่อร้าน) ---
     const formBackdrop = document.getElementById('cleanlinessFormBackdrop');
@@ -244,25 +339,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
             }
 
-            RESULTS_BY_STALL_ID[activeStallId] = payload.inspection;
+            applyInspectionResult(activeStallId, payload.inspection, activeRow);
 
-            const badge = activeRow.querySelector('[data-role="cleanliness-status"]');
-            if (badge) {
-                badge.classList.remove('status-passed', 'status-failed', 'status-pending');
-                badge.classList.add(payload.inspection.overallPassed ? 'status-passed' : 'status-failed');
-                badge.textContent = payload.inspection.overallPassed ? 'ผ่าน' : 'ไม่ผ่าน';
-            }
-            const checkedAtCell = activeRow.querySelector('[data-role="cleanliness-checked-at"]');
-            if (checkedAtCell) {
-                checkedAtCell.textContent = new Date(payload.inspection.checkedAt).toLocaleString('th-TH');
-            }
-
-            syncCleanlinessStats();
-
-            // ตรวจ+บันทึกเสร็จแล้วเด้งไปร้านถัดไปในลิสต์ที่มองเห็นอยู่ (เคารพคำค้นหา) ทันที
+            // ตรวจ+บันทึกเสร็จแล้วเด้งไปร้านถัดไปในลิสต์ที่มองเห็นอยู่ (เคารพตัวกรอง) ทันที
             // ไม่ต้องปิดฟอร์มแล้วกดเปิดร้านถัดไปเอง — ปิดฟอร์มเฉพาะตอนตรวจครบร้านสุดท้ายแล้วเท่านั้น
+            // หาร้านถัดไปก่อน apply ตัวกรองใหม่ (ไม่งั้นร้านที่เพิ่งบันทึกอาจหายจากลิสต์กลางทาง)
             const savedRow = activeRow;
             const nextRow = findNextVisibleRow(savedRow);
+            applyCleanlinessFilter();
+            if (cleanlinessMap) cleanlinessMap.refresh();
 
             if (nextRow) {
                 openCleanlinessForm(nextRow, { flashSaved: true });

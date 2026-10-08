@@ -12,6 +12,7 @@
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/staff/marketinspection.css">
         <link rel="stylesheet" href="/stylesheets/staff/marketinspection-map.css">
+        <link rel="stylesheet" href="/stylesheets/staff/marketinspection-walk.css">
     </head>
     <body
         data-small-appliance-price="<%= smallAppliancePrice %>"
@@ -22,6 +23,10 @@
 
         <section class="inspection-page container-fluid px-2 px-md-3 py-4">
             <div class="view-toggle inspection-mode-tabs mb-2" id="inspectionModeTabs">
+                <% if (isCurrentRound) { %>
+                <button type="button" class="view-toggle-btn" id="modeTabWalk" data-inspection-mode="walk">
+                    <i class="fas fa-person-walking"></i> เดินตรวจ</button>
+                <% } %>
                 <button type="button" class="view-toggle-btn active" id="modeTabIssue" data-inspection-mode="issue">
                     <i class="fas fa-clipboard-list"></i> งานตรวจปัญหา</button>
                 <button type="button" class="view-toggle-btn" id="modeTabCleanliness" data-inspection-mode="cleanliness">
@@ -36,6 +41,25 @@
             <% if (!isCurrentRound) { %>
             <div class="alert alert-warning mt-2">
                 <i class="fas fa-eye"></i> กำลังดูรอบที่ <%= roundNumber %> แบบย้อนหลัง (ดูได้อย่างเดียว บันทึก/แก้ไขไม่ได้)
+            </div>
+            <% } %>
+
+            <% if (isCurrentRound) { %>
+            <div id="walkModePanel" class="d-none">
+                <div class="walk-toolbar">
+                    <select id="walkZoneFilter" class="filter-select">
+                        <option value="ALL">ทุกโซน</option>
+                        <% zones.forEach((zone) => { %>
+                        <option value="<%= zone %>">โซน <%= zone %></option>
+                        <% }) %>
+                    </select>
+                    <select id="walkJump" class="filter-select" aria-label="ข้ามไปล็อก"></select>
+                </div>
+                <div class="walk-progress">
+                    <div class="walk-progress-text" id="walkProgressText"></div>
+                    <div class="walk-progress-bar"><div class="walk-progress-fill" id="walkProgressFill"></div></div>
+                </div>
+                <div class="walk-card" id="walkCard"></div>
             </div>
             <% } %>
 
@@ -240,8 +264,32 @@
                                 <i class="fas fa-search"></i>
                                 <input type="text" id="cleanlinessSearch" placeholder="ค้นหาชื่อล็อค/เลขล็อค">
                             </div>
+                            <div class="toolbar-top-row">
+                                <div class="view-toggle">
+                                    <button type="button" class="view-toggle-btn active" id="cleanViewToggleTable" data-mode="table">
+                                        <i class="fas fa-table"></i> ตาราง</button>
+                                    <button type="button" class="view-toggle-btn" id="cleanViewToggleZone" data-mode="zone">
+                                        <i class="fas fa-border-all"></i> ผัง</button>
+                                </div>
+                                <select id="cleanlinessZoneFilter" class="filter-select toolbar-zone-select">
+                                    <option value="ALL">โซนทั้งหมด</option>
+                                    <% zones.forEach((zone) => { %>
+                                    <option value="<%= zone %>">โซน <%= zone %></option>
+                                    <% }) %>
+                                </select>
+                            </div>
+                            <div class="filter-row">
+                                <span class="filter-label">กรองข้อมูล</span>
+                                <select id="cleanlinessStatusFilter" class="filter-select">
+                                    <option value="ALL" selected>ทุกสถานะ</option>
+                                    <option value="pending">ยังไม่ตรวจ</option>
+                                    <option value="passed">ผ่าน</option>
+                                    <option value="failed">ไม่ผ่าน</option>
+                                </select>
+                            </div>
                             <div class="inspection-stats" id="cleanlinessStats">
                                 <span class="stats-chip">ร้านอาหารทั้งหมด <b id="cleanTotalCount">0</b></span>
+                                <span class="stats-chip">ที่แสดง <b id="cleanVisibleCount">0</b></span>
                                 <span class="stats-chip">ผ่าน <b id="cleanPassedCount">0</b></span>
                                 <span class="stats-chip">ไม่ผ่าน <b id="cleanFailedCount">0</b></span>
                                 <span class="stats-chip">ยังไม่ตรวจ <b id="cleanPendingCount">0</b></span>
@@ -269,7 +317,9 @@
                             %>
                             <tr
                                 class="inspection-row cleanliness-row"
+                                data-zone="<%= stall.zoneCode %>"
                                 data-stall-id="<%= stall.id %>"
+                                data-stall-code="<%= stall.stallCode %>"
                                 data-search="<%= String(`${stall.stallCode} ${stall.shopName} ${stall.sellerName}`).toLowerCase() %>"
                             >
                                 <td>
@@ -299,6 +349,53 @@
                     <div class="no-results">ไม่พบร้านค้าประเภทอาหารที่จองอยู่ในขณะนี้</div>
                     <% } %>
                     <div id="cleanlinessNoResults" class="no-results d-none">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
+                </div>
+
+                <div class="inspection-map-wrap d-none" id="cleanlinessMapWrap">
+                    <div class="inspection-map-legend">
+                        <span class="map-legend-item"><span class="legend-swatch legend-issue"></span> ไม่ผ่าน</span>
+                        <span class="map-legend-item"><span class="legend-swatch legend-normal"></span> ผ่าน</span>
+                        <span class="map-legend-item"><span class="legend-swatch legend-pending"></span> ยังไม่ตรวจ</span>
+                        <span class="map-legend-item"><span class="legend-swatch legend-vacant"></span> ไม่ใช่ร้านอาหาร/ว่าง</span>
+                    </div>
+
+                    <div class="insp-zone-overview" id="cleanlinessZoneOverview">
+                        <div class="insp-ov-zone-canvas" id="cleanlinessOverviewCanvas">
+                            <div class="insp-ov-zone-block insp-ov-zone-E" data-zone="E"><span class="insp-ov-zone-title">โซน E</span></div>
+                            <div class="insp-ov-zone-block insp-ov-zone-D" data-zone="D"><span class="insp-ov-zone-title">โซน D</span></div>
+                            <div class="insp-ov-zone-block insp-ov-zone-X" data-zone="X"><span class="insp-ov-zone-title">โซน X</span></div>
+                            <div class="insp-ov-zone-block insp-ov-zone-A" data-zone="A"><span class="insp-ov-zone-title">โซน A</span></div>
+                            <div class="insp-ov-zone-block insp-ov-zone-F" data-zone="F"><span class="insp-ov-zone-title">โซน F</span></div>
+                            <div class="insp-ov-zone-block insp-ov-zone-B" data-zone="B"><span class="insp-ov-zone-title">โซน B</span></div>
+                            <div class="insp-ov-zone-block insp-ov-zone-C" data-zone="C"><span class="insp-ov-zone-title">โซน C</span></div>
+                        </div>
+                    </div>
+
+                    <div class="insp-zone-detail" id="cleanlinessZoneDetail">
+                        <h3 class="zone-detail-title" id="cleanlinessZoneDetailTitle">โซน</h3>
+                        <div class="insp-map-outer">
+                            <div class="insp-road-left">
+                                <div class="insp-road-left-stripe"></div>
+                                <span class="insp-road-left-text">ทางเข้าตลาด 62 บล็อค</span>
+                                <i class="fa-solid fa-arrow-down" style="position:absolute; bottom:20px; color:#555;"></i>
+                            </div>
+                            <div class="insp-map-inner">
+                                <div class="insp-road-top">
+                                    <div class="insp-road-top-sign"><i class="fa-solid fa-location-dot" style="color:red;"></i> U Seoul Grill</div>
+                                </div>
+                                <div class="inspection-zone-canvas-wrap">
+                                    <div class="inspection-zone-canvas" id="cleanlinessZoneCanvas"></div>
+                                </div>
+                                <div class="insp-road-bottom">
+                                    <div class="insp-road-bottom-stripe"></div>
+                                    <span style="font-weight: 700; font-size: 14px;">เข้า-ออก</span>
+                                </div>
+                            </div>
+                            <div class="insp-road-right">
+                                <span class="insp-road-right-text">ลานจอดรถ กังสดาลไนท์</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -372,5 +469,6 @@
         <script src="/js/staff/marketinspection.js"></script>
         <script src="/js/staff/marketinspection-map.js"></script>
         <script src="/js/staff/marketinspection-cleanliness.js"></script>
+        <% if (isCurrentRound) { %><script src="/js/staff/marketinspection-walk.js"></script><% } %>
     </body>
 </html>
