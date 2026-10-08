@@ -13,7 +13,7 @@
     --ink-soft: #5b7a84;
     --line: #d7e3e6;
     --soft-bg: #f6f8f8;
-    --mono: 'IBM Plex Mono', 'Courier New', monospace;
+    --mono: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
     --radius: 4px;
     --radius-sm: 3px;
     --shadow-soft: none;
@@ -23,7 +23,7 @@
 body {
     background-color: #fff;
     color: var(--ink);
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     overflow-x: hidden;
 }
 
@@ -688,5 +688,5 @@ body[data-page="booking-status"] .timeline-node p {
     border-radius: var(--radius-sm);
     padding: 8px 10px;
     font-size: 0.85rem;
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
 }

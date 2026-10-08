@@ -16,7 +16,7 @@
   --success:      #27AE60;
   --warning:      #c98a2e;
   --danger:       #c0392b;
-  --mono:         'IBM Plex Mono', 'Courier New', monospace;
+  --mono:         'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
   --radius:       4px;
   --radius-sm:    3px;
   --transition:   all 0.15s ease;
@@ -28,7 +28,7 @@
 
 body {
   background: #fff;
-  font-family: 'Kanit', sans-serif;
+  font-family: 'IBM Plex Sans Thai', sans-serif;
   color: var(--ink);
 }
 

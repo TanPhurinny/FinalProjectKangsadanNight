@@ -19,7 +19,7 @@
 .search-suggest[hidden] { display: none; }
 .search-suggest .ss-head {
     padding: 6px 12px;
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
     font-size: 11px;
     color: var(--sub, #5b7a84);
     border-bottom: 1px solid var(--border, #d7e3e6);
@@ -40,7 +40,7 @@
 .search-suggest .ss-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
 .search-suggest .ss-text b { font-weight: 700; }
 .search-suggest .ss-kind {
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
     font-size: 10px;
     padding: 1px 6px;
     border: 1px solid var(--border, #d7e3e6);
@@ -48,7 +48,7 @@
     white-space: nowrap;
 }
 .search-suggest .ss-meta {
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
     font-size: 11px;
     color: var(--sub, #5b7a84);
     white-space: nowrap;

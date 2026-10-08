@@ -15,7 +15,7 @@
     background: #fff;
     color: var(--ink);
     min-height: 100vh;
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
 }
 
 .tax-invoice-page .site-header {
@@ -174,7 +174,7 @@
     flex: 1;
     font-size: 0.92rem;
     color: var(--navy);
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
 }
 
 .tax-invoice-page .search-box input::placeholder {

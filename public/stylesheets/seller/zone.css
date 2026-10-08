@@ -1,7 +1,7 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Sarabun', sans-serif;
+      font-family: 'IBM Plex Sans Thai', sans-serif;
       background: #f0f0f0;
       color: #222;
       min-height: 100vh;
@@ -18,7 +18,7 @@
     .zone-label-title { display: block; font-size: 22px; font-weight: 700; color: #111; line-height: 1.2; }
     .zone-label-sub { display: block; font-size: 13px; color: #666; margin-bottom: 8px; }
     .zone-dropdown {
-      appearance: auto; font-family: 'Sarabun', sans-serif; font-size: 15px;
+      appearance: auto; font-family: 'IBM Plex Sans Thai', sans-serif; font-size: 15px;
       padding: 6px 32px 6px 12px; border: 1px solid #bbb; border-radius: 6px;
       background: #fff; min-width: 140px; cursor: pointer;
     }
@@ -193,7 +193,7 @@
     }
     .btn-facility {
       background: #f5c200; border: 2px solid #c9a000; border-radius: 6px;
-      padding: 9px 18px; font-family: 'Sarabun', sans-serif; font-size: 14px;
+      padding: 9px 18px; font-family: 'IBM Plex Sans Thai', sans-serif; font-size: 14px;
       font-weight: 600; cursor: pointer; color: #111; white-space: nowrap; transition: background 0.15s;
     }
     .btn-facility:hover { background: #e6b800; }
@@ -312,7 +312,7 @@ width:360px;
 background:#fff;
 border-radius:6px;
 overflow:hidden;
-font-family:'Sarabun',sans-serif;
+font-family:'IBM Plex Sans Thai',sans-serif;
 }
 
 .popup-header{

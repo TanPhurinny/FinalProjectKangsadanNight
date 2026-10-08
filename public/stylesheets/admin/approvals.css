@@ -13,7 +13,7 @@
     background: #fff;
     color: var(--ink);
     min-height: 100vh;
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
 }
 
 .approvals-page .flash-banner {
@@ -126,7 +126,7 @@
 .approvals-page .header-title {
     flex: 1;
     text-align: center;
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     font-size: 1.2rem;
     font-weight: 600;
     letter-spacing: 0.2px;
@@ -377,7 +377,7 @@
     flex: 1;
     font-size: 0.92rem;
     color: var(--navy);
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
 }
 
 .approvals-page .search-box input::placeholder {
@@ -439,7 +439,7 @@
     background: #fff;
     color: var(--navy);
     font-size: 0.88rem;
-    font-family: 'Kanit', sans-serif;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
     cursor: pointer;
     transition: var(--transition);
 }

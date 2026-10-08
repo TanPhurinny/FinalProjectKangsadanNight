@@ -88,7 +88,7 @@
 .quotation-company-en {
     font-size: 0.85rem;
     color: var(--ink-soft, #5b7a84);
-    font-family: var(--mono, 'IBM Plex Mono', 'Courier New', monospace);
+    font-family: var(--mono, 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace);
 }
 
 .quotation-company-meta {
@@ -111,7 +111,7 @@
 .quotation-title-en {
     font-size: 0.85rem;
     color: var(--ink-soft, #5b7a84);
-    font-family: var(--mono, 'IBM Plex Mono', 'Courier New', monospace);
+    font-family: var(--mono, 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace);
 }
 
 .quotation-meta-row {
@@ -161,7 +161,7 @@
 .quotation-items-table thead th {
     background: var(--navy, #12303a);
     color: #fff;
-    font-family: var(--mono, 'IBM Plex Mono', 'Courier New', monospace);
+    font-family: var(--mono, 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace);
     font-weight: 600;
     font-size: 0.74rem;
 }

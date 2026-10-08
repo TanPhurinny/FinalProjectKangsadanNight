@@ -10,7 +10,7 @@
             position: fixed; inset: 0; background: rgba(18, 48, 58, 0.55);
             z-index: 20000; display: flex; align-items: center; justify-content: center;
             opacity: 0; visibility: hidden; transition: opacity 0.15s ease, visibility 0.15s ease;
-            padding: 16px; font-family: 'Kanit', sans-serif;
+            padding: 16px; font-family: 'IBM Plex Sans Thai', sans-serif;
         }
         .gd-overlay.active { opacity: 1; visibility: visible; }
         .gd-dialog {
