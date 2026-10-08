@@ -1,5 +1,6 @@
 const prisma = require('../config/prismaClient');
 const { buildQuotationData } = require('./quotationController');
+const { validateNewTaxProfile } = require('../utils/taxProfileValidation');
 const { bahtText } = require('../utils/bahtText');
 
 // สถานะที่ถือว่า "ยังจับจองอยู่" กับใบเสนอราคานั้น ไม่ให้ถูกเลือกไปผูกกับคำขออื่นซ้ำ
@@ -64,19 +65,11 @@ async function createTaxInvoiceRequest({ requestedByUserId, bookingRequestIds, t
 
     let profileId = Number.parseInt(taxInvoiceProfileId, 10);
     if (!Number.isInteger(profileId) || profileId <= 0) {
-        if (!newProfileData || !newProfileData.taxpayerName || !newProfileData.taxId || !newProfileData.address) {
-            return { error: 'missing_profile_data' };
-        }
+        if (!newProfileData) return { error: 'missing_profile_data' };
+        const checked = validateNewTaxProfile(newProfileData);
+        if (checked.error) return { error: checked.error };
         const createdProfile = await prisma.taxInvoiceProfile.create({
-            data: {
-                userId: requestedByUserId,
-                taxpayerType: newProfileData.taxpayerType === 'INDIVIDUAL' ? 'INDIVIDUAL' : 'COMPANY',
-                taxpayerName: String(newProfileData.taxpayerName).trim(),
-                taxId: String(newProfileData.taxId).trim(),
-                branch: newProfileData.branch ? String(newProfileData.branch).trim() : null,
-                address: String(newProfileData.address).trim(),
-                phoneNumber: newProfileData.phoneNumber ? String(newProfileData.phoneNumber).trim() : null
-            }
+            data: { userId: requestedByUserId, ...checked.value }
         });
         profileId = createdProfile.id;
     } else {
@@ -112,7 +105,7 @@ async function buildTaxInvoiceData(taxInvoiceRequestId, options = {}) {
     if (!options.allowAnyStatus && taxRequest.status !== 'ISSUED') return null;
 
     const quotations = (await Promise.all(
-        taxRequest.items.map((item) => buildQuotationData(item.bookingRequestId, taxRequest.issuedByName))
+        taxRequest.items.map((item) => buildQuotationData(item.bookingRequestId, taxRequest.issuedByName, { perStall: true }))
     )).filter(Boolean);
     if (!quotations.length) return null;
 

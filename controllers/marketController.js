@@ -4,6 +4,7 @@ const stallOccupancy = require('../utils/stallOccupancy');
 const zoneAccess = require('../utils/zoneAccess');
 const { getRenewalPhase, getRenewalOptions } = require('../utils/stallRenewal');
 const { buildTodayInspectionLayer } = require('../utils/inspectionToday');
+const { buildStallHistory } = require('../utils/stallHistory');
 const { getClosedShopsToday, getOpenStatus } = require('../utils/shopOpenStatus');
 const { getPromosToday } = require('../utils/shopPromo');
 
@@ -338,14 +339,37 @@ exports.getSlotsPage = async (req, res) => {
             });
         });
 
+        // ผลตรวจวันนี้รายล็อก (ชั้น "ผลตรวจวันนี้" บนผัง) — พังก็ไม่ให้ทั้งหน้าล่ม แค่ไม่มีชั้นนี้
+        let inspectionToday = { byCode: {}, dateLabel: '' };
+        try {
+            inspectionToday = await buildTodayInspectionLayer();
+        } catch (inspectionError) {
+            console.error('Slots page inspection layer error:', inspectionError);
+        }
+
         res.render('admin/slots', {
             zonesData,
             bookingByStallCode,
+            inspectionToday: { byCode: inspectionToday.byCode, dateLabel: inspectionToday.dateLabel },
             user: req.user
         });
     } catch (error) {
         console.error("Slots Page Error:", error);
         res.status(500).send("Error loading slots map");
+    }
+};
+
+// ประวัติผลตรวจ 7 วันล่าสุด + งานซ่อมที่ยังไม่ปิดของล็อกเดียว ใช้ในการ์ดล็อกบนผัง (โหลดตอนเปิดการ์ด ไม่ฝังใน payload ทุกล็อก)
+exports.getStallHistory = async (req, res) => {
+    try {
+        const code = String(req.params.code || '').trim().toUpperCase();
+        if (!/^[A-Z]\d{3}$/.test(code)) return res.status(400).json({ error: 'invalid_stall_code' });
+
+        const [days, repairLayer] = await Promise.all([buildStallHistory(code, 7), buildOpenRepairLayer()]);
+        return res.json({ stallCode: code, days, repairs: repairLayer.byCode[code] || [] });
+    } catch (error) {
+        console.error('Stall history error:', error);
+        return res.status(500).json({ error: 'history_failed' });
     }
 };
 

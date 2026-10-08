@@ -264,7 +264,12 @@
                     'missing_booking_requests': 'กรุณาเลือกใบเสนอราคาอย่างน้อย 1 ใบ',
                     'booking_request_not_eligible': 'ใบเสนอราคาที่เลือกไม่สามารถขอใบกำกับภาษีได้ (อาจถูกผูกกับคำขออื่นไปแล้ว)',
                     'missing_profile_data': 'กรุณาเลือกโปรไฟล์ผู้เสียภาษี หรือกรอกข้อมูลนามใหม่ให้ครบ',
-                    'profile_not_found': 'ไม่พบโปรไฟล์ผู้เสียภาษีที่เลือก'
+                    'profile_not_found': 'ไม่พบโปรไฟล์ผู้เสียภาษีที่เลือก',
+                    'invalid_tax_id': 'เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก',
+                    'invalid_taxpayer_name': 'ชื่อที่จะขึ้นในใบกำกับภาษีต้องไม่ว่าง และยาวไม่เกิน 120 ตัวอักษร',
+                    'invalid_address': 'ที่อยู่ต้องยาว 10–300 ตัวอักษร',
+                    'invalid_phone': 'เบอร์โทรต้องเป็นตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0',
+                    'invalid_branch': 'สาขาต้องเป็น "สำนักงานใหญ่" หรือ "สาขาที่" ตามด้วยเลข 5 หลัก'
                 }[errorParam] || null;
                 %>
 
@@ -277,20 +282,28 @@
                 <div class="form-alert form-alert--danger"><i class="fa-solid fa-exclamation-circle"></i><span><%= taxErrorMsg %></span></div>
                 <% } %>
 
-                <form action="/tax-invoice-requests" method="POST" id="taxInvoiceForm">
+                <form action="/tax-invoice-requests" method="POST" id="taxInvoiceForm" novalidate>
                     <p class="text-muted small mb-2">1. เลือกใบเสนอราคาที่ต้องการออกใบกำกับภาษี</p>
                     <div class="quotation-pick-list">
                         <% if (!eligibleQuotationList.length) { %>
                         <div class="quotation-pick-empty">ไม่มีใบเสนอราคาที่ขอใบกำกับภาษีได้ในขณะนี้</div>
                         <% } %>
+                        <% if (eligibleQuotationList.length > 1) { %>
+                        <label class="quotation-pick-row quotation-pick-all">
+                            <input type="checkbox" id="pickAllQuotations">
+                            <span class="qn">เลือกทั้งหมด (<%= eligibleQuotationList.length %> ใบ)</span>
+                        </label>
+                        <% } %>
                         <% eligibleQuotationList.forEach(function(q) { %>
                         <label class="quotation-pick-row">
-                            <input type="checkbox" name="bookingRequestIds" value="<%= q.id %>">
+                            <input type="checkbox" name="bookingRequestIds" value="<%= q.id %>" data-amount="<%= Number(q.netTotal) || 0 %>">
                             <span class="qn">เลขที่ <%= q.quotationNumber %></span>
                             <span class="qa"><%= q.issuedDateLabel %> — <%= Number(q.netTotal).toLocaleString('th-TH', { minimumFractionDigits: 2 }) %> บาท</span>
                         </label>
                         <% }) %>
                     </div>
+                    <div class="tax-pick-summary" id="quotationSummary" aria-live="polite">เลือกแล้ว 0 ใบ</div>
+                    <div class="tax-field-msg is-error" id="quotationError" hidden>กรุณาเลือกใบเสนอราคาอย่างน้อย 1 ใบ</div>
 
                     <p class="text-muted small mb-2">2. ข้อมูลผู้เสียภาษี</p>
                     <div class="profile-toggle">
@@ -299,50 +312,79 @@
                     </div>
 
                     <div id="existingProfileBlock" class="form-group full-width">
-                        <label>เลือกโปรไฟล์ผู้เสียภาษี</label>
+                        <label for="taxInvoiceProfileId">เลือกโปรไฟล์ผู้เสียภาษี</label>
                         <select name="taxInvoiceProfileId" class="input-white" id="taxInvoiceProfileId">
                             <option value="">-- เลือก --</option>
                             <% taxInvoiceProfileList.forEach(function(p) { %>
-                            <option value="<%= p.id %>"><%= p.taxpayerName %> (<%= p.taxId %>)</option>
+                            <option value="<%= p.id %>"
+                                data-type="<%= p.taxpayerType %>"
+                                data-name="<%= p.taxpayerName %>"
+                                data-taxid="<%= p.taxId %>"
+                                data-branch="<%= p.branch || '' %>"
+                                data-address="<%= p.address %>"
+                                data-phone="<%= p.phoneNumber || '' %>"><%= p.taxpayerName %> (<%= p.taxId %>)</option>
                             <% }) %>
                         </select>
+                        <div class="tax-profile-preview" id="profilePreview" hidden></div>
+                        <div class="tax-field-msg is-error" id="profileError" hidden>กรุณาเลือกโปรไฟล์ผู้เสียภาษี</div>
                         <% if (!taxInvoiceProfileList.length) { %>
                         <small style="color: var(--ink-soft); margin-top: 6px;">ยังไม่มีโปรไฟล์เดิม — กรุณาเลือก "ขอในนามใหม่"</small>
                         <% } %>
                     </div>
 
                     <div id="newProfileBlock" class="form-grid" style="display:none;">
+                        <div class="form-group full-width tax-prefill-row">
+                            <button type="button" class="tax-prefill-btn" id="btnPrefill"><i class="fa-solid fa-wand-magic-sparkles"></i> เติมจากข้อมูลร้านของฉัน</button>
+                            <span class="tax-draft-note" id="draftNote" hidden><i class="fa-solid fa-floppy-disk"></i> บันทึกฉบับร่างในเครื่องนี้ให้อัตโนมัติ · <button type="button" id="btnClearDraft">ล้างฟอร์ม</button></span>
+                        </div>
                         <div class="form-group">
-                            <label>ประเภทผู้เสียภาษี</label>
+                            <label for="taxpayerTypeInput">ประเภทผู้เสียภาษี</label>
                             <select name="taxpayerType" class="input-white" id="taxpayerTypeInput">
                                 <option value="COMPANY">นิติบุคคล (บริษัท/ห้างหุ้นส่วน)</option>
                                 <option value="INDIVIDUAL">บุคคลธรรมดา</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>เลขประจำตัวผู้เสียภาษี (13 หลัก)</label>
-                            <input type="text" name="taxId" id="taxIdInput" class="input-white" placeholder="0-0000-00000-00-0">
+                            <label for="taxIdInput" id="taxIdLabel">เลขประจำตัวผู้เสียภาษี (13 หลัก)</label>
+                            <input type="text" name="taxId" id="taxIdInput" class="input-white tax-mono" placeholder="0-0000-00000-00-0"
+                                inputmode="numeric" maxlength="17" autocomplete="off" aria-describedby="taxIdHint">
+                            <div class="tax-field-msg" id="taxIdHint"></div>
                         </div>
                         <div class="form-group full-width">
-                            <label>ชื่อที่จะขึ้นในใบกำกับภาษี</label>
-                            <input type="text" name="taxpayerName" id="taxpayerNameInput" class="input-white" placeholder="เช่น บริษัท ตัวอย่าง จำกัด">
+                            <label for="taxpayerNameInput">ชื่อที่จะขึ้นในใบกำกับภาษี</label>
+                            <input type="text" name="taxpayerName" id="taxpayerNameInput" class="input-white" placeholder="เช่น บริษัท ตัวอย่าง จำกัด"
+                                maxlength="120" autocomplete="organization">
+                            <div class="tax-field-msg"><span class="tax-counter" id="nameCounter">0/120</span><span id="nameHint"></span></div>
+                        </div>
+                        <div class="form-group" id="branchGroup">
+                            <label for="branchKind">สาขา</label>
+                            <div class="tax-branch-row">
+                                <select id="branchKind" class="input-white">
+                                    <option value="HQ">สำนักงานใหญ่</option>
+                                    <option value="BRANCH">สาขาเลขที่</option>
+                                </select>
+                                <input type="text" id="branchNo" class="input-white tax-mono" placeholder="00001" inputmode="numeric" maxlength="5" autocomplete="off" hidden aria-label="เลขที่สาขา 5 หลัก">
+                            </div>
+                            <input type="hidden" name="branch" id="branchValue" value="สำนักงานใหญ่">
+                            <div class="tax-field-msg" id="branchHint"></div>
                         </div>
                         <div class="form-group">
-                            <label>สาขา</label>
-                            <input type="text" name="branch" class="input-white" placeholder="สำนักงานใหญ่ / สาขาเลขที่...">
-                        </div>
-                        <div class="form-group">
-                            <label>เบอร์โทร</label>
-                            <input type="text" name="phoneNumber" class="input-white">
+                            <label for="phoneInput">เบอร์โทร <span class="tax-optional">(ไม่บังคับ)</span></label>
+                            <input type="tel" name="phoneNumber" id="phoneInput" class="input-white tax-mono" placeholder="081-234-5678"
+                                inputmode="tel" maxlength="12" autocomplete="tel">
+                            <div class="tax-field-msg" id="phoneHint"></div>
                         </div>
                         <div class="form-group full-width">
-                            <label>ที่อยู่สำหรับออกใบกำกับภาษี</label>
-                            <textarea name="address" id="addressInput" class="input-white" rows="3"></textarea>
+                            <label for="addressInput">ที่อยู่สำหรับออกใบกำกับภาษี</label>
+                            <textarea name="address" id="addressInput" class="input-white" rows="3" maxlength="300"
+                                placeholder="เลขที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด รหัสไปรษณีย์" autocomplete="street-address"></textarea>
+                            <div class="tax-field-msg"><span class="tax-counter" id="addressCounter">0/300</span><span id="addressHint"></span></div>
                         </div>
                         <small style="color: var(--ink-soft); grid-column: 1 / -1;">แอดมินจะตรวจสอบและยืนยัน/แก้ไขข้อมูลนี้อีกครั้งก่อนออกใบกำกับภาษีจริง</small>
                     </div>
 
-                    <button type="submit" class="btn-submit" style="margin-top: 18px;">ส่งคำขอใบกำกับภาษี</button>
+                    <div class="tax-form-error" id="formError" role="alert" hidden></div>
+                    <button type="submit" class="btn-submit" id="taxSubmitBtn" style="margin-top: 18px;">ส่งคำขอใบกำกับภาษี</button>
                 </form>
 
                 <% if (taxInvoiceRequestList.length) { %>
@@ -365,48 +407,8 @@
             </div>
         </div>
 
-        <script>
-            (function() {
-                const btnUseExisting = document.getElementById('btnUseExisting');
-                const btnUseNew = document.getElementById('btnUseNew');
-                if (!btnUseExisting || !btnUseNew) return;
-                const existingBlock = document.getElementById('existingProfileBlock');
-                const newBlock = document.getElementById('newProfileBlock');
-                const profileSelect = document.getElementById('taxInvoiceProfileId');
-                const newRequiredFields = [
-                    document.getElementById('taxIdInput'),
-                    document.getElementById('taxpayerNameInput'),
-                    document.getElementById('addressInput')
-                ];
-
-                function showExisting() {
-                    btnUseExisting.classList.add('active');
-                    btnUseNew.classList.remove('active');
-                    existingBlock.style.display = '';
-                    newBlock.style.display = 'none';
-                    profileSelect.disabled = false;
-                    newRequiredFields.forEach((el) => { el.disabled = true; el.required = false; });
-                }
-                function showNew() {
-                    btnUseNew.classList.add('active');
-                    btnUseExisting.classList.remove('active');
-                    existingBlock.style.display = 'none';
-                    newBlock.style.display = '';
-                    profileSelect.value = '';
-                    profileSelect.disabled = true;
-                    newRequiredFields.forEach((el) => { el.disabled = false; el.required = true; });
-                }
-
-                btnUseExisting.addEventListener('click', showExisting);
-                btnUseNew.addEventListener('click', showNew);
-
-                <% if (taxInvoiceProfileList.length) { %>
-                showExisting();
-                <% } else { %>
-                showNew();
-                <% } %>
-            })();
-        </script>
+        <script type="application/json" id="taxPrefillJson"><%- JSON.stringify(typeof taxPrefill !== 'undefined' ? taxPrefill : {}).replace(/</g, '\\u003c') %></script>
+        <script src="/js/seller/taxInvoiceForm.js?v=20261008"></script>
 
         <script src="/js/seller/shopProfile.js?v=20261002-menu"></script>
     </body>

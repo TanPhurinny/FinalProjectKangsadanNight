@@ -233,6 +233,7 @@ function openZone(z) {
 
     renderGrid(z);
     renderZoneCards(z);
+    if (window.onZoneOpened) window.onZoneOpened(z);
     document.getElementById('drawer').classList.add('open');
     document.getElementById('backdrop').classList.add('show');
 }
@@ -335,6 +336,7 @@ function renderDZoneGrid(z, stallByCode) {
 
         if (pos.code === selectedStall) cell.classList.add('selected');
         if ((currentQuery || currentStatusFilter) && stallMatchesFilter(pos.code, stall)) cell.classList.add('s-match');
+        if (window.decorateStallCell) window.decorateStallCell(cell, pos.code, stall);
         layout.appendChild(cell);
     });
 
@@ -448,6 +450,7 @@ function renderGrid(z) {
 
             if (id === selectedStall) cell.classList.add('selected');
             if ((currentQuery || currentStatusFilter) && stallMatchesFilter(id, stall)) cell.classList.add('s-match');
+            if (window.decorateStallCell) window.decorateStallCell(cell, id, stall);
             (isPaired(stall) ? getSmallWrap(stall.groupId) : col).appendChild(cell);
         });
 
@@ -532,6 +535,7 @@ function showInfo(id) {
 
     document.getElementById('infoCard').classList.add('show');
     document.getElementById('infoCardBackdrop').classList.add('show');
+    if (window.onStallInfoShown) window.onStallInfoShown(id);
 }
 
 function hideInfo() {
@@ -587,9 +591,10 @@ function notifyExpiring(code) {
 }
 window.notifyExpiring = notifyExpiring;
 
-const STATUS_LABELS = { EMPTY: 'แผงว่าง', BOOKED: 'แผงที่จองแล้ว', MAINTENANCE: 'แผงซ่อมบำรุง', SPECIAL: 'แผงมุมพิเศษ' };
+const STATUS_LABELS = { EMPTY: 'แผงว่าง', BOOKED: 'แผงที่จองแล้ว', MAINTENANCE: 'แผงซ่อมบำรุง', NEAR_EXPIRY: 'แผงใกล้/หมดอายุ', SPECIAL: 'แผงมุมพิเศษ' };
 
 function refreshFilterResults() {
+    if (window.onFilterChange) setTimeout(window.onFilterChange, 0);
     const badge = document.getElementById('resultBadge');
     const clrBtn = document.getElementById('clearBtn');
 
@@ -717,6 +722,45 @@ window.createSearchSuggest && createSearchSuggest({
         return true;
     }
 });
+
+// ให้ slots-extras.js (สรุป/ชั้นผลตรวจ/เลือกหลายล็อก/ส่งออก) ใช้สถานะและฟังก์ชันของผังร่วมกัน
+window.slotsApi = {
+    ZONES_DATA,
+    BOOKING_BY_STALL,
+    findStallByCode,
+    findZoneOfStall,
+    stallMatchesFilter,
+    showInfo,
+    selectEmpty,
+    openZone,
+    closeZone,
+    renderActiveGrid() { if (activeZone) renderGrid(activeZone); },
+    getState() {
+        return { query: currentQuery, status: currentStatusFilter, lotColors: showLotColors, zone: activeZone };
+    },
+    // คืนค่าตัวกรองที่จำไว้ (ไม่เปิดโซน) — ทำให้ปุ่มด่วน/ช่องค้นหา/สีมุมพิเศษตรงกับสถานะที่กู้คืน
+    restore(state) {
+        showLotColors = Boolean(state.lotColors);
+        const colorBtn = document.querySelector('.qtag-color-toggle');
+        if (colorBtn) colorBtn.classList.toggle('active', showLotColors);
+        currentQuery = String(state.query || '');
+        currentStatusFilter = state.status || null;
+        document.getElementById('searchInput').value = currentQuery;
+        document.querySelectorAll('.qtag').forEach((t) => t.classList.remove('active'));
+        if (currentStatusFilter) {
+            const tag = document.querySelector(`.qtag[onclick*="'${currentStatusFilter}'"]`);
+            if (tag) tag.classList.add('active');
+        }
+        if (colorBtn) colorBtn.classList.toggle('active', showLotColors); // ลูป .qtag ด้านบนเคลียร์ปุ่มสีมุมพิเศษไปด้วย
+        refreshFilterResults();
+    },
+    clearAllFilters() {
+        showLotColors = false;
+        const colorBtn = document.querySelector('.qtag-color-toggle');
+        if (colorBtn) colorBtn.classList.remove('active');
+        clearSearch();
+    }
+};
 
 window.openZone = openZone;
 window.closeZone = closeZone;

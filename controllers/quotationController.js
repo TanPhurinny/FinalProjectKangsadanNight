@@ -42,7 +42,19 @@ function buildQuotationNumber(requestId, issuedAt) {
 
 // คืนข้อมูลใบเสนอราคาของ BookingRequest หนึ่งใบ หรือ null ถ้ายังไม่ผ่านการยืนยันชำระเงิน (SUCCESS)
 // ใช้ร่วมกันทั้งฝั่งแอดมิน (controllers/quotationController.js -> routes/adminRoutes.js) และฝั่งผู้ขาย (routes/sellerRoute.js)
-async function buildQuotationData(requestId, printedByName) {
+// แบ่งยอดรวมเป็น n ส่วนเท่าๆ กัน (ทศนิยม 2 ตำแหน่ง) เศษสตางค์ไปรวมที่ส่วนสุดท้าย ให้ผลรวมตรงยอดเดิมเป๊ะ
+function splitEvenly(total, parts) {
+    const cents = Math.round(Number(total || 0) * 100);
+    const base = Math.floor(cents / parts);
+    const result = Array.from({ length: parts }, () => base / 100);
+    result[parts - 1] = (cents - base * (parts - 1)) / 100;
+    return result;
+}
+
+// options.perStall: ใบกำกับภาษีให้ออกรายการ "ต่อล็อก" (ค่าเช่าแผง/ค่าไฟฟ้า จำนวน 1 ต่อล็อก เรียงตามลำดับล็อกในคำขอ)
+// แทนการรวมเป็นแถวเดียวจำนวน N — ยอดรวมต่อคำขอเท่าเดิมทุกบาท ส่วนเครื่องใช้ไฟฟ้านับทั้งคำขอ (ไม่ได้แยกต่อล็อก)
+// จึงคงเป็นแถวเดียวต่อท้ายล็อกของคำขอนั้น
+async function buildQuotationData(requestId, printedByName, options = {}) {
     const parsedId = Number.parseInt(requestId, 10);
     if (!Number.isInteger(parsedId) || parsedId <= 0) return null;
 
@@ -72,17 +84,36 @@ async function buildQuotationData(requestId, printedByName) {
     const largeApplianceCount = Number(first.largeApplianceCount || 0);
 
     const items = [];
-    if (rentTotal > 0) {
-        items.push({
-            name: 'ค่าเช่าแผง', qty: stallCount, unit: 'แผง', days: rentalDays,
-            unitPrice: dailyStallPrice, discount: 0, total: rentTotal
-        });
-    }
-    if (lightTotal > 0) {
-        items.push({
-            name: 'ค่าไฟฟ้า', qty: stallCount, unit: 'จุด', days: rentalDays,
-            unitPrice: lightUnitPrice, discount: 0, total: lightTotal
-        });
+    if (options.perStall && stallCount > 1) {
+        const rentParts = splitEvenly(rentTotal, stallCount);
+        const lightParts = splitEvenly(lightTotal, stallCount);
+        for (let i = 0; i < stallCount; i += 1) {
+            if (rentTotal > 0) {
+                items.push({
+                    name: 'ค่าเช่าแผง', qty: 1, unit: 'แผง', days: rentalDays,
+                    unitPrice: dailyStallPrice, discount: 0, total: rentParts[i]
+                });
+            }
+            if (lightTotal > 0) {
+                items.push({
+                    name: 'ค่าไฟฟ้า', qty: 1, unit: 'จุด', days: rentalDays,
+                    unitPrice: lightUnitPrice, discount: 0, total: lightParts[i]
+                });
+            }
+        }
+    } else {
+        if (rentTotal > 0) {
+            items.push({
+                name: 'ค่าเช่าแผง', qty: stallCount, unit: 'แผง', days: rentalDays,
+                unitPrice: dailyStallPrice, discount: 0, total: rentTotal
+            });
+        }
+        if (lightTotal > 0) {
+            items.push({
+                name: 'ค่าไฟฟ้า', qty: stallCount, unit: 'จุด', days: rentalDays,
+                unitPrice: lightUnitPrice, discount: 0, total: lightTotal
+            });
+        }
     }
     if (smallApplianceCount > 0) {
         items.push({

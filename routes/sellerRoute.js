@@ -805,6 +805,26 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
         getShopViewStats(req.user.id)
     ]);
 
+    // ข้อมูลสำหรับปุ่ม "เติมจากข้อมูลร้านของฉัน" ในฟอร์มขอใบกำกับภาษี (จากใบสมัครผู้ขายล่าสุด + โปรไฟล์ร้าน)
+    const latestApplication = await prisma.sellerApplication.findFirst({
+        where: { userId: req.user.id },
+        orderBy: { createdAt: 'desc' },
+        select: { sellerName: true, idCardNumber: true, phoneNumber: true, houseNumber: true, subdistrict: true, district: true, province: true }
+    });
+    const stripPrefix = (text, prefixes) => String(text || '').trim().replace(new RegExp(`^(?:${prefixes})\\s*`), '');
+    const addressText = latestApplication ? [
+        latestApplication.houseNumber,
+        latestApplication.subdistrict && `ต.${stripPrefix(latestApplication.subdistrict, 'ตำบล|ต\\.|แขวง')}`,
+        latestApplication.district && `อ.${stripPrefix(latestApplication.district, 'อำเภอ|อ\\.|เขต')}`,
+        latestApplication.province && `จ.${stripPrefix(latestApplication.province, 'จังหวัด|จ\\.')}`
+    ].filter(Boolean).join(' ') : '';
+    const taxPrefill = {
+        individual: { name: latestApplication?.sellerName || userRecord?.name || '', taxId: latestApplication?.idCardNumber || '' },
+        company: { name: userRecord?.shop?.shopName || '' },
+        phone: latestApplication?.phoneNumber || userRecord?.phoneNumber || '',
+        address: addressText
+    };
+
     res.render('seller/shopProfile', {
         user: req.user,
         shop: userRecord?.shop || null,
@@ -812,6 +832,7 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
         maxProductImages: MAX_SHOP_PRODUCT_IMAGES,
         maxMenuImages: MAX_SHOP_MENU_IMAGES,
         viewStats,
+        taxPrefill,
         eligibleQuotations,
         taxInvoiceProfiles,
         taxInvoiceRequests,
