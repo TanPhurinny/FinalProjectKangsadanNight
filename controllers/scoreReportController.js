@@ -4,11 +4,7 @@ const {
     addDays,
     toStartOfDay
 } = require('../utils/bookingRound');
-const {
-    computeDailyStallScore,
-    toDateKey,
-    average
-} = require('../utils/inspectionScoring');
+const { getRoundCalendarDates, toDateKey } = require('../utils/inspectionScoring');
 
 // หมายเหตุสำคัญ: ตัวตนร้านค้าที่ระบบใช้งานจริงคือ User (role SELLER) + ShopDetail — ไม่ใช่ Seller model
 // (ตรวจสอบแล้วว่าไม่มีที่ไหนในโค้ดทั้งระบบเรียก prisma.seller.create() เลย ตาราง Seller ว่างเปล่าเสมอ
@@ -173,103 +169,140 @@ async function getDailyInspectionMaps(stallCodes, rangeStart, rangeEnd) {
     return { inspectionMap, issueMap, excessMap };
 }
 
-// รวมทุกอย่างเป็นรายการแบน (flat) ของ "ล็อค+วันที่ที่ตรวจแล้วจริง" พร้อมคะแนนของวันนั้น
-// วันที่ไม่มี record ตรวจสอบแล้ว (isInspected=true ของวันนั้นเป๊ะๆ) จะไม่ถูกนับ = ไม่มีข้อมูล ไม่ใช่ 0 คะแนน
-async function buildScoredEntries(rangeStart, rangeEnd) {
-    const bookings = await getSellerStallOccupancy(rangeStart, rangeEnd);
-    const occupancy = buildOccupancyEntries(bookings, rangeStart, rangeEnd);
-    const stallCodes = Array.from(new Set(occupancy.map((entry) => entry.stallCode)));
-    const { inspectionMap, issueMap, excessMap } = await getDailyInspectionMaps(stallCodes, rangeStart, rangeEnd);
+// ===== รายงานการมาขายรายร้าน (แทนระบบคะแนนเดิม) =====
+// เกณฑ์ต่อ 1 รอบ (14 วัน): ขาดขายมากกว่า ABSENT_BLACKLIST_THRESHOLD วัน → "ควรพิจารณา Blacklist"
+// (ระบบแค่แนะนำ ให้แอดมินตัดสินใจกด Blacklist เอง) ตั้งแต่ ABSENT_WATCH_THRESHOLD วัน → "เฝ้าระวัง"
+const ABSENT_BLACKLIST_THRESHOLD = 5;
+const ABSENT_WATCH_THRESHOLD = 3;
 
-    const scored = [];
-    occupancy.forEach((entry) => {
-        const key = `${entry.stallCode}|${entry.dateKey}`;
-        if (!inspectionMap.get(key)) return;
-
-        const issue = issueMap.get(key) || null;
-        const excess = excessMap.get(key) || null;
-        const dailyScore = computeDailyStallScore({
-            noShow: issue?.noShow,
-            sublease: issue?.sublease,
-            otherMarket: issue?.otherMarket,
-            wrongSeller: issue?.wrongSeller,
-            otherIssueNote: issue?.otherIssueNote,
-            smallCount: excess?.smallCount,
-            largeCount: excess?.largeCount
-        });
-
-        scored.push({
-            ...entry,
-            roundNumber: getBookingRoundMetaForDate(entry.date).roundNumber,
-            dailyScore,
-            issue,
-            excess
-        });
-    });
-
-    return { scored, occupancy, stallCodes };
+function dateKeyToDate(dateKey) {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    return new Date(year, month - 1, day);
 }
 
-// คะแนนสะสมของทุกร้าน = เฉลี่ยคะแนนรอบทุกรอบที่ร้านนั้นเคยขาย (ไม่ใช่เฉลี่ยรายวันตรงๆ
-// เพื่อไม่ให้รอบที่มีวันขายเยอะมีน้ำหนักเกินรอบอื่น) คำนวณสดจาก booking แรกสุดถึงวันนี้
-async function buildSellerScoreIndex() {
-    const earliestBooking = await prisma.booking.findFirst({
-        where: { status: 'SUCCESS', rentalStartDate: { not: null } },
-        orderBy: { rentalStartDate: 'asc' },
-        select: { rentalStartDate: true }
+// สถานะรายวันของแต่ละล็อก ตลอดประวัติ: 'present' (มีผลตรวจ/ตรวจแล้วว่าร้านอยู่) หรือ 'noShow' (บันทึกว่าไม่มาขาย)
+// ใช้ "บันทึกล่าสุดของวันนั้น" ของตารางเช็กชื่อ/ปัญหา เหมือนรายงานตรวจตลาดรายวัน (noShow ชนะ present ของล็อกเดียวกัน)
+async function loadStallDayStatuses(stallCodes) {
+    const statusByStall = new Map();
+    if (!stallCodes.length) return statusByStall;
+
+    const where = { stallCode: { in: stallCodes } };
+    const newestFirst = { orderBy: { createdAt: 'desc' } };
+    const [checks, issues, excesses, cleans] = await Promise.all([
+        prisma.stallInspectionCheckRecord.findMany({ where, ...newestFirst, select: { stallCode: true, isInspected: true, createdAt: true } }),
+        prisma.stallIssueRecord.findMany({ where, ...newestFirst, select: { stallCode: true, noShow: true, sublease: true, otherMarket: true, wrongSeller: true, otherIssueNote: true, createdAt: true } }),
+        prisma.stallElectricExcessRecord.findMany({ where, ...newestFirst, select: { stallCode: true, smallCount: true, largeCount: true, createdAt: true } }),
+        prisma.stallCleanlinessInspection.findMany({ where, ...newestFirst, select: { stallCode: true, createdAt: true } })
+    ]);
+
+    const slotOf = (stallCode, createdAt) => {
+        const code = String(stallCode).toUpperCase();
+        if (!statusByStall.has(code)) statusByStall.set(code, new Map());
+        const days = statusByStall.get(code);
+        const key = toDateKey(createdAt);
+        if (!days.has(key)) days.set(key, { present: false, noShow: false, checkSeen: false, issueSeen: false, excessSeen: false, problems: [] });
+        return days.get(key);
+    };
+
+    checks.forEach((record) => {
+        const slot = slotOf(record.stallCode, record.createdAt);
+        if (slot.checkSeen) return;
+        slot.checkSeen = true;
+        if (record.isInspected) slot.present = true;
     });
-
-    if (!earliestBooking?.rentalStartDate) {
-        return new Map();
-    }
-
-    const rangeStart = toStartOfDay(earliestBooking.rentalStartDate);
-    const today = toStartOfDay(new Date());
-    const { scored } = await buildScoredEntries(rangeStart, today);
-
-    const sellerDayScores = new Map();
-    const sellerInfo = new Map();
-    scored.forEach((entry) => {
-        sellerInfo.set(entry.sellerId, entry.seller);
-        const key = `${entry.sellerId}|${entry.dateKey}`;
-        if (!sellerDayScores.has(key)) sellerDayScores.set(key, []);
-        sellerDayScores.get(key).push(entry.dailyScore);
+    issues.forEach((record) => {
+        const slot = slotOf(record.stallCode, record.createdAt);
+        if (slot.issueSeen) return;
+        slot.issueSeen = true;
+        if (record.noShow) slot.noShow = true;
+        else slot.present = true;
+        if (record.sublease) slot.problems.push('ปล่อยเช่าช่วง');
+        if (record.otherMarket) slot.problems.push('ไปขายตลาดอื่น');
+        if (record.wrongSeller) slot.problems.push('คนขายไม่ตรงชื่อ');
+        if (record.otherIssueNote && record.otherIssueNote.trim()) slot.problems.push(record.otherIssueNote.trim());
     });
-
-    const sellerRoundDays = new Map();
-    sellerDayScores.forEach((scores, key) => {
-        const [sellerIdText, dateKey] = key.split('|');
-        const sellerId = Number(sellerIdText);
-        const dayAverage = average(scores);
-
-        const [year, month, day] = dateKey.split('-').map(Number);
-        const roundNumber = getBookingRoundMetaForDate(new Date(year, month - 1, day)).roundNumber;
-
-        if (!sellerRoundDays.has(sellerId)) sellerRoundDays.set(sellerId, new Map());
-        const roundMap = sellerRoundDays.get(sellerId);
-        if (!roundMap.has(roundNumber)) roundMap.set(roundNumber, []);
-        roundMap.get(roundNumber).push(dayAverage);
+    excesses.forEach((record) => {
+        const slot = slotOf(record.stallCode, record.createdAt);
+        slot.present = true;
+        if (slot.excessSeen) return;
+        slot.excessSeen = true;
+        if (record.smallCount > 0 || record.largeCount > 0) slot.problems.push(`ไฟเกิน (เล็ก ${record.smallCount} / ใหญ่ ${record.largeCount})`);
     });
+    cleans.forEach((record) => { slotOf(record.stallCode, record.createdAt).present = true; });
 
-    const result = new Map();
-    sellerRoundDays.forEach((roundMap, sellerId) => {
-        const rounds = Array.from(roundMap.entries())
-            .map(([roundNumber, dayAverages]) => ({
-                roundNumber,
-                score: average(dayAverages),
-                daysInspected: dayAverages.length
-            }))
-            .sort((a, b) => b.roundNumber - a.roundNumber);
+    return statusByStall;
+}
 
-        result.set(sellerId, {
-            seller: sellerInfo.get(sellerId),
-            cumulativeScore: average(rounds.map((round) => round.score)),
-            latestRoundScore: rounds[0] || null,
-            rounds
+// รวมสถานะรายวันของทุกล็อกที่ร้านถือ → Map(dateKey → 'present' | 'absent')
+// ร้านที่มีหลายล็อก: ถือว่าขาดก็ต่อเมื่อไม่มีล็อกไหนมีคนขายเลย และมีอย่างน้อย 1 ล็อกที่บันทึกว่าไม่มา
+function mergeSellerDays(stallCodes, statusByStall) {
+    const days = new Map();
+    stallCodes.forEach((code) => {
+        const stallDays = statusByStall.get(code);
+        if (!stallDays) return;
+        stallDays.forEach((slot, dateKey) => {
+            const status = slot.noShow ? 'noShow' : (slot.present ? 'present' : null);
+            if (!status) return;
+            const current = days.get(dateKey);
+            if (status === 'present') days.set(dateKey, 'present');
+            else if (!current) days.set(dateKey, 'absent');
         });
     });
+    return days;
+}
 
-    return result;
+function formatDayLabel(date) {
+    return date.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+// วันทั้งหมดของรอบ พร้อมสถานะของวันนั้น (ใช้วาดแถบ 14 วัน): present / absent / none (ยังไม่มีบันทึก) / future
+function buildDayStrip(roundNumber, statusOf) {
+    const todayKey = toDateKey(toStartOfDay(new Date()));
+    return getRoundCalendarDates(roundNumber).map((date) => {
+        const dateKey = toDateKey(date);
+        const isFuture = dateKey > todayKey;
+        return { dateKey, label: formatDayLabel(date), isToday: dateKey === todayKey, status: isFuture ? 'future' : (statusOf(dateKey) || 'none') };
+    });
+}
+
+function summarizeSeller(sellerDays, roundNumber) {
+    const roundsSold = new Set();
+    let presentDays = 0;
+    let absentDays = 0;
+    let lastDateKey = null;
+
+    sellerDays.forEach((status, dateKey) => {
+        const dayRound = getBookingRoundMetaForDate(dateKeyToDate(dateKey)).roundNumber;
+        if (status === 'present') roundsSold.add(dayRound);
+        if (!lastDateKey || dateKey > lastDateKey) lastDateKey = dateKey;
+        if (dayRound !== roundNumber) return;
+        if (status === 'present') presentDays += 1;
+        else absentDays += 1;
+    });
+
+    const todayKey = toDateKey(toStartOfDay(new Date()));
+    const elapsedDays = getRoundCalendarDates(roundNumber).filter((date) => toDateKey(date) <= todayKey).length;
+    const unrecordedDays = Math.max(elapsedDays - presentDays - absentDays, 0);
+
+    let status = 'ok';
+    if (absentDays > ABSENT_BLACKLIST_THRESHOLD) status = 'blacklist';
+    else if (absentDays >= ABSENT_WATCH_THRESHOLD) status = 'watch';
+    else if (!presentDays && !absentDays) status = 'nodata';
+
+    const dayStrip = buildDayStrip(roundNumber, (dateKey) => sellerDays.get(dateKey));
+
+    return {
+        dayStrip,
+        absentLabels: dayStrip.filter((day) => day.status === 'absent').map((day) => day.label),
+        roundsCount: roundsSold.size,
+        presentDays,
+        absentDays,
+        unrecordedDays,
+        elapsedDays,
+        lastDateKey,
+        lastDateLabel: lastDateKey ? dateKeyToDate(lastDateKey).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' }) : '',
+        status
+    };
 }
 
 exports.getSellerScoresPage = async (req, res) => {
@@ -279,67 +312,85 @@ exports.getSellerScoresPage = async (req, res) => {
     const currentRoundNumber = getBookingRoundMetaForDate(new Date()).roundNumber;
     const requestedRound = Number.parseInt(req.query.round, 10);
     const roundNumber = Number.isFinite(requestedRound) ? requestedRound : currentRoundNumber;
+    const baseView = {
+        user: req.user,
+        isAdmin,
+        roundNumber,
+        currentRoundNumber,
+        basePath,
+        blacklistThreshold: ABSENT_BLACKLIST_THRESHOLD,
+        watchThreshold: ABSENT_WATCH_THRESHOLD
+    };
 
     try {
-        const scoreIndex = await buildSellerScoreIndex();
-        const rows = Array.from(scoreIndex.entries()).map(([userId, info]) => {
-            // คะแนน "รอบที่เลือก" ดูอยู่ — ไม่มีข้อมูลถ้าร้านนั้นไม่ได้ขาย/ไม่ถูกตรวจในรอบนี้
-            const selectedRound = info.rounds.find((round) => round.roundNumber === roundNumber) || null;
-            return {
-                userId,
-                sellerName: sellerDisplayName(info.seller),
-                isBlacklisted: Boolean(info.seller?.isBlacklisted),
-                blacklistReason: info.seller?.blacklistReason || '',
-                selectedRoundScore: selectedRound,
-                cumulativeScore: info.cumulativeScore,
-                latestRoundScore: info.latestRoundScore,
-                roundsCount: info.rounds.length
-            };
-        });
-
-        // ผู้ขายที่มีสัญญาเช่าอยู่วันนี้แต่ยังไม่เคยถูกตรวจ — แสดงเป็น "ยังไม่มีข้อมูล" แทนการหายไปจากตาราง
-        // แหล่งข้อมูลเดียวกับหน้าตรวจตลาด (คำขอ SUCCESS + ล็อกที่ยัง BOOKED) เพราะ Booking บางใบไม่มีวันเช่า
+        // ผู้ขายทุกร้านที่ถือล็อกอยู่ (แหล่งข้อมูลเดียวกับหน้าตรวจตลาด) รวมล็อกของร้านเดียวกัน
         const heldStalls = await require('./inspectionReportController').loadHeldStalls();
-        const knownNames = new Set(rows.map((row) => row.sellerName));
-        heldStalls.forEach((entry) => {
+        const sellers = new Map();
+        heldStalls.forEach((entry, stallCode) => {
             if (!entry.isHeld) return;
             const name = sellerDisplayName(entry.seller);
-            if (knownNames.has(name)) return;
-            knownNames.add(name);
-            rows.push({
-                userId: null,
-                sellerName: name,
-                isBlacklisted: false,
-                blacklistReason: '',
-                selectedRoundScore: null,
-                cumulativeScore: null,
-                latestRoundScore: null,
-                roundsCount: 0
-            });
+            if (!sellers.has(name)) sellers.set(name, { name, accountName: entry.seller.name, stallCodes: [] });
+            sellers.get(name).stallCodes.push(stallCode);
         });
 
-        rows.sort((a, b) => (a.selectedRoundScore?.score ?? a.cumulativeScore ?? 101) - (b.selectedRoundScore?.score ?? b.cumulativeScore ?? 101));
+        const accountNames = Array.from(new Set(Array.from(sellers.values()).map((seller) => seller.accountName).filter(Boolean)));
+        const [accounts, blacklistedUsers] = await Promise.all([
+            accountNames.length
+                ? prisma.user.findMany({ where: { role: 'SELLER', name: { in: accountNames } }, select: { id: true, name: true, isBlacklisted: true } })
+                : [],
+            prisma.user.findMany({
+                where: { isBlacklisted: true },
+                select: { id: true, name: true, blacklistReason: true, blacklistedAt: true, shop: { select: { shopName: true } } },
+                orderBy: { blacklistedAt: 'desc' }
+            })
+        ]);
+        const accountByName = new Map();
+        accounts.forEach((account) => { if (!accountByName.has(account.name)) accountByName.set(account.name, account); });
+
+        // ร้านที่ถูก Blacklist แล้วถือว่าปิดบัญชี ไม่ต้องตรวจตลาด → ไม่แสดงในตาราง (แอดมินดูได้ในส่วนแยกด้านล่าง)
+        const activeSellers = Array.from(sellers.values()).filter((seller) => !accountByName.get(seller.accountName)?.isBlacklisted);
+        const statusByStall = await loadStallDayStatuses(Array.from(new Set(activeSellers.flatMap((seller) => seller.stallCodes))));
+
+        const statusOrder = { blacklist: 0, watch: 1, ok: 2, nodata: 3 };
+        const rows = activeSellers.map((seller) => ({
+            userId: accountByName.get(seller.accountName)?.id || null,
+            sellerName: seller.name,
+            stallCodes: seller.stallCodes.sort(),
+            ...summarizeSeller(mergeSellerDays(seller.stallCodes, statusByStall), roundNumber),
+            stallDetails: seller.stallCodes.sort().map((code) => {
+                const stallDays = statusByStall.get(code) || new Map();
+                const strip = buildDayStrip(roundNumber, (dateKey) => {
+                    const slot = stallDays.get(dateKey);
+                    return slot ? (slot.noShow ? 'absent' : (slot.present ? 'present' : null)) : null;
+                });
+                const problems = [];
+                strip.forEach((day) => {
+                    (stallDays.get(day.dateKey)?.problems || []).forEach((text) => problems.push({ label: day.label, text }));
+                });
+                return { code, strip, problems };
+            })
+        }));
+        rows.sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || b.absentDays - a.absentDays || a.sellerName.localeCompare(b.sellerName, 'th'));
 
         return res.render(templateName, {
-            user: req.user,
+            ...baseView,
             rows,
-            isAdmin,
-            roundNumber,
-            currentRoundNumber,
-            basePath,
+            blacklistedRows: isAdmin ? blacklistedUsers.map((blacklisted) => ({
+                userId: blacklisted.id,
+                sellerName: blacklisted.shop?.shopName || blacklisted.name,
+                reason: blacklisted.blacklistReason || '',
+                blacklistedAt: blacklisted.blacklistedAt
+            })) : [],
             error: req.query.error || null,
             success: req.query.success || null
         });
     } catch (error) {
-        console.error('Seller scores page error:', error);
+        console.error('Seller attendance page error:', error);
         return res.status(500).render(templateName, {
-            user: req.user,
+            ...baseView,
             rows: [],
-            isAdmin,
-            roundNumber,
-            currentRoundNumber,
-            basePath,
-            error: 'ไม่สามารถโหลดคะแนนร้านค้าได้',
+            blacklistedRows: [],
+            error: 'ไม่สามารถโหลดข้อมูลการมาขายของร้านค้าได้',
             success: null
         });
     }

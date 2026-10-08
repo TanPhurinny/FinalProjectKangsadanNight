@@ -131,19 +131,6 @@
 .tax-branch-row select { flex: 1 1 auto; min-width: 0; }
 .tax-branch-row input { flex: 0 0 96px; text-align: center; }
 
-.tax-prefill-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 4px; }
-.tax-prefill-btn {
-    padding: 8px 14px;
-    border: 1px dashed var(--primary, #2C93A8);
-    border-radius: var(--radius-sm, 3px);
-    background: #f3fafc;
-    color: var(--primary-dark, #1f6f80);
-    font-weight: 600;
-    font-size: 0.85rem;
-    cursor: pointer;
-}
-.tax-prefill-btn:hover { background: #e6f4f8; }
-.tax-draft-note { font-size: 0.78rem; color: var(--ink-soft, #5b7a84); }
 .tax-draft-note button { border: none; background: none; padding: 0; color: var(--primary, #2C93A8); text-decoration: underline; cursor: pointer; font-size: inherit; }
 
 .tax-profile-preview {

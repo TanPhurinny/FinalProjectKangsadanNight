@@ -334,7 +334,6 @@
 
                     <div id="newProfileBlock" class="form-grid" style="display:none;">
                         <div class="form-group full-width tax-prefill-row">
-                            <button type="button" class="tax-prefill-btn" id="btnPrefill"><i class="fa-solid fa-wand-magic-sparkles"></i> เติมจากข้อมูลร้านของฉัน</button>
                             <span class="tax-draft-note" id="draftNote" hidden><i class="fa-solid fa-floppy-disk"></i> บันทึกฉบับร่างในเครื่องนี้ให้อัตโนมัติ · <button type="button" id="btnClearDraft">ล้างฟอร์ม</button></span>
                         </div>
                         <div class="form-group">
@@ -407,7 +406,6 @@
             </div>
         </div>
 
-        <script type="application/json" id="taxPrefillJson"><%- JSON.stringify(typeof taxPrefill !== 'undefined' ? taxPrefill : {}).replace(/</g, '\\u003c') %></script>
         <script src="/js/seller/taxInvoiceForm.js?v=20261008"></script>
 
         <script src="/js/seller/shopProfile.js?v=20261002-menu"></script>

@@ -3,13 +3,14 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>คะแนนร้านค้า | Kangsadan Admin</title>
+        <title>การมาขายของร้านค้า | Kangsadan Admin</title>
         <link rel="icon" type="image/png" href="/img/favicon.png">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261008-font">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/seller-attendance.css">
     </head>
     <body class="bg-light">
         <script src="/js/common/tabSession.js"></script>
@@ -25,8 +26,8 @@
 
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                 <div>
-                    <h1 class="fw-bold mb-1"><i class="fas fa-star me-2"></i>คะแนนร้านค้า รอบที่ <%= roundNumber %></h1>
-                    <p class="text-muted mb-0">คะแนนสะสม = ค่าเฉลี่ยคะแนนของทุกรอบที่ร้านนั้นเคยขาย ร้านที่คะแนนต่ำมากสามารถ Blacklist ได้ — บล็อกไม่ให้สมัคร/จองแผงรอบถัดไป</p>
+                    <h1 class="fw-bold mb-1"><i class="fas fa-store me-2"></i>การมาขายของร้านค้า รอบที่ <%= roundNumber %></h1>
+                    <p class="text-muted mb-0">นับจากผลตรวจตลาดรายวัน ร้านที่ขายไม่มา (ขาด) เกิน <%= blacklistThreshold %> วันในรอบเดียวจะขึ้น "ควรพิจารณา Blacklist" — ระบบแค่แนะนำ แอดมินเป็นผู้ตัดสินใจกด Blacklist เอง (บล็อกการสมัคร/จองแผงรอบถัดไป)</p>
                 </div>
                 <div class="d-flex gap-2">
                     <a class="hero-btn" href="<%= basePath %>?round=<%= roundNumber - 1 %>"><i class="fas fa-arrow-left"></i> รอบก่อนหน้า</a>

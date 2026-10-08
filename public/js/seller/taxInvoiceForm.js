@@ -213,10 +213,7 @@
     }
     addressInput.addEventListener('input', () => { clearInvalid(addressInput); updateAddressHint(); saveDraft(); });
 
-    // ---------- เติมจากข้อมูลร้าน ----------
-    let prefill = {};
-    try { prefill = JSON.parse($('taxPrefillJson').textContent) || {}; } catch (_) { /* ไม่มีข้อมูลก็ไม่เติม */ }
-
+    // ---------- เติมค่าลงช่อง (ใช้ตอนกู้ฉบับร่าง) ----------
     function fillFields(values) {
         if (values.type) typeInput.value = values.type;
         applyType();
@@ -232,23 +229,6 @@
         updateAddressHint();
         phoneInput.dispatchEvent(new Event('input'));
     }
-
-    $('btnPrefill').addEventListener('click', () => {
-        const person = typeInput.value === 'INDIVIDUAL';
-        const picked = person ? (prefill.individual || {}) : (prefill.company || {});
-        const values = {};
-        if (picked.name) values.name = picked.name;
-        if (picked.taxId) values.taxId = picked.taxId;
-        if (prefill.phone) values.phone = prefill.phone;
-        if (prefill.address) values.address = prefill.address;
-        if (!Object.keys(values).length) {
-            setFormError('ยังไม่มีข้อมูลร้านให้เติม กรุณากรอกเอง');
-            return;
-        }
-        fillFields(values);
-        setFormError('');
-        saveDraft();
-    });
 
     // ---------- ฉบับร่างอัตโนมัติ (เก็บในเครื่องนี้เท่านั้น ล้างเมื่อส่งสำเร็จ) ----------
     const DRAFT_KEY = 'taxInvoiceDraft.v1';
