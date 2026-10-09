@@ -1,3 +1,4 @@
+require('./config/timezone'); // ต้องอยู่บรรทัดแรก — บังคับเวลาไทยก่อนโค้ดอื่นสร้าง Date
 const express = require('express');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');

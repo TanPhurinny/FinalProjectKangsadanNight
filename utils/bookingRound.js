@@ -2,6 +2,8 @@
 // เดิมโค้ดชุดนี้ถูกก็อปไว้ทั้งใน routes/sellerRoute.js และ controllers/approvalController.js
 // แยกกัน 2 ชุด ทำให้ตอนแก้วันที่ anchor ต้องแก้พร้อมกันสองที่ เสี่ยงหลุด
 
+require('../config/timezone'); // สคริปต์ที่รันแยกจาก app.js (scripts/*.js) ก็ได้เวลาไทยด้วย
+
 const BOOKING_ROUND_LENGTH_DAYS = 14;
 const BOOKING_ROUND_ANCHOR_NUMBER = 44;
 const BOOKING_ROUND_ANCHOR_DATE = new Date('2026-08-14T00:00:00');

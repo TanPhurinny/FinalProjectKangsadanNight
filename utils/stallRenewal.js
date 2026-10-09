@@ -6,7 +6,7 @@
 // - ต่อไม่ถึงสิ้นรอบ (newEnd < E) เริ่มต่อได้ตั้งแต่ 1 วันก่อนวัน D (D-1 00:00)
 // - ต่อข้ามรอบ (newEnd > E) ไม่อนุญาต
 // - ทุกกรณีต้องต่อก่อน D 20:00 เลยเวลานี้ล็อกหมดสิทธิ์และถูกปล่อยเป็นล็อกว่างให้คนอื่นจอง
-// เวลาคำนวณตามเวลาของเครื่อง server (เหมือน utils/bookingRound.js) ต้องรันเป็น Asia/Bangkok
+// เวลาคำนวณตามเวลาของเครื่อง server (เหมือน utils/bookingRound.js) — config/timezone.js บังคับเป็น Asia/Bangkok ให้แล้ว
 const prisma = require('../config/prismaClient');
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getPaymentDeadlineFromLockAssignedAt } = require('./bookingRound');
 const { buildBookingRequestTag } = require('./bookingRequestTag');

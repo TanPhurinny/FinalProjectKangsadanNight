@@ -14,6 +14,8 @@ OPEN_BROWSER=false node -e "require('./app'); setTimeout(() => process.exit(0), 
 
 Required env vars (see `.env`): `DATABASE_URL` (MySQL), `JWT_SECRET`. Optional: `PORT`, `NODE_ENV`, `OPEN_BROWSER`, `CLOUDINARY_URL` (required in production so uploads survive redeploys; `CLOUDINARY_FOLDER` overrides the root folder, default `kangsadan`), `GMAIL_USER`/`GMAIL_APP_PASSWORD` (Gmail App Password used to send password-reset emails via `config/mailer.js`; if unset, the reset link is logged to the console instead — fine for dev, must be set in production), `PUBLIC_BASE_URL` (base URL baked into stall QR codes/printed signs from `controllers/marketMapController.js`; defaults to the request's protocol+host — set it if production sits behind a proxy or a different domain).
 
+**Production-only:** set `ENABLE_LAPSED_RELEASE=true` on the production host only — it turns on the 5-minute job in `app.js` that releases stalls not renewed by 20:00 on their last selling day and restores stalls of unpaid lock-extension requests (`utils/stallRenewal.js`). Leave it unset locally: every dev machine points at the shared DB, so enabling it in dev would release real stalls. Timezone needs no env var — `config/timezone.js` forces `Asia/Bangkok` (required first in `app.js` and `utils/bookingRound.js`) because all round/deadline logic uses server-local time.
+
 ## Architecture
 
 Server-rendered Express + EJS app ("Kangsadan Night Market" management system) backed by MySQL via Prisma. No frontend framework/bundler — views are `.ejs` templates in `views/`, static assets served from `public/`.
