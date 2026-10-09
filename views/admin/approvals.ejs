@@ -67,14 +67,17 @@
                     reject_booking_stall_failed: 'ปฏิเสธ/ยกเลิกคำขอไม่สำเร็จ กรุณาลองใหม่',
                     invalid_state_transition: 'คำขอนี้จัดล็อกไปแล้ว ต้องยกเลิกผ่านปุ่ม "ยกเลิกการจัดล็อก" เพื่อคืนล็อกด้วย',
                     invalid_status: 'สถานะที่ส่งมาไม่ถูกต้อง',
-                    update_failed: 'อัปเดตสถานะไม่สำเร็จ กรุณาลองใหม่'
+                    update_failed: 'อัปเดตสถานะไม่สำเร็จ กรุณาลองใหม่',
+                    stale_round_invalid: 'ปิดคำขอค้างทั้งรอบได้เฉพาะรอบที่ผ่านไปแล้ว',
+                    stale_close_failed: 'ปิดคำขอค้างทั้งรอบไม่สำเร็จ กรุณาลองใหม่'
                 };
                 const flashSuccessMessages = {
                     payment_confirmed: 'ยืนยันการชำระเงินเรียบร้อย เปิดเผยเลขล็อกให้ผู้ขายแล้ว',
                     status_updated: 'อัปเดตสถานะเรียบร้อย',
                     stall_assigned: 'จัดล็อกเรียบร้อย ผู้ขายมีเวลาส่งสลิป 6 ชม.',
                     slip_rejected: 'ปฏิเสธสลิปแล้ว ระบบแจ้งผู้ขายให้อัปโหลดสลิปใหม่',
-                    request_rejected: 'ปฏิเสธ/ยกเลิกคำขอแล้ว ล็อกที่จัดไว้ถูกคืนเรียบร้อย'
+                    request_rejected: 'ปฏิเสธ/ยกเลิกคำขอแล้ว ล็อกที่จัดไว้ถูกคืนเรียบร้อย',
+                    stale_closed: `ปิดคำขอค้างในรอบนี้แล้ว ${Number(locals.closedCount) || 0} รายการ ผู้ขายจะเห็นเหตุผลในแจ้งเตือน`
                 };
                 %>
                 <% if (flashError === 'slip_verification_failed' && hasAmountMismatch) { %>
@@ -139,13 +142,11 @@
 
                 <%
                 const sections = (typeof stageSections !== 'undefined' && Array.isArray(stageSections)) ? stageSections : [];
-                const sCounts = (typeof stageCounts !== 'undefined' && stageCounts) ? stageCounts : {};
-                const kCounts = (typeof kindCounts !== 'undefined' && kindCounts) ? kindCounts : { new: 0, extend: 0 };
-                const todoTotal = (sCounts.slip || 0) + (sCounts.overdue || 0) + (sCounts.assign || 0);
                 const fmtMoney = (n) => Number(n || 0).toLocaleString('th-TH');
                 // ปุ่มหลักต่อขั้นตอน — คำขอต่อล็อกที่รอจัด ยืนยันล็อกเดิมได้เลย (หน้าจัดล็อกเลือกไว้ให้แล้ว)
+                // รอบที่ผ่านไปแล้ว: จัดล็อกไม่ได้ (วันเช่าผ่านไปแล้ว) แต่ปิดคำขอค้างได้ — ปฏิเสธ/ยกเลิก/ตรวจสลิป
                 const primaryActionFor = (row) => {
-                    if (!isEditable) return null;
+                    if (row.stage === 'assign' && !isEditable) return { action: 'reject', label: 'ปฏิเสธ (หมดรอบแล้ว)', tone: 'danger-ghost' };
                     if (row.stage === 'assign') return row.kind === 'extend'
                         ? { action: 'assign', label: `ยืนยันล็อกเดิม ${row.extension ? row.extension.originalStallText : ''}`.trim(), tone: 'go' }
                         : { action: 'assign', label: 'จัดล็อก', tone: 'go' };
@@ -155,68 +156,88 @@
                 };
                 %>
 
-                <section class="queue-panel" aria-label="ตัวกรองคำขอ">
-                    <div class="queue-panel__top">
-                        <div class="kind-switch" role="tablist" aria-label="ประเภทคำขอ">
-                            <button type="button" class="kind-switch__btn active" data-kind="all" role="tab" aria-selected="true">
-                                ทั้งหมด <span class="kind-switch__count"><%= summaryCounts.all %></span>
-                            </button>
-                            <button type="button" class="kind-switch__btn" data-kind="new" role="tab" aria-selected="false">
-                                <span class="kind-dot kind-dot--new"></span>จองใหม่ <span class="kind-switch__count"><%= kCounts.new %></span>
-                            </button>
-                            <button type="button" class="kind-switch__btn" data-kind="extend" role="tab" aria-selected="false">
-                                <span class="kind-dot kind-dot--extend"></span>ต่อล็อก <span class="kind-switch__count"><%= kCounts.extend %></span>
-                            </button>
-                        </div>
-                        <label class="queue-search">
-                            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-                            <input type="search" id="shopSearch" placeholder="ค้นหาร้าน / ผู้จอง / เบอร์ / ล็อก" aria-label="ค้นหา">
-                        </label>
-                    </div>
+                <%
+                // ตัวกรองแยก 3 แถว (ประเภท / สถานะ / โซน) — ทุกตัวเป็นปุ่มมีขอบ + ตัวเลข เลือกได้แถวละ 1 ค่า
+                const stageMetaOf = (stage) => sections.find((s) => s.stage === stage) || { label: stage };
+                const stageChips = [
+                    // ชื่อสั้นให้แถวสถานะอยู่บรรทัดเดียวบนจอคอม (ชื่อเต็มอยู่ที่หัวกลุ่มรายการ + title ของปุ่ม)
+                    { stage: 'slip', short: 'รอสลิป', icon: 'fa-receipt', urgent: true },
+                    { stage: 'overdue', short: 'เลยกำหนด', icon: 'fa-clock', urgent: true, danger: true },
+                    { stage: 'assign', short: 'รอจัดล็อก', icon: 'fa-map-pin', urgent: true },
+                    { stage: 'awaiting', short: 'รอจ่าย', icon: 'fa-hourglass-half' },
+                    { stage: 'done', short: 'จ่ายแล้ว', icon: 'fa-circle-check' },
+                    { stage: 'rejected', short: 'ปฏิเสธ', icon: 'fa-ban' }
+                ];
+                %>
+                <section class="filter-panel" aria-label="ตัวกรองคำขอ">
+                    <header class="filter-panel__head">
+                        <h3 class="filter-panel__title"><i class="fa-solid fa-sliders" aria-hidden="true"></i> ตัวกรอง</h3>
+                        <span class="filter-panel__result">แสดง <strong class="mono" id="visibleCount">0</strong> จาก <span class="mono"><%= summaryCounts.all %></span> รายการ</span>
+                        <button type="button" class="filter-panel__reset" id="resetFilters" aria-label="ล้างตัวกรอง" disabled>
+                            <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> <span>ล้างตัวกรอง</span>
+                        </button>
+                    </header>
 
-                    <div class="stage-grid" id="stageFilters">
-                        <div class="stage-grid__group stage-grid__group--todo">
-                            <div class="stage-grid__caption">ต้องจัดการ <span class="mono"><%= todoTotal %></span></div>
-                            <div class="stage-grid__cells">
-                                <% ['slip', 'overdue', 'assign'].forEach(function(stage) { const meta = sections.find((s) => s.stage === stage) || { label: stage }; %>
-                                <button type="button" class="stage-cell stage-cell--<%= stage %><%= sCounts[stage] ? ' has-items' : '' %>" data-stage="<%= stage %>">
-                                    <span class="stage-cell__value" data-count-stage="<%= stage %>"><%= sCounts[stage] || 0 %></span>
-                                    <span class="stage-cell__label"><%= meta.label %></span>
-                                </button>
-                                <% }) %>
-                            </div>
-                        </div>
-                        <div class="stage-grid__group">
-                            <div class="stage-grid__caption">ติดตาม / จบแล้ว</div>
-                            <div class="stage-grid__cells">
-                                <% ['awaiting', 'done', 'rejected'].forEach(function(stage) { const meta = sections.find((s) => s.stage === stage) || { label: stage }; %>
-                                <button type="button" class="stage-cell stage-cell--<%= stage %>" data-stage="<%= stage %>">
-                                    <span class="stage-cell__value" data-count-stage="<%= stage %>"><%= sCounts[stage] || 0 %></span>
-                                    <span class="stage-cell__label"><%= meta.label %></span>
-                                </button>
-                                <% }) %>
-                            </div>
+                    <label class="filter-search">
+                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                        <input type="search" id="shopSearch" placeholder="ค้นหาร้าน / ผู้จอง / เบอร์ / ล็อก" aria-label="ค้นหา">
+                    </label>
+
+                    <div class="filter-row">
+                        <span class="filter-row__label" id="filterKindLabel">ประเภท</span>
+                        <div class="filter-row__chips filter-row__chips--segment" role="group" aria-labelledby="filterKindLabel">
+                            <button type="button" class="f-chip" data-kind="all" aria-pressed="true">ทั้งหมด <span class="f-chip__count" data-count></span></button>
+                            <button type="button" class="f-chip" data-kind="new" aria-pressed="false"><span class="kind-dot kind-dot--new" aria-hidden="true"></span>จองใหม่ <span class="f-chip__count" data-count></span></button>
+                            <button type="button" class="f-chip" data-kind="extend" aria-pressed="false"><span class="kind-dot kind-dot--extend" aria-hidden="true"></span>ต่อล็อก <span class="f-chip__count" data-count></span></button>
                         </div>
                     </div>
 
-                    <div class="zone-row" id="zoneFilters" role="group" aria-label="โซน">
-                        <span class="zone-row__label">โซน</span>
-                        <button type="button" class="zone-chip active" data-zone="all">ทุกโซน</button>
-                        <% ['A', 'B', 'C', 'D', 'E', 'F'].forEach(function(zone) { %>
-                        <button type="button" class="zone-chip" data-zone="<%= zone %>"><%= zone %> <span class="mono"><%= zoneCounts[zone] || 0 %></span></button>
-                        <% }) %>
+                    <div class="filter-row">
+                        <span class="filter-row__label" id="filterStageLabel">สถานะ</span>
+                        <div class="filter-row__chips filter-row__chips--scroll" role="group" aria-labelledby="filterStageLabel">
+                            <button type="button" class="f-chip" data-stage="all" aria-pressed="true">ทั้งหมด <span class="f-chip__count" data-count></span></button>
+                            <button type="button" class="f-chip f-chip--todo" data-stage="todo" aria-pressed="false"><i class="fa-solid fa-bolt" aria-hidden="true"></i>ต้องจัดการ <span class="f-chip__count" data-count></span></button>
+                            <span class="filter-row__sep" aria-hidden="true"></span>
+                            <% stageChips.forEach(function(chip) { %>
+                            <button type="button" class="f-chip<%= chip.urgent ? ' f-chip--urgent' : '' %><%= chip.danger ? ' f-chip--danger' : '' %>" data-stage="<%= chip.stage %>" aria-pressed="false" title="<%= stageMetaOf(chip.stage).label %>">
+                                <i class="fa-solid <%= chip.icon %>" aria-hidden="true"></i><%= chip.short %> <span class="f-chip__count" data-count></span>
+                            </button>
+                            <% }) %>
+                        </div>
+                    </div>
+
+                    <div class="filter-row">
+                        <span class="filter-row__label" id="filterZoneLabel">โซน</span>
+                        <div class="filter-row__chips filter-row__chips--scroll" role="group" aria-labelledby="filterZoneLabel">
+                            <button type="button" class="f-chip" data-zone="all" aria-pressed="true">ทุกโซน <span class="f-chip__count" data-count></span></button>
+                            <% ['A', 'B', 'C', 'D', 'E', 'F'].forEach(function(zone) { %>
+                            <button type="button" class="f-chip f-chip--zone" data-zone="<%= zone %>" aria-pressed="false">โซน <%= zone %> <span class="f-chip__count" data-count></span></button>
+                            <% }) %>
+                        </div>
                     </div>
                 </section>
 
-                <div class="list-meta">
-                    <span>แสดง <strong class="mono" id="visibleCount">0</strong> รายการ</span>
-                    <button type="button" class="list-meta__reset d-none" id="resetFilters">ล้างตัวกรอง</button>
-                    <% if (!isEditable) { %>
-                        <span class="readonly-hint">รอบนี้เป็นประวัติ ดูได้อย่างเดียว</span>
-                    <% } else if (!isCurrentRound) { %>
-                        <span class="readonly-hint">รอบยังไม่เริ่ม จัดการคำขอที่จองล่วงหน้าได้</span>
+                <% if (!isEditable) {
+                    // ปิดได้ทั้งรอบ = รอจัดล็อก / รอจ่าย / เลยกำหนดจ่าย (ไม่รวมที่ส่งสลิปแล้ว ต้องตรวจทีละรายการ)
+                    const closableCount = bookingRequestsList.filter((r) => ['assign', 'awaiting', 'overdue'].includes(r.stage)).length;
+                    const slipCount = bookingRequestsList.filter((r) => r.stage === 'slip').length;
+                %>
+                <div class="round-close">
+                    <div class="round-close__text">
+                        <strong>รอบนี้ผ่านไปแล้ว</strong>
+                        <span>จัดล็อกไม่ได้ แต่ปิดคำขอที่ค้างได้<% if (slipCount) { %> — มี <span class="mono"><%= slipCount %></span> รายการส่งสลิปแล้ว ต้องตรวจทีละรายการ<% } %></span>
+                    </div>
+                    <% if (closableCount) { %>
+                    <button type="button" class="q-btn q-btn--danger" id="closeStaleRound" data-count="<%= closableCount %>">
+                        <i class="fa-solid fa-broom" aria-hidden="true"></i> ปิดคำขอค้างทั้งรอบ (<span class="mono"><%= closableCount %></span>)
+                    </button>
+                    <% } else { %>
+                    <span class="flag flag--ok">ไม่มีคำขอค้างแล้ว</span>
                     <% } %>
                 </div>
+                <% } else if (!isCurrentRound) { %>
+                <p class="round-note">รอบยังไม่เริ่ม จัดการคำขอที่จองล่วงหน้าได้</p>
+                <% } %>
 
                 <div class="queue" id="bookingList">
                     <% if (bookingRequestsList.length === 0) { %>
@@ -227,6 +248,7 @@
                     <% } %>
                     <div class="queue-empty queue-empty--filtered d-none" id="filteredEmpty">
                         <div class="queue-empty__title">ไม่มีรายการตรงกับตัวกรอง</div>
+                        <button type="button" class="q-btn q-btn--ghost queue-empty__action" data-reset-filters>ล้างตัวกรอง</button>
                     </div>
 
                     <% sections.forEach(function(section) { if (!section.rows.length) return; %>
@@ -281,8 +303,8 @@
                                     <% if (request.extension.cutoffState === 'passed') { %>
                                     <span class="flag flag--danger">เลย 20:00 แล้ว</span>
                                     <span class="q-row__note">ล็อกเดิมยังถูกกันไว้ให้คำขอนี้ — จัดหรือปฏิเสธเพื่อไม่ให้ล็อกค้าง</span>
-                                    <% } else { %>
-                                    <span class="flag <%= request.extension.cutoffState === 'soon' ? 'flag--warn' : 'flag--plain' %>">จัดก่อน <span class="mono"><%= request.extension.cutoffText %></span></span>
+                                    <% } else if (request.extension.cutoffText) { %>
+                                    <span class="flag <%= request.extension.cutoffState === 'soon' ? 'flag--warn' : 'flag--plain' %>" data-deadline="<%= request.extension.cutoffMs %>" data-deadline-kind="cutoff">จัดก่อน <span class="mono"><%= request.extension.cutoffText %></span></span>
                                     <span class="q-row__note">สัญญาเดิมหมด <span class="mono"><%= request.extension.originalEndText %></span></span>
                                     <% } %>
                                 <% } else if (request.stage === 'assign') { %>
@@ -293,10 +315,10 @@
                                     <% } else if (request.slipVerified === false) { %><span class="flag flag--danger">สลิปมีปัญหา</span><span class="q-row__note"><%= request.slipVerifyReason || 'ตรวจไม่ผ่าน' %></span>
                                     <% } else { %><span class="flag flag--plain">ยังไม่ตรวจอัตโนมัติ</span><% } %>
                                 <% } else if (request.stage === 'overdue') { %>
-                                    <span class="flag flag--danger">เลยกำหนด <span class="mono"><%= request.paymentDeadlineText %></span></span>
+                                    <span class="flag flag--danger" data-deadline="<%= request.paymentDeadlineMs %>" data-deadline-kind="payment">เลยกำหนด <span class="mono"><%= request.paymentDeadlineText %></span></span>
                                     <span class="q-row__note"><%= request.kind === 'extend' ? 'ระบบคืนล็อกเป็นสัญญาเดิมแล้ว' : 'ล็อกยังถูกกันไว้ จนกว่าจะยกเลิก' %></span>
                                 <% } else if (request.stage === 'awaiting') { %>
-                                    <span class="flag flag--plain">ต้องจ่ายภายใน <span class="mono"><%= request.paymentDeadlineText %></span></span>
+                                    <span class="flag flag--plain" data-deadline="<%= request.paymentDeadlineMs %>" data-deadline-kind="payment">ต้องจ่ายภายใน <span class="mono"><%= request.paymentDeadlineText %></span></span>
                                 <% } else if (request.stage === 'rejected') { %>
                                     <span class="q-row__note"><%= request.rejectReason ? `เหตุผล: ${request.rejectReason}` : 'ไม่ระบุเหตุผล' %></span>
                                 <% } else if (request.stage === 'done') { %>
@@ -379,7 +401,8 @@
         </div>
         <script>
             window.APPROVAL_PAGE_STATE = {
-                isEditable: <%= Boolean(isEditable) %>
+                isEditable: <%= Boolean(isEditable) %>,
+                round: <%= Number(selectedRoundNumber) || 0 %>
             };
         </script>
         <script src="/js/common/dialogs.js"></script>

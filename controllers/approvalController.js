@@ -66,6 +66,12 @@ async function isRequestEditable(requestRecord) {
     return isRoundEditable(getBookingRoundMetaForDate(basisDate).roundNumber);
 }
 
+// กดจากหน้ารอบไหน กลับไปหน้ารอบนั้น (ฟอร์มส่ง round มาด้วย) — ไม่งั้นแอดมินที่ไล่ปิดงานรอบเก่าจะถูกเด้งกลับรอบปัจจุบันทุกครั้ง
+function approvalsUrl(req, query) {
+    const round = Number.parseInt(req.body?.round || req.query?.round, 10);
+    return `/admin/approvals?${Number.isInteger(round) && round > 0 ? `round=${round}&` : ''}${query}`;
+}
+
 // ความสนใจล็อคเต็ง (แผงหัวมุม/แผงพิเศษ) ที่ฝังไว้ในข้อความตอนจอง (routes/sellerRoute.js POST /booking-stall)
 function extractCornerZoneNote(descriptionText) {
     const match = String(descriptionText || '').match(/\[สนใจแผงพิเศษ:\s*([^\]]+)\]/);
@@ -79,10 +85,15 @@ function extractRejectReason(descriptionText) {
 }
 
 // ต่อท้ายแทนการแทรกหน้า — tag [EXTEND_OF:] ต้องอยู่ต้น description เสมอ (หลายจุดเช็คด้วย startsWith)
-function withRejectReason(descriptionText, reason) {
+// [REJECTED_AT: <ms>] = เวลาที่ปฏิเสธ/ยกเลิก (BookingRequest ไม่มี updatedAt) — แจ้งเตือนผู้ขายใช้นับว่า "เพิ่งถูกปฏิเสธ"
+// แม้คำขอจะส่งมานานแล้ว (เช่นคำขอรอบเก่าที่แอดมินเพิ่งกดปิดทั้งรอบ)
+function withRejectReason(descriptionText, reason, rejectedAt = new Date()) {
     const cleanReason = String(reason || '').replace(/[\[\]]/g, '').trim().slice(0, 300);
-    const base = String(descriptionText || '').replace(/\s*\[REJECT_REASON:[^\]]+\]/g, '').trim();
-    return cleanReason ? `${base} [REJECT_REASON: ${cleanReason}]`.trim() : base;
+    const base = String(descriptionText || '')
+        .replace(/\s*\[REJECT_REASON:[^\]]+\]/g, '')
+        .replace(/\s*\[REJECTED_AT:\s*\d+\]/g, '')
+        .trim();
+    return [base, cleanReason ? `[REJECT_REASON: ${cleanReason}]` : '', `[REJECTED_AT: ${rejectedAt.getTime()}]`].filter(Boolean).join(' ');
 }
 
 // ตัด tag ภายในทั้งหมดออกจาก description ก่อนโชว์เป็นโน้ตจริงให้แอดมินอ่าน
@@ -93,6 +104,7 @@ function stripInternalTags(descriptionText) {
         .replace(/\[ASSIGNED_STALL:[^\]]+\]\s*/gi, '')
         .replace(/\[สนใจแผงพิเศษ:[^\]]+\]\s*/g, '')
         .replace(/\[REJECT_REASON:[^\]]+\]\s*/g, '')
+        .replace(/\[REJECTED_AT:\s*\d+\]\s*/g, '')
         .trim();
 }
 
@@ -320,6 +332,39 @@ function getStageSortKey(stage, request, paymentDeadline, extension) {
     if (stage === 'slip') return [rank, created];
     return [rank, -created]; // จบแล้ว: ล่าสุดก่อน
 }
+
+// จำนวนงานที่แอดมินต้องจัดการ (รอจัดล็อก + รอตรวจสลิป + เลยกำหนดจ่าย) สำหรับตัวเลขบนเมนู "รายการอนุมัติ"
+// นับเฉพาะรอบปัจจุบันและรอบถัดไป ให้ตรงกับที่เห็นตอนเปิดหน้า (คำขอค้างรอบเก่าเข้าไปปิดได้จากการเลื่อนรอบ)
+// urgent = มีอย่างน้อย 1 รายการที่รอตรวจสลิปหรือเลยกำหนดจ่าย (ตัวเลขเป็นสีแดง)
+exports.countApprovalTodo = async () => {
+    const requests = await prisma.bookingRequest.findMany({
+        where: { status: { in: ['PENDING', 'APPROVED', 'IN_PROGRESS'] } },
+        select: { id: true, createdAt: true, status: true, paymentSlipImage: true, lockAssignedAt: true }
+    });
+    const linkedBookings = requests.length
+        ? await prisma.booking.findMany({
+            where: { OR: requests.map((request) => ({ storeDetailSnapshot: { startsWith: buildBookingRequestTag(request.id) } })) },
+            select: { storeDetailSnapshot: true, rentalStartDate: true }
+        })
+        : [];
+    const startByRequestId = new Map();
+    linkedBookings.forEach((booking) => {
+        const match = /^\[BOOKING_REQUEST_ID:(\d+)\]/.exec(String(booking.storeDetailSnapshot || ''));
+        if (match) startByRequestId.set(Number(match[1]), booking.rentalStartDate);
+    });
+    const now = new Date();
+    let total = 0;
+    let urgent = 0;
+    requests.forEach((request) => {
+        const basisDate = startByRequestId.get(request.id) || request.createdAt;
+        if (!isRoundEditable(getBookingRoundMetaForDate(basisDate).roundNumber)) return;
+        const stage = getRequestStage(request, now);
+        if (!STAGE_META[stage].todo) return;
+        total += 1;
+        if (stage !== 'assign') urgent += 1;
+    });
+    return { total, urgent };
+};
 
 exports.getApprovalsPage = async (req, res) => {
     try {
@@ -553,6 +598,7 @@ exports.getApprovalsPage = async (req, res) => {
             error: req.query.error || null,
             errorReason: req.query.reason || null,
             errorRequestId: req.query.requestId || null,
+            closedCount: req.query.closed || null,
             slipAmount: req.query.slipAmount || null,
             expectedAmount: req.query.expectedAmount || null,
             success: req.query.success || null
@@ -587,7 +633,7 @@ exports.confirmApproval = async (req, res) => {
     try {
         const normalizedStatus = String(status || '').toUpperCase();
         if (!['PENDING', 'APPROVED', 'REJECTED'].includes(normalizedStatus)) {
-            return res.redirect('/admin/approvals?error=invalid_status');
+            return res.redirect(approvalsUrl(req, 'error=invalid_status'));
         }
 
         const requestRecord = await prisma.bookingRequest.findUnique({
@@ -595,11 +641,12 @@ exports.confirmApproval = async (req, res) => {
         });
 
         if (!requestRecord) {
-            return res.redirect('/admin/approvals?error=request_not_found');
+            return res.redirect(approvalsUrl(req, 'error=request_not_found'));
         }
 
-        if (!(await isRequestEditable(requestRecord))) {
-            return res.redirect('/admin/approvals?error=history_round_locked');
+        // รอบที่ผ่านไปแล้วยังปฏิเสธได้ (ปิดคำขอค้าง) แต่อนุมัติไม่ได้ เพราะวันเช่าผ่านไปแล้ว
+        if (normalizedStatus !== 'REJECTED' && !(await isRequestEditable(requestRecord))) {
+            return res.redirect(approvalsUrl(req, 'error=history_round_locked'));
         }
 
         // ปุ่มนี้ใช้แค่ตอนคำขอยังไม่ได้จัดล็อก (PENDING/APPROVED) — ถ้าจัดล็อกไปแล้ว (IN_PROGRESS/SUCCESS)
@@ -607,12 +654,12 @@ exports.confirmApproval = async (req, res) => {
         // เปลี่ยน status เฉยๆ ไม่แตะ Stall เลย ถ้าปล่อยให้เรียกได้จะทิ้งล็อกค้างสถานะ BOOKED แบบไม่มีเจ้าของ
         const currentStatus = String(requestRecord.status || '').toUpperCase();
         if (!['PENDING', 'APPROVED'].includes(currentStatus)) {
-            return res.redirect('/admin/approvals?error=invalid_state_transition');
+            return res.redirect(approvalsUrl(req, 'error=invalid_state_transition'));
         }
 
         const trimmedReason = String(reason || '').trim();
         const updateData = { status: normalizedStatus };
-        if (normalizedStatus === 'REJECTED' && trimmedReason) {
+        if (normalizedStatus === 'REJECTED') {
             updateData.description = withRejectReason(requestRecord.description, trimmedReason);
         }
 
@@ -620,9 +667,9 @@ exports.confirmApproval = async (req, res) => {
             where: { id: parseInt(requestId) },
             data: updateData
         });
-        res.redirect(`/admin/approvals?success=${normalizedStatus === 'REJECTED' ? 'request_rejected' : 'status_updated'}`);
+        res.redirect(approvalsUrl(req, `success=${normalizedStatus === 'REJECTED' ? 'request_rejected' : 'status_updated'}`));
     } catch (err) {
-        res.redirect('/admin/approvals?error=update_failed');
+        res.redirect(approvalsUrl(req, 'error=update_failed'));
     }
 };
 
@@ -668,7 +715,7 @@ exports.confirmPayment = async (req, res) => {
     try {
         const requestId = Number.parseInt(req.body.requestId, 10);
         if (!requestId) {
-            return res.redirect('/admin/approvals?error=missing_request_id');
+            return res.redirect(approvalsUrl(req, 'error=missing_request_id'));
         }
 
         const requestRecord = await prisma.bookingRequest.findUnique({
@@ -676,15 +723,11 @@ exports.confirmPayment = async (req, res) => {
         });
 
         if (!requestRecord) {
-            return res.redirect('/admin/approvals?error=request_not_found');
-        }
-
-        if (!(await isRequestEditable(requestRecord))) {
-            return res.redirect('/admin/approvals?error=history_round_locked');
+            return res.redirect(approvalsUrl(req, 'error=request_not_found'));
         }
 
         if (String(requestRecord.status || '').toUpperCase() !== 'IN_PROGRESS' || !requestRecord.paymentSlipImage) {
-            return res.redirect('/admin/approvals?error=no_slip_to_confirm');
+            return res.redirect(approvalsUrl(req, 'error=no_slip_to_confirm'));
         }
 
         // ตรวจสลิปอัตโนมัติผ่าน SlipOK ก่อนยืนยัน (ถ้าตั้งค่า SLIPOK_API_KEY ไว้) — เทียบยอดในสลิป
@@ -714,7 +757,7 @@ exports.confirmPayment = async (req, res) => {
                 const amountParams = (verifyResult.amount != null && expectedAmount != null)
                     ? `&slipAmount=${encodeURIComponent(verifyResult.amount)}&expectedAmount=${encodeURIComponent(expectedAmount)}`
                     : '';
-                return res.redirect(`/admin/approvals?error=slip_verification_failed&reason=${reason}${amountParams}&requestId=${requestId}`);
+                return res.redirect(approvalsUrl(req, `error=slip_verification_failed&reason=${reason}${amountParams}&requestId=${requestId}`));
             }
         }
 
@@ -847,9 +890,9 @@ exports.confirmPayment = async (req, res) => {
             }
         }
 
-        return res.redirect('/admin/approvals?success=payment_confirmed');
+        return res.redirect(approvalsUrl(req, 'success=payment_confirmed'));
     } catch (err) {
-        return res.redirect('/admin/approvals?error=confirm_payment_failed');
+        return res.redirect(approvalsUrl(req, 'error=confirm_payment_failed'));
     }
 };
 
@@ -861,10 +904,10 @@ exports.rejectPaymentSlip = async (req, res) => {
         const requestId = Number.parseInt(req.body.requestId, 10);
         const reason = String(req.body.reason || '').trim();
         if (!requestId) {
-            return res.redirect('/admin/approvals?error=missing_request_id');
+            return res.redirect(approvalsUrl(req, 'error=missing_request_id'));
         }
         if (!reason) {
-            return res.redirect('/admin/approvals?error=missing_reject_slip_reason');
+            return res.redirect(approvalsUrl(req, 'error=missing_reject_slip_reason'));
         }
 
         const requestRecord = await prisma.bookingRequest.findUnique({
@@ -872,15 +915,11 @@ exports.rejectPaymentSlip = async (req, res) => {
         });
 
         if (!requestRecord) {
-            return res.redirect('/admin/approvals?error=request_not_found');
-        }
-
-        if (!(await isRequestEditable(requestRecord))) {
-            return res.redirect('/admin/approvals?error=history_round_locked');
+            return res.redirect(approvalsUrl(req, 'error=request_not_found'));
         }
 
         if (String(requestRecord.status || '').toUpperCase() !== 'IN_PROGRESS' || !requestRecord.paymentSlipImage) {
-            return res.redirect('/admin/approvals?error=no_slip_to_confirm');
+            return res.redirect(approvalsUrl(req, 'error=no_slip_to_confirm'));
         }
 
         // ลบไฟล์สลิปเดิมออกจากที่เก็บ กันไฟล์ค้างไม่มีใครอ้างถึง
@@ -896,9 +935,9 @@ exports.rejectPaymentSlip = async (req, res) => {
             }
         });
 
-        return res.redirect('/admin/approvals?success=slip_rejected');
+        return res.redirect(approvalsUrl(req, 'success=slip_rejected'));
     } catch (err) {
-        return res.redirect('/admin/approvals?error=reject_slip_failed');
+        return res.redirect(approvalsUrl(req, 'error=reject_slip_failed'));
     }
 };
 
@@ -906,12 +945,12 @@ exports.getBookingStallPage = async (req, res) => {
     try {
         const requestId = Number.parseInt(req.query.requestId, 10);
         if (!requestId) {
-            return res.redirect('/admin/approvals?error=missing_request_id');
+            return res.redirect(approvalsUrl(req, 'error=missing_request_id'));
         }
 
         const pageData = await buildAdminBookingStallPageData(requestId);
         if (!pageData) {
-            return res.redirect('/admin/approvals?error=request_not_found');
+            return res.redirect(approvalsUrl(req, 'error=request_not_found'));
         }
 
         return res.render('admin/booking_stall', {
@@ -919,7 +958,7 @@ exports.getBookingStallPage = async (req, res) => {
             pageData
         });
     } catch (err) {
-        return res.redirect('/admin/approvals?error=load_booking_stall_failed');
+        return res.redirect(approvalsUrl(req, 'error=load_booking_stall_failed'));
     }
 };
 
@@ -931,10 +970,10 @@ exports.confirmBookingStall = async (req, res) => {
         // ยังรับ selectedStall เดิมไว้เผื่อ form เก่า/ค้าง cache
         const selectedStalls = parseStallCodes(req.body.selectedStalls || req.body.selectedStall);
         if (!requestId || !selectedStalls.length) {
-            return res.redirect('/admin/approvals?error=missing_confirm_payload');
+            return res.redirect(approvalsUrl(req, 'error=missing_confirm_payload'));
         }
         if (new Set(selectedStalls).size !== selectedStalls.length) {
-            return res.redirect('/admin/approvals?error=duplicate_stall_selected');
+            return res.redirect(approvalsUrl(req, 'error=duplicate_stall_selected'));
         }
 
         const requestRecord = await prisma.bookingRequest.findUnique({
@@ -943,11 +982,11 @@ exports.confirmBookingStall = async (req, res) => {
         });
 
         if (!requestRecord) {
-            return res.redirect('/admin/approvals?error=request_not_found');
+            return res.redirect(approvalsUrl(req, 'error=request_not_found'));
         }
 
         if (!(await isRequestEditable(requestRecord))) {
-            return res.redirect('/admin/approvals?error=history_round_locked');
+            return res.redirect(approvalsUrl(req, 'error=history_round_locked'));
         }
 
         const requestTag = buildBookingRequestTag(requestId);
@@ -961,7 +1000,7 @@ exports.confirmBookingStall = async (req, res) => {
         // ไม่บังคับให้เลือกครบตามจำนวนที่ขอมาอีกต่อไป (แอดมินอาจจัดให้แค่บางล็อกตามที่มีจริง) — เลือกได้ตั้งแต่
         // 1 ล็อก ไปจนถึงจำนวนที่ขอมาสูงสุด แถวคำขอ (Booking) ส่วนที่เกินจากล็อกที่จัดให้จริงจะถูกยกเลิกด้านล่าง
         if (selectedStalls.length < 1 || selectedStalls.length > requestedStallCount) {
-            return res.redirect('/admin/approvals?error=stall_count_mismatch');
+            return res.redirect(approvalsUrl(req, 'error=stall_count_mismatch'));
         }
 
         const previousAssigned = parseStallCodes(requestRecord.assignedStallCode || extractAssignedStallFromDescription(requestRecord.description));
@@ -1098,66 +1137,125 @@ exports.confirmBookingStall = async (req, res) => {
             }
         });
 
-        return res.redirect('/admin/approvals?success=stall_assigned');
+        return res.redirect(approvalsUrl(req, 'success=stall_assigned'));
     } catch (err) {
         if (stallUnavailableCode) {
-            return res.redirect(`/admin/approvals?error=${stallUnavailableCode}`);
+            return res.redirect(approvalsUrl(req, `error=${stallUnavailableCode}`));
         }
-        return res.redirect('/admin/approvals?error=confirm_booking_stall_failed');
+        return res.redirect(approvalsUrl(req, 'error=confirm_booking_stall_failed'));
     }
 };
+
+// แกนของ "ปฏิเสธ/ยกเลิกคำขอ" — ใช้ทั้งปุ่มเดี่ยว (rejectBookingStall) และปุ่มปิดคำขอค้างทั้งรอบ (rejectStaleRound)
+// requestRecord ต้องมี id, description, assignedStallCode
+async function cancelRequestCore(requestRecord, reason) {
+    // ถ้าแอดมินเคยจัดล็อกให้แล้ว (สถานะ IN_PROGRESS) แล้วมาปฏิเสธทีหลัง ต้องปล่อยล็อกจริงทุกล็อก
+    // ที่จัดไว้กลับเป็นว่างด้วย ไม่งั้นล็อกจะค้างสถานะ BOOKED ตลอดไปโดยไม่มีเจ้าของ
+    // คำขอต่อล็อกที่จัดล็อกเดิมไว้แล้ว ปฏิเสธแล้วล็อกกลับไปเป็นของสัญญาเดิม (วันสิ้นสุดเดิม) ไม่ปล่อยเป็นว่าง
+    const assignedCodes = parseStallCodes(requestRecord.assignedStallCode || extractAssignedStallFromDescription(requestRecord.description));
+    const extensionOrigin = await getExtensionOrigin(prisma, requestRecord.description);
+    // คืนเฉพาะล็อกที่คำขอนี้ยังถืออยู่จริง (วันสิ้นสุดบนล็อกตรงกับวันเช่าของคำขอ) — คำขอรอบเก่าที่ค้างอยู่
+    // ล็อกอาจถูกปล่อยแล้วจัดให้คนอื่นไปแล้ว ห้ามไปปล่อยล็อกของคนอื่น (ล็อกเดิมของคำขอต่อคืนเป็นสัญญาเดิมเสมอ)
+    const linkedBooking = await prisma.booking.findFirst({
+        where: { storeDetailSnapshot: { startsWith: buildBookingRequestTag(requestRecord.id) } },
+        select: { rentalEndDate: true }
+    });
+    const heldStalls = assignedCodes.length
+        ? await prisma.stall.findMany({ where: { stallCode: { in: assignedCodes } }, select: { stallCode: true, status: true, bookingEndDate: true } })
+        : [];
+    // ล็อกเดิมของคำขอต่อก็เช็คเหมือนกัน: ต้องยังเป็นวันของคำขอนี้หรือของสัญญาเดิมอยู่ ถึงจะคืนเป็นสัญญาเดิม
+    const dayOf = (date) => (date ? toStartOfDay(date).getTime() : null);
+    const requestEnd = dayOf(linkedBooking?.rentalEndDate);
+    const originEnd = dayOf(extensionOrigin?.endDate);
+    const stallCodesToRelease = heldStalls
+        .filter((stall) => {
+            if (stall.status !== 'BOOKED') return false;
+            const stallEnd = dayOf(stall.bookingEndDate);
+            if ((extensionOrigin?.codes || []).includes(stall.stallCode)) return stallEnd === requestEnd || stallEnd === originEnd;
+            return stallEnd === null || requestEnd === null || stallEnd === requestEnd;
+        })
+        .map((stall) => stall.stallCode);
+
+    // เหตุผล (ไม่บังคับ) ฝังเป็น tag เดียวกับ confirmApproval ให้ผู้ขาย/หน้ารายการเห็น
+    const trimmedReason = String(reason || '').trim();
+
+    await prisma.bookingRequest.update({
+        where: { id: requestRecord.id },
+        data: {
+            status: 'REJECTED',
+            assignedStallCode: null,
+            description: withRejectReason(requestRecord.description, trimmedReason)
+        }
+    });
+
+    await releaseOrRestoreStalls(prisma, stallCodesToRelease, extensionOrigin, false);
+
+    const rejectedRequestTag = buildBookingRequestTag(requestRecord.id);
+    if (rejectedRequestTag) {
+        await prisma.booking.updateMany({
+            where: { storeDetailSnapshot: { startsWith: rejectedRequestTag } },
+            data: { status: 'REJECTED' }
+        });
+    }
+}
 
 exports.rejectBookingStall = async (req, res) => {
     try {
         const requestId = Number.parseInt(req.body.requestId, 10);
         if (!requestId) {
-            return res.redirect('/admin/approvals?error=missing_request_id');
+            return res.redirect(approvalsUrl(req, 'error=missing_request_id'));
         }
 
         const requestRecord = await prisma.bookingRequest.findUnique({
             where: { id: requestId },
-            select: { id: true, createdAt: true, description: true, assignedStallCode: true }
+            select: { id: true, createdAt: true, description: true, assignedStallCode: true, status: true }
         });
 
         if (!requestRecord) {
-            return res.redirect('/admin/approvals?error=request_not_found');
+            return res.redirect(approvalsUrl(req, 'error=request_not_found'));
         }
 
-        if (!(await isRequestEditable(requestRecord))) {
-            return res.redirect('/admin/approvals?error=history_round_locked');
+        // รอบที่ผ่านไปแล้วยกเลิกคำขอที่ยังไม่จบได้ (ปิดงานค้าง) แต่คำขอที่จ่ายเงินแล้วต้องจัดการนอกระบบ (คืนเงิน)
+        if (requestRecord.status === 'SUCCESS' && !(await isRequestEditable(requestRecord))) {
+            return res.redirect(approvalsUrl(req, 'error=history_round_locked'));
         }
 
-        // ถ้าแอดมินเคยจัดล็อกให้แล้ว (สถานะ IN_PROGRESS) แล้วมาปฏิเสธทีหลัง ต้องปล่อยล็อกจริงทุกล็อก
-        // ที่จัดไว้กลับเป็นว่างด้วย ไม่งั้นล็อกจะค้างสถานะ BOOKED ตลอดไปโดยไม่มีเจ้าของ
-        // คำขอต่อล็อกที่จัดล็อกเดิมไว้แล้ว ปฏิเสธแล้วล็อกกลับไปเป็นของสัญญาเดิม (วันสิ้นสุดเดิม) ไม่ปล่อยเป็นว่าง
-        const stallCodesToRelease = parseStallCodes(requestRecord.assignedStallCode || extractAssignedStallFromDescription(requestRecord.description));
-        const extensionOrigin = await getExtensionOrigin(prisma, requestRecord.description);
+        await cancelRequestCore(requestRecord, req.body.reason);
 
-        // เหตุผล (ไม่บังคับ) ฝังเป็น tag เดียวกับ confirmApproval ให้ผู้ขาย/หน้ารายการเห็น
-        const trimmedReason = String(req.body.reason || '').trim();
-
-        await prisma.bookingRequest.update({
-            where: { id: requestId },
-            data: {
-                status: 'REJECTED',
-                assignedStallCode: null,
-                ...(trimmedReason ? { description: withRejectReason(requestRecord.description, trimmedReason) } : {})
-            }
-        });
-
-        await releaseOrRestoreStalls(prisma, stallCodesToRelease, extensionOrigin, false);
-
-        const rejectedRequestTag = buildBookingRequestTag(requestId);
-        if (rejectedRequestTag) {
-            await prisma.booking.updateMany({
-                where: { storeDetailSnapshot: { startsWith: rejectedRequestTag } },
-                data: { status: 'REJECTED' }
-            });
-        }
-
-        return res.redirect('/admin/approvals?success=request_rejected');
+        return res.redirect(approvalsUrl(req, 'success=request_rejected'));
     } catch (err) {
-        return res.redirect('/admin/approvals?error=reject_booking_stall_failed');
+        return res.redirect(approvalsUrl(req, 'error=reject_booking_stall_failed'));
+    }
+};
+
+// ปิดคำขอค้างทั้งรอบที่ผ่านไปแล้วในครั้งเดียว (ปฏิเสธที่รอจัดล็อก / ยกเลิกที่จัดแล้วแต่ไม่ส่งสลิป) ด้วยเหตุผลเดียวกัน
+// ไม่แตะคำขอที่ส่งสลิปแล้ว (ต้องตรวจสลิปทีละรายการ) และที่จ่ายแล้ว — ทำได้เฉพาะรอบที่ผ่านไปแล้วเท่านั้น
+exports.rejectStaleRound = async (req, res) => {
+    try {
+        const roundNumber = Number.parseInt(req.body.round, 10);
+        if (!Number.isInteger(roundNumber) || roundNumber <= 0 || isRoundEditable(roundNumber)) {
+            return res.redirect(approvalsUrl(req, 'error=stale_round_invalid'));
+        }
+        const reason = String(req.body.reason || '').trim() || 'หมดรอบแล้ว ไม่ได้ดำเนินการต่อ';
+        const window = getRoundWindow(roundNumber);
+        const candidates = await prisma.bookingRequest.findMany({
+            where: { status: { in: ['PENDING', 'APPROVED', 'IN_PROGRESS'] }, paymentSlipImage: null },
+            select: { id: true, createdAt: true, description: true, assignedStallCode: true, status: true }
+        });
+        let closed = 0;
+        for (const request of candidates) {
+            const linkedBooking = await prisma.booking.findFirst({
+                where: { storeDetailSnapshot: { startsWith: buildBookingRequestTag(request.id) } },
+                select: { rentalStartDate: true }
+            });
+            const basis = new Date(linkedBooking?.rentalStartDate || request.createdAt);
+            if (basis < window.cycleStart || basis > window.cycleEnd) continue;
+            await cancelRequestCore(request, reason);
+            closed += 1;
+        }
+        return res.redirect(approvalsUrl(req, `success=stale_closed&closed=${closed}`));
+    } catch (err) {
+        return res.redirect(approvalsUrl(req, 'error=stale_close_failed'));
     }
 };
 

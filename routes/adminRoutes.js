@@ -198,5 +198,6 @@ router.get("/admin-booking", async (req, res) => {
 router.get('/booking-stall', approvalCtrl.getBookingStallPage);
 router.post('/booking-stall/confirm', approvalCtrl.confirmBookingStall);
 router.post('/booking-stall/reject', approvalCtrl.rejectBookingStall);
+router.post('/approvals/reject-stale-round', approvalCtrl.rejectStaleRound);
 
 module.exports = router;

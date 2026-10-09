@@ -133,6 +133,28 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// ตัวเลขงานค้างบนเมนู "รายการอนุมัติ" ของแอดมิน — cache 60 วินาที และล้างทันทีเมื่อแอดมินกดดำเนินการคำขอ
+// (ไม่งั้นกดปิดงานแล้วตัวเลขบนเมนูยังค้างค่าเดิมอีกเกือบนาที)
+const approvalCtrl = require('./controllers/approvalController');
+let approvalTodoCache = null;
+app.use(async (req, res, next) => {
+  try {
+    if (req.user?.role !== 'ADMIN') return next();
+    if (req.method === 'POST' && /^\/admin\/(approvals|booking-stall)/.test(req.path)) {
+      approvalTodoCache = null;
+      return next();
+    }
+    if (req.method !== 'GET' || !String(req.headers.accept || '').includes('text/html')) return next();
+    if (!approvalTodoCache || Date.now() - approvalTodoCache.at > 60 * 1000) {
+      approvalTodoCache = { at: Date.now(), value: await approvalCtrl.countApprovalTodo() };
+    }
+    res.locals.approvalTodo = approvalTodoCache.value;
+  } catch (error) {
+    logger.error({ error: error.message }, 'count approval todo failed');
+  }
+  next();
+});
+
 // --- 5. การกำหนดเส้นทาง (Routing) ---
 // หน้าแรก (Index)
 app.get('/', async (req, res) => {

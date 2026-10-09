@@ -524,3 +524,21 @@
         padding: 15px 20px;
     }
 }
+
+/* ตัวเลขงานค้างบนเมนู (เช่น "รายการอนุมัติ") — แดงเมื่อมีงานด่วน (รอตรวจสลิป/เลยกำหนดจ่าย) */
+.nav-badge {
+    min-width: 20px;
+    padding: 1px 6px;
+    border-radius: 2px;
+    background: #c98a2e;
+    color: #fff;
+    font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.nav-badge--urgent {
+    background: #c0392b;
+}

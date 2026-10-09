@@ -40,6 +40,9 @@ const isStaff = user && user.role === 'STAFF';
             <a href="/admin/approvals"
                 class="nav-item <%= currentPath.includes('approvals') ? 'active' : '' %>">
                 <i class="fas fa-check-circle"></i> รายการอนุมัติ
+                <% if (typeof approvalTodo !== 'undefined' && approvalTodo && approvalTodo.total) { %>
+                <span class="nav-badge<%= approvalTodo.urgent ? ' nav-badge--urgent' : '' %>" title="ต้องจัดการ <%= approvalTodo.total %> รายการ<%= approvalTodo.urgent ? ` (ด่วน ${approvalTodo.urgent})` : '' %>"><%= approvalTodo.total > 99 ? '99+' : approvalTodo.total %></span>
+                <% } %>
             </a>
             <a href="/community"
                 class="nav-item <%= currentPath.includes('/community') || currentPath.includes('/comunity') ? 'active' : '' %>">
