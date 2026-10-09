@@ -5,8 +5,10 @@ const zoneAccess = require('../utils/zoneAccess');
 const { getRenewalPhase, getRenewalOptions } = require('../utils/stallRenewal');
 const { buildTodayInspectionLayer } = require('../utils/inspectionToday');
 const { buildStallHistory } = require('../utils/stallHistory');
-const { getClosedShopsToday, getOpenStatus } = require('../utils/shopOpenStatus');
+const { getClosedShopsToday, getOpenStatus, businessDateOf } = require('../utils/shopOpenStatus');
 const { getPromosToday } = require('../utils/shopPromo');
+const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundTimeline, BOOKING_ROUND_LENGTH_DAYS } = require('../utils/bookingRound');
+const adminDashboard = require('../utils/adminDashboard');
 
 const ZONE_CATEGORY_META = {
     FASHION: { icon: 'fa-shirt', description: 'โซนแฟชั่น' },
@@ -14,32 +16,77 @@ const ZONE_CATEGORY_META = {
     EVENT_BOOTH: { icon: 'fa-store', description: 'โซนกิจกรรม/บูธพิเศษ' }
 };
 
+const DASHBOARD_DAY_MS = 24 * 60 * 60 * 1000;
+
+// เหตุการณ์ล่าสุดจากหลายตาราง รวมเป็นฟีดเดียวเรียงตามเวลา
+async function buildActivityFeed() {
+    const [requests, repairs, applications, users] = await Promise.all([
+        prisma.bookingRequest.findMany({ orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, sellerName: true, zone: true, status: true, createdAt: true } }),
+        prisma.maintenanceReport.findMany({ orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, location: true, category: true, status: true, createdAt: true } }),
+        prisma.sellerApplication.findMany({ orderBy: { createdAt: 'desc' }, take: 6, select: { id: true, shopName: true, status: true, createdAt: true } }),
+        prisma.user.findMany({ where: { role: { in: ['SELLER', 'CUSTOMER'] } }, orderBy: { createdAt: 'desc' }, take: 6, select: { id: true, name: true, role: true, createdAt: true } })
+    ]);
+
+    const items = [
+        ...requests.map((row) => ({ kind: 'request', icon: 'fa-file-signature', href: '/admin/approvals', title: `${row.sellerName} ส่งคำขอจองล็อก`, meta: `โซน ${row.zone}`, status: row.status, at: row.createdAt })),
+        ...repairs.map((row) => ({ kind: 'repair', icon: 'fa-screwdriver-wrench', href: '/admin/requests', title: `แจ้งซ่อม: ${row.category}`, meta: row.location, status: row.status, at: row.createdAt })),
+        ...applications.map((row) => ({ kind: 'application', icon: 'fa-id-card', href: '/admin/seller-applications', title: `ใบสมัครร้าน ${row.shopName}`, meta: 'สมัครเป็นผู้ขาย', status: row.status, at: row.createdAt })),
+        ...users.map((row) => ({ kind: 'user', icon: 'fa-user-plus', href: '/admin/users', title: `${row.name} สมัครสมาชิก`, meta: row.role === 'SELLER' ? 'ผู้ขาย' : 'ลูกค้า', status: null, at: row.createdAt }))
+    ];
+    // ไม่ตัดรวม ให้ตัวกรองรายประเภทในหน้ามีรายการเสมอ (กล่องฟีดเลื่อนดูได้)
+    return items.sort((a, b) => new Date(b.at) - new Date(a.at));
+}
+
 // ดึงสถิติจริงจากระบบผังตลาดปัจจุบัน (Zone/ZoneRow/Stall) ไม่ใช่ตาราง Slot รุ่นเก่าที่เลิกใช้แล้ว
 // เพราะการจองแผงจริงตอนนี้ทำผ่าน /select-zone → /booking-stall ซึ่งอัปเดตสถานะที่ตาราง Stall
 exports.getDashboardPage = async (req, res) => {
     try {
+        const now = new Date();
+        const today = toStartOfDay(now);
         const [
             totalStalls,
             bookedStalls,
             availableStalls,
             maintenanceStalls,
             pendingRepairs,
+            inProgressRepairs,
             totalRepairs,
             pendingRequests,
             totalAnnouncements,
             sellerCount,
-            zoneList
+            pendingApplications,
+            pendingTaxInvoices,
+            zoneList,
+            allStalls,
+            expiringStalls,
+            closedToday,
+            promosToday,
+            newSellersWeek
         ] = await Promise.all([
             prisma.stall.count(),
             prisma.stall.count({ where: { status: 'BOOKED' } }),
             prisma.stall.count({ where: { status: 'AVAILABLE' } }),
             prisma.stall.count({ where: { status: 'MAINTENANCE' } }),
             prisma.maintenanceReport.count({ where: { status: 'PENDING' } }),
+            prisma.maintenanceReport.count({ where: { status: { in: ['APPROVED', 'IN_PROGRESS'] } } }),
             prisma.maintenanceReport.count(),
             prisma.bookingRequest.count({ where: { status: 'PENDING' } }),
             prisma.announcement.count(),
             prisma.user.count({ where: { role: 'SELLER' } }),
-            prisma.zone.findMany({ orderBy: { displayOrder: 'asc' } })
+            prisma.sellerApplication.count({ where: { status: 'PENDING' } }),
+            prisma.taxInvoiceRequest.count({ where: { status: 'PENDING' } }),
+            prisma.zone.findMany({ orderBy: { displayOrder: 'asc' } }),
+            prisma.stall.findMany({
+                select: { stallCode: true, status: true, bookingEndDate: true, row: { select: { zoneId: true, displayOrder: true } }, displayOrder: true }
+            }),
+            prisma.stall.findMany({
+                where: { status: 'BOOKED', bookingEndDate: { not: null, lt: addDays(today, 4) } },
+                orderBy: { bookingEndDate: 'asc' },
+                select: { stallCode: true, bookingEndDate: true }
+            }),
+            prisma.shopOpenStatus.count({ where: { businessDate: businessDateOf(now), closedAt: { not: null } } }),
+            prisma.shopPromo.count({ where: { businessDate: businessDateOf(now) } }),
+            prisma.user.count({ where: { role: 'SELLER', createdAt: { gte: addDays(today, -6) } } })
         ]);
 
         const stats = {
@@ -48,41 +95,118 @@ exports.getDashboardPage = async (req, res) => {
             availableStalls,
             maintenanceStalls,
             pendingRepairs,
+            inProgressRepairs,
             totalRepairs,
             pendingRequests,
             totalAnnouncements,
-            sellerCount
+            sellerCount,
+            pendingApplications,
+            pendingTaxInvoices,
+            closedToday,
+            promosToday,
+            newSellersWeek
         };
 
-        const zones = await Promise.all(zoneList.map(async (zone) => {
-            const grouped = await prisma.stall.groupBy({
-                by: ['status'],
-                where: { row: { zoneId: zone.id } },
-                _count: true
-            });
+        const stallsByZone = new Map();
+        allStalls.forEach((stall) => {
+            const zoneId = stall.row?.zoneId;
+            if (!stallsByZone.has(zoneId)) stallsByZone.set(zoneId, []);
+            stallsByZone.get(zoneId).push(stall);
+        });
 
+        const zones = zoneList.map((zone) => {
+            const stalls = (stallsByZone.get(zone.id) || []).sort((a, b) =>
+                (a.row.displayOrder - b.row.displayOrder) || (a.displayOrder - b.displayOrder) || a.stallCode.localeCompare(b.stallCode, undefined, { numeric: true }));
             const counts = { AVAILABLE: 0, BOOKED: 0, MAINTENANCE: 0 };
-            grouped.forEach((group) => {
-                counts[group.status] = group._count;
-            });
+            stalls.forEach((stall) => { counts[stall.status] = (counts[stall.status] || 0) + 1; });
 
             const meta = ZONE_CATEGORY_META[zone.productCategory] || { icon: 'fa-store', description: 'พื้นที่เอนกประสงค์' };
-            const total = counts.AVAILABLE + counts.BOOKED + counts.MAINTENANCE;
+            const total = stalls.length;
 
             return {
                 name: zone.name,
+                code: zone.code,
                 slug: zone.code.toLowerCase(),
+                category: zone.productCategory,
                 icon: meta.icon,
                 description: meta.description,
                 total,
                 available: counts.AVAILABLE,
                 booked: counts.BOOKED,
                 maintenance: counts.MAINTENANCE,
-                occupancyRate: total > 0 ? Math.round((counts.BOOKED / total) * 100) : 0
+                occupancyRate: total > 0 ? Math.round((counts.BOOKED / total) * 100) : 0,
+                stalls: stalls.map((stall) => ({
+                    code: stall.stallCode,
+                    status: stall.status,
+                    endText: stall.bookingEndDate ? toThaiDateShort(stall.bookingEndDate) : ''
+                }))
             };
-        }));
+        });
 
-        res.render('admin/dashboard', { stats, zones, user: req.user });
+        const roundMeta = getBookingRoundMetaForDate(now);
+        const roundDay = Math.floor((today - toStartOfDay(roundMeta.cycleStart)) / DASHBOARD_DAY_MS) + 1;
+        const round = {
+            ...getRoundTimeline(now),
+            dayOfRound: roundDay,
+            lengthDays: BOOKING_ROUND_LENGTH_DAYS
+        };
+
+        const [revenue, activity, inspectionLayer, approvalTodo, forecast, heatmap, topShops] = await Promise.all([
+            adminDashboard.buildRevenue(today),
+            buildActivityFeed(),
+            buildTodayInspectionLayer().catch(() => null),
+            require('./approvalController').countApprovalTodo().catch(() => null),
+            adminDashboard.buildRoundForecast(now),
+            adminDashboard.buildInspectionHeatmap(today, zoneList),
+            adminDashboard.buildTopViewedShops(today)
+        ]);
+
+        const inspection = { total: 0, ok: 0, issue: 0, pending: 0, dateLabel: '' };
+        if (inspectionLayer) {
+            Object.values(inspectionLayer.byCode).forEach((entry) => {
+                inspection.total += 1;
+                inspection[entry.status] += 1;
+            });
+            inspection.dateLabel = inspectionLayer.dateLabel;
+        }
+
+        const expiringAll = expiringStalls.map((stall) => {
+            const daysLeft = Math.round((toStartOfDay(stall.bookingEndDate) - today) / DASHBOARD_DAY_MS);
+            return {
+                code: stall.stallCode,
+                endDate: stall.bookingEndDate,
+                endText: toThaiDateShort(stall.bookingEndDate),
+                daysLeft,
+                phase: getRenewalPhase(stall.bookingEndDate, now)
+            };
+        });
+        // ล็อกที่เลย 20:00 วันสุดท้ายแล้วแต่ยัง BOOKED (job ปล่อยล็อกเปิดเฉพาะ production) แยกเป็นยอดรวม ไม่ปนกับรายการใกล้หมด
+        const upcomingAll = expiringAll.filter((stall) => stall.phase !== 'lapsed');
+        const lapsedCodes = expiringAll.filter((stall) => stall.phase === 'lapsed').map((stall) => stall.code);
+        const expiring = {
+            upcoming: upcomingAll.slice(0, 8),
+            upcomingCount: upcomingAll.length,
+            lapsedCount: lapsedCodes.length,
+            lapsedCodes
+        };
+        const quickActions = await adminDashboard.buildQuickActions(upcomingAll);
+
+        res.render('admin/dashboard', {
+            stats,
+            zones,
+            round,
+            revenue,
+            activity,
+            inspection,
+            expiring,
+            approvalStages: approvalTodo,
+            forecast,
+            heatmap,
+            topShops,
+            quickActions,
+            generatedAt: now.toISOString(),
+            user: req.user
+        });
     } catch (error) {
         console.error("Dashboard Error:", error);
         res.status(500).send("Error loading dashboard");

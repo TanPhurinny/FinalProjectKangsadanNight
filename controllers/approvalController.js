@@ -374,15 +374,18 @@ exports.countApprovalTodo = async () => {
     const now = new Date();
     let total = 0;
     let urgent = 0;
+    // แยกตามขั้น (รวม awaiting ที่ไม่ใช่งานของแอดมินด้วย) ให้แดชบอร์ดแสดงที่มาของตัวเลขได้
+    const byStage = { assign: 0, slip: 0, overdue: 0, awaiting: 0 };
     requests.forEach((request) => {
         const basisDate = startByRequestId.get(request.id) || request.createdAt;
         if (!isRoundEditable(getBookingRoundMetaForDate(basisDate).roundNumber)) return;
         const stage = getRequestStage(request, now);
+        if (stage in byStage) byStage[stage] += 1;
         if (!STAGE_META[stage].todo) return;
         total += 1;
         if (stage !== 'assign') urgent += 1;
     });
-    return { total, urgent };
+    return { total, urgent, byStage };
 };
 
 // ประวัติร้านสำหรับหน้าต่างรายละเอียด (โหลดตอนเปิดหน้าต่าง ไม่โหลดพร้อมหน้ารายการ):
@@ -1372,9 +1375,12 @@ exports.rejectBookingStall = async (req, res) => {
 // ยืนยันการชำระเงินทุกใบที่ระบบตรวจสลิปแล้วว่า "สลิปจริง ยอดตรง" (slipVerified = true) ในรอบที่เลือก ครั้งเดียว
 // ใบที่ตรวจไม่ผ่าน/ยังไม่ได้ตรวจ ไม่แตะ — แอดมินต้องเปิดดูทีละใบ
 exports.confirmVerifiedSlips = async (req, res) => {
+    // แดชบอร์ดเรียกผ่าน fetch (Accept: application/json) ให้ตอบ JSON แทน redirect ไปหน้ารายการ
+    const wantsJson = String(req.headers.accept || '').includes('application/json');
     try {
         const roundNumber = Number.parseInt(req.body.round, 10);
         if (!Number.isInteger(roundNumber) || roundNumber <= 0) {
+            if (wantsJson) return res.status(400).json({ ok: false, error: 'missing_round' });
             return res.redirect(approvalsUrl(req, 'error=missing_request_id'));
         }
         const window = getRoundWindow(roundNumber);
@@ -1392,8 +1398,10 @@ exports.confirmVerifiedSlips = async (req, res) => {
             await markPaymentConfirmed(request, req.user?.name, 'ยืนยันการชำระเงิน (ยืนยันพร้อมกันหลายใบ)');
             confirmed += 1;
         }
+        if (wantsJson) return res.json({ ok: true, confirmed });
         return res.redirect(approvalsUrl(req, `success=slips_confirmed&closed=${confirmed}`));
     } catch (err) {
+        if (wantsJson) return res.status(500).json({ ok: false, error: 'confirm_payment_failed' });
         return res.redirect(approvalsUrl(req, 'error=confirm_payment_failed'));
     }
 };

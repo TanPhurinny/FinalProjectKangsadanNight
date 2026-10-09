@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Market Intelligence | Dashboard</title>
+        <title>แดชบอร์ด | Kangsadan Night Market</title>
         <link rel="icon" type="image/png" href="/img/favicon.png">
         <link
             href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
@@ -16,276 +16,723 @@
             rel="stylesheet">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261008-font">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
-        <link rel="stylesheet" href="/stylesheets/admin/dashboard.css">
+        <link rel="stylesheet" href="/stylesheets/admin/dashboard.css?v=20261009-redesign">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
-    <body class="bg-light">
+    <body class="db-body">
         <script src="/js/common/tabSession.js"></script>
         <%- include('../partials/navbar') %>
 
-        <div class="container dashboard-shell py-4">
-            <%
-            const dStats = locals.stats || { totalStalls: 0, bookedStalls: 0,
-            availableStalls: 0, maintenanceStalls: 0, pendingRepairs: 0,
-            totalRepairs: 0, pendingRequests: 0, totalAnnouncements: 0,
-            sellerCount: 0 };
-            const occupancyRate = dStats.totalStalls > 0 ?
-            ((dStats.bookedStalls / dStats.totalStalls) * 100).toFixed(1) : 0;
-            const zoneList = locals.zones || [];
-            %>
+        <%
+        const s = Object.assign({ totalStalls: 0, bookedStalls: 0, availableStalls: 0,
+            maintenanceStalls: 0, pendingRepairs: 0, inProgressRepairs: 0, totalRepairs: 0,
+            pendingRequests: 0, totalAnnouncements: 0, sellerCount: 0, pendingApplications: 0,
+            pendingTaxInvoices: 0, closedToday: 0, promosToday: 0, newSellersWeek: 0 }, locals.stats || {});
+        const zoneList = locals.zones || [];
+        const rv = locals.revenue || { days: [], total: 0, count: 0, previousTotal: 0, changePercent: null };
+        const rd = locals.round || null;
+        const insp = locals.inspection || { total: 0, ok: 0, issue: 0, pending: 0, dateLabel: '' };
+        const exp = locals.expiring || { upcoming: [], upcomingCount: 0, lapsedCount: 0 };
+        const feed = locals.activity || [];
+        const stages = (locals.approvalStages && locals.approvalStages.byStage) || { assign: s.pendingRequests, slip: 0, overdue: 0, awaiting: 0 };
+        const fmt = (n) => Number(n || 0).toLocaleString('th-TH');
+        const pct = (part, whole) => whole > 0 ? Math.round((part / whole) * 1000) / 10 : 0;
+        const occupancy = pct(s.bookedStalls, s.totalStalls);
+        const thDate = (d, opts) => new Date(d).toLocaleDateString('th-TH', opts || { day: 'numeric', month: 'short' });
 
-            <section class="db-hero mb-4">
-                <div class="hero-main">
+        const inbox = [
+            { key: 'assign', label: 'รอจัดล็อก', hint: 'คำขอจองที่ยังไม่ได้เลือกล็อกให้', count: stages.assign, href: '/admin/approvals', icon: 'fa-store', tone: 'warn' },
+            { key: 'slip', label: 'สลิปรอตรวจ', hint: 'ผู้ขายโอนแล้ว รอยืนยันยอด', count: stages.slip, href: '/admin/approvals', icon: 'fa-file-invoice-dollar', tone: 'urgent' },
+            { key: 'overdue', label: 'เลยกำหนดจ่าย', hint: 'จัดล็อกเกิน 6 ชม. ยังไม่ส่งสลิป', count: stages.overdue, href: '/admin/approvals', icon: 'fa-triangle-exclamation', tone: 'urgent' },
+            { key: 'repair', label: 'แจ้งซ่อมใหม่', hint: s.inProgressRepairs ? `กำลังซ่อมอีก ${s.inProgressRepairs} งาน` : 'รอตรวจสอบคำร้อง', count: s.pendingRepairs, href: '/admin/requests', icon: 'fa-screwdriver-wrench', tone: 'warn' },
+            { key: 'application', label: 'ใบสมัครร้าน', hint: 'ผู้ขายใหม่รออนุมัติ', count: s.pendingApplications, href: '/admin/seller-applications', icon: 'fa-id-card', tone: 'warn' },
+            { key: 'tax', label: 'ใบกำกับภาษี', hint: 'คำขอรอออกเอกสาร', count: s.pendingTaxInvoices, href: '/admin/tax-invoice-requests', icon: 'fa-file-invoice', tone: 'warn' }
+        ];
+        const inboxTotal = inbox.reduce((sum, item) => sum + Number(item.count || 0), 0);
 
-                    <div>
-                        <h1 class="hero-title mb-2">
-                            <i class="fas fa-chart-line me-2"></i>Market
-                            Intelligence Dashboard
-                        </h1>
-                        <p
-                            class="hero-subtitle mb-0">ภาพรวมการบริหารตลาดแบบเรียลไทม์
-                            พร้อมปุ่มทางลัดและการวิเคราะห์โซน</p>
+        // กราฟรายได้: สเกลแกน y ปัดขึ้นเป็นเลขกลม ๆ
+        const maxAmount = Math.max(1, ...rv.days.map((d) => d.amount));
+        const niceStep = (() => { const raw = maxAmount / 3; const mag = Math.pow(10, Math.floor(Math.log10(raw))); const n = raw / mag; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag; })();
+        const yMax = niceStep * 3;
+        const chart = { w: 700, h: 220, top: 16, right: 8, bottom: 34, left: 52 };
+        const plotW = chart.w - chart.left - chart.right;
+        const plotH = chart.h - chart.top - chart.bottom;
+        const slot = rv.days.length ? plotW / rv.days.length : plotW;
+        const barW = Math.max(6, Math.min(30, slot - 10));
+        const peakIndex = rv.days.reduce((best, d, i, arr) => d.amount > arr[best].amount ? i : best, 0);
+        const barPath = (x, y, w, h) => {
+            if (h <= 0) return '';
+            const r = Math.min(4, h, w / 2);
+            return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+        };
+
+        const hour = new Date().getHours();
+        const greeting = hour < 5 ? 'ดึกแล้ว' : hour < 12 ? 'สวัสดีตอนเช้า' : hour < 17 ? 'สวัสดีตอนบ่าย' : 'สวัสดีตอนเย็น';
+        const displayName = (locals.user && (locals.user.name || locals.user.username)) || 'แอดมิน';
+
+        const STATUS_TEXT = { PENDING: 'รอ', APPROVED: 'อนุมัติ', REJECTED: 'ปฏิเสธ', IN_PROGRESS: 'ดำเนินการ', SUCCESS: 'เสร็จ' };
+        const KIND_TEXT = { request: 'คำขอจอง', repair: 'แจ้งซ่อม', application: 'ใบสมัคร', user: 'สมาชิกใหม่' };
+
+        const qa = locals.quickActions || { verifiedSlips: [], unnotifiedCodes: [], noticedCodes: [] };
+        const lapsedCodes = exp.lapsedCodes || [];
+        const hasQuickActions = qa.verifiedSlips.length || qa.unnotifiedCodes.length || lapsedCodes.length;
+        const fc = locals.forecast || null;
+        const hm = locals.heatmap || { days: [], rows: [], maxProblems: 0, hasData: false };
+        const topShops = locals.topShops || [];
+        const byType = rv.byType || { rent: 0, light: 0, appliance: 0, other: 0 };
+        const byZone = rv.byZone || [];
+        const TYPE_META = [
+            { key: 'rent', label: 'ค่าเช่าล็อก', cls: 'c-rent' },
+            { key: 'light', label: 'ค่าไฟแสงสว่าง', cls: 'c-light' },
+            { key: 'appliance', label: 'เครื่องใช้ไฟฟ้า', cls: 'c-appliance' },
+            { key: 'other', label: 'อื่นๆ', cls: 'c-other' }
+        ];
+        const typeTotal = TYPE_META.reduce((sum, t) => sum + Number(byType[t.key] || 0), 0);
+        const zoneMax = Math.max(1, ...byZone.map((z) => z.amount));
+        // ระดับสีของ heatmap (ร้านที่พบปัญหา) 0 = ไม่มี, 1-4 = อ่อนไปเข้ม
+        const heatLevel = (n) => {
+            if (!n) return 0;
+            if (hm.maxProblems <= 4) return Math.min(4, n);
+            return Math.max(1, Math.ceil((n / hm.maxProblems) * 4));
+        };
+        // ข้อมูลสำหรับปุ่มดาวน์โหลด CSV (สร้างฝั่ง client)
+        const exportData = {
+            generatedAt: locals.generatedAt || '',
+            revenueDays: rv.days,
+            revenueByType: TYPE_META.map((t) => ({ label: t.label, amount: byType[t.key] || 0 })),
+            revenueByZone: byZone,
+            forecast: fc,
+            zones: zoneList.map((z) => ({ code: z.code, name: z.name, total: z.total, booked: z.booked, available: z.available, maintenance: z.maintenance, occupancyRate: z.occupancyRate })),
+            inspection: hm.rows.map((r) => ({ code: r.code, cells: r.cells })),
+            inspectionDays: hm.days.map((d) => d.label),
+            topShops: topShops.map((t) => ({ shopName: t.shopName, stallCode: t.stallCode, total: t.total, card: t.card, menu: t.menu, share: t.share }))
+        };
+        %>
+
+        <main class="container dashboard-shell py-4" id="dashboardRoot" data-role="<%= (locals.user && locals.user.role) || "" %>" data-generated-at="<%= locals.generatedAt || '' %>">
+
+            <!-- หัวกระดาษตอนพิมพ์ (ซ่อนบนจอ) -->
+            <div class="print-head">
+                <strong>สรุปตลาดกังสดาลไนท์</strong>
+                <span class="mono"><%= new Date().toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' }) %></span>
+                <span>พิมพ์โดย <%= displayName %></span>
+            </div>
+
+            <!-- ส่วนหัว: ทักทาย + นาฬิกา + เครื่องมือ -->
+            <header class="db-head">
+                <div class="db-head-main">
+                    <div class="db-eyebrow">
+                        <span>ADMIN</span><span class="sep">/</span><span>แดชบอร์ด</span>
+                        <% if (rd) { %><span class="sep">/</span><span class="mono">รอบ <%= rd.current.roundNumber %></span><% } %>
+                    </div>
+                    <h1 class="db-title"><span id="greeting"><%= greeting %></span>, <%= displayName %></h1>
+                    <p class="db-lede">
+                        <% if (inboxTotal > 0) { %>
+                            มีงานรอคุณ <strong class="mono"><%= fmt(inboxTotal) %></strong> รายการ
+                            <% if (stages.slip + stages.overdue > 0) { %>· ด่วน <strong class="mono text-urgent"><%= stages.slip + stages.overdue %></strong><% } %>
+                        <% } else { %>
+                            ไม่มีงานค้าง ตลาดเรียบร้อยดี
+                        <% } %>
+                    </p>
+                </div>
+                <div class="db-head-side">
+                    <div class="db-clock" aria-live="off">
+                        <div class="db-clock-time mono" id="liveClock">--:--:--</div>
+                        <div class="db-clock-date" id="liveDate"></div>
+                    </div>
+                    <div class="db-tools" role="toolbar" aria-label="เครื่องมือแดชบอร์ด">
+                        <button type="button" class="db-tool" id="autoRefreshBtn" aria-pressed="false" title="อัปเดตข้อมูลอัตโนมัติทุก 60 วินาที">
+                            <i class="fas fa-rotate"></i><span>อัปเดตอัตโนมัติ</span><span class="db-tool-state mono" id="autoRefreshState">ปิด</span>
+                        </button>
+                        <button type="button" class="db-tool" id="refreshNowBtn" title="อัปเดตตอนนี้ (R)">
+                            <i class="fas fa-arrows-rotate"></i><span class="mono" id="lastUpdated">เมื่อสักครู่</span>
+                        </button>
+                        <button type="button" class="db-tool" id="paletteBtn" title="ค้นหาเมนู (Ctrl+K)">
+                            <i class="fas fa-magnifying-glass"></i><span>ไปที่…</span><kbd>Ctrl K</kbd>
+                        </button>
+                        <button type="button" class="db-tool db-tool-icon" id="csvBtn" title="ดาวน์โหลดสรุปเป็น CSV (E)" aria-label="ดาวน์โหลด CSV">
+                            <i class="fas fa-file-csv"></i>
+                        </button>
+                        <button type="button" class="db-tool db-tool-icon" id="printBtn" title="พิมพ์สรุปประจำวัน (P)" aria-label="พิมพ์">
+                            <i class="fas fa-print"></i>
+                        </button>
+                        <button type="button" class="db-tool db-tool-icon" id="shortcutsBtn" title="คีย์ลัด (?)" aria-label="ดูคีย์ลัด">
+                            <i class="fas fa-keyboard"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="hero-side">
-                    <div id="live-date" class="hero-date"></div>
-                    <div class="hero-actions">
-                        <a href="/admin/announcements" class="hero-btn"><i
-                                class="fas fa-bullhorn"></i> ประกาศ</a>
-                        <a href="/admin/approvals" class="hero-btn"><i
-                                class="fas fa-file-signature"></i> อนุมัติ</a>
-                        <a href="/admin/requests" class="hero-btn"><i
-                                class="fas fa-tools"></i> ซ่อมบำรุง</a>
-                        <a href="/admin/users" class="hero-btn"><i
-                                class="fas fa-users-cog"></i> ผู้ใช้</a>
+            </header>
+
+            <!-- แจ้งเตือนคำขอ/สลิปใหม่ระหว่างเปิดหน้า (ดู pollNew ใน dashboard.js) -->
+            <div class="new-banner" id="newBanner" role="status" aria-live="polite" hidden>
+                <i class="fas fa-bell"></i>
+                <span id="newBannerText"></span>
+                <button type="button" class="new-banner-btn" id="newBannerRefresh">อัปเดตตัวเลข</button>
+                <a href="/admin/approvals" class="new-banner-btn">ไปหน้าอนุมัติ</a>
+                <button type="button" class="new-banner-close" id="newBannerClose" aria-label="ปิด"><i class="fas fa-xmark"></i></button>
+            </div>
+
+            <!-- รอบจอง -->
+            <% if (rd) { %>
+            <section class="db-round" data-live-id="round" aria-label="รอบจอง">
+                <div class="db-round-now">
+                    <div class="db-label">รอบปัจจุบัน</div>
+                    <div class="db-round-num mono"><%= rd.current.roundNumber %></div>
+                    <div class="db-round-range mono"><%= thDate(rd.current.cycleStart) %> – <%= thDate(rd.current.cycleEnd) %></div>
+                </div>
+                <div class="db-round-days">
+                    <div class="db-round-days-head">
+                        <span>วันขายที่ <strong class="mono"><%= rd.dayOfRound %></strong> / <span class="mono"><%= rd.lengthDays %></span></span>
+                        <span class="text-soft">เหลืออีก <span class="mono"><%= Math.max(0, rd.lengthDays - rd.dayOfRound) %></span> วันจบรอบ</span>
+                    </div>
+                    <ol class="day-track" aria-label="วันในรอบ">
+                        <% for (let i = 1; i <= rd.lengthDays; i++) {
+                            const d = new Date(rd.current.cycleStart); d.setDate(d.getDate() + i - 1); %>
+                            <li class="day-cell <%= i < rd.dayOfRound ? 'past' : i === rd.dayOfRound ? 'today' : '' %>"
+                                title="วันที่ <%= i %> · <%= thDate(d, { weekday: 'short', day: 'numeric', month: 'short' }) %>">
+                                <span class="mono"><%= d.getDate() %></span>
+                            </li>
+                        <% } %>
+                    </ol>
+                </div>
+                <div class="db-round-next">
+                    <div class="db-label">รอบถัดไป <span class="mono"><%= rd.next.roundNumber %></span></div>
+                    <ol class="phase-track">
+                        <% rd.steps.forEach((step) => { %>
+                            <li class="phase <%= step.key === rd.activeKey ? 'active' : '' %>">
+                                <span class="phase-name"><%= step.label %></span>
+                                <span class="phase-date mono"><%= step.from ? thDate(step.from) : '—' %></span>
+                            </li>
+                        <% }) %>
+                    </ol>
+                    <div class="db-round-note">
+                        <% if (rd.daysUntilLongOpen > 0) { %>
+                            เปิดจองยาวในอีก <strong class="mono"><%= rd.daysUntilLongOpen %></strong> วัน · ชำระก่อน <span class="mono"><%= thDate(rd.next.paymentDeadline) %></span>
+                        <% } else if (rd.daysUntilSell > 0) { %>
+                            เปิดจองอยู่ · เริ่มขายในอีก <strong class="mono"><%= rd.daysUntilSell %></strong> วัน
+                        <% } else { %>
+                            รอบถัดไปเริ่มขายแล้ว
+                        <% } %>
                     </div>
                 </div>
             </section>
+            <% } %>
 
-            <section class="kpi-group mb-3" id="kpiSection">
-                <div class="kpi-group-label needs-action"><i
-                        class="fas fa-triangle-exclamation"></i>ต้องดำเนินการ</div>
-                <div class="row g-3">
-                    <div class="col-6 col-lg-6">
-                        <article class="kpi-card needs-action c-warning">
-                            <div class="kpi-icon"><i
-                                    class="fas fa-file-circle-check"></i></div>
-                            <div class="kpi-label">คำขออนุมัติ</div>
-                            <h3 class="kpi-value count-up"
-                                data-target="<%= dStats.pendingRequests %>"><%=
-                                dStats.pendingRequests %></h3>
-                            <small class="kpi-meta">รายการรอตรวจสอบ</small>
-                        </article>
-                    </div>
-                    <div class="col-6 col-lg-6">
-                        <article class="kpi-card needs-action c-info">
-                            <div class="kpi-icon"><i
-                                    class="fas fa-screwdriver-wrench"></i></div>
-                            <div class="kpi-label">งานซ่อมค้าง</div>
-                            <h3 class="kpi-value count-up"
-                                data-target="<%= dStats.pendingRepairs %>"><%=
-                                dStats.pendingRepairs %></h3>
-                            <small class="kpi-meta">ต้องดำเนินการ</small>
-                        </article>
-                    </div>
+            <!-- กล่องงานค้าง -->
+            <section class="db-section" data-live-id="inbox" aria-labelledby="inboxTitle">
+                <div class="db-section-head">
+                    <h2 id="inboxTitle" class="db-h2"><i class="fas fa-inbox"></i>ต้องทำตอนนี้</h2>
+                    <span class="db-count mono <%= inboxTotal ? 'has' : '' %>"><%= fmt(inboxTotal) %></span>
+                    <span class="db-section-hint">ตัวเลขนับเฉพาะคำขอในรอบที่ยังแก้ไขได้ · กดเพื่อไปจัดการ</span>
                 </div>
+                <div class="inbox-grid">
+                    <% inbox.forEach((item, i) => { %>
+                        <a href="<%= item.href %>" class="inbox-cell <%= item.count > 0 ? 'tone-' + item.tone : 'is-clear' %>" data-shortcut-index="<%= i + 1 %>">
+                            <div class="inbox-top">
+                                <i class="fas <%= item.count > 0 ? item.icon : 'fa-check' %>"></i>
+                                <span class="inbox-key mono" aria-hidden="true"><%= i + 1 %></span>
+                            </div>
+                            <div class="inbox-num mono count-up" data-target="<%= item.count %>"><%= fmt(item.count) %></div>
+                            <div class="inbox-label"><%= item.label %></div>
+                            <div class="inbox-hint"><%= item.count > 0 ? item.hint : 'ไม่มีค้าง' %></div>
+                        </a>
+                    <% }) %>
+                </div>
+                <% if (hasQuickActions) { %>
+                    <div class="quick-actions" aria-label="ทำได้เลยจากหน้านี้">
+                        <span class="db-label qa-label"><i class="fas fa-bolt"></i> ทำได้เลย</span>
+                        <% qa.verifiedSlips.forEach((group) => { %>
+                            <button type="button" class="qa-btn qa-success" data-action="confirm-slips" data-round="<%= group.roundNumber %>" data-count="<%= group.count %>">
+                                <i class="fas fa-check-double"></i>ยืนยันสลิปที่ยอดตรง <strong class="mono"><%= group.count %></strong> ใบ <span class="qa-sub mono">รอบ <%= group.roundNumber %></span>
+                            </button>
+                        <% }) %>
+                        <% if (qa.unnotifiedCodes.length) { %>
+                            <button type="button" class="qa-btn" data-action="notify" data-codes="<%= qa.unnotifiedCodes.join(',') %>">
+                                <i class="fas fa-paper-plane"></i>แจ้งเตือนร้านใกล้หมดสัญญา <strong class="mono"><%= qa.unnotifiedCodes.length %></strong> ร้าน
+                            </button>
+                        <% } %>
+                        <% if (lapsedCodes.length) { %>
+                            <button type="button" class="qa-btn qa-danger" data-action="release" data-codes="<%= lapsedCodes.join(',') %>">
+                                <i class="fas fa-lock-open"></i>ปล่อยล็อกที่หมดสิทธิ์ <strong class="mono"><%= lapsedCodes.length %></strong> ล็อก
+                            </button>
+                        <% } %>
+                    </div>
+                <% } %>
+                <% if (stages.awaiting > 0) { %>
+                    <p class="db-footnote"><i class="fas fa-hourglass-half"></i> รอผู้ขายโอนเงินอีก <span class="mono"><%= stages.awaiting %></span> คำขอ (ยังไม่ต้องทำอะไร)</p>
+                <% } %>
             </section>
 
-            <section class="kpi-group mb-4">
-                <div class="kpi-group-label"><i
-                        class="fas fa-chart-pie"></i>ภาพรวมแผงขาย</div>
-                <div class="row g-3">
-                    <div class="col-6 col-lg-6">
-                        <article class="kpi-card c-primary">
-                            <div class="kpi-icon"><i
-                                    class="fas fa-chart-pie"></i></div>
-                            <div class="kpi-label">แผงที่ถูกจอง</div>
-                            <h3 class="kpi-value count-up"
-                                data-target="<%= dStats.bookedStalls %>"><%=
-                                dStats.bookedStalls
-                                %></h3>
-                            <small class="kpi-meta">จากทั้งหมด <%=
-                                dStats.totalStalls
-                                %> แผง</small>
-                        </article>
+            <!-- รายได้ + การใช้พื้นที่ -->
+            <section class="db-split" data-live-id="money">
+                <article class="db-panel revenue-panel" aria-labelledby="revenueTitle">
+                    <div class="db-panel-head">
+                        <div>
+                            <h2 id="revenueTitle" class="db-h2"><i class="fas fa-sack-dollar"></i>รายได้ที่ยืนยันแล้ว 14 วัน</h2>
+                            <div class="revenue-hero">
+                                <span class="revenue-total mono">฿<span class="count-up" data-target="<%= rv.total %>"><%= fmt(rv.total) %></span></span>
+                                <% if (rv.changePercent !== null) { %>
+                                    <span class="delta <%= rv.changePercent >= 0 ? 'up' : 'down' %> mono">
+                                        <i class="fas fa-arrow-<%= rv.changePercent >= 0 ? 'up' : 'down' %>"></i><%= Math.abs(rv.changePercent) %>%
+                                    </span>
+                                    <span class="text-soft small">เทียบ 14 วันก่อน (฿<%= fmt(rv.previousTotal) %>)</span>
+                                <% } else { %>
+                                    <span class="text-soft small">ยังไม่มียอด 14 วันก่อนหน้าให้เทียบ</span>
+                                <% } %>
+                            </div>
+                            <div class="text-soft small"><span class="mono"><%= rv.count %></span> คำขอที่ชำระเงินแล้ว · นับตามวันที่แอดมินยืนยันสลิป</div>
+                        </div>
+                        <div class="seg" role="tablist" aria-label="รูปแบบการแสดงผล">
+                            <button type="button" class="seg-btn active" data-view-target="revenueChart" aria-selected="true">กราฟ</button>
+                            <button type="button" class="seg-btn" data-view-target="revenueTable" aria-selected="false">ตาราง</button>
+                        </div>
                     </div>
-                    <div class="col-6 col-lg-6">
-                        <article class="kpi-card c-success">
-                            <div class="kpi-icon"><i
-                                    class="fas fa-door-open"></i></div>
-                            <div class="kpi-label">แผงว่าง</div>
-                            <h3 class="kpi-value count-up"
-                                data-target="<%= dStats.availableStalls %>"><%=
-                                dStats.availableStalls %></h3>
-                            <small class="kpi-meta">พร้อมให้จองทันที</small>
-                        </article>
+
+                    <div class="chart-wrap" id="revenueChart" data-view>
+                        <svg class="bar-chart" viewBox="0 0 <%= chart.w %> <%= chart.h %>" role="img" aria-label="กราฟรายได้รายวัน 14 วันล่าสุด">
+                            <% for (let g = 0; g <= 3; g++) {
+                                const y = chart.top + plotH - (plotH * g / 3); %>
+                                <line class="grid-line" x1="<%= chart.left %>" x2="<%= chart.w - chart.right %>" y1="<%= y %>" y2="<%= y %>"></line>
+                                <text class="axis-label" x="<%= chart.left - 8 %>" y="<%= y + 4 %>" text-anchor="end"><%= g === 0 ? '0' : (niceStep * g >= 1000 ? (niceStep * g / 1000) + 'k' : niceStep * g) %></text>
+                            <% } %>
+                            <% rv.days.forEach((d, i) => {
+                                const h = (d.amount / yMax) * plotH;
+                                const x = chart.left + slot * i + (slot - barW) / 2;
+                                const y = chart.top + plotH - h;
+                                const isToday = i === rv.days.length - 1; %>
+                                <g class="bar-group <%= isToday ? 'is-today' : '' %>" tabindex="0"
+                                    data-label="<%= d.weekday %> <%= d.label %>" data-amount="<%= d.amount %>" data-count="<%= d.count %>">
+                                    <rect class="bar-hit" x="<%= chart.left + slot * i %>" y="<%= chart.top %>" width="<%= slot %>" height="<%= plotH %>"></rect>
+                                    <% if (h > 0) { %><path class="bar" d="<%= barPath(x, y, barW, h) %>"></path><% } else { %><line class="bar-zero" x1="<%= x %>" x2="<%= x + barW %>" y1="<%= chart.top + plotH %>" y2="<%= chart.top + plotH %>"></line><% } %>
+                                    <% if (i === peakIndex && d.amount > 0) { %>
+                                        <text class="bar-direct" x="<%= x + barW / 2 %>" y="<%= y - 6 %>" text-anchor="middle">฿<%= fmt(d.amount) %></text>
+                                    <% } %>
+                                    <text class="axis-label <%= isToday ? 'is-today' : '' %>" x="<%= x + barW / 2 %>" y="<%= chart.h - 14 %>" text-anchor="middle"><%= d.label.split(' ')[0] %></text>
+                                </g>
+                            <% }) %>
+                            <line class="base-line" x1="<%= chart.left %>" x2="<%= chart.w - chart.right %>" y1="<%= chart.top + plotH %>" y2="<%= chart.top + plotH %>"></line>
+                        </svg>
+                        <div class="chart-tip" id="chartTip" role="status" hidden></div>
                     </div>
-                </div>
+                    <div class="table-responsive" id="revenueTable" data-view hidden>
+                        <table class="db-table">
+                            <thead><tr><th>วันที่</th><th class="text-end">คำขอ</th><th class="text-end">ยอด (บาท)</th></tr></thead>
+                            <tbody>
+                                <% rv.days.slice().reverse().forEach((d) => { %>
+                                    <tr><td><%= d.weekday %> <%= d.label %></td><td class="text-end mono"><%= d.count %></td><td class="text-end mono"><%= fmt(d.amount) %></td></tr>
+                                <% }) %>
+                            </tbody>
+                            <tfoot><tr><th>รวม</th><th class="text-end mono"><%= rv.count %></th><th class="text-end mono"><%= fmt(rv.total) %></th></tr></tfoot>
+                        </table>
+                    </div>
+                </article>
+
+                <article class="db-panel occupancy-panel" aria-labelledby="occTitle">
+                    <h2 id="occTitle" class="db-h2"><i class="fas fa-border-all"></i>การใช้พื้นที่</h2>
+                    <div class="occ-hero">
+                        <span class="occ-num mono"><span class="count-up" data-target="<%= occupancy %>" data-decimals="1"><%= occupancy %></span>%</span>
+                        <span class="text-soft">ของ <span class="mono"><%= fmt(s.totalStalls) %></span> ล็อกถูกจอง</span>
+                    </div>
+                    <div class="stack-bar" role="img" aria-label="จองแล้ว <%= s.bookedStalls %> ซ่อม <%= s.maintenanceStalls %> ว่าง <%= s.availableStalls %>">
+                        <span class="seg-booked" style="flex-grow: <%= s.bookedStalls %>" title="จองแล้ว <%= s.bookedStalls %>"></span>
+                        <span class="seg-maint" style="flex-grow: <%= s.maintenanceStalls %>" title="ซ่อมบำรุง <%= s.maintenanceStalls %>"></span>
+                        <span class="seg-free" style="flex-grow: <%= s.availableStalls %>" title="ว่าง <%= s.availableStalls %>"></span>
+                    </div>
+                    <dl class="occ-legend">
+                        <div><dt><i class="sw sw-booked"></i>จองแล้ว</dt><dd class="mono"><%= fmt(s.bookedStalls) %></dd></div>
+                        <div><dt><i class="sw sw-maint"></i>ซ่อมบำรุง</dt><dd class="mono"><%= fmt(s.maintenanceStalls) %></dd></div>
+                        <div><dt><i class="sw sw-free"></i>ว่าง</dt><dd class="mono"><%= fmt(s.availableStalls) %></dd></div>
+                    </dl>
+                    <div class="occ-facts">
+                        <a href="/admin/users" class="fact">
+                            <span class="fact-num mono"><%= fmt(s.sellerCount) %></span>
+                            <span class="fact-label">ผู้ขายในระบบ</span>
+                            <% if (s.newSellersWeek > 0) { %><span class="fact-delta mono">+<%= s.newSellersWeek %> สัปดาห์นี้</span><% } %>
+                        </a>
+                        <a href="/admin/announcements" class="fact">
+                            <span class="fact-num mono"><%= fmt(s.totalAnnouncements) %></span>
+                            <span class="fact-label">ประกาศ</span>
+                        </a>
+                        <a href="/admin/requests" class="fact">
+                            <span class="fact-num mono"><%= fmt(s.totalRepairs) %></span>
+                            <span class="fact-label">งานซ่อมทั้งหมด</span>
+                        </a>
+                    </div>
+                </article>
             </section>
 
-            <section class="row g-3 mb-4">
-                <div class="col-lg-8">
-                    <div class="insight-card h-100">
-                        <div
-                            class="d-flex justify-content-between align-items-center mb-2">
-                            <h5 class="mb-0 fw-bold"><i
-                                    class="fas fa-wave-square me-2"></i>สรุปการใช้งานผังตลาด</h5>
-                            <span
-                                class="badge rounded-pill text-bg-light">อัปเดตอัตโนมัติ</span>
-                        </div>
-                        <div class="progress-track mt-3">
-                            <div class="progress-head">
-                                <span>สัดส่วนแผงที่ถูกจอง</span>
-                                <strong><%= occupancyRate %>%</strong>
-                            </div>
-                            <div class="progress">
-                                <div class="progress-bar" role="progressbar"
-                                    style="--occupancy: <%= occupancyRate %>;"
-                                    aria-valuenow="<%= occupancyRate %>"
-                                    aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                        </div>
-                        <div class="quick-stats-grid mt-3">
-                            <div class="mini-stat">
-                                <span>แผงต้องซ่อมบำรุง</span>
-                                <strong class="count-up"
-                                    data-target="<%= dStats.maintenanceStalls %>"><%=
-                                    dStats.maintenanceStalls %></strong>
-                            </div>
-                            <div class="mini-stat">
-                                <span>ประกาศทั้งหมด</span>
-                                <strong class="count-up"
-                                    data-target="<%= dStats.totalAnnouncements %>"><%=
-                                    dStats.totalAnnouncements %></strong>
-                            </div>
-                            <div class="mini-stat">
-                                <span>งานซ่อมทั้งหมด</span>
-                                <strong class="count-up"
-                                    data-target="<%= dStats.totalRepairs %>"><%=
-                                    dStats.totalRepairs %></strong>
-                            </div>
-                            <div class="mini-stat">
-                                <span>ผู้ขายทั้งหมด</span>
-                                <strong class="count-up"
-                                    data-target="<%= dStats.sellerCount %>"><%=
-                                    dStats.sellerCount %></strong>
-                            </div>
-                        </div>
+            <!-- ที่มาของรายได้ + คาดการณ์รอบนี้ -->
+            <section class="db-even" data-live-id="sources">
+                <article class="db-panel" aria-labelledby="sourceTitle">
+                    <div class="db-panel-head">
+                        <h2 id="sourceTitle" class="db-h2"><i class="fas fa-chart-bar"></i>รายได้ 14 วันมาจากไหน</h2>
+                        <span class="text-soft small mono">฿<%= fmt(rv.total) %></span>
                     </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="insight-card h-100">
-                        <h5 class="mb-3 fw-bold"><i
-                                class="fas fa-bolt me-2"></i>ทางลัดการจัดการ</h5>
-                        <div class="d-grid gap-2 quick-links">
-                            <a href="/admin/slots" class="quick-link-item"><i
-                                    class="fas fa-map"></i> จัดการผังแผง</a>
-                            <a href="/admin/approvals"
-                                class="quick-link-item"><i
-                                    class="fas fa-stamp"></i>
-                                ตรวจใบขออนุมัติ</a>
-                            <a href="/admin/requests" class="quick-link-item"><i
-                                    class="fas fa-clipboard-check"></i>
-                                อัปเดตสถานะงานซ่อม</a>
-                            <a href="/admin/announcements"
-                                class="quick-link-item"><i
-                                    class="fas fa-bullhorn"></i>
-                                เผยแพร่ประกาศใหม่</a>
+                    <% if (typeTotal > 0) { %>
+                        <div class="stack-bar type-bar" role="img" aria-label="สัดส่วนรายได้ตามประเภท">
+                            <% TYPE_META.forEach((t) => { %><span class="<%= t.cls %>" style="flex-grow: <%= byType[t.key] || 0 %>" title="<%= t.label %> ฿<%= fmt(byType[t.key]) %>"></span><% }) %>
                         </div>
+                        <dl class="type-legend">
+                            <% TYPE_META.forEach((t) => { if (!byType[t.key]) return; %>
+                                <div>
+                                    <dt><i class="sw <%= t.cls %>"></i><%= t.label %></dt>
+                                    <dd><span class="mono">฿<%= fmt(byType[t.key]) %></span><span class="pct mono"><%= Math.round((byType[t.key] / typeTotal) * 100) %>%</span></dd>
+                                </div>
+                            <% }) %>
+                        </dl>
+                        <div class="db-label mt-3 mb-2">แยกตามโซน</div>
+                        <ul class="hbar-list">
+                            <% byZone.forEach((z) => { %>
+                                <li title="<%= z.count %> คำขอ">
+                                    <span class="hbar-key mono"><%= z.zone %></span>
+                                    <span class="hbar-track"><span class="hbar-fill" style="width: <%= Math.max(2, (z.amount / zoneMax) * 100) %>%"></span></span>
+                                    <span class="hbar-val mono">฿<%= fmt(z.amount) %></span>
+                                </li>
+                            <% }) %>
+                        </ul>
+                    <% } else { %>
+                        <div class="empty-mini"><i class="fas fa-coins"></i>ยังไม่มีรายได้ที่ยืนยันใน 14 วันนี้</div>
+                    <% } %>
+                </article>
+
+                <article class="db-panel" aria-labelledby="forecastTitle">
+                    <div class="db-panel-head">
+                        <h2 id="forecastTitle" class="db-h2"><i class="fas fa-binoculars"></i>คาดการณ์รายได้รอบนี้</h2>
+                        <% if (fc) { %><span class="text-soft small mono">รอบ <%= fc.roundNumber %></span><% } %>
                     </div>
-                </div>
+                    <% if (fc && fc.potential > 0) { %>
+                        <div class="forecast-hero">
+                            <span class="forecast-num mono">฿<span class="count-up" data-target="<%= fc.potential %>"><%= fmt(fc.potential) %></span></span>
+                            <span class="text-soft small">ถ้าทุกคำขอที่ค้างจ่ายครบ</span>
+                        </div>
+                        <div class="stack-bar forecast-bar" role="img" aria-label="ยืนยันแล้ว <%= fc.confirmed.amount %> รอโอน <%= fc.awaiting.amount %> ยังไม่จัดล็อก <%= fc.unassigned.amount %>">
+                            <span class="seg-booked" style="flex-grow: <%= fc.confirmed.amount %>"></span>
+                            <span class="seg-maint" style="flex-grow: <%= fc.awaiting.amount %>"></span>
+                            <span class="seg-free" style="flex-grow: <%= fc.unassigned.amount %>"></span>
+                        </div>
+                        <dl class="forecast-legend">
+                            <div>
+                                <dt><i class="sw sw-booked"></i>ยืนยันแล้ว <span class="text-soft mono">(<%= fc.confirmed.count %>)</span></dt>
+                                <dd class="mono">฿<%= fmt(fc.confirmed.amount) %></dd>
+                            </div>
+                            <div>
+                                <dt><i class="sw sw-maint"></i>จัดล็อกแล้ว รอโอน <span class="text-soft mono">(<%= fc.awaiting.count %>)</span></dt>
+                                <dd class="mono">฿<%= fmt(fc.awaiting.amount) %></dd>
+                            </div>
+                            <div>
+                                <dt><i class="sw sw-free"></i>ยังไม่จัดล็อก <span class="text-soft mono">(<%= fc.unassigned.count %>)</span></dt>
+                                <dd class="mono">฿<%= fmt(fc.unassigned.amount) %></dd>
+                            </div>
+                        </dl>
+                        <p class="db-footnote">เก็บได้แล้ว <strong class="mono"><%= Math.round((fc.confirmed.amount / fc.potential) * 100) %>%</strong> ของยอดที่เป็นไปได้ · นับคำขอที่วันเริ่มขายอยู่ในรอบนี้</p>
+                    <% } else { %>
+                        <div class="empty-mini"><i class="fas fa-binoculars"></i>ยังไม่มีคำขอที่เริ่มขายในรอบนี้</div>
+                    <% } %>
+                    <div class="panel-links">
+                        <a href="/admin/approvals">รายการจองรออนุมัติ <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </article>
             </section>
 
-            <section class="zone-panel mb-3">
-                <div class="zone-panel-head">
-                    <h3 class="fw-bold mb-0"><i
-                            class="fas fa-map-marked-alt me-2"></i>สถานะพื้นที่รายโซน</h3>
+            <!-- คืนนี้ / ใกล้หมดสัญญา / กิจกรรม -->
+            <section class="db-triple" data-live-id="ops">
+                <article class="db-panel" aria-labelledby="tonightTitle">
+                    <div class="db-panel-head">
+                        <h2 id="tonightTitle" class="db-h2"><i class="fas fa-moon"></i>ตลาดคืนนี้</h2>
+                        <span class="text-soft small mono"><%= insp.dateLabel %></span>
+                    </div>
+                    <div class="ring-row">
+                        <%
+                        const done = insp.ok + insp.issue;
+                        const donePct = insp.total ? Math.round((done / insp.total) * 100) : 0;
+                        const C = 2 * Math.PI * 42;
+                        %>
+                        <svg class="ring" viewBox="0 0 100 100" role="img" aria-label="ตรวจแล้ว <%= done %> จาก <%= insp.total %> ร้าน">
+                            <circle class="ring-track" cx="50" cy="50" r="42"></circle>
+                            <circle class="ring-ok" cx="50" cy="50" r="42" stroke-dasharray="<%= insp.total ? (insp.ok / insp.total) * C : 0 %> <%= C %>"></circle>
+                            <circle class="ring-issue" cx="50" cy="50" r="42" stroke-dasharray="<%= insp.total ? (insp.issue / insp.total) * C : 0 %> <%= C %>" stroke-dashoffset="<%= insp.total ? -(insp.ok / insp.total) * C : 0 %>"></circle>
+                            <text x="50" y="50" class="ring-num" text-anchor="middle"><%= donePct %>%</text>
+                            <text x="50" y="66" class="ring-cap" text-anchor="middle">ตรวจแล้ว</text>
+                        </svg>
+                        <ul class="ring-legend">
+                            <li><i class="sw sw-booked"></i>ปกติ <strong class="mono"><%= insp.ok %></strong></li>
+                            <li><i class="sw sw-issue"></i>พบปัญหา <strong class="mono"><%= insp.issue %></strong></li>
+                            <li><i class="sw sw-free"></i>ยังไม่ตรวจ <strong class="mono"><%= insp.pending %></strong></li>
+                        </ul>
+                    </div>
+                    <div class="tonight-facts">
+                        <div><i class="fas fa-store-slash"></i>แจ้งปิดร้านวันนี้ <strong class="mono"><%= s.closedToday %></strong></div>
+                        <div><i class="fas fa-bullhorn"></i>ร้านลงโปรวันนี้ <strong class="mono"><%= s.promosToday %></strong></div>
+                    </div>
+                    <div class="panel-links">
+                        <a href="/market-map?layer=inspection">ผลตรวจบนผัง <i class="fas fa-arrow-right"></i></a>
+                        <a href="/market-map?layer=repair">งานซ่อมบนผัง <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </article>
+
+                <article class="db-panel" aria-labelledby="expTitle">
+                    <div class="db-panel-head">
+                        <h2 id="expTitle" class="db-h2"><i class="fas fa-hourglass-end"></i>ใกล้หมดสัญญา</h2>
+                        <span class="text-soft small">ภายใน 3 วัน</span>
+                    </div>
+                    <% if (exp.lapsedCount > 0) { %>
+                        <a href="/admin/slots/expiring" class="lapsed-alert">
+                            <i class="fas fa-circle-exclamation"></i>
+                            <span>หมดสิทธิ์แล้วแต่ยังไม่ปล่อย <strong class="mono"><%= exp.lapsedCount %></strong> ล็อก</span>
+                            <i class="fas fa-arrow-right ms-auto"></i>
+                        </a>
+                    <% } %>
+                    <% if (exp.upcoming.length) { %>
+                        <ul class="exp-list">
+                            <% exp.upcoming.forEach((st) => { %>
+                                <li>
+                                    <a href="/market-map?layer=expiry&stall=<%= encodeURIComponent(st.code) %>" class="exp-row">
+                                        <span class="exp-code mono"><%= st.code %></span>
+                                        <span class="exp-date mono"><%= st.endText %></span>
+                                        <span class="exp-chip <%= st.daysLeft <= 0 ? 'today' : st.daysLeft === 1 ? 'soon' : '' %>">
+                                            <%= st.daysLeft <= 0 ? (st.phase === 'grace' ? 'วันนี้ ก่อน 20:00' : 'วันนี้') : 'อีก ' + st.daysLeft + ' วัน' %>
+                                        </span>
+                                    </a>
+                                </li>
+                            <% }) %>
+                        </ul>
+                        <% if (exp.upcomingCount > exp.upcoming.length) { %>
+                            <p class="db-footnote">และอีก <span class="mono"><%= exp.upcomingCount - exp.upcoming.length %></span> ล็อก</p>
+                        <% } %>
+                    <% } else { %>
+                        <div class="empty-mini"><i class="fas fa-check"></i>ไม่มีล็อกหมดสัญญาใน 3 วันนี้</div>
+                    <% } %>
+                    <div class="panel-links">
+                        <a href="/admin/slots/expiring">ล็อกใกล้หมดอายุทั้งหมด <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </article>
+
+                <article class="db-panel" aria-labelledby="feedTitle">
+                    <div class="db-panel-head">
+                        <h2 id="feedTitle" class="db-h2"><i class="fas fa-wave-square"></i>เกิดอะไรขึ้นล่าสุด</h2>
+                    </div>
+                    <div class="feed-filter" role="tablist" aria-label="กรองกิจกรรม">
+                        <button type="button" class="chip active" data-feed-filter="all">ทั้งหมด</button>
+                        <% Object.keys(KIND_TEXT).forEach((k) => { %>
+                            <button type="button" class="chip" data-feed-filter="<%= k %>"><%= KIND_TEXT[k] %></button>
+                        <% }) %>
+                    </div>
+                    <% if (feed.length) { %>
+                        <ol class="feed">
+                            <% feed.forEach((item) => { %>
+                                <li class="feed-item" data-kind="<%= item.kind %>">
+                                    <a href="<%= item.href %>">
+                                        <span class="feed-icon k-<%= item.kind %>"><i class="fas <%= item.icon %>"></i></span>
+                                        <span class="feed-body">
+                                            <span class="feed-title"><%= item.title %></span>
+                                            <span class="feed-meta"><%= item.meta %><% if (item.status) { %> · <span class="st st-<%= item.status.toLowerCase() %>"><%= STATUS_TEXT[item.status] || item.status %></span><% } %></span>
+                                        </span>
+                                        <time class="feed-time mono" datetime="<%= new Date(item.at).toISOString() %>" title="<%= new Date(item.at).toLocaleString('th-TH') %>"></time>
+                                    </a>
+                                </li>
+                            <% }) %>
+                        </ol>
+                        <div class="empty-mini d-none" id="feedEmpty"><i class="fas fa-filter"></i>ไม่มีรายการประเภทนี้</div>
+                    <% } else { %>
+                        <div class="empty-mini"><i class="fas fa-inbox"></i>ยังไม่มีความเคลื่อนไหว</div>
+                    <% } %>
+                </article>
+            </section>
+
+            <!-- ผลตรวจ 7 วัน + ร้านที่คนเปิดดูมากสุด -->
+            <section class="db-split" data-live-id="trends">
+                <article class="db-panel" aria-labelledby="heatTitle">
+                    <div class="db-panel-head">
+                        <h2 id="heatTitle" class="db-h2"><i class="fas fa-table-cells"></i>ผลตรวจตลาด 7 วัน</h2>
+                        <span class="text-soft small">ตัวเลข = ร้านที่พบปัญหา · สีเข้ม = ปัญหามาก</span>
+                    </div>
+                    <% if (hm.hasData) { %>
+                        <div class="heat-wrap">
+                            <table class="heat">
+                                <thead>
+                                    <tr>
+                                        <th scope="col"><span class="visually-hidden">โซน</span></th>
+                                        <% hm.days.forEach((d, i) => { %><th scope="col" class="<%= i === hm.days.length - 1 ? 'is-today' : '' %>"><span class="heat-wd"><%= d.weekday %></span><span class="mono"><%= d.label.split(' ')[0] %></span></th><% }) %>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% hm.rows.forEach((row) => { %>
+                                        <tr>
+                                            <th scope="row" class="mono" title="<%= row.name %>"><%= row.code %></th>
+                                            <% row.cells.forEach((cell, i) => { %>
+                                                <td class="heat-cell <%= cell.inspected ? 'heat-' + heatLevel(cell.problems) : 'heat-none' %>"
+                                                    tabindex="0"
+                                                    data-tip="<%= row.name %> · <%= hm.days[i].weekday %> <%= hm.days[i].label %>"
+                                                    data-detail="<%= cell.inspected ? `ตรวจ ${cell.inspected} ร้าน · พบปัญหา ${cell.problems} ร้าน` : 'ไม่มีบันทึกตรวจ' %>">
+                                                    <span class="mono"><%= cell.inspected ? cell.problems : '·' %></span>
+                                                </td>
+                                            <% }) %>
+                                        </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="heat-legend">
+                            <span>น้อย</span>
+                            <i class="heat-cell heat-0"></i><i class="heat-cell heat-1"></i><i class="heat-cell heat-2"></i><i class="heat-cell heat-3"></i><i class="heat-cell heat-4"></i>
+                            <span>มาก</span>
+                            <span class="ms-3"><i class="heat-cell heat-none"></i> ไม่มีบันทึกตรวจ</span>
+                        </div>
+                    <% } else { %>
+                        <div class="empty-mini"><i class="fas fa-clipboard"></i>ยังไม่มีบันทึกตรวจตลาดใน 7 วันนี้</div>
+                    <% } %>
+                    <div class="panel-links">
+                        <a href="/market-map?layer=inspection">ผลตรวจวันนี้บนผัง <i class="fas fa-arrow-right"></i></a>
+                        <a href="/admin/sellers/scores">การมาขายร้านค้า <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </article>
+
+                <article class="db-panel" aria-labelledby="topTitle">
+                    <div class="db-panel-head">
+                        <h2 id="topTitle" class="db-h2"><i class="fas fa-eye"></i>ร้านที่คนเปิดดูมากสุด</h2>
+                        <span class="text-soft small">7 วัน</span>
+                    </div>
+                    <% if (topShops.length) {
+                        const topMax = Math.max(1, ...topShops.map((t) => t.total)); %>
+                        <ol class="top-list">
+                            <% topShops.forEach((t, i) => { %>
+                                <li>
+                                    <a href="<%= t.stallCode ? '/market-map?stall=' + encodeURIComponent(t.stallCode) : '/market-map' %>" class="top-row">
+                                        <span class="top-rank mono"><%= i + 1 %></span>
+                                        <span class="top-body">
+                                            <span class="top-name"><%= t.shopName %></span>
+                                            <span class="top-meta"><% if (t.stallCode) { %><span class="mono"><%= t.stallCode %></span> · <% } %>เปิดการ์ด <span class="mono"><%= t.card %></span><% if (t.menu) { %> · ดูเมนู <span class="mono"><%= t.menu %></span><% } %><% if (t.share) { %> · แชร์ <span class="mono"><%= t.share %></span><% } %></span>
+                                            <span class="hbar-track"><span class="hbar-fill" style="width: <%= (t.total / topMax) * 100 %>%"></span></span>
+                                        </span>
+                                        <span class="top-total mono"><%= fmt(t.total) %></span>
+                                    </a>
+                                </li>
+                            <% }) %>
+                        </ol>
+                    <% } else { %>
+                        <div class="empty-mini"><i class="fas fa-eye-slash"></i>ยังไม่มีคนเปิดดูร้านใน 7 วันนี้</div>
+                    <% } %>
+                    <p class="db-footnote">นับจากการเปิดการ์ดร้าน ดูเมนู และแชร์บนผังตลาด ไม่เก็บว่าใครเป็นคนดู</p>
+                </article>
+            </section>
+
+            <!-- โซน -->
+            <section class="db-section" aria-labelledby="zoneTitle">
+                <div class="db-section-head zone-head">
+                    <h2 id="zoneTitle" class="db-h2"><i class="fas fa-map-location-dot"></i>สถานะรายโซน</h2>
                     <div class="zone-tools">
-                        <div class="input-group">
-                            <span class="input-group-text"><i
-                                    class="fas fa-search"></i></span>
-                            <input type="text" id="zoneSearchInput"
-                                class="form-control" placeholder="ค้นหาโซน">
+                        <label class="zone-search">
+                            <i class="fas fa-search"></i>
+                            <input type="search" id="zoneSearchInput" placeholder="ค้นหาโซนหรือรหัสล็อก" aria-label="ค้นหาโซนหรือรหัสล็อก">
+                            <kbd>/</kbd>
+                        </label>
+                        <div class="seg" role="group" aria-label="ไฮไลต์สถานะล็อก">
+                            <button type="button" class="seg-btn active" data-stall-filter="all">ทั้งหมด</button>
+                            <button type="button" class="seg-btn" data-stall-filter="AVAILABLE">ว่าง</button>
+                            <button type="button" class="seg-btn" data-stall-filter="BOOKED">จอง</button>
+                            <button type="button" class="seg-btn" data-stall-filter="MAINTENANCE">ซ่อม</button>
                         </div>
-                        <select id="zoneSortSelect" class="form-select">
-                            <option value="maintenance-desc" selected>ต้องซ่อมบำรุงมากสุดก่อน</option>
-                            <option
-                                value="available-desc">แผงว่างมากสุด</option>
-                            <option value="name-asc">เรียงตามโซน A-Z</option>
+                        <select id="zoneSortSelect" class="zone-sort" aria-label="เรียงโซน">
+                            <option value="order" selected>ตามลำดับผัง</option>
+                            <option value="occupancy-desc">จองเต็มมากสุด</option>
+                            <option value="available-desc">ว่างมากสุด</option>
+                            <option value="maintenance-desc">ต้องซ่อมมากสุด</option>
                         </select>
                     </div>
                 </div>
-            </section>
 
-            <section class="row g-4 mb-5" id="zonesGrid">
-                <% zoneList.forEach((zone, index) => { %>
-                <div class="col-lg-6 zone-col"
-                    data-zone-name="<%= zone.name.toLowerCase() %>"
-                    data-available="<%= zone.available || 0 %>"
-                    data-maintenance="<%= zone.maintenance || 0 %>">
-                    <div
-                        class="zone-card <%= index % 4 === 0 ? 'primary' : index % 4 === 1 ? 'success' : index % 4 === 2 ? 'warning' : 'info' %>">
-                        <div class="zone-card-header">
-                            <div class="zone-header-content">
-                                <i class="fas <%= zone.icon %> zone-icon"></i>
-                                <div>
-                                    <h5 class="zone-title"><%= zone.name %></h5>
-                                    <small class="zone-description"><%=
-                                        zone.description %> · <%= zone.total || 0
-                                        %> แผง</small>
+                <div class="zone-grid" id="zonesGrid" data-live-id="zones">
+                    <% zoneList.forEach((zone, index) => { %>
+                        <article class="zone-card" data-order="<%= index %>"
+                            data-search="<%= (zone.name + ' ' + zone.code + ' ' + zone.stalls.map((st) => st.code).join(' ')).toLowerCase() %>"
+                            data-available="<%= zone.available %>" data-maintenance="<%= zone.maintenance %>" data-occupancy="<%= zone.occupancyRate %>">
+                            <header class="zone-card-head">
+                                <span class="zone-code mono"><%= zone.code %></span>
+                                <div class="zone-name">
+                                    <h3><%= zone.name %></h3>
+                                    <small><i class="fas <%= zone.icon %>"></i> <%= zone.description %></small>
                                 </div>
+                                <div class="zone-rate">
+                                    <span class="mono"><%= zone.occupancyRate %>%</span>
+                                    <small>จองแล้ว</small>
+                                </div>
+                            </header>
+                            <div class="zone-bar" aria-hidden="true">
+                                <span class="seg-booked" style="flex-grow: <%= zone.booked %>"></span>
+                                <span class="seg-maint" style="flex-grow: <%= zone.maintenance %>"></span>
+                                <span class="seg-free" style="flex-grow: <%= zone.available %>"></span>
                             </div>
-                        </div>
-                        <div class="zone-card-body">
-                            <div class="zone-stats">
-                                <div class="stat-item<%= (zone.maintenance || 0) > 0 ? ' stat-item-alert' : '' %>">
-                                    <div class="stat-icon repairs"><i
-                                            class="fas fa-wrench"></i></div>
-                                    <small class="stat-label">ต้องซ่อมบำรุง</small>
-                                    <h4 class="stat-value count-up"
-                                        data-target="<%= zone.maintenance || 0 %>"><%=
-                                        zone.maintenance || 0 %></h4>
+                            <dl class="zone-nums">
+                                <div><dt>ว่าง</dt><dd class="mono"><%= zone.available %></dd></div>
+                                <div><dt>จอง</dt><dd class="mono"><%= zone.booked %></dd></div>
+                                <div class="<%= zone.maintenance ? 'is-alert' : '' %>"><dt>ซ่อม</dt><dd class="mono"><%= zone.maintenance %></dd></div>
+                                <div><dt>ทั้งหมด</dt><dd class="mono"><%= zone.total %></dd></div>
+                            </dl>
+                            <% if (zone.stalls.length) { %>
+                                <div class="stall-dots" role="list" aria-label="ล็อกในโซน <%= zone.name %>">
+                                    <% zone.stalls.forEach((st) => { %><a role="listitem" href="/market-map?stall=<%= encodeURIComponent(st.code) %>" class="dot d-<%= st.status.toLowerCase() %>" data-code="<%= st.code %>" data-status="<%= st.status %>" data-end="<%= st.endText %>" aria-label="<%= st.code %>"></a><% }) %>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-icon available"><i
-                                            class="fas fa-check-circle"></i></div>
-                                    <small class="stat-label">แผงว่าง</small>
-                                    <h4 class="stat-value count-up"
-                                        data-target="<%= zone.available || 0 %>"><%=
-                                        zone.available || 0 %></h4>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-icon unpaid"><i
-                                            class="fas fa-tag"></i></div>
-                                    <small class="stat-label">ถูกจองแล้ว</small>
-                                    <h4 class="stat-value count-up"
-                                        data-target="<%= zone.booked || 0 %>"><%=
-                                        zone.booked || 0 %></h4>
-                                </div>
-                            </div>
-                            <a href="/admin/slots" class="zone-btn">
-                                ดูผังแผงทั้งหมด <i
-                                    class="fas fa-arrow-right ms-2"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                <% }) %>
-
-                <div id="emptyFilteredZone" class="col-12 d-none">
-                    <div class="empty-state py-5">
-                        <div class="empty-state-icon"><i
-                                class="fas fa-filter"></i></div>
-                        <h4 class="fw-bold mb-2">ไม่พบโซนที่ตรงกับเงื่อนไข</h4>
-                        <p
-                            class="text-muted mb-0">ลองเปลี่ยนคำค้นหาหรือรูปแบบการเรียงใหม่</p>
+                            <% } %>
+                            <footer class="zone-card-foot">
+                                <a href="/admin/slots">จัดการผังแผง <i class="fas fa-arrow-right"></i></a>
+                                <a href="/market-map">ดูบนผังตลาด <i class="fas fa-arrow-right"></i></a>
+                            </footer>
+                        </article>
+                    <% }) %>
+                    <div id="emptyFilteredZone" class="empty-mini zone-empty d-none">
+                        <i class="fas fa-filter"></i>ไม่พบโซนหรือล็อกที่ค้นหา
                     </div>
                 </div>
             </section>
+
+            <p class="db-kbd-hint">
+                <kbd>1</kbd>–<kbd>6</kbd> เปิดงานค้าง · <kbd>/</kbd> ค้นหาล็อก · <kbd>Ctrl K</kbd> ไปหน้าอื่น · <kbd>R</kbd> อัปเดต · <kbd>?</kbd> คีย์ลัดทั้งหมด
+            </p>
+        </main>
+
+        <script type="application/json" id="dashboardExport"><%- JSON.stringify(exportData).replace(/</g, '\\u003c') %></script>
+
+        <!-- ป้ายลอยของจุดล็อก -->
+        <div class="dot-tip" id="dotTip" hidden></div>
+
+        <!-- ค้นหาเมนู (Ctrl+K) -->
+        <div class="db-overlay" id="paletteOverlay" hidden>
+            <div class="palette" role="dialog" aria-modal="true" aria-label="ไปที่หน้า">
+                <label class="palette-input">
+                    <i class="fas fa-magnifying-glass"></i>
+                    <input type="text" id="paletteInput" placeholder="พิมพ์ชื่อหน้า เช่น อนุมัติ, ประกาศ, ผัง" autocomplete="off" aria-controls="paletteList">
+                    <kbd>Esc</kbd>
+                </label>
+                <ul class="palette-list" id="paletteList" role="listbox"></ul>
+            </div>
         </div>
+
+        <!-- คีย์ลัด -->
+        <div class="db-overlay" id="shortcutsOverlay" hidden>
+            <div class="palette shortcuts" role="dialog" aria-modal="true" aria-labelledby="shortcutsTitle">
+                <div class="shortcuts-head">
+                    <h2 id="shortcutsTitle" class="db-h2"><i class="fas fa-keyboard"></i>คีย์ลัด</h2>
+                    <button type="button" class="db-tool db-tool-icon" data-close-overlay aria-label="ปิด"><i class="fas fa-xmark"></i></button>
+                </div>
+                <dl class="shortcut-list">
+                    <div><dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>ค้นหาแล้วไปหน้าอื่น</dd></div>
+                    <div><dt><kbd>1</kbd> – <kbd>6</kbd></dt><dd>เปิดกล่องงานค้างช่องที่ 1–6</dd></div>
+                    <div><dt><kbd>/</kbd></dt><dd>ค้นหาโซนหรือรหัสล็อก</dd></div>
+                    <div><dt><kbd>R</kbd></dt><dd>อัปเดตข้อมูลตอนนี้</dd></div>
+                    <div><dt><kbd>A</kbd></dt><dd>เปิด/ปิดอัปเดตอัตโนมัติ</dd></div>
+                    <div><dt><kbd>E</kbd></dt><dd>ดาวน์โหลดสรุปเป็น CSV</dd></div>
+                    <div><dt><kbd>P</kbd></dt><dd>พิมพ์สรุปประจำวัน</dd></div>
+                    <div><dt><kbd>?</kbd></dt><dd>แสดงหน้านี้</dd></div>
+                    <div><dt><kbd>Esc</kbd></dt><dd>ปิดหน้าต่าง</dd></div>
+                </dl>
+            </div>
+        </div>
+
+        <div class="db-toast" id="dbToast" role="status" aria-live="polite" hidden></div>
 
         <script
             src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-        <script src="/js/admin/dashboard.js"></script>
+        <script src="/js/common/dialogs.js"></script>
+        <script src="/js/admin/dashboard.js?v=20261009-redesign"></script>
     </body>
 </html>
