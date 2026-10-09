@@ -345,6 +345,21 @@ function extractRejectReason(descriptionText) {
     return match ? String(match[1] || '').trim() : null;
 }
 
+// หัวข้อ/ข้อความแจ้งเตือนของคำขอที่ถูกปฏิเสธ แยก 3 แบบให้ผู้ขายเข้าใจว่าเกิดอะไรขึ้น:
+// คำขอต่อล็อกไม่ผ่าน (สัญญาเดิมยังใช้ได้) / ยกเลิกการจัดล็อก (เคยได้ล็อกแล้วแต่ไม่ชำระ ฯลฯ) / คำขอจองไม่ผ่านการตรวจสอบ
+function describeRejection(request) {
+    const reason = extractRejectReason(request.description);
+    const reasonText = reason ? ` — เหตุผล: ${reason}` : ' กรุณาติดต่อแอดมินหากต้องการทราบเหตุผล';
+    const zoneText = request.zone ? ` โซน ${request.zone}` : '';
+    if (/^\[EXTEND_OF:\d+\]/.test(String(request.description || ''))) {
+        return { title: 'คำขอต่อล็อกไม่ผ่าน', desc: `แอดมินไม่อนุมัติคำขอต่อล็อกของคุณ ล็อกยังใช้ได้ตามสัญญาเดิม${reasonText}` };
+    }
+    if (request.lockAssignedAt) {
+        return { title: 'ยกเลิกการจัดล็อก', desc: `แอดมินยกเลิกล็อกที่จัดให้ในคำขอจอง${zoneText}${reasonText} หากยังต้องการขาย ส่งคำขอจองใหม่ได้` };
+    }
+    return { title: 'คำขอจองไม่ผ่านการตรวจสอบ', desc: `คำขอจอง${zoneText}ถูกปฏิเสธ${reasonText} หากต้องการจองใหม่ ส่งคำขอได้อีกครั้ง` };
+}
+
 // การ์ดย้ำเตือนต่อล็อก ผูกกับล็อกจริงที่แม่ค้าจองไว้ (assignedStallCode) โชว์ตั้งแต่ 1 วันก่อนวันขายสุดท้าย (D-1)
 // จนถึง 20:00 ของวัน D (ดูกติกาใน utils/stallRenewal.js) — วัน D ตรงกับวันสิ้นรอบพอดีต่อไม่ได้ ชวนไปจองรอบใหม่แทน
 function buildExtendLockReminderEntry(extendInfo) {
@@ -537,10 +552,8 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
             {
                 id: 1,
                 type: 'cancelled',
-                title: 'คำขอจองไม่ผ่านการตรวจสอบ',
-                desc: latestBooking.rejectReason
-                    ? `คำขอจอง${zoneLabel} ถูกปฏิเสธ — เหตุผล: ${latestBooking.rejectReason} หากต้องการจองใหม่ ส่งคำขอได้อีกครั้ง`
-                    : `คำขอจอง${zoneLabel} ถูกปฏิเสธ กรุณาติดต่อแอดมินหรือส่งคำขอจองใหม่อีกครั้ง`,
+                title: latestBooking.rejection?.title || 'คำขอจองไม่ผ่านการตรวจสอบ',
+                desc: latestBooking.rejection?.desc || `คำขอจอง${zoneLabel} ถูกปฏิเสธ กรุณาติดต่อแอดมินหรือส่งคำขอจองใหม่อีกครั้ง`,
                 date: formatDateThai(latestBooking.createdAt),
                 time: formatTimeThai(latestBooking.createdAt),
                 status: 'REJECTED',
@@ -2042,15 +2055,11 @@ async function loadSellerBookingStatus(userId) {
     // ยกเว้นคำขอต่อล็อกที่ถูกปฏิเสธ — สัญญาเดิมยังใช้อยู่ ถ้าเอามาเป็น "ล่าสุด" หน้าจะขึ้นว่าถูกปฏิเสธทั้งที่ยังขายได้
     // (แจ้งผลปฏิเสธแยกเป็นการ์ดของมันเองด้านล่างแทน)
     let latestRequest = null;
-    let rejectedExtension = null;
+    let recentRequests = [];
     const pickLatest = (requests) => {
-        for (const request of requests) {
-            const isRejectedExtension = String(request.status || '').toUpperCase() === 'REJECTED'
-                && /^\[EXTEND_OF:\d+\]/.test(String(request.description || ''));
-            if (!isRejectedExtension) return request;
-            if (!rejectedExtension) rejectedExtension = request;
-        }
-        return null;
+        recentRequests = requests;
+        return requests.find((request) => !(String(request.status || '').toUpperCase() === 'REJECTED'
+            && /^\[EXTEND_OF:\d+\]/.test(String(request.description || '')))) || null;
     };
 
     if (sellerProfileId) {
@@ -2133,7 +2142,7 @@ async function loadSellerBookingStatus(userId) {
             largeApplianceCount: 0,
             createdAt: formatDateThai(latestRequest.createdAt),
             createdTime: formatTimeThai(latestRequest.createdAt),
-            storeDetailSnapshot: stripBookingRequestTag(latestRequest.description) || '-',
+            storeDetailSnapshot: stripBookingRequestTag(latestRequest.description).replace(/\s*\[(REJECT_REASON|REJECTED_AT|EXTEND_OF)[^\]]*\]/g, '').trim() || '-',
             isFinalPrice: false
         };
     }
@@ -2209,27 +2218,37 @@ async function loadSellerBookingStatus(userId) {
             paymentSlipImage: latestRequest.paymentSlipImage || null,
             slipVerifyReason: latestRequest.slipVerifyReason || null,
             rejectReason: extractRejectReason(latestRequest.description),
+            rejection: String(latestRequest.status || '').toUpperCase() === 'REJECTED' ? describeRejection(latestRequest) : null,
             slot: { slotNumber: latestRequest.paymentConfirmedAt ? (latestRequest.assignedStallCode || null) : null }
         }
         : latestBooking;
 
-    // คำขอต่อล็อกที่ถูกปฏิเสธ/ยกเลิก (ใหม่กว่าคำขอที่แสดงอยู่) แจ้งแยก พร้อมบอกว่าสัญญาเดิมยังใช้ได้
-    const rejectedExtensionEntry = rejectedExtension && (!latestRequest || rejectedExtension.createdAt > latestRequest.createdAt)
-        ? [{
-            id: `extend-rejected-${rejectedExtension.id}`,
-            type: 'cancelled',
-            title: 'คำขอต่อล็อกไม่ผ่าน',
-            desc: [
-                'แอดมินปฏิเสธ/ยกเลิกคำขอต่อล็อกของคุณ ล็อกยังใช้ได้ตามสัญญาเดิม',
-                extractRejectReason(rejectedExtension.description) ? `เหตุผล: ${extractRejectReason(rejectedExtension.description)}` : ''
-            ].filter(Boolean).join(' — '),
-            date: formatDateThai(rejectedExtension.createdAt),
-            time: formatTimeThai(rejectedExtension.createdAt),
-            status: 'REJECTED',
-            isRead: false,
-            isNew: true
-        }]
-        : [];
+    // คำขอที่ถูกปฏิเสธ/ยกเลิกอื่นๆ ใน 30 วันล่าสุด (นอกจากคำขอที่แสดงเป็นหลักอยู่ ซึ่งมีการ์ดของตัวเองแล้ว) แจ้งทีละรายการ
+    // พร้อมเหตุผล — เช่น คำขอต่อล็อกไม่ผ่าน (สัญญาเดิมยังใช้ได้) หรือคำขอรอบเก่าที่แอดมินปิดทั้งรอบ
+    // นับจากเวลาที่ถูกปฏิเสธ ([REJECTED_AT:] ดู withRejectReason) ไม่ใช่วันส่งคำขอ — ข้อมูลเก่าที่ไม่มี tag ใช้วันส่งคำขอแทน
+    const rejectionSince = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const rejectedAtOf = (request) => {
+        const match = /\[REJECTED_AT:\s*(\d+)\]/.exec(String(request.description || ''));
+        return match ? new Date(Number(match[1])) : new Date(request.createdAt);
+    };
+    const rejectionEntries = recentRequests
+        .filter((request) => String(request.status || '').toUpperCase() === 'REJECTED'
+            && request.id !== latestRequest?.id
+            && rejectedAtOf(request).getTime() >= rejectionSince)
+        .map((request) => {
+            const rejection = describeRejection(request);
+            return {
+                id: `rejected-${request.id}`,
+                type: 'cancelled',
+                title: rejection.title,
+                desc: rejection.desc,
+                date: formatDateThai(rejectedAtOf(request)),
+                time: formatTimeThai(rejectedAtOf(request)),
+                status: 'REJECTED',
+                isRead: false,
+                isNew: true
+            };
+        });
 
     const extendInfo = await findActiveLockForExtension(userRecord);
 
@@ -2253,7 +2272,7 @@ async function loadSellerBookingStatus(userId) {
             ...renewalNotices,
             ...buildRepairNotifications(repairReports),
             ...buildTaxInvoiceNotifications(taxInvoiceRequests),
-            ...rejectedExtensionEntry,
+            ...rejectionEntries,
             ...buildBookingNotifications(notificationBooking, awaitingPaymentVerification, extendInfo)
         ]
     };
