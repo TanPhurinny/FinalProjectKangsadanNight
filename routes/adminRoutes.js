@@ -199,5 +199,8 @@ router.get('/booking-stall', approvalCtrl.getBookingStallPage);
 router.post('/booking-stall/confirm', approvalCtrl.confirmBookingStall);
 router.post('/booking-stall/reject', approvalCtrl.rejectBookingStall);
 router.post('/approvals/reject-stale-round', approvalCtrl.rejectStaleRound);
+router.post('/approvals/confirm-verified-slips', approvalCtrl.confirmVerifiedSlips);
+router.get('/approvals/poll', approvalCtrl.pollNewRequests);
+router.get('/approvals/:id/history', approvalCtrl.getRequestHistory);
 
 module.exports = router;

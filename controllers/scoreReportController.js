@@ -429,4 +429,4 @@ exports.toggleBlacklist = async (req, res) => {
 };
 
 // ใช้ร่วมกับรายงานตรวจตลาดรายวัน (controllers/inspectionReportController.js)
-exports.reportHelpers = { getSellerStallOccupancy, buildOccupancyEntries, getDailyInspectionMaps };
+exports.reportHelpers = { getSellerStallOccupancy, buildOccupancyEntries, getDailyInspectionMaps, loadStallDayStatuses };

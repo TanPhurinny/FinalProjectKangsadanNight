@@ -77,7 +77,8 @@
                     stall_assigned: 'จัดล็อกเรียบร้อย ผู้ขายมีเวลาส่งสลิป 6 ชม.',
                     slip_rejected: 'ปฏิเสธสลิปแล้ว ระบบแจ้งผู้ขายให้อัปโหลดสลิปใหม่',
                     request_rejected: 'ปฏิเสธ/ยกเลิกคำขอแล้ว ล็อกที่จัดไว้ถูกคืนเรียบร้อย',
-                    stale_closed: `ปิดคำขอค้างในรอบนี้แล้ว ${Number(locals.closedCount) || 0} รายการ ผู้ขายจะเห็นเหตุผลในแจ้งเตือน`
+                    stale_closed: `ปิดคำขอค้างในรอบนี้แล้ว ${Number(locals.closedCount) || 0} รายการ ผู้ขายจะเห็นเหตุผลในแจ้งเตือน`,
+                    slips_confirmed: `ยืนยันการชำระเงินแล้ว ${Number(locals.closedCount) || 0} ใบ (เฉพาะสลิปที่ระบบตรวจว่ายอดตรง)`
                 };
                 %>
                 <% if (flashError === 'slip_verification_failed' && hasAmountMismatch) { %>
@@ -160,13 +161,13 @@
                 // ตัวกรองแยก 3 แถว (ประเภท / สถานะ / โซน) — ทุกตัวเป็นปุ่มมีขอบ + ตัวเลข เลือกได้แถวละ 1 ค่า
                 const stageMetaOf = (stage) => sections.find((s) => s.stage === stage) || { label: stage };
                 const stageChips = [
-                    // ชื่อสั้นให้แถวสถานะอยู่บรรทัดเดียวบนจอคอม (ชื่อเต็มอยู่ที่หัวกลุ่มรายการ + title ของปุ่ม)
-                    { stage: 'slip', short: 'รอสลิป', icon: 'fa-receipt', urgent: true },
-                    { stage: 'overdue', short: 'เลยกำหนด', icon: 'fa-clock', urgent: true, danger: true },
-                    { stage: 'assign', short: 'รอจัดล็อก', icon: 'fa-map-pin', urgent: true },
-                    { stage: 'awaiting', short: 'รอจ่าย', icon: 'fa-hourglass-half' },
-                    { stage: 'done', short: 'จ่ายแล้ว', icon: 'fa-circle-check' },
-                    { stage: 'rejected', short: 'ปฏิเสธ', icon: 'fa-ban' }
+                    // ชื่อปุ่ม = ชื่อหัวกลุ่มรายการ (STAGE_META ใน approvalController.js) ใช้คำเดียวกันทุกที่
+                    { stage: 'slip', icon: 'fa-receipt', urgent: true },
+                    { stage: 'overdue', icon: 'fa-clock', urgent: true, danger: true },
+                    { stage: 'assign', icon: 'fa-map-pin', urgent: true },
+                    { stage: 'awaiting', icon: 'fa-hourglass-half' },
+                    { stage: 'done', icon: 'fa-circle-check' },
+                    { stage: 'rejected', icon: 'fa-ban' }
                 ];
                 %>
                 <section class="filter-panel" aria-label="ตัวกรองคำขอ">
@@ -196,11 +197,12 @@
                         <span class="filter-row__label" id="filterStageLabel">สถานะ</span>
                         <div class="filter-row__chips filter-row__chips--scroll" role="group" aria-labelledby="filterStageLabel">
                             <button type="button" class="f-chip" data-stage="all" aria-pressed="true">ทั้งหมด <span class="f-chip__count" data-count></span></button>
-                            <button type="button" class="f-chip f-chip--todo" data-stage="todo" aria-pressed="false"><i class="fa-solid fa-bolt" aria-hidden="true"></i>ต้องจัดการ <span class="f-chip__count" data-count></span></button>
+                            <button type="button" class="f-chip f-chip--todo" data-stage="todo" aria-pressed="false"><i class="fa-solid fa-bolt" aria-hidden="true"></i>งานที่ต้องทำ <span class="f-chip__count" data-count></span></button>
                             <span class="filter-row__sep" aria-hidden="true"></span>
                             <% stageChips.forEach(function(chip) { %>
-                            <button type="button" class="f-chip<%= chip.urgent ? ' f-chip--urgent' : '' %><%= chip.danger ? ' f-chip--danger' : '' %>" data-stage="<%= chip.stage %>" aria-pressed="false" title="<%= stageMetaOf(chip.stage).label %>">
-                                <i class="fa-solid <%= chip.icon %>" aria-hidden="true"></i><%= chip.short %> <span class="f-chip__count" data-count></span>
+                            <% if (chip.stage === 'awaiting') { %><span class="filter-row__break" aria-hidden="true"></span><span class="filter-row__group-label">ติดตาม</span><% } %>
+                            <button type="button" class="f-chip<%= chip.urgent ? ' f-chip--urgent' : '' %><%= chip.danger ? ' f-chip--danger' : '' %>" data-stage="<%= chip.stage %>" aria-pressed="false" title="<%= stageMetaOf(chip.stage).hint || stageMetaOf(chip.stage).label %>">
+                                <i class="fa-solid <%= chip.icon %>" aria-hidden="true"></i><%= stageMetaOf(chip.stage).label %> <span class="f-chip__count" data-count></span>
                             </button>
                             <% }) %>
                         </div>
@@ -256,6 +258,11 @@
                         <header class="queue-section__head">
                             <h3 class="queue-section__title"><%= section.label %> <span class="mono" data-section-count><%= section.rows.length %></span></h3>
                             <% if (section.hint) { %><p class="queue-section__hint"><%= section.hint %></p><% } %>
+                            <% if (section.stage === 'slip') { const verifiedCount = section.rows.filter((r) => r.slipVerified === true).length; if (verifiedCount) { %>
+                            <button type="button" class="q-btn q-btn--go queue-section__action" id="confirmVerifiedSlips" data-count="<%= verifiedCount %>">
+                                <i class="fa-solid fa-check-double" aria-hidden="true"></i> ยืนยันทุกใบที่ยอดตรง (<span class="mono"><%= verifiedCount %></span>)
+                            </button>
+                            <% } } %>
                         </header>
 
                         <% section.rows.forEach(function(request) {
@@ -269,7 +276,8 @@
                                 slipVerifyReason: request.slipVerifyReason || '', rejectReason: request.rejectReason || '',
                                 cornerZoneNote: request.cornerZoneNote || '', isFinalPrice: Boolean(request.isFinalPrice),
                                 booking: request.booking, extension: request.extension, extendOfRequestId: request.extendOfRequestId,
-                                paymentDeadlineText: request.paymentDeadlineText
+                                paymentDeadlineText: request.paymentDeadlineText,
+                                actionLogs: request.actionLogs, createdAtFullText: request.createdAtFullText
                             };
                             const searchText = [request.productName, request.sellerName, request.phone, request.assignedStallCode, request.extension && request.extension.originalStallText, '#' + request.id].filter(Boolean).join(' ').toLowerCase();
                         %>
@@ -283,7 +291,10 @@
                                     <% } %>
                                 </div>
                                 <h4 class="q-row__shop"><%= request.productName || '-' %></h4>
-                                <div class="q-row__seller"><%= request.sellerName || '-' %> · <span class="mono"><%= request.phone || '-' %></span></div>
+                                <div class="q-row__seller"><%= request.sellerName || '-' %> ·
+                                    <% const telDigits = String(request.phone || '').replace(/[^0-9+]/g, ''); %>
+                                    <% if (telDigits.length >= 9) { %><a class="q-tel mono" href="tel:<%= telDigits %>" title="โทรหาผู้ขาย"><i class="fa-solid fa-phone" aria-hidden="true"></i> <%= request.phone %></a><% } else { %><span class="mono"><%= request.phone || '-' %></span><% } %>
+                                </div>
                             </div>
 
                             <dl class="q-row__facts">
@@ -364,9 +375,10 @@
                                 <span class="payment-slip-amount" id="m-slip-expected"></span>
                             </div>
                             <div class="card-tags" id="m-slip-tags"></div>
-                            <a id="m-payment-slip-link" href="#" target="_blank" rel="noopener">
+                            <button type="button" class="slip-zoom-btn" id="m-payment-slip-zoom" title="กดเพื่อขยายสลิป">
                                 <img id="m-payment-slip" class="payment-slip-thumb" src="" alt="สลิปโอนเงิน">
-                            </a>
+                                <span class="slip-zoom-btn__hint"><i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i> กดเพื่อขยาย</span>
+                            </button>
                         </div>
 
                         <div class="detail-grid">
@@ -383,6 +395,16 @@
 
                         <div class="card-tags d-none" id="m-tags"></div>
 
+                        <section class="modal-block" aria-label="ประวัติร้าน">
+                            <h4 class="modal-block__title"><i class="fa-solid fa-store" aria-hidden="true"></i> ประวัติร้าน</h4>
+                            <div id="m-history" class="seller-history"><span class="q-muted">กำลังโหลด…</span></div>
+                        </section>
+
+                        <section class="modal-block" aria-label="ประวัติการดำเนินการ">
+                            <h4 class="modal-block__title"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i> ประวัติการดำเนินการ</h4>
+                            <ol id="m-timeline" class="action-timeline"></ol>
+                        </section>
+
                         <div class="note-box">
                             <strong>รายละเอียดร้าน/สินค้า</strong><br>
                             <span id="m-note"></span>
@@ -394,15 +416,36 @@
                         </div>
                     </div>
 
-                    <div class="modal-footer" id="m-footer-actions"></div>
+                    <div class="modal-footer-wrap">
+                        <label class="auto-next" title="กดยืนยัน/ปฏิเสธแล้ว เปิดรายการถัดไปในขั้นตอนเดียวกันให้ทันที">
+                            <input type="checkbox" id="m-auto-next"> ทำรายการถัดไปต่อ
+                        </label>
+                        <div class="modal-footer" id="m-footer-actions"></div>
+                    </div>
                 </div>
+            </div>
+
+            <div class="slip-lightbox" id="slipLightbox" hidden role="dialog" aria-modal="true" aria-label="สลิปโอนเงินขนาดเต็ม">
+                <div class="slip-lightbox__bar">
+                    <span id="slipLightboxAmount"></span>
+                    <button type="button" class="slip-lightbox__close" id="slipLightboxClose" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <img id="slipLightboxImg" src="" alt="สลิปโอนเงินขนาดเต็ม">
+            </div>
+
+            <div class="new-toast" id="newRequestToast" hidden role="status">
+                <span id="newRequestToastText"></span>
+                <button type="button" class="q-btn q-btn--go" onclick="window.location.reload()">โหลดใหม่</button>
+                <button type="button" class="new-toast__close" id="newRequestToastClose" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
         </div>
         <script>
             window.APPROVAL_PAGE_STATE = {
                 isEditable: <%= Boolean(isEditable) %>,
-                round: <%= Number(selectedRoundNumber) || 0 %>
+                round: <%= Number(selectedRoundNumber) || 0 %>,
+                loadedAt: <%= Date.now() %>,
+                flashSuccess: <%- JSON.stringify((typeof success !== 'undefined' && success) || null) %>
             };
         </script>
         <script src="/js/common/dialogs.js"></script>

@@ -1138,6 +1138,19 @@
     gap: 6px;
 }
 
+/* แถวสถานะ: บรรทัดแรก = งานที่ต้องทำ, ขึ้นบรรทัดใหม่ = ติดตาม/จบแล้ว (มือถือเป็นแถวเลื่อนเดียว ไม่ตัดบรรทัด) */
+.approvals-page .filter-row__break {
+    flex-basis: 100%;
+    height: 0;
+}
+
+.approvals-page .filter-row__group-label {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+    margin-right: 2px;
+}
+
 .approvals-page .filter-row__sep {
     width: 1px;
     align-self: stretch;
@@ -1539,13 +1552,225 @@
 
 .approvals-page--queue .payment-slip-box .card-tags { margin-bottom: 8px; }
 
+.approvals-page--queue .modal-footer-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--line);
+    flex-shrink: 0;
+}
+
 .approvals-page--queue .modal-footer {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
-    padding: 12px 20px;
-    border-top: 1px solid var(--line);
-    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.approvals-page .auto-next {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    cursor: pointer;
+}
+
+.approvals-page .auto-next input { width: 16px; height: 16px; accent-color: var(--navy); }
+
+/* ---------- เบอร์โทรกดโทรได้ ---------- */
+.approvals-page .q-tel {
+    color: var(--primary-dark);
+    text-decoration: none;
+    border-bottom: 1px dashed currentColor;
+}
+
+.approvals-page .q-tel i { font-size: 0.72rem; }
+.approvals-page .q-tel:hover { color: var(--navy); }
+
+.approvals-page .queue-section__action { margin-left: auto; min-height: 32px; padding: 5px 12px; font-size: 0.82rem; }
+
+/* ---------- บล็อกในหน้าต่างรายละเอียด: ประวัติร้าน / ไทม์ไลน์ ---------- */
+.approvals-page .modal-block {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+}
+
+.approvals-page .modal-block__title {
+    margin: 0 0 10px;
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--navy);
+}
+
+.approvals-page .modal-block__title i { margin-right: 4px; color: var(--ink-soft); }
+
+.approvals-page .seller-history__flags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+
+.approvals-page .seller-history__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    margin: 0;
+    border-top: 1px solid var(--line-soft);
+    border-left: 1px solid var(--line-soft);
+}
+
+.approvals-page .seller-history__grid > div {
+    padding: 6px 8px;
+    border-right: 1px solid var(--line-soft);
+    border-bottom: 1px solid var(--line-soft);
+}
+
+.approvals-page .seller-history__grid dt { font-size: 0.7rem; font-weight: 600; color: var(--ink-soft); }
+.approvals-page .seller-history__grid dd { margin: 0; font-size: 1.05rem; font-weight: 600; color: var(--navy); }
+.approvals-page .seller-history__grid dd.is-bad { color: var(--danger-color); }
+.approvals-page .seller-history__meta { margin: 8px 0 0; font-size: 0.78rem; color: var(--ink-soft); }
+
+.approvals-page .seller-history__rejects {
+    margin: 8px 0 0;
+    padding-left: 16px;
+    font-size: 0.78rem;
+    color: var(--ink);
+}
+
+.approvals-page .action-timeline {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-left: 2px solid var(--line);
+}
+
+.approvals-page .action-timeline li {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 0 0 10px 14px;
+    font-size: 0.82rem;
+}
+
+.approvals-page .action-timeline li::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 5px;
+    width: 10px;
+    height: 10px;
+    background: #fff;
+    border: 2px solid var(--navy);
+}
+
+.approvals-page .action-timeline li:last-child { padding-bottom: 0; }
+.approvals-page .action-timeline li:last-child::before { background: var(--navy); }
+.approvals-page .action-timeline__time { font-size: 0.72rem; color: var(--ink-soft); }
+.approvals-page .action-timeline__text { color: var(--ink); }
+
+/* ---------- ซูมสลิป ---------- */
+.approvals-page .slip-zoom-btn {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
+}
+
+.approvals-page .slip-zoom-btn__hint {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    padding: 3px 8px;
+    border-radius: 2px;
+    background: rgba(18, 48, 58, 0.85);
+    color: #fff;
+    font-size: 0.74rem;
+    font-weight: 600;
+}
+
+.approvals-page .slip-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1250;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(10, 24, 30, 0.92);
+    padding: 12px;
+}
+
+.approvals-page .slip-lightbox[hidden] { display: none; }
+
+.approvals-page .slip-lightbox__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: min(100%, 720px);
+    margin-bottom: 10px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.approvals-page .slip-lightbox__close {
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: transparent;
+    color: #fff;
+    width: 40px;
+    height: 40px;
+    border-radius: 3px;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+.approvals-page .slip-lightbox img {
+    max-width: min(100%, 720px);
+    max-height: calc(100vh - 80px);
+    object-fit: contain;
+    background: #fff;
+    cursor: zoom-out;
+}
+
+/* ---------- แจ้งคำขอใหม่ ---------- */
+.approvals-page .new-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    z-index: 1150;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: calc(100% - 24px);
+    padding: 10px 12px 10px 16px;
+    border-left: 4px solid var(--warning-color);
+    border-radius: 4px;
+    background: var(--navy);
+    color: #fff;
+    font-size: 0.88rem;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(18, 48, 58, 0.3);
+}
+
+.approvals-page .new-toast[hidden] { display: none; }
+.approvals-page .new-toast .q-btn--go { background: #fff; color: var(--navy); border-color: #fff; min-height: 32px; }
+
+.approvals-page .new-toast__close {
+    border: 0;
+    background: none;
+    color: #c9d8dc;
+    font-size: 1rem;
+    cursor: pointer;
 }
 
 /* ---------- จอเล็ก: แถวกลายเป็นการ์ดเรียงลง ปุ่มหลักเต็มความกว้าง ---------- */
@@ -1601,13 +1826,16 @@
         padding-right: 12px;
     }
     .approvals-page .filter-row__chips::-webkit-scrollbar { display: none; }
+    .approvals-page .filter-row__break { display: none; }
+    .approvals-page .filter-row__group-label { padding-left: 6px; border-left: 1px solid var(--line); flex: 0 0 auto; }
     .approvals-page .f-chip { flex: 0 0 auto; min-height: 40px; }
     .approvals-page .filter-search { margin: 10px 12px 2px; }
     .approvals-page .filter-panel__reset { padding: 4px 10px; }
     .approvals-page .q-row { grid-template-columns: 1fr; }
     .approvals-page .q-row__state { border-left: 0 !important; }
-    .approvals-page--queue .modal-footer { flex-direction: column-reverse; }
+    .approvals-page--queue .modal-footer { flex-direction: column-reverse; width: 100%; }
     .approvals-page--queue .modal-footer .q-btn { width: 100%; }
+    .approvals-page .seller-history__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .approvals-page .modal-ext { grid-template-columns: 1fr; }
 }
 

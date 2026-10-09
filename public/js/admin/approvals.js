@@ -165,6 +165,17 @@ function submitCancelAssignment(detail) {
     });
 }
 
+const confirmVerifiedBtn = document.getElementById('confirmVerifiedSlips');
+if (confirmVerifiedBtn) {
+    confirmVerifiedBtn.addEventListener('click', () => window.showConfirmDialog({
+        title: 'ยืนยันทุกใบที่ยอดตรง',
+        message: `ยืนยันการชำระเงิน ${confirmVerifiedBtn.dataset.count} ใบที่ระบบตรวจแล้วว่า "สลิปจริง ยอดตรง" พร้อมกัน — ใบที่มีปัญหาหรือยังไม่ได้ตรวจจะไม่ถูกยืนยัน ต้องเปิดดูทีละใบ`,
+        tone: 'success',
+        confirmText: 'ยืนยันทั้งหมด',
+        onConfirm: () => postForm('/admin/approvals/confirm-verified-slips', {})
+    }));
+}
+
 const closeStaleBtn = document.getElementById('closeStaleRound');
 if (closeStaleBtn) {
     closeStaleBtn.addEventListener('click', () => window.showConfirmDialog({
@@ -326,7 +337,18 @@ function readDetail(row) {
     }
 }
 
-function runAction(action, detail) {
+// ---------- ทำรายการถัดไปต่อ: กดดำเนินการจากหน้าต่างรายละเอียดแล้ว หลังหน้าโหลดใหม่เปิดรายการแรกของขั้นตอนเดิมให้เลย ----------
+const AUTO_NEXT_KEY = 'approvalsAutoNext';
+const OPEN_NEXT_KEY = 'approvalsOpenNext';
+function isAutoNextOn() {
+    try { return localStorage.getItem(AUTO_NEXT_KEY) !== 'off'; } catch (error) { return true; }
+}
+function rememberOpenNext(stage) {
+    try { if (isAutoNextOn()) sessionStorage.setItem(OPEN_NEXT_KEY, stage); } catch (error) { /* ไม่จำก็ได้ */ }
+}
+
+function runAction(action, detail, fromModal) {
+    if (fromModal && action !== 'detail' && action !== 'quotation') rememberOpenNext(detail.stage);
     if (action === 'assign') return navigateToBookingRequest(detail.id);
     if (action === 'cancel') return submitCancelAssignment(detail);
     if (action === 'reject') return submitRejectRequest(detail);
@@ -435,7 +457,7 @@ function openDetail(detail) {
         slipBox.classList.toggle('d-none', !slipUrl);
         if (slipUrl) {
             document.getElementById('m-payment-slip').src = slipUrl;
-            document.getElementById('m-payment-slip-link').href = slipUrl;
+            currentSlip = { url: slipUrl, amount: booking ? Number(booking.grandTotal) : null };
             setText('m-slip-expected', booking ? `ต้องชำระ ${Number(booking.grandTotal).toLocaleString('th-TH')} บาท` : '');
             const slipTag = detail.slipVerified === true
                 ? '<span class="tag tag--slip-ok">สลิปจริง ยอดตรง</span>'
@@ -464,15 +486,101 @@ function openDetail(detail) {
             btn.type = 'button';
             btn.className = `q-btn q-btn--${item.tone}`;
             btn.textContent = item.label;
-            btn.addEventListener('click', () => runAction(item.action, detail));
+            btn.addEventListener('click', () => runAction(item.action, detail, true));
             footer.appendChild(btn);
         });
         footer.hidden = actions.length === 0;
     }
 
+    renderTimeline(detail);
+    loadSellerHistory(detail.id);
+    const autoNext = document.getElementById('m-auto-next');
+    if (autoNext) autoNext.checked = isAutoNextOn();
+
     modal.classList.add('active');
     const closeBtn = modal.querySelector('.btn-close');
     if (closeBtn) closeBtn.focus();
+}
+
+// ไทม์ไลน์ "ใครทำอะไรเมื่อไร" — ยื่นคำขอ + บันทึก [LOG:] ที่ controller ฝังไว้ทุกครั้งที่แอดมินกดดำเนินการ
+function renderTimeline(detail) {
+    const list = document.getElementById('m-timeline');
+    if (!list) return;
+    const items = [{ atText: detail.createdAtFullText || detail.createdAtText, actor: detail.sellerName, action: detail.kind === 'extend' ? 'ยื่นคำขอต่อล็อก' : 'ยื่นคำขอจอง' }]
+        .concat(detail.actionLogs || []);
+    if (detail.paymentSlipImage && !(detail.actionLogs || []).some((log) => log.action.startsWith('ยืนยันการชำระเงิน'))) {
+        items.push({ atText: '', actor: detail.sellerName, action: 'ส่งสลิปโอนเงินแล้ว (รอตรวจ)' });
+    }
+    list.innerHTML = items.map((item) => `
+        <li>
+            <span class="action-timeline__time mono">${escapeHtml(item.atText || '-')}</span>
+            <span class="action-timeline__text"><strong>${escapeHtml(item.actor || '-')}</strong> ${escapeHtml(item.action)}</span>
+        </li>`).join('');
+}
+
+// ประวัติร้าน (โหลดตอนเปิดหน้าต่าง) — เคยจองกี่ครั้ง จ่ายแล้ว/ถูกปฏิเสธ/ถูกยกเลิก วันมาขาย/ขาดขาย Blacklist
+const historyCache = new Map();
+async function loadSellerHistory(requestId) {
+    const box = document.getElementById('m-history');
+    if (!box) return;
+    box.innerHTML = '<span class="q-muted">กำลังโหลด…</span>';
+    try {
+        if (!historyCache.has(requestId)) {
+            const response = await fetch(`/admin/approvals/${requestId}/history`, { headers: { Accept: 'application/json' } });
+            if (!response.ok) throw new Error('load failed');
+            historyCache.set(requestId, await response.json());
+        }
+        const data = historyCache.get(requestId);
+        if (!modal.classList.contains('active')) return;
+        const c = data.counts;
+        const a = data.attendance;
+        const flags = [];
+        if (data.seller && data.seller.isBlacklisted) flags.push(`<span class="flag flag--danger">ติด Blacklist${data.seller.blacklistReason ? `: ${escapeHtml(data.seller.blacklistReason)}` : ''}</span>`);
+        if (!c.total) flags.push('<span class="flag flag--plain">ร้านใหม่ ยังไม่เคยจองมาก่อน</span>');
+        if (a.absentDays >= 3) flags.push(`<span class="flag flag--warn">ขาดขาย ${a.absentDays} วัน</span>`);
+        box.innerHTML = `
+            ${flags.length ? `<div class="seller-history__flags">${flags.join('')}</div>` : ''}
+            <dl class="seller-history__grid">
+                <div><dt>เคยยื่นคำขอ</dt><dd class="mono">${c.total}</dd></div>
+                <div><dt>จ่ายแล้ว</dt><dd class="mono">${c.paid}</dd></div>
+                <div><dt>ถูกปฏิเสธ</dt><dd class="mono">${c.rejected}</dd></div>
+                <div><dt>ถูกยกเลิก (ไม่จ่าย)</dt><dd class="mono">${c.cancelled}</dd></div>
+                <div><dt>วันที่มาขาย</dt><dd class="mono">${a.presentDays}</dd></div>
+                <div><dt>วันที่ขาดขาย</dt><dd class="mono${a.absentDays ? ' is-bad' : ''}">${a.absentDays}</dd></div>
+            </dl>
+            ${data.seller ? `<p class="seller-history__meta">สมัครสมาชิกเมื่อ ${escapeHtml(data.seller.memberSinceText)}${c.extensions ? ` · เคยต่อล็อก ${c.extensions} ครั้ง` : ''}</p>` : ''}
+            ${(data.recentRejections || []).length ? `<ul class="seller-history__rejects">${data.recentRejections.map((r) => `<li><span class="mono">#${r.id}</span> ${r.cancelled ? 'ยกเลิก' : 'ปฏิเสธ'} ${escapeHtml(r.dateText)} — ${escapeHtml(r.reason)}</li>`).join('')}</ul>` : ''}`;
+    } catch (error) {
+        box.innerHTML = '<span class="q-muted">โหลดประวัติร้านไม่สำเร็จ</span>';
+    }
+}
+
+// ---------- ซูมสลิปในหน้าเดิม พร้อมยอดที่ต้องชำระ ----------
+let currentSlip = null;
+const lightbox = document.getElementById('slipLightbox');
+function openSlipLightbox() {
+    if (!lightbox || !currentSlip) return;
+    document.getElementById('slipLightboxImg').src = currentSlip.url;
+    document.getElementById('slipLightboxAmount').textContent = currentSlip.amount != null
+        ? `ยอดที่ต้องชำระ ${currentSlip.amount.toLocaleString('th-TH')} บาท` : 'สลิปโอนเงิน';
+    lightbox.hidden = false;
+    document.getElementById('slipLightboxClose').focus();
+}
+function closeSlipLightbox() {
+    if (lightbox) lightbox.hidden = true;
+}
+const slipZoomBtn = document.getElementById('m-payment-slip-zoom');
+if (slipZoomBtn) slipZoomBtn.addEventListener('click', openSlipLightbox);
+if (lightbox) {
+    lightbox.addEventListener('click', (event) => { if (event.target === lightbox || event.target.id === 'slipLightboxImg') closeSlipLightbox(); });
+    document.getElementById('slipLightboxClose').addEventListener('click', closeSlipLightbox);
+}
+
+const autoNextInput = document.getElementById('m-auto-next');
+if (autoNextInput) {
+    autoNextInput.addEventListener('change', () => {
+        try { localStorage.setItem(AUTO_NEXT_KEY, autoNextInput.checked ? 'on' : 'off'); } catch (error) { /* ไม่จำก็ได้ */ }
+    });
 }
 
 function closePopup() {
@@ -490,7 +598,9 @@ window.submitApproval = submitApproval;
 window.submitForcePayment = submitForcePayment;
 
 document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closePopup();
+    if (event.key !== 'Escape') return;
+    if (lightbox && !lightbox.hidden) closeSlipLightbox();
+    else closePopup();
 });
 
 // ---------- เวลาเหลือ: นับถอยหลังกำหนดจ่าย/เส้นตาย 20:00 อัปเดตทุก 1 นาที (เวลาจริงอยู่ใน title) ----------
@@ -534,3 +644,50 @@ setInterval(updateDeadlines, 60 * 1000);
 
 loadFilters();
 applyFilters();
+
+(function openNextAfterAction() {
+    let stage = null;
+    try {
+        stage = sessionStorage.getItem(OPEN_NEXT_KEY);
+        sessionStorage.removeItem(OPEN_NEXT_KEY);
+    } catch (error) { return; }
+    if (!stage || !pageState.flashSuccess) return; // ทำไม่สำเร็จ (มี error) ไม่ต้องเปิดต่อ
+    const nextRow = rows.find((row) => row.dataset.stage === stage && !row.hidden);
+    if (nextRow) openDetail(readDetail(nextRow));
+}());
+
+// ---------- เช็คทุก 1 นาทีว่ามีคำขอใหม่/สลิปใหม่ไหม (ไม่โหลดหน้าใหม่เอง กันหน้าเด้งขณะแอดมินกำลังทำงาน) ----------
+(function pollForNewRequests() {
+    const toast = document.getElementById('newRequestToast');
+    const toastText = document.getElementById('newRequestToastText');
+    if (!toast || !pageState.loadedAt) return;
+    let baselineSlips = null;
+    let dismissedText = '';
+    document.getElementById('newRequestToastClose').addEventListener('click', () => {
+        dismissedText = toastText.textContent;
+        toast.hidden = true;
+    });
+    async function check() {
+        try {
+            const response = await fetch(`/admin/approvals/poll?since=${pageState.loadedAt}`, { headers: { Accept: 'application/json' } });
+            if (!response.ok) return;
+            const data = await response.json();
+            if (baselineSlips === null) baselineSlips = data.slipCount;
+            const parts = [];
+            if (data.newCount > 0) parts.push(`มีคำขอใหม่ ${data.newCount} รายการ`);
+            if (data.slipCount > baselineSlips) parts.push(`มีสลิปใหม่รอตรวจ ${data.slipCount - baselineSlips} ใบ`);
+            const badge = document.querySelector('.nav-badge');
+            if (badge && data.todo) {
+                badge.textContent = data.todo.total > 99 ? '99+' : data.todo.total;
+                badge.classList.toggle('nav-badge--urgent', data.todo.urgent > 0);
+            }
+            if (!parts.length) return;
+            const text = `${parts.join(' · ')} ตั้งแต่เปิดหน้านี้`;
+            if (text === dismissedText) return;
+            toastText.textContent = text;
+            toast.hidden = false;
+        } catch (error) { /* เน็ตหลุดชั่วคราว รอรอบหน้า */ }
+    }
+    check();
+    setInterval(check, 60 * 1000);
+}());

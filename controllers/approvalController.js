@@ -96,6 +96,23 @@ function withRejectReason(descriptionText, reason, rejectedAt = new Date()) {
     return [base, cleanReason ? `[REJECT_REASON: ${cleanReason}]` : '', `[REJECTED_AT: ${rejectedAt.getTime()}]`].filter(Boolean).join(' ');
 }
 
+// ประวัติการดำเนินการของแอดมิน ฝังเป็น [LOG:<ms>|<ชื่อ>|<การกระทำ>] ต่อท้าย description (ไม่มีตาราง audit แยก)
+// หน้าต่างรายละเอียดแสดงเป็นไทม์ไลน์ "ใครทำอะไรเมื่อไร" — ชื่อ/ข้อความตัดอักขระ [ ] | ออกกันพัง tag
+function withActionLog(descriptionText, actorName, action, at = new Date()) {
+    const clean = (text) => String(text || '').replace(/[\[\]|]/g, ' ').trim().slice(0, 120);
+    return `${String(descriptionText || '').trim()} [LOG:${at.getTime()}|${clean(actorName) || 'ระบบ'}|${clean(action)}]`.trim();
+}
+
+function parseActionLogs(descriptionText) {
+    const logs = [];
+    const pattern = /\[LOG:(\d+)\|([^|\]]*)\|([^\]]*)\]/g;
+    let match;
+    while ((match = pattern.exec(String(descriptionText || ''))) !== null) {
+        logs.push({ at: Number(match[1]), actor: match[2], action: match[3] });
+    }
+    return logs;
+}
+
 // ตัด tag ภายในทั้งหมดออกจาก description ก่อนโชว์เป็นโน้ตจริงให้แอดมินอ่าน
 function stripInternalTags(descriptionText) {
     return String(descriptionText || '')
@@ -105,6 +122,7 @@ function stripInternalTags(descriptionText) {
         .replace(/\[สนใจแผงพิเศษ:[^\]]+\]\s*/g, '')
         .replace(/\[REJECT_REASON:[^\]]+\]\s*/g, '')
         .replace(/\[REJECTED_AT:\s*\d+\]\s*/g, '')
+        .replace(/\[LOG:[^\]]*\]\s*/g, '')
         .trim();
 }
 
@@ -280,12 +298,12 @@ async function buildAdminBookingStallPageData(requestId) {
 // ขั้นตอนของคำขอในมุมแอดมิน = "ต้องทำอะไรต่อ" (แทนการโชว์ status ดิบ ซึ่ง IN_PROGRESS ตัวเดียวมีได้ 3 ความหมาย)
 const STAGE_ORDER = ['slip', 'overdue', 'assign', 'awaiting', 'done', 'rejected'];
 const STAGE_META = {
-    assign: { label: 'รอจัดล็อก', hint: 'เลือกล็อกให้ผู้ขาย หรือปฏิเสธคำขอ', todo: true },
-    slip: { label: 'รอตรวจสลิป', hint: 'ผู้ขายส่งสลิปแล้ว ตรวจยอดแล้วยืนยันการชำระเงิน', todo: true },
-    overdue: { label: 'เลยกำหนดจ่าย', hint: 'จัดล็อกแล้วเกิน 6 ชม. ยังไม่ส่งสลิป — ยกเลิกเพื่อคืนล็อก หรือรอต่อ', todo: true },
-    awaiting: { label: 'รอผู้ขายจ่าย', hint: 'จัดล็อกแล้ว ผู้ขายต้องส่งสลิปภายใน 6 ชม.', todo: false },
-    done: { label: 'จ่ายแล้ว', hint: 'ยืนยันการชำระเงินแล้ว ล็อกเป็นของผู้ขาย', todo: false },
-    rejected: { label: 'ปฏิเสธ/ยกเลิก', hint: '', todo: false }
+    assign: { label: 'ยังไม่ได้จัดล็อก', hint: 'เลือกล็อกให้ผู้ขาย หรือปฏิเสธคำขอ', todo: true },
+    slip: { label: 'ส่งสลิปแล้ว รอตรวจ', hint: 'ผู้ขายโอนเงินแล้ว ตรวจยอดในสลิปแล้วกดยืนยันการชำระเงิน', todo: true },
+    overdue: { label: 'ไม่จ่ายตามกำหนด', hint: 'จัดล็อกให้แล้วเกิน 6 ชม. ผู้ขายยังไม่ส่งสลิป — ยกเลิกเพื่อคืนล็อก หรือรอต่อ', todo: true },
+    awaiting: { label: 'รอผู้ขายโอนเงิน', hint: 'จัดล็อกให้แล้ว ผู้ขายต้องส่งสลิปภายใน 6 ชม.', todo: false },
+    done: { label: 'จ่ายเงินแล้ว', hint: 'ยืนยันการชำระเงินแล้ว ล็อกเป็นของผู้ขาย', todo: false },
+    rejected: { label: 'ปฏิเสธ/ยกเลิกแล้ว', hint: '', todo: false }
 };
 
 function getRequestStage(request, now) {
@@ -364,6 +382,105 @@ exports.countApprovalTodo = async () => {
         if (stage !== 'assign') urgent += 1;
     });
     return { total, urgent };
+};
+
+// ประวัติร้านสำหรับหน้าต่างรายละเอียด (โหลดตอนเปิดหน้าต่าง ไม่โหลดพร้อมหน้ารายการ):
+// บัญชี/Blacklist, จำนวนคำขอที่ผ่าน/ถูกปฏิเสธ/ถูกยกเลิก, วันมาขาย/ขาดขาย (จากบันทึกตรวจตลาดในช่วงที่ร้านเช่าล็อกจริง)
+exports.getRequestHistory = async (req, res) => {
+    try {
+        const requestId = Number.parseInt(req.params.id, 10);
+        const request = requestId ? await prisma.bookingRequest.findUnique({ where: { id: requestId } }) : null;
+        if (!request) return res.status(404).json({ ok: false });
+
+        const linkedBooking = await prisma.booking.findFirst({
+            where: { storeDetailSnapshot: { startsWith: buildBookingRequestTag(request.id) } },
+            select: { userId: true }
+        });
+        const seller = linkedBooking?.userId
+            ? await prisma.user.findUnique({
+                where: { id: linkedBooking.userId },
+                select: { id: true, name: true, createdAt: true, isBlacklisted: true, blacklistReason: true, shop: { select: { shopName: true } } }
+            })
+            : null;
+
+        // คำขอทั้งหมดของร้านนี้: จับคู่จาก Booking.userId (แม่นกว่า) + ชื่อผู้ขาย (คำขอเก่าที่ไม่มี Booking)
+        const userBookings = seller
+            ? await prisma.booking.findMany({ where: { userId: seller.id, storeDetailSnapshot: { startsWith: BOOKING_REQUEST_TAG_PREFIX } }, select: { storeDetailSnapshot: true, rentalStartDate: true, rentalEndDate: true } })
+            : [];
+        const bookingByReq = new Map();
+        userBookings.forEach((booking) => {
+            const match = /^\[BOOKING_REQUEST_ID:(\d+)\]/.exec(String(booking.storeDetailSnapshot || ''));
+            if (match && !bookingByReq.has(Number(match[1]))) bookingByReq.set(Number(match[1]), booking);
+        });
+        const requests = await prisma.bookingRequest.findMany({
+            where: { OR: [{ id: { in: Array.from(bookingByReq.keys()) } }, { sellerName: request.sellerName }] },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, status: true, description: true, lockAssignedAt: true, assignedStallCode: true, createdAt: true }
+        });
+        const others = requests.filter((item) => item.id !== request.id);
+        const counts = { total: others.length, paid: 0, rejected: 0, cancelled: 0, extensions: 0 };
+        const recentRejections = [];
+        others.forEach((item) => {
+            if (extractExtendOfRequestId(item.description)) counts.extensions += 1;
+            if (item.status === 'SUCCESS') counts.paid += 1;
+            if (item.status === 'REJECTED') {
+                if (item.lockAssignedAt) counts.cancelled += 1;
+                else counts.rejected += 1;
+                if (recentRejections.length < 3) {
+                    recentRejections.push({ id: item.id, dateText: toThaiDate(item.createdAt), reason: extractRejectReason(item.description) || 'ไม่ระบุเหตุผล', cancelled: Boolean(item.lockAssignedAt) });
+                }
+            }
+        });
+
+        // วันมาขาย/ขาดขาย: นับเฉพาะวันที่อยู่ในช่วงเช่าของคำขอที่จ่ายแล้วของร้านนี้ (ล็อกเดียวกันอาจเป็นของร้านอื่นในช่วงอื่น)
+        const paidRequests = requests.filter((item) => item.status === 'SUCCESS' && bookingByReq.has(item.id));
+        const stallCodes = Array.from(new Set(paidRequests.flatMap((item) => parseStallCodes(item.assignedStallCode))));
+        const { loadStallDayStatuses } = require('./scoreReportController').reportHelpers;
+        const statusByStall = await loadStallDayStatuses(stallCodes);
+        const dayStatus = new Map();
+        paidRequests.forEach((item) => {
+            const booking = bookingByReq.get(item.id);
+            if (!booking?.rentalStartDate || !booking?.rentalEndDate) return;
+            const startKey = toStartOfDay(booking.rentalStartDate).getTime();
+            const endKey = toStartOfDay(booking.rentalEndDate).getTime();
+            parseStallCodes(item.assignedStallCode).forEach((code) => {
+                (statusByStall.get(code) || new Map()).forEach((slot, dateKey) => {
+                    const [y, m, d] = dateKey.split('-').map(Number);
+                    const time = new Date(y, m - 1, d).getTime();
+                    if (time < startKey || time > endKey) return;
+                    if (slot.present) dayStatus.set(dateKey, 'present');
+                    else if (slot.noShow && dayStatus.get(dateKey) !== 'present') dayStatus.set(dateKey, 'absent');
+                });
+            });
+        });
+        let presentDays = 0;
+        let absentDays = 0;
+        dayStatus.forEach((status) => { if (status === 'present') presentDays += 1; else absentDays += 1; });
+
+        return res.json({
+            ok: true,
+            seller: seller
+                ? { id: seller.id, name: seller.shop?.shopName || seller.name, memberSinceText: toThaiDate(seller.createdAt), isBlacklisted: seller.isBlacklisted, blacklistReason: seller.blacklistReason || '' }
+                : null,
+            counts,
+            attendance: { presentDays, absentDays, recordedDays: presentDays + absentDays },
+            recentRejections
+        });
+    } catch (err) {
+        return res.status(500).json({ ok: false });
+    }
+};
+
+// ให้หน้ารายการเช็คทุก 1 นาทีว่ามีคำขอใหม่เข้ามาหลังเปิดหน้าไหม (เทียบ createdAt กับเวลาที่โหลดหน้า)
+exports.pollNewRequests = async (req, res) => {
+    try {
+        const since = new Date(Number(req.query.since) || Date.now());
+        const newCount = await prisma.bookingRequest.count({ where: { createdAt: { gt: since } } });
+        const slipCount = await prisma.bookingRequest.count({ where: { status: 'IN_PROGRESS', paymentSlipImage: { not: null }, paymentConfirmedAt: null } });
+        return res.json({ ok: true, newCount, slipCount, todo: await exports.countApprovalTodo() });
+    } catch (err) {
+        return res.status(500).json({ ok: false });
+    }
 };
 
 exports.getApprovalsPage = async (req, res) => {
@@ -491,6 +608,8 @@ exports.getApprovalsPage = async (req, res) => {
                 : null;
 
             return {
+                actionLogs: parseActionLogs(request.description).map((log) => ({ ...log, atText: formatThaiDateTime(log.at) })),
+                createdAtFullText: formatThaiDateTime(request.createdAt),
                 kind: extendOfRequestId ? 'extend' : 'new',
                 stage,
                 stageLabel: STAGE_META[stage].label,
@@ -662,6 +781,11 @@ exports.confirmApproval = async (req, res) => {
         if (normalizedStatus === 'REJECTED') {
             updateData.description = withRejectReason(requestRecord.description, trimmedReason);
         }
+        updateData.description = withActionLog(
+            updateData.description || requestRecord.description,
+            req.user?.name,
+            normalizedStatus === 'REJECTED' ? `ปฏิเสธคำขอ${trimmedReason ? ` (${trimmedReason})` : ''}` : 'อนุมัติคำขอ'
+        );
 
         await prisma.bookingRequest.update({
             where: { id: parseInt(requestId) },
@@ -708,6 +832,140 @@ async function copyApplicationGalleries(shop, application) {
         await prisma.shopMenuImage.createMany({
             data: menuUrls.map((imageUrl) => ({ shopDetailId: shop.id, imageUrl }))
         });
+    }
+}
+
+// แกนของ "ยืนยันการชำระเงิน" — ใช้ทั้งปุ่มเดี่ยว (confirmPayment) และปุ่มยืนยันสลิปที่ยอดตรงทีละหลายใบ (confirmVerifiedSlips)
+// requestRecord = แถว BookingRequest เต็ม (ต้องเป็น IN_PROGRESS + มีสลิป ผู้เรียกเช็คก่อน)
+async function markPaymentConfirmed(requestRecord, actorName, actionLabel = 'ยืนยันการชำระเงิน') {
+    await prisma.bookingRequest.update({
+        where: { id: requestRecord.id },
+        data: {
+            status: 'SUCCESS',
+            paymentConfirmedAt: new Date(),
+            description: withActionLog(requestRecord.description, actorName, actionLabel),
+            // เก็บชื่อแอดมิน/พนักงานที่กดยืนยันสลิปไว้ ให้ใบเสนอราคา (controllers/quotationController.js) แสดง
+            // "พนักงานและผู้พิมพ์" เป็นคนที่ยืนยันจริง ไม่ใช่คนที่บังเอิญล็อกอินอยู่ตอนเปิดดูใบเสนอราคา
+            confirmedByName: actorName || null
+        }
+    });
+
+    // คำขอต่อล็อก: ถ้าล็อกเดิมเคยถูกคืนวันสิ้นสุดเพราะจ่ายช้า (restoreUnpaidExtensions) ขยายให้ใหม่ตามที่จ่ายจริง
+    // เฉพาะล็อกที่ยังเป็นของสัญญาเดิมหรือยังว่างอยู่ ถ้าถูกจัดให้คนอื่นไปแล้วไม่เขียนทับ
+    const paidExtensionOrigin = await getExtensionOrigin(prisma, requestRecord.description);
+    if (paidExtensionOrigin) {
+        const paidCodes = parseStallCodes(requestRecord.assignedStallCode).filter((code) => paidExtensionOrigin.codes.includes(code));
+        const extensionBooking = await prisma.booking.findFirst({
+            where: { storeDetailSnapshot: { startsWith: buildBookingRequestTag(requestRecord.id) } },
+            select: { rentalEndDate: true }
+        });
+        if (paidCodes.length && extensionBooking?.rentalEndDate) {
+            await prisma.stall.updateMany({
+                where: {
+                    stallCode: { in: paidCodes },
+                    OR: [{ status: 'AVAILABLE' }, { status: 'BOOKED', bookingEndDate: paidExtensionOrigin.endDate }]
+                },
+                data: { isAvailable: false, status: 'BOOKED', bookingStartDate: paidExtensionOrigin.startDate, bookingEndDate: extensionBooking.rentalEndDate }
+            });
+        }
+    }
+
+    // Booking ที่ผูกกับคำขอนี้ต้องตามสถานะไปเป็น SUCCESS ด้วย ไม่งั้นหน้า seller
+    // dashboard/booking-status/booking-history จะยังค้างแสดงว่า "รอดำเนินการ" ทั้งที่จ่ายเงินจบแล้ว
+    const successRequestTag = buildBookingRequestTag(requestRecord.id);
+    if (successRequestTag) {
+        await prisma.booking.updateMany({
+            where: { storeDetailSnapshot: { startsWith: successRequestTag } },
+            data: { status: 'SUCCESS' }
+        });
+    }
+
+    // จ่ายเงินสำเร็จ = ได้ล็อกจริงแล้ว เลื่อนสถานะลูกค้าทั่วไปเป็นผู้ขาย (ไม่แตะ ADMIN/STAFF/SELLER เดิม)
+    const paidRequestTag = buildBookingRequestTag(requestRecord.id);
+    if (paidRequestTag) {
+        const paidBooking = await prisma.booking.findFirst({
+            where: { storeDetailSnapshot: { startsWith: paidRequestTag } },
+            select: { userId: true, zoneCode: true, selectedZoneLabel: true }
+        });
+        const paidZoneLabel = paidBooking?.selectedZoneLabel || (paidBooking?.zoneCode ? `โซน ${paidBooking.zoneCode}` : null);
+        if (paidBooking?.userId) {
+            await prisma.user.updateMany({
+                where: { id: paidBooking.userId, role: 'CUSTOMER' },
+                data: { role: 'SELLER' }
+            });
+
+            // ซิงก์ข้อมูลร้านค้าเข้า ShopDetail จากใบสมัคร (SellerApplication) ตัวล่าสุดของผู้ใช้นี้
+            // เส้นทางนี้ (จองแผงเอง -> แอดมินยืนยันสลิป) ผู้ใช้อาจยังไม่ผ่าน /admin/seller-applications
+            // มาก่อน (isSellerOrApplicant อนุญาตให้จองได้ตั้งแต่ใบสมัครยังรอตรวจสอบ) การยืนยันจ่ายเงินสำเร็จ
+            // ของแอดมินในเส้นทางนี้จึงถือเป็นการอนุมัติโดยพฤตินัย — ไม่ปล่อยให้ผู้ขายกรอกชื่อร้าน/
+            // ประเภทสินค้าเองใหม่ใน /shop-profile จนไม่ตรงกับที่สมัครมา
+            const latestApplication = await prisma.sellerApplication.findFirst({
+                where: { userId: paidBooking.userId },
+                orderBy: { createdAt: 'desc' }
+            });
+            if (latestApplication) {
+                const isFirstApproval = String(latestApplication.status || '').toUpperCase() === 'PENDING';
+                if (isFirstApproval) {
+                    await prisma.sellerApplication.update({
+                        where: { id: latestApplication.id },
+                        data: { status: 'APPROVED', reviewedAt: new Date() }
+                    });
+                }
+                // ชื่อร้าน/ประเภทสินค้า(+เฉพาะ) ยึดตามใบสมัครเสมอ (ผู้ขายแก้เองไม่ได้ ใช้จัดโซน/ระยะห่างล็อก)
+                // ส่วนรายละเอียด/แนะนำร้าน/เมนูเด่น/รูปปก ผู้ขายแก้ต่อได้ใน /shop-profile — เติมจากใบสมัครเฉพาะช่องที่ยังว่าง
+                // ไม่งั้นทุกครั้งที่ยืนยันสลิปรอบใหม่จะเขียนทับของที่ผู้ขายแก้ไว้กลับเป็นค่าตอนสมัคร
+                const existingShop = await prisma.shopDetail.findUnique({
+                    where: { userId: paidBooking.userId },
+                    select: { productDetail: true, shopSummary: true, shopTags: true, shopCoverImage: true }
+                });
+                const fillIfEmpty = (field) => (existingShop?.[field] ? {} : { [field]: latestApplication[field] || null });
+                const applicationShopData = {
+                    shopName: latestApplication.shopName,
+                    productType: latestApplication.productType,
+                    productSubtype: latestApplication.productSubtype,
+                    productSubtypeOther: latestApplication.productSubtypeOther
+                };
+                const syncedShop = await prisma.shopDetail.upsert({
+                    where: { userId: paidBooking.userId },
+                    update: {
+                        ...applicationShopData,
+                        ...fillIfEmpty('productDetail'),
+                        ...fillIfEmpty('shopSummary'),
+                        ...fillIfEmpty('shopTags'),
+                        ...fillIfEmpty('shopCoverImage'),
+                        isVerified: true,
+                        ...(paidZoneLabel ? { shopZoneLabel: paidZoneLabel } : {})
+                    },
+                    create: {
+                        userId: paidBooking.userId,
+                        ...applicationShopData,
+                        productDetail: latestApplication.productDetail,
+                        shopSummary: latestApplication.shopSummary,
+                        shopTags: latestApplication.shopTags,
+                        shopCoverImage: latestApplication.shopCoverImage,
+                        isVerified: true,
+                        shopZoneLabel: paidZoneLabel || null
+                    }
+                });
+                await copyApplicationGalleries(syncedShop, latestApplication);
+                // เบอร์ในใบสมัครคือเบอร์ที่ผู้สมัครยืนยันตอนสมัคร — ที่อื่นอ่านจาก User.phoneNumber
+                // (การ์ดล็อกบนผังตลาด, จับคู่คำขอจองล็อกกับผู้ใช้ด้านบน) ซิงก์แค่ตอนอนุมัติครั้งแรก
+                // รอบต่อ ๆ ไปผู้ขายอาจแก้เบอร์ในโปรไฟล์แล้ว ไม่เขียนทับ
+                if (isFirstApproval && latestApplication.phoneNumber) {
+                    await prisma.user.update({
+                        where: { id: paidBooking.userId },
+                        data: { phoneNumber: latestApplication.phoneNumber }
+                    });
+                }
+            } else if (paidZoneLabel) {
+                // ไม่มีใบสมัครใหม่ (เช่น ผู้ขายเดิมต่อ/จองล็อกใหม่ในรอบถัดไป) แต่มี ShopDetail อยู่แล้ว
+                // ก็ยังต้องอัปเดตโซนให้ตรงกับล็อกล่าสุดที่จ่ายเงินจริง
+                await prisma.shopDetail.updateMany({
+                    where: { userId: paidBooking.userId },
+                    data: { shopZoneLabel: paidZoneLabel }
+                });
+            }
+        }
     }
 }
 
@@ -761,134 +1019,7 @@ exports.confirmPayment = async (req, res) => {
             }
         }
 
-        await prisma.bookingRequest.update({
-            where: { id: requestId },
-            data: {
-                status: 'SUCCESS',
-                paymentConfirmedAt: new Date(),
-                // เก็บชื่อแอดมิน/พนักงานที่กดยืนยันสลิปไว้ ให้ใบเสนอราคา (controllers/quotationController.js) แสดง
-                // "พนักงานและผู้พิมพ์" เป็นคนที่ยืนยันจริง ไม่ใช่คนที่บังเอิญล็อกอินอยู่ตอนเปิดดูใบเสนอราคา
-                confirmedByName: req.user?.name || null
-            }
-        });
-
-        // คำขอต่อล็อก: ถ้าล็อกเดิมเคยถูกคืนวันสิ้นสุดเพราะจ่ายช้า (restoreUnpaidExtensions) ขยายให้ใหม่ตามที่จ่ายจริง
-        // เฉพาะล็อกที่ยังเป็นของสัญญาเดิมหรือยังว่างอยู่ ถ้าถูกจัดให้คนอื่นไปแล้วไม่เขียนทับ
-        const paidExtensionOrigin = await getExtensionOrigin(prisma, requestRecord.description);
-        if (paidExtensionOrigin) {
-            const paidCodes = parseStallCodes(requestRecord.assignedStallCode).filter((code) => paidExtensionOrigin.codes.includes(code));
-            const extensionBooking = await prisma.booking.findFirst({
-                where: { storeDetailSnapshot: { startsWith: buildBookingRequestTag(requestId) } },
-                select: { rentalEndDate: true }
-            });
-            if (paidCodes.length && extensionBooking?.rentalEndDate) {
-                await prisma.stall.updateMany({
-                    where: {
-                        stallCode: { in: paidCodes },
-                        OR: [{ status: 'AVAILABLE' }, { status: 'BOOKED', bookingEndDate: paidExtensionOrigin.endDate }]
-                    },
-                    data: { isAvailable: false, status: 'BOOKED', bookingStartDate: paidExtensionOrigin.startDate, bookingEndDate: extensionBooking.rentalEndDate }
-                });
-            }
-        }
-
-        // Booking ที่ผูกกับคำขอนี้ต้องตามสถานะไปเป็น SUCCESS ด้วย ไม่งั้นหน้า seller
-        // dashboard/booking-status/booking-history จะยังค้างแสดงว่า "รอดำเนินการ" ทั้งที่จ่ายเงินจบแล้ว
-        const successRequestTag = buildBookingRequestTag(requestId);
-        if (successRequestTag) {
-            await prisma.booking.updateMany({
-                where: { storeDetailSnapshot: { startsWith: successRequestTag } },
-                data: { status: 'SUCCESS' }
-            });
-        }
-
-        // จ่ายเงินสำเร็จ = ได้ล็อกจริงแล้ว เลื่อนสถานะลูกค้าทั่วไปเป็นผู้ขาย (ไม่แตะ ADMIN/STAFF/SELLER เดิม)
-        const paidRequestTag = buildBookingRequestTag(requestId);
-        if (paidRequestTag) {
-            const paidBooking = await prisma.booking.findFirst({
-                where: { storeDetailSnapshot: { startsWith: paidRequestTag } },
-                select: { userId: true, zoneCode: true, selectedZoneLabel: true }
-            });
-            const paidZoneLabel = paidBooking?.selectedZoneLabel || (paidBooking?.zoneCode ? `โซน ${paidBooking.zoneCode}` : null);
-            if (paidBooking?.userId) {
-                await prisma.user.updateMany({
-                    where: { id: paidBooking.userId, role: 'CUSTOMER' },
-                    data: { role: 'SELLER' }
-                });
-
-                // ซิงก์ข้อมูลร้านค้าเข้า ShopDetail จากใบสมัคร (SellerApplication) ตัวล่าสุดของผู้ใช้นี้
-                // เส้นทางนี้ (จองแผงเอง -> แอดมินยืนยันสลิป) ผู้ใช้อาจยังไม่ผ่าน /admin/seller-applications
-                // มาก่อน (isSellerOrApplicant อนุญาตให้จองได้ตั้งแต่ใบสมัครยังรอตรวจสอบ) การยืนยันจ่ายเงินสำเร็จ
-                // ของแอดมินในเส้นทางนี้จึงถือเป็นการอนุมัติโดยพฤตินัย — ไม่ปล่อยให้ผู้ขายกรอกชื่อร้าน/
-                // ประเภทสินค้าเองใหม่ใน /shop-profile จนไม่ตรงกับที่สมัครมา
-                const latestApplication = await prisma.sellerApplication.findFirst({
-                    where: { userId: paidBooking.userId },
-                    orderBy: { createdAt: 'desc' }
-                });
-                if (latestApplication) {
-                    const isFirstApproval = String(latestApplication.status || '').toUpperCase() === 'PENDING';
-                    if (isFirstApproval) {
-                        await prisma.sellerApplication.update({
-                            where: { id: latestApplication.id },
-                            data: { status: 'APPROVED', reviewedAt: new Date() }
-                        });
-                    }
-                    // ชื่อร้าน/ประเภทสินค้า(+เฉพาะ) ยึดตามใบสมัครเสมอ (ผู้ขายแก้เองไม่ได้ ใช้จัดโซน/ระยะห่างล็อก)
-                    // ส่วนรายละเอียด/แนะนำร้าน/เมนูเด่น/รูปปก ผู้ขายแก้ต่อได้ใน /shop-profile — เติมจากใบสมัครเฉพาะช่องที่ยังว่าง
-                    // ไม่งั้นทุกครั้งที่ยืนยันสลิปรอบใหม่จะเขียนทับของที่ผู้ขายแก้ไว้กลับเป็นค่าตอนสมัคร
-                    const existingShop = await prisma.shopDetail.findUnique({
-                        where: { userId: paidBooking.userId },
-                        select: { productDetail: true, shopSummary: true, shopTags: true, shopCoverImage: true }
-                    });
-                    const fillIfEmpty = (field) => (existingShop?.[field] ? {} : { [field]: latestApplication[field] || null });
-                    const applicationShopData = {
-                        shopName: latestApplication.shopName,
-                        productType: latestApplication.productType,
-                        productSubtype: latestApplication.productSubtype,
-                        productSubtypeOther: latestApplication.productSubtypeOther
-                    };
-                    const syncedShop = await prisma.shopDetail.upsert({
-                        where: { userId: paidBooking.userId },
-                        update: {
-                            ...applicationShopData,
-                            ...fillIfEmpty('productDetail'),
-                            ...fillIfEmpty('shopSummary'),
-                            ...fillIfEmpty('shopTags'),
-                            ...fillIfEmpty('shopCoverImage'),
-                            isVerified: true,
-                            ...(paidZoneLabel ? { shopZoneLabel: paidZoneLabel } : {})
-                        },
-                        create: {
-                            userId: paidBooking.userId,
-                            ...applicationShopData,
-                            productDetail: latestApplication.productDetail,
-                            shopSummary: latestApplication.shopSummary,
-                            shopTags: latestApplication.shopTags,
-                            shopCoverImage: latestApplication.shopCoverImage,
-                            isVerified: true,
-                            shopZoneLabel: paidZoneLabel || null
-                        }
-                    });
-                    await copyApplicationGalleries(syncedShop, latestApplication);
-                    // เบอร์ในใบสมัครคือเบอร์ที่ผู้สมัครยืนยันตอนสมัคร — ที่อื่นอ่านจาก User.phoneNumber
-                    // (การ์ดล็อกบนผังตลาด, จับคู่คำขอจองล็อกกับผู้ใช้ด้านบน) ซิงก์แค่ตอนอนุมัติครั้งแรก
-                    // รอบต่อ ๆ ไปผู้ขายอาจแก้เบอร์ในโปรไฟล์แล้ว ไม่เขียนทับ
-                    if (isFirstApproval && latestApplication.phoneNumber) {
-                        await prisma.user.update({
-                            where: { id: paidBooking.userId },
-                            data: { phoneNumber: latestApplication.phoneNumber }
-                        });
-                    }
-                } else if (paidZoneLabel) {
-                    // ไม่มีใบสมัครใหม่ (เช่น ผู้ขายเดิมต่อ/จองล็อกใหม่ในรอบถัดไป) แต่มี ShopDetail อยู่แล้ว
-                    // ก็ยังต้องอัปเดตโซนให้ตรงกับล็อกล่าสุดที่จ่ายเงินจริง
-                    await prisma.shopDetail.updateMany({
-                        where: { userId: paidBooking.userId },
-                        data: { shopZoneLabel: paidZoneLabel }
-                    });
-                }
-            }
-        }
+        await markPaymentConfirmed(requestRecord, req.user?.name);
 
         return res.redirect(approvalsUrl(req, 'success=payment_confirmed'));
     } catch (err) {
@@ -922,8 +1053,11 @@ exports.rejectPaymentSlip = async (req, res) => {
             return res.redirect(approvalsUrl(req, 'error=no_slip_to_confirm'));
         }
 
-        // ลบไฟล์สลิปเดิมออกจากที่เก็บ กันไฟล์ค้างไม่มีใครอ้างถึง
-        await deleteImage(requestRecord.paymentSlipImage);
+        // ลบไฟล์สลิปเดิมออกจากที่เก็บ กันไฟล์ค้างไม่มีใครอ้างถึง — เว้นไว้ถ้าคำขออื่นยังใช้รูปเดียวกัน (เช่นข้อมูลสาธิต)
+        const sharedSlipCount = await prisma.bookingRequest.count({
+            where: { paymentSlipImage: requestRecord.paymentSlipImage, id: { not: requestRecord.id } }
+        });
+        if (!sharedSlipCount) await deleteImage(requestRecord.paymentSlipImage);
 
         await prisma.bookingRequest.update({
             where: { id: requestId },
@@ -931,7 +1065,8 @@ exports.rejectPaymentSlip = async (req, res) => {
                 paymentSlipImage: null,
                 slipVerified: null,
                 slipVerifiedAmount: null,
-                slipVerifyReason: `[แอดมินปฏิเสธสลิป] ${reason}`
+                slipVerifyReason: `[แอดมินปฏิเสธสลิป] ${reason}`,
+                description: withActionLog(requestRecord.description, req.user?.name, `แจ้งสลิปไม่ถูกต้อง (${reason})`)
             }
         });
 
@@ -1059,7 +1194,7 @@ exports.confirmBookingStall = async (req, res) => {
                     // IN_PROGRESS ก่อนถึงจะอัปโหลดสลิปได้ ไม่มีทางถูกเข้าถึงเลย
                     status: 'IN_PROGRESS',
                     assignedStallCode: joinedAssignedStallCode,
-                    description: cleanedDescription,
+                    description: withActionLog(cleanedDescription, req.user?.name, `จัดล็อก ${joinedAssignedStallCode}`),
                     // เริ่มนับกำหนดชำระเงินใหม่ (ภายใน 6 ชม.) ทุกครั้งที่จัดล็อก แม้เป็นการจัดซ้ำ
                     lockAssignedAt: new Date()
                 }
@@ -1148,7 +1283,7 @@ exports.confirmBookingStall = async (req, res) => {
 
 // แกนของ "ปฏิเสธ/ยกเลิกคำขอ" — ใช้ทั้งปุ่มเดี่ยว (rejectBookingStall) และปุ่มปิดคำขอค้างทั้งรอบ (rejectStaleRound)
 // requestRecord ต้องมี id, description, assignedStallCode
-async function cancelRequestCore(requestRecord, reason) {
+async function cancelRequestCore(requestRecord, reason, actorName, actionLabel) {
     // ถ้าแอดมินเคยจัดล็อกให้แล้ว (สถานะ IN_PROGRESS) แล้วมาปฏิเสธทีหลัง ต้องปล่อยล็อกจริงทุกล็อก
     // ที่จัดไว้กลับเป็นว่างด้วย ไม่งั้นล็อกจะค้างสถานะ BOOKED ตลอดไปโดยไม่มีเจ้าของ
     // คำขอต่อล็อกที่จัดล็อกเดิมไว้แล้ว ปฏิเสธแล้วล็อกกลับไปเป็นของสัญญาเดิม (วันสิ้นสุดเดิม) ไม่ปล่อยเป็นว่าง
@@ -1184,7 +1319,11 @@ async function cancelRequestCore(requestRecord, reason) {
         data: {
             status: 'REJECTED',
             assignedStallCode: null,
-            description: withRejectReason(requestRecord.description, trimmedReason)
+            description: withActionLog(
+                withRejectReason(requestRecord.description, trimmedReason),
+                actorName,
+                `${actionLabel || (heldStalls.length ? 'ยกเลิกการจัดล็อก' : 'ปฏิเสธคำขอ')}${trimmedReason ? ` (${trimmedReason})` : ''}`
+            )
         }
     });
 
@@ -1220,11 +1359,40 @@ exports.rejectBookingStall = async (req, res) => {
             return res.redirect(approvalsUrl(req, 'error=history_round_locked'));
         }
 
-        await cancelRequestCore(requestRecord, req.body.reason);
+        await cancelRequestCore(requestRecord, req.body.reason, req.user?.name);
 
         return res.redirect(approvalsUrl(req, 'success=request_rejected'));
     } catch (err) {
         return res.redirect(approvalsUrl(req, 'error=reject_booking_stall_failed'));
+    }
+};
+
+// ยืนยันการชำระเงินทุกใบที่ระบบตรวจสลิปแล้วว่า "สลิปจริง ยอดตรง" (slipVerified = true) ในรอบที่เลือก ครั้งเดียว
+// ใบที่ตรวจไม่ผ่าน/ยังไม่ได้ตรวจ ไม่แตะ — แอดมินต้องเปิดดูทีละใบ
+exports.confirmVerifiedSlips = async (req, res) => {
+    try {
+        const roundNumber = Number.parseInt(req.body.round, 10);
+        if (!Number.isInteger(roundNumber) || roundNumber <= 0) {
+            return res.redirect(approvalsUrl(req, 'error=missing_request_id'));
+        }
+        const window = getRoundWindow(roundNumber);
+        const candidates = await prisma.bookingRequest.findMany({
+            where: { status: 'IN_PROGRESS', paymentSlipImage: { not: null }, slipVerified: true, paymentConfirmedAt: null }
+        });
+        let confirmed = 0;
+        for (const request of candidates) {
+            const linkedBooking = await prisma.booking.findFirst({
+                where: { storeDetailSnapshot: { startsWith: buildBookingRequestTag(request.id) } },
+                select: { rentalStartDate: true }
+            });
+            const basis = new Date(linkedBooking?.rentalStartDate || request.createdAt);
+            if (basis < window.cycleStart || basis > window.cycleEnd) continue;
+            await markPaymentConfirmed(request, req.user?.name, 'ยืนยันการชำระเงิน (ยืนยันพร้อมกันหลายใบ)');
+            confirmed += 1;
+        }
+        return res.redirect(approvalsUrl(req, `success=slips_confirmed&closed=${confirmed}`));
+    } catch (err) {
+        return res.redirect(approvalsUrl(req, 'error=confirm_payment_failed'));
     }
 };
 
@@ -1250,7 +1418,7 @@ exports.rejectStaleRound = async (req, res) => {
             });
             const basis = new Date(linkedBooking?.rentalStartDate || request.createdAt);
             if (basis < window.cycleStart || basis > window.cycleEnd) continue;
-            await cancelRequestCore(request, reason);
+            await cancelRequestCore(request, reason, req.user?.name, 'ปิดคำขอค้างทั้งรอบ');
             closed += 1;
         }
         return res.redirect(approvalsUrl(req, `success=stale_closed&closed=${closed}`));
