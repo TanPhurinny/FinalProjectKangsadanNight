@@ -8,37 +8,6 @@ if (flashBannerEl) {
     setTimeout(() => flashBannerEl.classList.remove('flash-banner--flash'), 1600);
 }
 
-const statusBtns = document.querySelectorAll('#statusFilters .btn-filter');
-const zoneBtns = document.querySelectorAll('#zoneFilters .btn-filter');
-const cards = document.querySelectorAll('.booking-card');
-const modal = document.getElementById('detailModal');
-const searchInput = document.getElementById('shopSearch');
-
-const countAllEl = document.getElementById('count-all');
-const countPendingEl = document.getElementById('count-pending');
-const countApprovedEl = document.getElementById('count-approved');
-const countInProgressEl = document.getElementById('count-in_progress');
-const countSuccessEl = document.getElementById('count-success');
-const countRejectedEl = document.getElementById('count-rejected');
-const countAEl = document.getElementById('count-A');
-const countBEl = document.getElementById('count-B');
-const countCEl = document.getElementById('count-C');
-const countDEl = document.getElementById('count-D');
-const countEEl = document.getElementById('count-E');
-const countFEl = document.getElementById('count-F');
-const visibleCountEl = document.getElementById('visibleCount');
-
-let currentBooking = null;
-
-let currentStatus = 'all';
-let currentZone = 'all';
-let currentSearch = '';
-
-function navigateToBookingStall(stall) {
-    const zoneChar = stall.charAt(0);
-    window.location.href = `/admin/booking-stall?zone=${zoneChar}&stall=${stall}`;
-}
-
 function navigateToBookingRequest(requestId) {
     window.location.href = `/admin/booking-stall?requestId=${encodeURIComponent(String(requestId || ''))}`;
 }
@@ -163,299 +132,309 @@ function submitForcePayment(requestId) {
     });
 }
 
-function confirmArrangeStall(stall) {
-    navigateToBookingStall(stall);
+
+// ยกเลิกคำขอที่จัดล็อกแล้ว (เลยกำหนดจ่าย/ผู้ขายแจ้งยกเลิก) — ต้องผ่าน rejectBookingStall เพราะคืนล็อกด้วย
+// (คำขอต่อล็อก: ล็อกกลับเป็นสัญญาเดิม ไม่ถูกปล่อยเป็นว่าง ดู releaseOrRestoreStalls ใน utils/stallRenewal.js)
+function submitCancelAssignment(detail) {
+    const isExtend = detail.kind === 'extend';
+    window.showConfirmDialog({
+        title: 'ยกเลิกการจัดล็อก',
+        message: isExtend
+            ? `ยกเลิกคำขอต่อล็อก #${detail.id} ของ "${detail.shop}" — ล็อก ${detail.assignedStallCode || ''} จะกลับเป็นสัญญาเดิม ระบุเหตุผลให้ผู้ขายเห็นได้ (ไม่บังคับ)`
+            : `ยกเลิกคำขอ #${detail.id} ของ "${detail.shop}" — ล็อก ${detail.assignedStallCode || ''} จะกลับเป็นว่างให้คนอื่นจองได้ ระบุเหตุผลให้ผู้ขายเห็นได้ (ไม่บังคับ)`,
+        tone: 'danger',
+        confirmText: 'ยกเลิกการจัดล็อก',
+        inputPlaceholder: 'เหตุผล เช่น ไม่ชำระเงินภายในกำหนด (ไม่บังคับ)',
+        onConfirm: (reason) => postForm('/admin/booking-stall/reject', { requestId: detail.id, reason: String(reason || '').trim() })
+    });
+}
+
+function submitRejectRequest(detail) {
+    window.showConfirmDialog({
+        title: detail.kind === 'extend' ? 'ปฏิเสธคำขอต่อล็อก' : 'ปฏิเสธการจอง',
+        message: `ระบุเหตุผลที่ปฏิเสธคำขอ #${detail.id} ของ "${detail.shop}" (จะแสดงให้ผู้ขายเห็น ไม่ระบุก็ได้)`,
+        tone: 'danger',
+        confirmText: 'ปฏิเสธคำขอ',
+        inputPlaceholder: 'เหตุผลที่ปฏิเสธ (ไม่บังคับ)',
+        onConfirm: (reason) => submitApproval(detail.id, 'REJECTED', String(reason || '').trim())
+    });
+}
+
+function postForm(action, fields) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = action;
+    Object.entries(fields).forEach(([name, value]) => {
+        if (value === undefined || value === null || value === '') return;
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = String(value);
+        form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// ---------- ตัวกรอง: ประเภท (จองใหม่/ต่อล็อก) × ขั้นตอน × โซน × คำค้น ----------
+const pageState = window.APPROVAL_PAGE_STATE || { isEditable: true };
+const rows = Array.from(document.querySelectorAll('.q-row'));
+const sectionsEls = Array.from(document.querySelectorAll('.queue-section'));
+const kindBtns = Array.from(document.querySelectorAll('.kind-switch__btn'));
+const stageBtns = Array.from(document.querySelectorAll('.stage-cell'));
+const zoneBtns = Array.from(document.querySelectorAll('.zone-chip'));
+const searchInput = document.getElementById('shopSearch');
+const visibleCountEl = document.getElementById('visibleCount');
+const filteredEmptyEl = document.getElementById('filteredEmpty');
+const resetBtn = document.getElementById('resetFilters');
+const modal = document.getElementById('detailModal');
+
+const filters = { kind: 'all', stage: 'all', zone: 'all', search: '' };
+
+function matches(row, ignore) {
+    const d = row.dataset;
+    return (ignore === 'kind' || filters.kind === 'all' || d.kind === filters.kind)
+        && (ignore === 'stage' || filters.stage === 'all' || d.stage === filters.stage)
+        && (ignore === 'zone' || filters.zone === 'all' || d.zone === filters.zone)
+        && (!filters.search || d.search.includes(filters.search));
 }
 
 function applyFilters() {
-    let visibleCount = 0;
-
-    cards.forEach((card) => {
-        const cStatus = card.dataset.status;
-        const cZone = card.dataset.zone;
-        const cShop = (card.dataset.shop || '').toLowerCase();
-
-        const matchStatus = currentStatus === 'all' || cStatus === currentStatus;
-        const matchZone = currentZone === 'all' || cZone === currentZone;
-        const matchSearch = !currentSearch || cShop.includes(currentSearch);
-        const isVisible = matchStatus && matchZone && matchSearch;
-
-        if (isVisible) {
-            visibleCount += 1;
-        }
-
-        card.classList.toggle('d-none', !isVisible);
+    let visible = 0;
+    rows.forEach((row) => {
+        const show = matches(row);
+        row.hidden = !show;
+        if (show) visible += 1;
     });
-
-    if (visibleCountEl) {
-        visibleCountEl.textContent = visibleCount;
-    }
+    sectionsEls.forEach((section) => {
+        const shown = section.querySelectorAll('.q-row:not([hidden])').length;
+        section.hidden = shown === 0;
+        const countEl = section.querySelector('[data-section-count]');
+        if (countEl) countEl.textContent = shown;
+    });
+    // ตัวเลขบนช่องขั้นตอนนับตามประเภท/โซน/คำค้นที่เลือกอยู่ (ไม่นับตัวกรองขั้นตอนเอง) ให้กดสลับดูได้ไม่หลงทาง
+    stageBtns.forEach((btn) => {
+        const count = rows.filter((row) => row.dataset.stage === btn.dataset.stage && matches(row, 'stage')).length;
+        const valueEl = btn.querySelector('.stage-cell__value');
+        if (valueEl) valueEl.textContent = count;
+        btn.classList.toggle('has-items', count > 0);
+        btn.classList.toggle('active', filters.stage === btn.dataset.stage);
+        btn.setAttribute('aria-pressed', String(filters.stage === btn.dataset.stage));
+    });
+    if (visibleCountEl) visibleCountEl.textContent = visible;
+    if (filteredEmptyEl) filteredEmptyEl.classList.toggle('d-none', !(rows.length && visible === 0));
+    const isFiltered = filters.kind !== 'all' || filters.stage !== 'all' || filters.zone !== 'all' || filters.search;
+    if (resetBtn) resetBtn.classList.toggle('d-none', !isFiltered);
 }
 
-function updateSummaryCounters() {
-    const counters = {
-        all: 0,
-        pending: 0,
-        approved: 0,
-        in_progress: 0,
-        success: 0,
-        rejected: 0,
-        A: 0,
-        B: 0,
-        C: 0,
-        D: 0,
-        E: 0,
-        F: 0
-    };
-
-    cards.forEach((card) => {
-        counters.all += 1;
-
-        const status = card.dataset.status;
-        const zone = card.dataset.zone;
-
-        if (status in counters) {
-            counters[status] += 1;
-        }
-
-        if (zone in counters) {
-            counters[zone] += 1;
-        }
+kindBtns.forEach((btn) => btn.addEventListener('click', () => {
+    filters.kind = btn.dataset.kind;
+    kindBtns.forEach((b) => {
+        b.classList.toggle('active', b === btn);
+        b.setAttribute('aria-selected', String(b === btn));
     });
+    applyFilters();
+}));
 
-    if (countAllEl) {
-        countAllEl.textContent = counters.all;
-    }
+stageBtns.forEach((btn) => btn.addEventListener('click', () => {
+    filters.stage = filters.stage === btn.dataset.stage ? 'all' : btn.dataset.stage; // กดซ้ำ = ดูทุกขั้นตอน
+    applyFilters();
+}));
 
-    if (countPendingEl) {
-        countPendingEl.textContent = counters.pending;
-    }
-
-    if (countApprovedEl) {
-        countApprovedEl.textContent = counters.approved;
-    }
-
-    if (countInProgressEl) {
-        countInProgressEl.textContent = counters.in_progress;
-    }
-
-    if (countSuccessEl) {
-        countSuccessEl.textContent = counters.success;
-    }
-
-    if (countRejectedEl) {
-        countRejectedEl.textContent = counters.rejected;
-    }
-
-    if (countAEl) {
-        countAEl.textContent = counters.A;
-    }
-
-    if (countBEl) {
-        countBEl.textContent = counters.B;
-    }
-
-    if (countCEl) {
-        countCEl.textContent = counters.C;
-    }
-
-    if (countDEl) {
-        countDEl.textContent = counters.D;
-    }
-
-    if (countEEl) {
-        countEEl.textContent = counters.E;
-    }
-
-    if (countFEl) {
-        countFEl.textContent = counters.F;
-    }
-}
-
-statusBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-        statusBtns.forEach((item) => item.classList.remove('active'));
-        btn.classList.add('active');
-        currentStatus = btn.dataset.status;
-        applyFilters();
-    });
-});
-
-zoneBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-        zoneBtns.forEach((item) => item.classList.remove('active'));
-        btn.classList.add('active');
-        currentZone = btn.dataset.zone;
-        applyFilters();
-    });
-});
+zoneBtns.forEach((btn) => btn.addEventListener('click', () => {
+    filters.zone = btn.dataset.zone;
+    zoneBtns.forEach((b) => b.classList.toggle('active', b === btn));
+    applyFilters();
+}));
 
 if (searchInput) {
     searchInput.addEventListener('input', (event) => {
-        currentSearch = event.target.value.trim().toLowerCase();
+        filters.search = event.target.value.trim().toLowerCase();
         applyFilters();
     });
 }
 
-function openDetail(shop, zoneType, name, phone, statusLabel, note, requestId, createdAtText, rawStatus, shopImage, assignedStallCode, paymentSlipImage, paymentConfirmed, isExtension, extendOfRequestId, cornerZoneNote, isFinalPrice, booking, slipVerified, slipVerifyReason, rejectReason) {
-    const pageState = window.APPROVAL_PAGE_STATE || { isEditable: true };
-    currentBooking = {
-        shop,
-        zoneType,
-        statusLabel,
-        requestId,
-        rawStatus,
-        shopImage,
-        assignedStallCode,
-        paymentSlipImage,
-        paymentConfirmed: Boolean(paymentConfirmed),
-        isEditable: pageState.isEditable !== false
-    };
+if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+        Object.assign(filters, { kind: 'all', stage: 'all', zone: 'all', search: '' });
+        if (searchInput) searchInput.value = '';
+        kindBtns.forEach((b) => b.classList.toggle('active', b.dataset.kind === 'all'));
+        zoneBtns.forEach((b) => b.classList.toggle('active', b.dataset.zone === 'all'));
+        applyFilters();
+    });
+}
 
-    document.getElementById('m-shop').innerText = shop;
-    document.getElementById('m-zone').innerText = zoneType;
-    document.getElementById('m-start').innerText = createdAtText;
-    document.getElementById('m-name').innerText = name;
-    document.getElementById('m-phone').innerText = phone;
-    document.getElementById('m-status').innerText = statusLabel;
-    document.getElementById('m-note').innerText = note;
-    document.getElementById('m-assigned-stall').innerText = assignedStallCode || '-';
+// ---------- ปุ่มบนแถว ----------
+function readDetail(row) {
+    try {
+        return JSON.parse(row.dataset.detail || '{}');
+    } catch (error) {
+        return {};
+    }
+}
 
+function runAction(action, detail) {
+    if (action === 'assign') return navigateToBookingRequest(detail.id);
+    if (action === 'cancel') return submitCancelAssignment(detail);
+    if (action === 'reject') return submitRejectRequest(detail);
+    if (action === 'confirm-payment') return submitConfirmPayment(detail.id);
+    if (action === 'reject-slip') return submitRejectSlip(detail.id);
+    if (action === 'quotation') { window.location.href = `/admin/quotations/${detail.id}`; return undefined; }
+    return openDetail(detail);
+}
+
+rows.forEach((row) => {
+    row.addEventListener('click', (event) => {
+        const actionBtn = event.target.closest('[data-action]');
+        if (event.target.closest('a')) return; // ลิงก์ใบเสนอราคา
+        runAction(actionBtn ? actionBtn.dataset.action : 'detail', readDetail(row));
+    });
+});
+
+// ---------- หน้าต่างรายละเอียด: ปุ่มตามขั้นตอน ----------
+const STAGE_ACTIONS = {
+    assign: (d) => [
+        { action: 'reject', label: d.kind === 'extend' ? 'ปฏิเสธคำขอต่อ' : 'ปฏิเสธการจอง', tone: 'danger-ghost' },
+        { action: 'assign', label: d.kind === 'extend' ? `ยืนยันล็อกเดิม ${d.extension ? d.extension.originalStallText : ''}`.trim() : 'จัดล็อก', tone: 'go' }
+    ],
+    slip: () => [
+        { action: 'reject-slip', label: 'สลิปไม่ถูกต้อง', tone: 'danger-ghost' },
+        { action: 'confirm-payment', label: 'ยืนยันการชำระเงิน', tone: 'go' }
+    ],
+    overdue: () => [
+        { action: 'assign', label: 'เปลี่ยนล็อก', tone: 'ghost' },
+        { action: 'cancel', label: 'ยกเลิกการจัดล็อก', tone: 'danger' }
+    ],
+    awaiting: () => [
+        { action: 'cancel', label: 'ยกเลิกการจัดล็อก', tone: 'danger-ghost' },
+        { action: 'assign', label: 'เปลี่ยนล็อก', tone: 'ghost' }
+    ],
+    done: () => [{ action: 'quotation', label: 'ใบเสนอราคา', tone: 'ghost' }],
+    rejected: () => []
+};
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function openDetail(detail) {
+    const isExtend = detail.kind === 'extend';
+    setText('m-kicker', `${isExtend ? 'ต่อล็อก' : 'จองใหม่'} #${detail.id}${isExtend && detail.extendOfRequestId ? ` · ต่อจากคำขอ #${detail.extendOfRequestId}` : ''}`);
+    setText('m-title', detail.shop);
+    setText('m-shop', detail.shop);
+    setText('m-zone', detail.zoneLabel);
+    setText('m-name', detail.sellerName);
+    setText('m-phone', detail.phone);
+    setText('m-start', detail.createdAtText);
+    setText('m-note', detail.note);
+    setText('m-assigned-stall', detail.assignedStallCode || '-');
+
+    const stageEl = document.getElementById('m-stage');
+    if (stageEl) {
+        const extra = (detail.stage === 'awaiting' || detail.stage === 'overdue') && detail.paymentDeadlineText
+            ? ` · กำหนดจ่าย ${detail.paymentDeadlineText}` : '';
+        const reason = detail.stage === 'rejected' && detail.rejectReason ? ` · ${detail.rejectReason}` : '';
+        stageEl.className = `modal-stage modal-stage--${detail.stage}`;
+        stageEl.textContent = `${detail.stageLabel}${extra}${reason}`;
+    }
+
+    const extEl = document.getElementById('m-ext');
+    if (extEl) {
+        const ext = detail.extension;
+        extEl.classList.toggle('d-none', !ext);
+        if (ext) {
+            const cutoffLine = ext.cutoffState === 'passed'
+                ? '<span class="flag flag--danger">เลย 20:00 แล้ว</span> ล็อกเดิมยังถูกกันไว้ให้คำขอนี้'
+                : ext.cutoffText ? `ต้องจัดก่อน <span class="mono">${escapeHtml(ext.cutoffText)}</span>` : '';
+            extEl.innerHTML = `
+                <div><span class="modal-ext__label">ล็อกเดิม</span><span class="mono">${escapeHtml(ext.originalStallText)}</span></div>
+                <div><span class="modal-ext__label">สัญญาเดิมหมด</span><span class="mono">${escapeHtml(ext.originalEndText)}</span></div>
+                ${detail.stage === 'assign' && cutoffLine ? `<div class="modal-ext__wide">${cutoffLine}</div>` : ''}`;
+        }
+    }
+
+    const booking = detail.booking;
+    setText('m-rental-dates', booking ? `${booking.rentalStartDateText} – ${booking.rentalEndDateText} (${booking.rentalDays} วัน, คิดเงิน ${booking.billableDays} วัน)` : '-');
+    setText('m-stall-appliance', booking ? `${booking.stallCount} ล็อก · เครื่องเล็ก ${booking.smallApplianceCount} · เครื่องใหญ่ ${booking.largeApplianceCount}` : '-');
+    setText('m-price-label', booking ? (detail.isFinalPrice ? 'ยอดจริง' : 'ยอดประเมิน') : 'ยอด');
+    setText('m-price', booking ? `${Number(booking.grandTotal).toLocaleString('th-TH')} บาท` : '-');
+
+    const tags = [];
+    if (detail.cornerZoneNote) tags.push(`<span class="tag tag--corner">สนใจล็อกเต็ง: ${escapeHtml(detail.cornerZoneNote)}</span>`);
+    if (detail.rejectReason && detail.stage !== 'rejected') tags.push(`<span class="tag tag--slip-bad">เหตุผลที่ปฏิเสธครั้งก่อน: ${escapeHtml(detail.rejectReason)}</span>`);
     const tagsEl = document.getElementById('m-tags');
     if (tagsEl) {
-        const tagsHtml = [];
-        if (isExtension) {
-            tagsHtml.push(`<span class="tag tag--extend"><i class="fa-solid fa-rotate"></i> ต่อล็อคจากคำขอ #${extendOfRequestId}</span>`);
-        }
-        if (cornerZoneNote) {
-            tagsHtml.push(`<span class="tag tag--corner"><i class="fa-solid fa-star"></i> สนใจล็อคเต็ง: ${cornerZoneNote}</span>`);
-        }
-        if (rejectReason) {
-            tagsHtml.push(`<span class="tag tag--slip-bad"><i class="fa-solid fa-circle-xmark"></i> เหตุผลที่ปฏิเสธ: ${rejectReason}</span>`);
-        }
-        if (paymentSlipImage && slipVerified === true) {
-            tagsHtml.push('<span class="tag tag--slip-ok"><i class="fa-solid fa-circle-check"></i> สลิปจริง ยอดตรง</span>');
-        } else if (paymentSlipImage && slipVerified === false) {
-            tagsHtml.push(`<span class="tag tag--slip-bad"><i class="fa-solid fa-triangle-exclamation"></i> สลิปมีปัญหา: ${slipVerifyReason || 'ตรวจไม่ผ่าน'}</span>`);
-        } else if (paymentSlipImage) {
-            tagsHtml.push('<span class="tag tag--slip-pending"><i class="fa-solid fa-hourglass-half"></i> ยังไม่ตรวจสลิปอัตโนมัติ</span>');
-        }
-        tagsEl.innerHTML = tagsHtml.join('');
-        tagsEl.classList.toggle('d-none', tagsHtml.length === 0);
-    }
-
-    const rentalDatesEl = document.getElementById('m-rental-dates');
-    const stallApplianceEl = document.getElementById('m-stall-appliance');
-    const priceLabelEl = document.getElementById('m-price-label');
-    const priceEl = document.getElementById('m-price');
-    if (booking) {
-        if (rentalDatesEl) rentalDatesEl.innerText = `${booking.rentalStartDateText} - ${booking.rentalEndDateText} (${booking.rentalDays} วัน)`;
-        if (stallApplianceEl) stallApplianceEl.innerText = `${booking.stallCount} ล็อก / เครื่องเล็ก ${booking.smallApplianceCount} + เครื่องใหญ่ ${booking.largeApplianceCount}`;
-        if (priceLabelEl) priceLabelEl.innerText = isFinalPrice ? 'ราคาจริง:' : 'ราคาประเมิน:';
-        if (priceEl) priceEl.innerText = `${Number(booking.grandTotal).toLocaleString('th-TH')} บาท`;
-    } else {
-        if (rentalDatesEl) rentalDatesEl.innerText = '-';
-        if (stallApplianceEl) stallApplianceEl.innerText = '-';
-        if (priceLabelEl) priceLabelEl.innerText = 'ราคา:';
-        if (priceEl) priceEl.innerText = '-';
-    }
-
-    const shopImageEl = document.getElementById('m-shop-image');
-    const shopImageEmptyEl = document.getElementById('m-shop-image-empty');
-    const imageUrl = String(shopImage || '').trim();
-    if (shopImageEl && shopImageEmptyEl) {
-        if (imageUrl) {
-            shopImageEl.src = imageUrl;
-            shopImageEl.classList.remove('d-none');
-            shopImageEmptyEl.classList.add('d-none');
-        } else {
-            shopImageEl.src = '';
-            shopImageEl.classList.add('d-none');
-            shopImageEmptyEl.classList.remove('d-none');
-        }
+        tagsEl.innerHTML = tags.join('');
+        tagsEl.classList.toggle('d-none', tags.length === 0);
     }
 
     const slipBox = document.getElementById('m-payment-slip-box');
-    const slipImgEl = document.getElementById('m-payment-slip');
-    const slipUrl = String(paymentSlipImage || '').trim();
-    if (slipBox && slipImgEl) {
+    const slipUrl = String(detail.paymentSlipImage || '').trim();
+    if (slipBox) {
+        slipBox.classList.toggle('d-none', !slipUrl);
         if (slipUrl) {
-            slipImgEl.src = slipUrl;
-            slipBox.classList.remove('d-none');
-        } else {
-            slipImgEl.src = '';
-            slipBox.classList.add('d-none');
+            document.getElementById('m-payment-slip').src = slipUrl;
+            document.getElementById('m-payment-slip-link').href = slipUrl;
+            setText('m-slip-expected', booking ? `ต้องชำระ ${Number(booking.grandTotal).toLocaleString('th-TH')} บาท` : '');
+            const slipTag = detail.slipVerified === true
+                ? '<span class="tag tag--slip-ok">สลิปจริง ยอดตรง</span>'
+                : detail.slipVerified === false
+                    ? `<span class="tag tag--slip-bad">สลิปมีปัญหา: ${escapeHtml(detail.slipVerifyReason || 'ตรวจไม่ผ่าน')}</span>`
+                    : '<span class="tag tag--slip-pending">ยังไม่ตรวจสลิปอัตโนมัติ</span>';
+            document.getElementById('m-slip-tags').innerHTML = slipTag;
         }
     }
 
-    const approveBtn = document.getElementById('m-approve-btn');
-    const rejectBtn = document.getElementById('m-reject-btn');
-    const confirmPaymentBtn = document.getElementById('m-confirm-payment-btn');
-    const rejectSlipBtn = document.getElementById('m-reject-slip-btn');
-    if (approveBtn) {
-        approveBtn.onclick = () => navigateToBookingRequest(currentBooking.requestId);
+    const imageUrl = String(detail.productImage || '').trim();
+    const shopImageEl = document.getElementById('m-shop-image');
+    const shopImageEmptyEl = document.getElementById('m-shop-image-empty');
+    if (shopImageEl && shopImageEmptyEl) {
+        shopImageEl.src = imageUrl;
+        shopImageEl.classList.toggle('d-none', !imageUrl);
+        shopImageEmptyEl.classList.toggle('d-none', Boolean(imageUrl));
     }
-    if (rejectBtn) {
-        rejectBtn.onclick = () => window.showConfirmDialog({
-            title: 'ปฏิเสธการจอง',
-            message: `ระบุเหตุผลที่ปฏิเสธการจองร้าน "${currentBooking.shop}" (จะแสดงให้ผู้ขายเห็น ไม่ระบุก็ได้)`,
-            tone: 'danger',
-            confirmText: 'ปฏิเสธการจอง',
-            inputPlaceholder: 'เหตุผลที่ปฏิเสธ (ไม่บังคับ)',
-            onConfirm: (reason) => submitApproval(currentBooking.requestId, 'REJECTED', String(reason || '').trim())
-        });
-    }
-    if (confirmPaymentBtn) {
-        confirmPaymentBtn.onclick = () => submitConfirmPayment(currentBooking.requestId);
-    }
-    if (rejectSlipBtn) {
-        rejectSlipBtn.onclick = () => submitRejectSlip(currentBooking.requestId);
-    }
-
-    // ปุ่ม "อนุมัติ/ปฏิเสธ" ใช้ตอนสถานะยังเป็น pending เท่านั้น
-    // ปุ่ม "ยืนยันการชำระเงิน"/"สลิปไม่ถูกต้อง" ใช้ตอนแอดมินจัดล็อกให้แล้ว (in_progress) และผู้ขายส่งสลิปมาแล้ว แต่ยังไม่ยืนยัน
-    const canApproveReject = pageState.isEditable !== false && rawStatus === 'pending';
-    const canConfirmPayment = pageState.isEditable !== false && rawStatus === 'in_progress' && Boolean(slipUrl) && !currentBooking.paymentConfirmed;
-
-    if (approveBtn) approveBtn.classList.toggle('d-none', !canApproveReject);
-    if (rejectBtn) rejectBtn.classList.toggle('d-none', !canApproveReject);
-    if (confirmPaymentBtn) confirmPaymentBtn.classList.toggle('d-none', !canConfirmPayment);
-    if (rejectSlipBtn) rejectSlipBtn.classList.toggle('d-none', !canConfirmPayment);
 
     const footer = document.getElementById('m-footer-actions');
     if (footer) {
-        footer.style.display = (canApproveReject || canConfirmPayment) ? 'flex' : 'none';
+        const actions = pageState.isEditable !== false ? (STAGE_ACTIONS[detail.stage] || (() => []))(detail) : [];
+        footer.innerHTML = '';
+        actions.forEach((item) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `q-btn q-btn--${item.tone}`;
+            btn.textContent = item.label;
+            btn.addEventListener('click', () => runAction(item.action, detail));
+            footer.appendChild(btn);
+        });
+        footer.hidden = actions.length === 0;
     }
 
     modal.classList.add('active');
+    const closeBtn = modal.querySelector('.btn-close');
+    if (closeBtn) closeBtn.focus();
 }
 
 function closePopup() {
-    if (modal) {
-        modal.classList.remove('active');
-    }
-
-    currentBooking = null;
+    if (modal) modal.classList.remove('active');
 }
 
 function closeModalOnOverlay(event) {
-    if (event.target === modal) {
-        closePopup();
-    }
+    if (event.target === modal) closePopup();
 }
 
 window.openDetail = openDetail;
 window.closePopup = closePopup;
 window.closeModalOnOverlay = closeModalOnOverlay;
-window.confirmArrangeStall = confirmArrangeStall;
 window.submitApproval = submitApproval;
+window.submitForcePayment = submitForcePayment;
 
 document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-        closePopup();
-        closeConfirmDialog();
-    }
+    if (event.key === 'Escape') closePopup();
 });
 
-updateSummaryCounters();
 applyFilters();

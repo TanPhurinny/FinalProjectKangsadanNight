@@ -29,6 +29,10 @@
     });
   }
 
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
   function bookingStep(status) {
     switch (status) {
       case 'APPROVED':
@@ -179,6 +183,14 @@
             <button type="submit" class="btn btn-custom-primary btn-custom text-nowrap px-4"><i class="bi bi-upload me-1"></i>ส่งสลิปโอนเงิน</button>
           </form>
         </div>
+      `;
+    } else if (booking.status === 'REJECTED') {
+      // เหตุผลจากแอดมิน (ปฏิเสธคำขอ / ยกเลิกเพราะไม่ชำระเงิน) — ไม่มีเหตุผลก็บอกให้ติดต่อแอดมิน
+      const reasonText = booking.rejectReason ? escapeHtml(booking.rejectReason) : '';
+      paymentSection = `
+        <div class="pay-alert pay-alert--danger"><i class="bi bi-x-octagon-fill"></i><span>${reasonText
+          ? `แอดมินปฏิเสธ/ยกเลิกคำขอนี้ — เหตุผล: <strong>${reasonText}</strong>`
+          : 'แอดมินปฏิเสธ/ยกเลิกคำขอนี้ กรุณาติดต่อแอดมินหากต้องการทราบเหตุผล'}</span></div>
       `;
     } else if (booking.status === 'SUCCESS' && booking.paymentSlipImage) {
       paymentSection = `

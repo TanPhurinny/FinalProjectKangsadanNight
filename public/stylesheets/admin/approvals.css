@@ -1003,3 +1003,604 @@
         flex-direction: column;
     }
 }
+
+/* ========================================
+   APPROVAL QUEUE — คิวงานแยกตาม "ต้องทำอะไรต่อ"
+   ประเภทคำขอ = แถบสีซ้าย (จองใหม่ navy / ต่อล็อก teal), ขั้นตอน = หัวข้อกลุ่ม,
+   1 แถว = 1 ปุ่มหลัก, mono เฉพาะรหัส/เงิน/เวลา
+   ======================================== */
+
+.approvals-page--queue {
+    --kind-new: var(--navy);
+    --kind-extend: var(--primary-color);
+}
+
+.approvals-page--queue .container {
+    max-width: 1120px;
+}
+
+.approvals-page--queue .mono {
+    font-family: var(--mono);
+}
+
+.approvals-page--queue [hidden] {
+    display: none !important;
+}
+
+/* ---------- แผงตัวกรอง ---------- */
+.approvals-page .queue-panel {
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--navy);
+    border-radius: 4px;
+    background: #fff;
+    margin-bottom: 14px;
+}
+
+.approvals-page .queue-panel__top {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid var(--line);
+}
+
+.approvals-page .kind-switch {
+    display: flex;
+    border-right: 1px solid var(--line);
+}
+
+.approvals-page .kind-switch__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border: 0;
+    border-right: 1px solid var(--line-soft);
+    background: #fff;
+    color: var(--ink-soft);
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: inset 0 -3px 0 transparent;
+    transition: var(--transition);
+}
+
+.approvals-page .kind-switch__btn:last-child {
+    border-right: 0;
+}
+
+.approvals-page .kind-switch__btn:hover {
+    color: var(--navy);
+    background: var(--soft-bg);
+}
+
+.approvals-page .kind-switch__btn.active {
+    color: var(--navy);
+    box-shadow: inset 0 -3px 0 var(--navy);
+}
+
+.approvals-page .kind-switch__btn[data-kind='extend'].active {
+    box-shadow: inset 0 -3px 0 var(--kind-extend);
+}
+
+.approvals-page .kind-switch__count {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+}
+
+.approvals-page .kind-dot {
+    width: 10px;
+    height: 10px;
+    display: inline-block;
+}
+
+.approvals-page .kind-dot--new { background: var(--kind-new); }
+.approvals-page .kind-dot--extend { background: var(--kind-extend); }
+
+.approvals-page .queue-search {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px;
+    margin: 0;
+    color: var(--ink-soft);
+}
+
+.approvals-page .queue-search input {
+    flex: 1;
+    border: 0;
+    outline: none;
+    padding: 12px 0;
+    font: inherit;
+    font-size: 0.92rem;
+    color: var(--navy);
+    background: transparent;
+}
+
+.approvals-page .queue-search:focus-within {
+    box-shadow: inset 0 0 0 2px var(--primary-color);
+}
+
+/* ช่องขั้นตอน: ซ้าย "ต้องจัดการ" (เด่น) | ขวา "ติดตาม/จบแล้ว" (เงียบ) */
+.approvals-page .stage-grid {
+    display: grid;
+    grid-template-columns: 3fr 3fr;
+    border-bottom: 1px solid var(--line);
+}
+
+.approvals-page .stage-grid__group + .stage-grid__group {
+    border-left: 1px solid var(--line);
+}
+
+.approvals-page .stage-grid__caption {
+    padding: 8px 14px 0;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+.approvals-page .stage-grid__group--todo .stage-grid__caption {
+    color: var(--navy);
+}
+
+.approvals-page .stage-grid__cells {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.approvals-page .stage-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 6px 14px 12px;
+    border: 0;
+    border-right: 1px solid var(--line-soft);
+    background: #fff;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: inset 0 -3px 0 transparent;
+    transition: var(--transition);
+}
+
+.approvals-page .stage-cell:last-child {
+    border-right: 0;
+}
+
+.approvals-page .stage-cell:hover {
+    background: var(--soft-bg);
+}
+
+.approvals-page .stage-cell__value {
+    font-family: var(--mono);
+    font-size: 1.6rem;
+    font-weight: 600;
+    line-height: 1.1;
+    color: #a9bcc1;
+}
+
+.approvals-page .stage-cell__label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+.approvals-page .stage-cell.has-items .stage-cell__value { color: var(--navy); }
+.approvals-page .stage-cell--slip.has-items .stage-cell__value { color: var(--warning-dark); }
+.approvals-page .stage-cell--overdue.has-items .stage-cell__value { color: var(--danger-color); }
+.approvals-page .stage-cell.has-items .stage-cell__label { color: var(--navy); }
+
+.approvals-page .stage-cell.active {
+    background: var(--soft-bg);
+    box-shadow: inset 0 -3px 0 var(--navy);
+}
+
+.approvals-page .zone-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 14px;
+}
+
+.approvals-page .zone-row__label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin-right: 4px;
+}
+
+.approvals-page .zone-chip {
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    padding: 4px 10px;
+    border-radius: 3px;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.approvals-page .zone-chip .mono {
+    font-size: 0.74rem;
+    color: var(--ink-soft);
+    margin-left: 2px;
+}
+
+.approvals-page .zone-chip:hover { border-color: var(--navy); }
+
+.approvals-page .zone-chip.active {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
+}
+
+.approvals-page .zone-chip.active .mono { color: #c9d8dc; }
+
+.approvals-page--queue .list-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin: 0 0 12px;
+}
+
+.approvals-page--queue .list-meta strong { color: var(--navy); }
+
+.approvals-page .list-meta__reset {
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--primary-dark);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.approvals-page--queue .readonly-hint { margin-left: auto; }
+
+/* ---------- คิว ---------- */
+.approvals-page .queue-section {
+    margin-bottom: 22px;
+}
+
+.approvals-page .queue-section__head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--navy);
+}
+
+.approvals-page .queue-section__title {
+    margin: 0;
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--navy);
+}
+
+.approvals-page .queue-section__title .mono {
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+    margin-left: 4px;
+}
+
+.approvals-page .queue-section__hint {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+}
+
+.approvals-page .queue-section--slip .queue-section__head { border-bottom-color: var(--warning-color); }
+.approvals-page .queue-section--overdue .queue-section__head { border-bottom-color: var(--danger-color); }
+.approvals-page .queue-section--awaiting .queue-section__head,
+.approvals-page .queue-section--done .queue-section__head,
+.approvals-page .queue-section--rejected .queue-section__head { border-bottom-color: var(--line); }
+
+.approvals-page .q-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.5fr) minmax(0, 1.1fr) 190px;
+    gap: 0;
+    border-bottom: 1px solid var(--line);
+    border-left: 4px solid var(--kind-new);
+    background: #fff;
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.approvals-page .q-row--extend {
+    border-left-color: var(--kind-extend);
+}
+
+.approvals-page .q-row:hover {
+    background: var(--soft-bg);
+}
+
+.approvals-page .q-row > * {
+    padding: 12px 14px;
+    min-width: 0;
+}
+
+.approvals-page .q-row > * + * {
+    border-left: 1px solid var(--line-soft);
+}
+
+.approvals-page .q-row__kind {
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--kind-new);
+    margin-bottom: 2px;
+}
+
+.approvals-page .q-row--extend .q-row__kind {
+    color: var(--primary-dark);
+}
+
+.approvals-page .q-row__kind .mono {
+    color: var(--ink-soft);
+    font-weight: 500;
+}
+
+.approvals-page .q-row__shop {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.approvals-page .q-row__seller {
+    margin-top: 2px;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    overflow-wrap: anywhere;
+}
+
+.approvals-page .q-row__facts {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 120px) minmax(0, 1fr);
+    gap: 6px 16px;
+    margin: 0;
+    align-content: start;
+}
+
+.approvals-page .q-row__facts dt {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+.approvals-page .q-row__facts dd {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--navy);
+}
+
+.approvals-page .q-row__fact--wide {
+    grid-column: 1 / -1;
+}
+
+.approvals-page .q-muted {
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    font-weight: 400;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+}
+
+.approvals-page .q-row__state {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.approvals-page .q-row__note {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    line-height: 1.45;
+}
+
+.approvals-page .flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--navy);
+    background: #fff;
+}
+
+.approvals-page .flag .mono { font-size: 0.76rem; }
+.approvals-page .flag--warn { border-color: var(--warning-color); color: var(--warning-dark); background: #fdf7ef; }
+.approvals-page .flag--danger { border-color: var(--danger-color); color: var(--danger-color); background: #fcf1f0; }
+.approvals-page .flag--ok { border-color: var(--success-color); color: var(--success-dark); background: #eef8f2; }
+
+.approvals-page .q-row__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 6px;
+}
+
+.approvals-page .q-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 7px 14px;
+    border: 1px solid var(--navy);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--navy);
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition);
+}
+
+.approvals-page .q-btn--go { background: var(--navy); color: #fff; }
+.approvals-page .q-btn--go:hover { background: var(--primary-dark); border-color: var(--primary-dark); color: #fff; }
+.approvals-page .q-row--extend .q-btn--go { background: var(--primary-dark); border-color: var(--primary-dark); }
+.approvals-page .q-row--extend .q-btn--go:hover { background: var(--navy); border-color: var(--navy); }
+.approvals-page .q-btn--danger { background: var(--danger-color); border-color: var(--danger-color); color: #fff; }
+.approvals-page .q-btn--danger:hover { background: #962d22; border-color: #962d22; }
+.approvals-page .q-btn--danger-ghost { border-color: var(--danger-color); color: var(--danger-color); }
+.approvals-page .q-btn--danger-ghost:hover { background: #fcf1f0; }
+.approvals-page .q-btn--ghost:hover { background: var(--soft-bg); color: var(--navy); }
+
+.approvals-page .q-btn--link {
+    border-color: transparent;
+    min-height: 0;
+    padding: 2px 0;
+    color: var(--ink-soft);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.approvals-page .q-btn--link:hover { color: var(--navy); }
+
+.approvals-page .q-btn:focus-visible,
+.approvals-page .stage-cell:focus-visible,
+.approvals-page .kind-switch__btn:focus-visible,
+.approvals-page .zone-chip:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.approvals-page .queue-empty {
+    border: 1px dashed var(--line);
+    padding: 36px 16px;
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.approvals-page .queue-empty__title { font-weight: 700; color: var(--navy); }
+.approvals-page .queue-empty__text { font-size: 0.85rem; color: var(--ink-soft); margin-top: 4px; }
+
+/* ---------- หน้าต่างรายละเอียด ---------- */
+.approvals-page--queue .modal-content { max-width: 560px; }
+
+.approvals-page .modal-kicker {
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    color: #b8cdd2;
+    margin-bottom: 2px;
+}
+
+.approvals-page .modal-stage {
+    padding: 8px 12px;
+    margin-bottom: 14px;
+    border-left: 3px solid var(--navy);
+    background: var(--soft-bg);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--navy);
+}
+
+.approvals-page .modal-stage--slip { border-left-color: var(--warning-color); }
+.approvals-page .modal-stage--overdue,
+.approvals-page .modal-stage--rejected { border-left-color: var(--danger-color); }
+.approvals-page .modal-stage--done { border-left-color: var(--success-color); }
+
+.approvals-page .modal-ext {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    border: 1px solid var(--kind-extend);
+    border-left-width: 4px;
+    font-size: 0.88rem;
+    color: var(--navy);
+}
+
+.approvals-page .modal-ext__label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+.approvals-page .modal-ext__wide { grid-column: 1 / -1; }
+
+.approvals-page--queue .payment-slip-box { margin: 0 0 14px; }
+
+.approvals-page--queue .payment-slip-box-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.approvals-page--queue .payment-slip-box .card-tags { margin-bottom: 8px; }
+
+.approvals-page--queue .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--line);
+    flex-shrink: 0;
+}
+
+/* ---------- จอเล็ก: แถวกลายเป็นการ์ดเรียงลง ปุ่มหลักเต็มความกว้าง ---------- */
+@media (max-width: 900px) {
+    .approvals-page .q-row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .approvals-page .q-row__who { grid-column: 1 / -1; }
+    .approvals-page .q-row__facts { border-left: 0 !important; border-top: 1px solid var(--line-soft); }
+    .approvals-page .q-row__state { border-top: 1px solid var(--line-soft); }
+
+    .approvals-page .q-row__actions {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        flex-wrap: wrap;
+        border-left: 0 !important;
+        border-top: 1px solid var(--line-soft);
+    }
+
+    .approvals-page .q-row__actions .q-btn:not(.q-btn--link) { flex: 1 1 160px; }
+}
+
+@media (max-width: 720px) {
+    .approvals-page .queue-panel__top { flex-direction: column; }
+    .approvals-page .kind-switch { border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+    .approvals-page .kind-switch__btn { flex: 1 0 auto; justify-content: center; padding: 11px 12px; }
+    .approvals-page .stage-grid { grid-template-columns: 1fr; }
+    .approvals-page .stage-grid__group + .stage-grid__group { border-left: 0; border-top: 1px solid var(--line); }
+    .approvals-page .stage-cell__value { font-size: 1.3rem; }
+    .approvals-page .q-row { grid-template-columns: 1fr; }
+    .approvals-page .q-row__state { border-left: 0 !important; }
+    .approvals-page--queue .readonly-hint { margin-left: 0; }
+    .approvals-page--queue .modal-footer { flex-direction: column-reverse; }
+    .approvals-page--queue .modal-footer .q-btn { width: 100%; }
+    .approvals-page .modal-ext { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .approvals-page .q-row,
+    .approvals-page .q-btn,
+    .approvals-page .stage-cell { transition: none; }
+}

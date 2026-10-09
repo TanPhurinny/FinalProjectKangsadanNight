@@ -5,9 +5,9 @@ const { buildZonesData } = require('./marketController');
 const zoneAccess = require('../utils/zoneAccess');
 const stallSpacing = require('../utils/stallSpacing');
 const stallOccupancy = require('../utils/stallOccupancy');
-const { getRenewalPhase, getExtensionOrigin, releaseOrRestoreStalls } = require('../utils/stallRenewal');
+const { getRenewalPhase, getRenewalCutoff, getExtensionOrigin, releaseOrRestoreStalls, isUnpaidPastDeadline } = require('../utils/stallRenewal');
 
-const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable } = require('../utils/bookingRound');
+const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable, getPaymentDeadlineFromLockAssignedAt } = require('../utils/bookingRound');
 const { verifySlip } = require('../utils/slipVerification');
 const { BOOKING_REQUEST_TAG_PREFIX, buildBookingRequestTag } = require('../utils/bookingRequestTag');
 const { sendStallExpiringSoonEmail } = require('../config/mailer');
@@ -54,6 +54,18 @@ function extractExtendOfRequestId(descriptionText) {
     return match ? Number.parseInt(match[1], 10) : null;
 }
 
+// รอบของคำขอยึดวันเริ่มเช่าจริงของ Booking ที่ผูกไว้ (fallback วันที่ส่งคำขอ) — ใช้ตัวเดียวกันทั้งหน้ารายการ
+// (getApprovalsPage แบ่งรอบ) และทุกปุ่มที่เช็ค isRoundEditable ไม่งั้นคำขอที่จองล่วงหน้าข้ามรอบจะโผล่ในรอบที่แก้ได้
+// แต่กดอะไรก็เจอ history_round_locked
+async function isRequestEditable(requestRecord) {
+    const linkedBooking = await prisma.booking.findFirst({
+        where: { storeDetailSnapshot: { startsWith: buildBookingRequestTag(requestRecord.id) } },
+        select: { rentalStartDate: true }
+    });
+    const basisDate = linkedBooking?.rentalStartDate || requestRecord.createdAt;
+    return isRoundEditable(getBookingRoundMetaForDate(basisDate).roundNumber);
+}
+
 // ความสนใจล็อคเต็ง (แผงหัวมุม/แผงพิเศษ) ที่ฝังไว้ในข้อความตอนจอง (routes/sellerRoute.js POST /booking-stall)
 function extractCornerZoneNote(descriptionText) {
     const match = String(descriptionText || '').match(/\[สนใจแผงพิเศษ:\s*([^\]]+)\]/);
@@ -64,6 +76,13 @@ function extractCornerZoneNote(descriptionText) {
 function extractRejectReason(descriptionText) {
     const match = String(descriptionText || '').match(/\[REJECT_REASON:\s*([^\]]+)\]/);
     return match ? String(match[1] || '').trim() : null;
+}
+
+// ต่อท้ายแทนการแทรกหน้า — tag [EXTEND_OF:] ต้องอยู่ต้น description เสมอ (หลายจุดเช็คด้วย startsWith)
+function withRejectReason(descriptionText, reason) {
+    const cleanReason = String(reason || '').replace(/[\[\]]/g, '').trim().slice(0, 300);
+    const base = String(descriptionText || '').replace(/\s*\[REJECT_REASON:[^\]]+\]/g, '').trim();
+    return cleanReason ? `${base} [REJECT_REASON: ${cleanReason}]`.trim() : base;
 }
 
 // ตัด tag ภายในทั้งหมดออกจาก description ก่อนโชว์เป็นโน้ตจริงให้แอดมินอ่าน
@@ -246,6 +265,62 @@ async function buildAdminBookingStallPageData(requestId) {
     };
 }
 
+// ขั้นตอนของคำขอในมุมแอดมิน = "ต้องทำอะไรต่อ" (แทนการโชว์ status ดิบ ซึ่ง IN_PROGRESS ตัวเดียวมีได้ 3 ความหมาย)
+const STAGE_ORDER = ['slip', 'overdue', 'assign', 'awaiting', 'done', 'rejected'];
+const STAGE_META = {
+    assign: { label: 'รอจัดล็อก', hint: 'เลือกล็อกให้ผู้ขาย หรือปฏิเสธคำขอ', todo: true },
+    slip: { label: 'รอตรวจสลิป', hint: 'ผู้ขายส่งสลิปแล้ว ตรวจยอดแล้วยืนยันการชำระเงิน', todo: true },
+    overdue: { label: 'เลยกำหนดจ่าย', hint: 'จัดล็อกแล้วเกิน 6 ชม. ยังไม่ส่งสลิป — ยกเลิกเพื่อคืนล็อก หรือรอต่อ', todo: true },
+    awaiting: { label: 'รอผู้ขายจ่าย', hint: 'จัดล็อกแล้ว ผู้ขายต้องส่งสลิปภายใน 6 ชม.', todo: false },
+    done: { label: 'จ่ายแล้ว', hint: 'ยืนยันการชำระเงินแล้ว ล็อกเป็นของผู้ขาย', todo: false },
+    rejected: { label: 'ปฏิเสธ/ยกเลิก', hint: '', todo: false }
+};
+
+function getRequestStage(request, now) {
+    const status = String(request.status || 'PENDING').toUpperCase();
+    if (status === 'SUCCESS') return 'done';
+    if (status === 'REJECTED') return 'rejected';
+    if (status === 'IN_PROGRESS') {
+        if (request.paymentSlipImage) return 'slip';
+        return isUnpaidPastDeadline(request, now) ? 'overdue' : 'awaiting';
+    }
+    return 'assign'; // PENDING / APPROVED (APPROVED เป็นสถานะเก่า ยังต้องจัดล็อกเหมือนกัน)
+}
+
+function formatThaiDateTime(date) {
+    return new Date(date).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+// ล็อกเดิม/วันหมดสัญญาเดิม/เส้นตาย 20:00 ของคำขอต่อ — cutoffState: passed = เลย 20:00 แล้ว (ล็อกถูกกันไว้ให้คำขอนี้),
+// soon = เหลือไม่ถึง 24 ชม., ok = ยังมีเวลา (ใช้เฉพาะคำขอที่ยังรอจัดล็อก)
+function buildExtensionInfo(originalRequest, originalBooking, stage, now) {
+    const codes = parseStallCodes(originalRequest?.assignedStallCode || extractAssignedStallFromDescription(originalRequest?.description));
+    const endDate = originalBooking?.rentalEndDate || null;
+    const cutoff = endDate ? getRenewalCutoff(endDate) : null;
+    let cutoffState = null;
+    if (cutoff && stage === 'assign') {
+        const msLeft = cutoff.getTime() - now.getTime();
+        cutoffState = msLeft <= 0 ? 'passed' : msLeft <= 24 * 60 * 60 * 1000 ? 'soon' : 'ok';
+    }
+    return {
+        originalStallCodes: codes,
+        originalStallText: codes.join(', ') || '-',
+        originalEndText: endDate ? toThaiDate(endDate) : '-',
+        cutoffText: cutoff ? formatThaiDateTime(cutoff) : null,
+        cutoffMs: cutoff ? cutoff.getTime() : null,
+        cutoffState
+    };
+}
+
+function getStageSortKey(stage, request, paymentDeadline, extension) {
+    const created = new Date(request.createdAt).getTime();
+    const rank = STAGE_ORDER.indexOf(stage);
+    if (stage === 'assign') return [rank, extension?.cutoffMs ?? (created + 1e13)]; // คำขอต่อตามเส้นตาย แล้วคำขอใหม่ตามลำดับที่ส่ง
+    if (stage === 'awaiting' || stage === 'overdue') return [rank, paymentDeadline ? paymentDeadline.getTime() : created];
+    if (stage === 'slip') return [rank, created];
+    return [rank, -created]; // จบแล้ว: ล่าสุดก่อน
+}
+
 exports.getApprovalsPage = async (req, res) => {
     try {
         const currentRoundMeta = getBookingRoundMetaForDate(new Date());
@@ -269,6 +344,7 @@ exports.getApprovalsPage = async (req, res) => {
                 rentalStartDate: true,
                 rentalEndDate: true,
                 rentalDays: true,
+                billableDays: true,
                 stallCount: true,
                 dailyStallPrice: true,
                 grandTotal: true,
@@ -334,6 +410,10 @@ exports.getApprovalsPage = async (req, res) => {
 
         const zoneCounts = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
         const statusCounts = { PENDING: 0, IN_PROGRESS: 0, SUCCESS: 0, APPROVED: 0, REJECTED: 0 };
+        const stageCounts = { assign: 0, slip: 0, overdue: 0, awaiting: 0, done: 0, rejected: 0 };
+        const kindCounts = { new: 0, extend: 0 };
+        const requestById = new Map(allRequests.map((request) => [request.id, request]));
+        const now = new Date();
 
         const bookingRows = bookingRequests.map((request) => {
             const zoneCode = String(request.zone || '').trim().toUpperCase();
@@ -357,7 +437,22 @@ exports.getApprovalsPage = async (req, res) => {
                 statusCounts[statusCode] += 1;
             }
 
+            const stage = getRequestStage(request, now);
+            stageCounts[stage] += 1;
+            kindCounts[extendOfRequestId ? 'extend' : 'new'] += 1;
+            const paymentDeadline = statusCode === 'IN_PROGRESS' ? getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt) : null;
+            const extension = extendOfRequestId
+                ? buildExtensionInfo(requestById.get(extendOfRequestId), bookingByRequestId.get(extendOfRequestId), stage, now)
+                : null;
+
             return {
+                kind: extendOfRequestId ? 'extend' : 'new',
+                stage,
+                stageLabel: STAGE_META[stage].label,
+                paymentDeadlineText: paymentDeadline ? formatThaiDateTime(paymentDeadline) : null,
+                paymentDeadlineMs: paymentDeadline ? paymentDeadline.getTime() : null,
+                extension,
+                sortKey: getStageSortKey(stage, request, paymentDeadline, extension),
                 id: request.id,
                 productName: request.productName,
                 description: stripInternalTags(request.description),
@@ -395,6 +490,7 @@ exports.getApprovalsPage = async (req, res) => {
                         rentalStartDateText: toThaiDate(linkedBooking.rentalStartDate),
                         rentalEndDateText: toThaiDate(linkedBooking.rentalEndDate),
                         rentalDays: linkedBooking.rentalDays,
+                        billableDays: linkedBooking.billableDays ?? linkedBooking.rentalDays,
                         stallCount: linkedBooking.stallCount,
                         dailyStallPrice: Number(linkedBooking.dailyStallPrice || 0),
                         grandTotal: Number(linkedBooking.grandTotal || 0),
@@ -404,6 +500,14 @@ exports.getApprovalsPage = async (req, res) => {
                     : null
             };
         });
+
+        // เรียงตามสิ่งที่ต้องทำก่อน: ตรวจสลิป > เลยกำหนดจ่าย > รอจัดล็อก (คำขอต่อที่ใกล้ 20:00 ขึ้นก่อน) > รอผู้ขายจ่าย > จบแล้ว
+        bookingRows.sort((a, b) => a.sortKey[0] - b.sortKey[0] || a.sortKey[1] - b.sortKey[1]);
+        const stageSections = STAGE_ORDER.map((stage) => ({
+            stage,
+            ...STAGE_META[stage],
+            rows: bookingRows.filter((row) => row.stage === stage)
+        }));
 
         const previousRoundNumber = selectedRoundNumber - 1;
         const nextRoundNumber = selectedRoundNumber + 1;
@@ -425,6 +529,9 @@ exports.getApprovalsPage = async (req, res) => {
         res.render('admin/approvals', {
             user: req.user,
             bookingRequests: bookingRows,
+            stageSections,
+            stageCounts,
+            kindCounts,
             counts: {
                 all: bookingRows.length,
                 pending: statusCounts.PENDING,
@@ -491,8 +598,7 @@ exports.confirmApproval = async (req, res) => {
             return res.redirect('/admin/approvals?error=request_not_found');
         }
 
-        const requestRoundNumber = getBookingRoundMetaForDate(requestRecord.createdAt).roundNumber;
-        if (!isRoundEditable(requestRoundNumber)) {
+        if (!(await isRequestEditable(requestRecord))) {
             return res.redirect('/admin/approvals?error=history_round_locked');
         }
 
@@ -507,15 +613,14 @@ exports.confirmApproval = async (req, res) => {
         const trimmedReason = String(reason || '').trim();
         const updateData = { status: normalizedStatus };
         if (normalizedStatus === 'REJECTED' && trimmedReason) {
-            const descriptionWithoutOldReason = String(requestRecord.description || '').replace(/\[REJECT_REASON:[^\]]+\]\s*/g, '');
-            updateData.description = `[REJECT_REASON: ${trimmedReason}] ${descriptionWithoutOldReason}`.trim();
+            updateData.description = withRejectReason(requestRecord.description, trimmedReason);
         }
 
         await prisma.bookingRequest.update({
             where: { id: parseInt(requestId) },
             data: updateData
         });
-        res.redirect('/admin/approvals?success=status_updated');
+        res.redirect(`/admin/approvals?success=${normalizedStatus === 'REJECTED' ? 'request_rejected' : 'status_updated'}`);
     } catch (err) {
         res.redirect('/admin/approvals?error=update_failed');
     }
@@ -574,7 +679,7 @@ exports.confirmPayment = async (req, res) => {
             return res.redirect('/admin/approvals?error=request_not_found');
         }
 
-        if (!isRoundEditable(getBookingRoundMetaForDate(requestRecord.createdAt).roundNumber)) {
+        if (!(await isRequestEditable(requestRecord))) {
             return res.redirect('/admin/approvals?error=history_round_locked');
         }
 
@@ -770,7 +875,7 @@ exports.rejectPaymentSlip = async (req, res) => {
             return res.redirect('/admin/approvals?error=request_not_found');
         }
 
-        if (!isRoundEditable(getBookingRoundMetaForDate(requestRecord.createdAt).roundNumber)) {
+        if (!(await isRequestEditable(requestRecord))) {
             return res.redirect('/admin/approvals?error=history_round_locked');
         }
 
@@ -841,7 +946,7 @@ exports.confirmBookingStall = async (req, res) => {
             return res.redirect('/admin/approvals?error=request_not_found');
         }
 
-        if (!isRoundEditable(getBookingRoundMetaForDate(requestRecord.createdAt).roundNumber)) {
+        if (!(await isRequestEditable(requestRecord))) {
             return res.redirect('/admin/approvals?error=history_round_locked');
         }
 
@@ -972,8 +1077,10 @@ exports.confirmBookingStall = async (req, res) => {
                     }
                 });
 
-                const rentTotal = averageDailyStallPrice * booking.stallCount * booking.rentalDays;
-                const lightTotal = booking.lightEnabled ? averageDailyLightPrice * booking.stallCount * booking.rentalDays : 0;
+                // คิดเงินตามวันที่คิดเงินจริง (หักวันหยุดแล้ว) แบบเดียวกับตอนผู้ขายจอง — rentalDays ดิบจะทำให้ราคาเพิ่มหลังจัดล็อก
+                const chargeDays = booking.billableDays ?? booking.rentalDays;
+                const rentTotal = averageDailyStallPrice * booking.stallCount * chargeDays;
+                const lightTotal = booking.lightEnabled ? averageDailyLightPrice * booking.stallCount * chargeDays : 0;
                 const grandTotal = rentTotal + lightTotal + booking.applianceTotal;
 
                 await tx.booking.update({
@@ -1016,7 +1123,7 @@ exports.rejectBookingStall = async (req, res) => {
             return res.redirect('/admin/approvals?error=request_not_found');
         }
 
-        if (!isRoundEditable(getBookingRoundMetaForDate(requestRecord.createdAt).roundNumber)) {
+        if (!(await isRequestEditable(requestRecord))) {
             return res.redirect('/admin/approvals?error=history_round_locked');
         }
 
@@ -1026,11 +1133,15 @@ exports.rejectBookingStall = async (req, res) => {
         const stallCodesToRelease = parseStallCodes(requestRecord.assignedStallCode || extractAssignedStallFromDescription(requestRecord.description));
         const extensionOrigin = await getExtensionOrigin(prisma, requestRecord.description);
 
+        // เหตุผล (ไม่บังคับ) ฝังเป็น tag เดียวกับ confirmApproval ให้ผู้ขาย/หน้ารายการเห็น
+        const trimmedReason = String(req.body.reason || '').trim();
+
         await prisma.bookingRequest.update({
             where: { id: requestId },
             data: {
                 status: 'REJECTED',
-                assignedStallCode: null
+                assignedStallCode: null,
+                ...(trimmedReason ? { description: withRejectReason(requestRecord.description, trimmedReason) } : {})
             }
         });
 

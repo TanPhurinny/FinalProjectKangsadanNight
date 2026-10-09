@@ -339,6 +339,12 @@ function buildSlipRejectedReminderEntry(latestBooking, status) {
     }];
 }
 
+// เหตุผลที่แอดมินปฏิเสธ (tag [REJECT_REASON: ...] ใน description ดู withRejectReason ใน controllers/approvalController.js)
+function extractRejectReason(descriptionText) {
+    const match = String(descriptionText || '').match(/\[REJECT_REASON:\s*([^\]]+)\]/);
+    return match ? String(match[1] || '').trim() : null;
+}
+
 // การ์ดย้ำเตือนต่อล็อก ผูกกับล็อกจริงที่แม่ค้าจองไว้ (assignedStallCode) โชว์ตั้งแต่ 1 วันก่อนวันขายสุดท้าย (D-1)
 // จนถึง 20:00 ของวัน D (ดูกติกาใน utils/stallRenewal.js) — วัน D ตรงกับวันสิ้นรอบพอดีต่อไม่ได้ ชวนไปจองรอบใหม่แทน
 function buildExtendLockReminderEntry(extendInfo) {
@@ -532,7 +538,9 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
                 id: 1,
                 type: 'cancelled',
                 title: 'คำขอจองไม่ผ่านการตรวจสอบ',
-                desc: `คำขอจอง${zoneLabel} ถูกปฏิเสธ กรุณาติดต่อแอดมินหรือส่งคำขอจองใหม่อีกครั้ง`,
+                desc: latestBooking.rejectReason
+                    ? `คำขอจอง${zoneLabel} ถูกปฏิเสธ — เหตุผล: ${latestBooking.rejectReason} หากต้องการจองใหม่ ส่งคำขอได้อีกครั้ง`
+                    : `คำขอจอง${zoneLabel} ถูกปฏิเสธ กรุณาติดต่อแอดมินหรือส่งคำขอจองใหม่อีกครั้ง`,
                 date: formatDateThai(latestBooking.createdAt),
                 time: formatTimeThai(latestBooking.createdAt),
                 status: 'REJECTED',
@@ -2031,20 +2039,34 @@ async function loadSellerBookingStatus(userId) {
 
     // เอารายการคำขอล่าสุดของผู้ขายรายนี้เสมอ (ไม่ว่าจะอยู่สถานะไหน) เพื่อให้สะท้อน
     // ความคืบหน้าจริงล่าสุด ไม่ใช่แค่รายการที่เคยผ่านสถานะใดสถานะหนึ่งมาก่อน
+    // ยกเว้นคำขอต่อล็อกที่ถูกปฏิเสธ — สัญญาเดิมยังใช้อยู่ ถ้าเอามาเป็น "ล่าสุด" หน้าจะขึ้นว่าถูกปฏิเสธทั้งที่ยังขายได้
+    // (แจ้งผลปฏิเสธแยกเป็นการ์ดของมันเองด้านล่างแทน)
     let latestRequest = null;
+    let rejectedExtension = null;
+    const pickLatest = (requests) => {
+        for (const request of requests) {
+            const isRejectedExtension = String(request.status || '').toUpperCase() === 'REJECTED'
+                && /^\[EXTEND_OF:\d+\]/.test(String(request.description || ''));
+            if (!isRejectedExtension) return request;
+            if (!rejectedExtension) rejectedExtension = request;
+        }
+        return null;
+    };
 
     if (sellerProfileId) {
-        latestRequest = await prisma.bookingRequest.findFirst({
+        latestRequest = pickLatest(await prisma.bookingRequest.findMany({
             where: { sellerId: sellerProfileId },
-            orderBy: { createdAt: 'desc' }
-        });
+            orderBy: { createdAt: 'desc' },
+            take: 10
+        }));
     }
 
     if (!latestRequest && sellerName) {
-        latestRequest = await prisma.bookingRequest.findFirst({
+        latestRequest = pickLatest(await prisma.bookingRequest.findMany({
             where: { sellerName },
-            orderBy: { createdAt: 'desc' }
-        });
+            orderBy: { createdAt: 'desc' },
+            take: 10
+        }));
     }
 
     let latestBooking = null;
@@ -2135,6 +2157,7 @@ async function loadSellerBookingStatus(userId) {
         // ผลตรวจสลิปอัตโนมัติ (SlipOK) ที่เก็บไว้ตอนอัปโหลด — null = ยังไม่ตรวจ/ไม่ได้ตั้งค่า SlipOK
         bookingView.slipVerified = typeof latestRequest.slipVerified === 'boolean' ? latestRequest.slipVerified : null;
         bookingView.slipVerifyReason = latestRequest.slipVerifyReason || null;
+        bookingView.rejectReason = normalizedRequestStatus === 'REJECTED' ? extractRejectReason(latestRequest.description) : null;
         // ราคาที่แสดงระหว่างรอตรวจสอบ/รอจัดล็อก เป็นแค่ราคาประมาณการ (ราคาต่ำสุดของโซน) —
         // ราคาจริงต้องรอแอดมินจัดล็อกก่อน (ดู confirmBookingStall ที่คำนวณราคาจริงใหม่)
         bookingView.isFinalPrice = Boolean(latestRequest.assignedStallCode);
@@ -2185,9 +2208,28 @@ async function loadSellerBookingStatus(userId) {
             paymentConfirmedAt: latestRequest.paymentConfirmedAt || null,
             paymentSlipImage: latestRequest.paymentSlipImage || null,
             slipVerifyReason: latestRequest.slipVerifyReason || null,
+            rejectReason: extractRejectReason(latestRequest.description),
             slot: { slotNumber: latestRequest.paymentConfirmedAt ? (latestRequest.assignedStallCode || null) : null }
         }
         : latestBooking;
+
+    // คำขอต่อล็อกที่ถูกปฏิเสธ/ยกเลิก (ใหม่กว่าคำขอที่แสดงอยู่) แจ้งแยก พร้อมบอกว่าสัญญาเดิมยังใช้ได้
+    const rejectedExtensionEntry = rejectedExtension && (!latestRequest || rejectedExtension.createdAt > latestRequest.createdAt)
+        ? [{
+            id: `extend-rejected-${rejectedExtension.id}`,
+            type: 'cancelled',
+            title: 'คำขอต่อล็อกไม่ผ่าน',
+            desc: [
+                'แอดมินปฏิเสธ/ยกเลิกคำขอต่อล็อกของคุณ ล็อกยังใช้ได้ตามสัญญาเดิม',
+                extractRejectReason(rejectedExtension.description) ? `เหตุผล: ${extractRejectReason(rejectedExtension.description)}` : ''
+            ].filter(Boolean).join(' — '),
+            date: formatDateThai(rejectedExtension.createdAt),
+            time: formatTimeThai(rejectedExtension.createdAt),
+            status: 'REJECTED',
+            isRead: false,
+            isNew: true
+        }]
+        : [];
 
     const extendInfo = await findActiveLockForExtension(userRecord);
 
@@ -2211,6 +2253,7 @@ async function loadSellerBookingStatus(userId) {
             ...renewalNotices,
             ...buildRepairNotifications(repairReports),
             ...buildTaxInvoiceNotifications(taxInvoiceRequests),
+            ...rejectedExtensionEntry,
             ...buildBookingNotifications(notificationBooking, awaitingPaymentVerification, extendInfo)
         ]
     };
