@@ -9,3 +9,4 @@ node_modules
 !/public/uploads/announcements/
 /public/uploads/announcements/*
 !/public/uploads/announcements/ann-1787476736984.JPG
+scripts/.demo-approvals-state.json
