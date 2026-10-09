@@ -418,7 +418,7 @@ function openDetail(detail) {
             ? ` · กำหนดจ่าย ${detail.paymentDeadlineText}` : '';
         const reason = detail.stage === 'rejected' && detail.rejectReason ? ` · ${detail.rejectReason}` : '';
         stageEl.className = `modal-stage modal-stage--${detail.stage}`;
-        stageEl.textContent = `${detail.stageLabel}${extra}${reason}`;
+        stageEl.innerHTML = `<span class="stage-ic stage-ic--${escapeHtml(detail.stage)}" aria-hidden="true"><i class="fa-solid ${escapeHtml(detail.stageIcon || 'fa-circle')}"></i></span>${escapeHtml(`${detail.stageLabel}${extra}${reason}`)}`;
     }
 
     const extEl = document.getElementById('m-ext');

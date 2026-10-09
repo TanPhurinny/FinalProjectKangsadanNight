@@ -1268,6 +1268,42 @@
 
 .approvals-page .queue-empty__action { margin-top: 10px; }
 
+/* ---------- กล่องไอคอนสถานะ/ประเภท: สีบอกความหมาย (ส้ม = ต้องตรวจ, แดง = มีปัญหา, กรมท่า = รอจัด, เขียว = เสร็จ) ---------- */
+.approvals-page .stage-ic {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    background: var(--soft-bg);
+    color: var(--ink-soft);
+    font-size: 0.72rem;
+}
+
+.approvals-page .stage-ic i { color: inherit !important; font-size: inherit !important; }
+.approvals-page .stage-ic--lg { width: 28px; height: 28px; font-size: 0.86rem; margin-right: 8px; }
+.approvals-page .queue-section__title { display: inline-flex; align-items: center; }
+.approvals-page .queue-section__title .mono { margin-left: 6px; }
+.approvals-page .stage-ic--todo { background: #fdf0dc; color: var(--warning-dark); }
+.approvals-page .stage-ic--slip { background: #fdf0dc; color: var(--warning-dark); }
+.approvals-page .stage-ic--overdue { background: #fbe4e1; color: var(--danger-color); }
+.approvals-page .stage-ic--assign { background: #e3ecef; color: var(--navy); }
+.approvals-page .stage-ic--awaiting { background: #e6f1f4; color: var(--primary-dark); }
+.approvals-page .stage-ic--done { background: #e4f4ea; color: var(--success-dark); }
+.approvals-page .stage-ic--rejected { background: #eef1f2; color: #7b8d92; }
+.approvals-page .stage-ic--new { background: #e3ecef; color: var(--navy); }
+.approvals-page .stage-ic--extend { background: #ddf0f4; color: var(--primary-dark); }
+
+/* ปุ่มที่เลือกอยู่ (พื้นเข้ม): กล่องไอคอนเป็นขาว ไอคอนคงสีเดิม */
+.approvals-page .f-chip.is-active .stage-ic { background: #fff; }
+.approvals-page .f-chip { padding-left: 6px; }
+
+.approvals-page .q-row__kind i { font-size: 0.7rem; }
+
+.approvals-page .modal-stage { display: flex; align-items: center; gap: 8px; }
+
 /* ---------- คิว ---------- */
 .approvals-page .queue-section {
     margin-bottom: 22px;

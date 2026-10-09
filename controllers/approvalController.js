@@ -297,13 +297,14 @@ async function buildAdminBookingStallPageData(requestId) {
 
 // ขั้นตอนของคำขอในมุมแอดมิน = "ต้องทำอะไรต่อ" (แทนการโชว์ status ดิบ ซึ่ง IN_PROGRESS ตัวเดียวมีได้ 3 ความหมาย)
 const STAGE_ORDER = ['slip', 'overdue', 'assign', 'awaiting', 'done', 'rejected'];
+// icon = Font Awesome ใช้ชุดเดียวกันทั้งปุ่มกรอง หัวกลุ่มรายการ และหน้าต่างรายละเอียด (สีกล่องไอคอนกำหนดใน approvals.css .stage-ic--*)
 const STAGE_META = {
-    assign: { label: 'ยังไม่ได้จัดล็อก', hint: 'เลือกล็อกให้ผู้ขาย หรือปฏิเสธคำขอ', todo: true },
-    slip: { label: 'ส่งสลิปแล้ว รอตรวจ', hint: 'ผู้ขายโอนเงินแล้ว ตรวจยอดในสลิปแล้วกดยืนยันการชำระเงิน', todo: true },
-    overdue: { label: 'ไม่จ่ายตามกำหนด', hint: 'จัดล็อกให้แล้วเกิน 6 ชม. ผู้ขายยังไม่ส่งสลิป — ยกเลิกเพื่อคืนล็อก หรือรอต่อ', todo: true },
-    awaiting: { label: 'รอผู้ขายโอนเงิน', hint: 'จัดล็อกให้แล้ว ผู้ขายต้องส่งสลิปภายใน 6 ชม.', todo: false },
-    done: { label: 'จ่ายเงินแล้ว', hint: 'ยืนยันการชำระเงินแล้ว ล็อกเป็นของผู้ขาย', todo: false },
-    rejected: { label: 'ปฏิเสธ/ยกเลิกแล้ว', hint: '', todo: false }
+    assign: { label: 'ยังไม่ได้จัดล็อก', icon: 'fa-store', hint: 'เลือกล็อกให้ผู้ขาย หรือปฏิเสธคำขอ', todo: true },
+    slip: { label: 'ส่งสลิปแล้ว รอตรวจ', icon: 'fa-file-invoice-dollar', hint: 'ผู้ขายโอนเงินแล้ว ตรวจยอดในสลิปแล้วกดยืนยันการชำระเงิน', todo: true },
+    overdue: { label: 'ไม่จ่ายตามกำหนด', icon: 'fa-triangle-exclamation', hint: 'จัดล็อกให้แล้วเกิน 6 ชม. ผู้ขายยังไม่ส่งสลิป — ยกเลิกเพื่อคืนล็อก หรือรอต่อ', todo: true },
+    awaiting: { label: 'รอผู้ขายโอนเงิน', icon: 'fa-money-bill-transfer', hint: 'จัดล็อกให้แล้ว ผู้ขายต้องส่งสลิปภายใน 6 ชม.', todo: false },
+    done: { label: 'จ่ายเงินแล้ว', icon: 'fa-circle-check', hint: 'ยืนยันการชำระเงินแล้ว ล็อกเป็นของผู้ขาย', todo: false },
+    rejected: { label: 'ปฏิเสธ/ยกเลิกแล้ว', icon: 'fa-circle-xmark', hint: '', todo: false }
 };
 
 function getRequestStage(request, now) {
@@ -613,6 +614,7 @@ exports.getApprovalsPage = async (req, res) => {
                 kind: extendOfRequestId ? 'extend' : 'new',
                 stage,
                 stageLabel: STAGE_META[stage].label,
+                stageIcon: STAGE_META[stage].icon,
                 paymentDeadlineText: paymentDeadline ? formatThaiDateTime(paymentDeadline) : null,
                 paymentDeadlineMs: paymentDeadline ? paymentDeadline.getTime() : null,
                 extension,

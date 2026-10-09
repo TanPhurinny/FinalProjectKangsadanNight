@@ -162,12 +162,12 @@
                 const stageMetaOf = (stage) => sections.find((s) => s.stage === stage) || { label: stage };
                 const stageChips = [
                     // ชื่อปุ่ม = ชื่อหัวกลุ่มรายการ (STAGE_META ใน approvalController.js) ใช้คำเดียวกันทุกที่
-                    { stage: 'slip', icon: 'fa-receipt', urgent: true },
-                    { stage: 'overdue', icon: 'fa-clock', urgent: true, danger: true },
-                    { stage: 'assign', icon: 'fa-map-pin', urgent: true },
-                    { stage: 'awaiting', icon: 'fa-hourglass-half' },
-                    { stage: 'done', icon: 'fa-circle-check' },
-                    { stage: 'rejected', icon: 'fa-ban' }
+                    { stage: 'slip', urgent: true },
+                    { stage: 'overdue', urgent: true, danger: true },
+                    { stage: 'assign', urgent: true },
+                    { stage: 'awaiting' },
+                    { stage: 'done' },
+                    { stage: 'rejected' }
                 ];
                 %>
                 <section class="filter-panel" aria-label="ตัวกรองคำขอ">
@@ -188,8 +188,8 @@
                         <span class="filter-row__label" id="filterKindLabel">ประเภท</span>
                         <div class="filter-row__chips filter-row__chips--segment" role="group" aria-labelledby="filterKindLabel">
                             <button type="button" class="f-chip" data-kind="all" aria-pressed="true">ทั้งหมด <span class="f-chip__count" data-count></span></button>
-                            <button type="button" class="f-chip" data-kind="new" aria-pressed="false"><span class="kind-dot kind-dot--new" aria-hidden="true"></span>จองใหม่ <span class="f-chip__count" data-count></span></button>
-                            <button type="button" class="f-chip" data-kind="extend" aria-pressed="false"><span class="kind-dot kind-dot--extend" aria-hidden="true"></span>ต่อล็อก <span class="f-chip__count" data-count></span></button>
+                            <button type="button" class="f-chip" data-kind="new" aria-pressed="false"><span class="stage-ic stage-ic--new" aria-hidden="true"><i class="fa-solid fa-plus"></i></span>จองใหม่ <span class="f-chip__count" data-count></span></button>
+                            <button type="button" class="f-chip" data-kind="extend" aria-pressed="false"><span class="stage-ic stage-ic--extend" aria-hidden="true"><i class="fa-solid fa-rotate"></i></span>ต่อล็อก <span class="f-chip__count" data-count></span></button>
                         </div>
                     </div>
 
@@ -197,12 +197,12 @@
                         <span class="filter-row__label" id="filterStageLabel">สถานะ</span>
                         <div class="filter-row__chips filter-row__chips--scroll" role="group" aria-labelledby="filterStageLabel">
                             <button type="button" class="f-chip" data-stage="all" aria-pressed="true">ทั้งหมด <span class="f-chip__count" data-count></span></button>
-                            <button type="button" class="f-chip f-chip--todo" data-stage="todo" aria-pressed="false"><i class="fa-solid fa-bolt" aria-hidden="true"></i>งานที่ต้องทำ <span class="f-chip__count" data-count></span></button>
+                            <button type="button" class="f-chip f-chip--todo" data-stage="todo" aria-pressed="false"><span class="stage-ic stage-ic--todo" aria-hidden="true"><i class="fa-solid fa-list-check"></i></span>งานที่ต้องทำ <span class="f-chip__count" data-count></span></button>
                             <span class="filter-row__sep" aria-hidden="true"></span>
                             <% stageChips.forEach(function(chip) { %>
                             <% if (chip.stage === 'awaiting') { %><span class="filter-row__break" aria-hidden="true"></span><span class="filter-row__group-label">ติดตาม</span><% } %>
                             <button type="button" class="f-chip<%= chip.urgent ? ' f-chip--urgent' : '' %><%= chip.danger ? ' f-chip--danger' : '' %>" data-stage="<%= chip.stage %>" aria-pressed="false" title="<%= stageMetaOf(chip.stage).hint || stageMetaOf(chip.stage).label %>">
-                                <i class="fa-solid <%= chip.icon %>" aria-hidden="true"></i><%= stageMetaOf(chip.stage).label %> <span class="f-chip__count" data-count></span>
+                                <span class="stage-ic stage-ic--<%= chip.stage %>" aria-hidden="true"><i class="fa-solid <%= stageMetaOf(chip.stage).icon %>"></i></span><%= stageMetaOf(chip.stage).label %> <span class="f-chip__count" data-count></span>
                             </button>
                             <% }) %>
                         </div>
@@ -256,7 +256,7 @@
                     <% sections.forEach(function(section) { if (!section.rows.length) return; %>
                     <section class="queue-section queue-section--<%= section.stage %>" data-section="<%= section.stage %>">
                         <header class="queue-section__head">
-                            <h3 class="queue-section__title"><%= section.label %> <span class="mono" data-section-count><%= section.rows.length %></span></h3>
+                            <h3 class="queue-section__title"><span class="stage-ic stage-ic--lg stage-ic--<%= section.stage %>" aria-hidden="true"><i class="fa-solid <%= section.icon %>"></i></span><%= section.label %> <span class="mono" data-section-count><%= section.rows.length %></span></h3>
                             <% if (section.hint) { %><p class="queue-section__hint"><%= section.hint %></p><% } %>
                             <% if (section.stage === 'slip') { const verifiedCount = section.rows.filter((r) => r.slipVerified === true).length; if (verifiedCount) { %>
                             <button type="button" class="q-btn q-btn--go queue-section__action" id="confirmVerifiedSlips" data-count="<%= verifiedCount %>">
@@ -276,7 +276,7 @@
                                 slipVerifyReason: request.slipVerifyReason || '', rejectReason: request.rejectReason || '',
                                 cornerZoneNote: request.cornerZoneNote || '', isFinalPrice: Boolean(request.isFinalPrice),
                                 booking: request.booking, extension: request.extension, extendOfRequestId: request.extendOfRequestId,
-                                paymentDeadlineText: request.paymentDeadlineText,
+                                paymentDeadlineText: request.paymentDeadlineText, stageIcon: request.stageIcon,
                                 actionLogs: request.actionLogs, createdAtFullText: request.createdAtFullText
                             };
                             const searchText = [request.productName, request.sellerName, request.phone, request.assignedStallCode, request.extension && request.extension.originalStallText, '#' + request.id].filter(Boolean).join(' ').toLowerCase();
@@ -287,7 +287,7 @@
                                     <% if (request.kind === 'extend') { %>
                                     <i class="fa-solid fa-rotate" aria-hidden="true"></i> ต่อล็อก <span class="mono">#<%= request.id %></span>
                                     <% } else { %>
-                                    จองใหม่ <span class="mono">#<%= request.id %></span>
+                                    <i class="fa-solid fa-plus" aria-hidden="true"></i> จองใหม่ <span class="mono">#<%= request.id %></span>
                                     <% } %>
                                 </div>
                                 <h4 class="q-row__shop"><%= request.productName || '-' %></h4>
