@@ -343,6 +343,7 @@ function buildSlipRejectedReminderEntry(latestBooking, status) {
 // จนถึง 20:00 ของวัน D (ดูกติกาใน utils/stallRenewal.js) — วัน D ตรงกับวันสิ้นรอบพอดีต่อไม่ได้ ชวนไปจองรอบใหม่แทน
 function buildExtendLockReminderEntry(extendInfo) {
     if (!extendInfo?.currentBooking?.rentalEndDate) return [];
+    if (extendInfo.pendingExtension) return []; // ยื่นคำขอต่อไปแล้ว ไม่ต้องย้ำ
 
     const { currentBooking, latestRequest, roundMeta } = extendInfo;
     const renewal = getRenewalOptions(currentBooking.rentalEndDate, new Date());
@@ -1775,18 +1776,40 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
 // --- ต่อล็อค: สำหรับคนที่มีล็อกที่แอดมินจัดให้แล้วในรอบปัจจุบัน อยากต่อเวลาขาย ---
 // เข้าเงื่อนไขเดียวกับที่ market-map ใช้เช็ค "ล็อกที่จัดสรรแล้ว"
 // (BookingRequest.status ใน APPROVED/IN_PROGRESS/SUCCESS + มี assignedStallCode)
+// คำขอต่อล็อกนับเป็น "ล็อกที่ใช้อยู่" ก็ต่อเมื่อจ่ายเงินแล้ว (SUCCESS) — ระหว่างรอแอดมิน/รอชำระ ยังใช้คำขอเดิมเป็นฐาน
+// และ pendingExtension บอกว่ามีคำขอต่อค้างอยู่ (กันยื่นซ้ำ) ตัดคำขอ IN_PROGRESS ที่เลยกำหนดชำระแล้วออก
+// แบบเดียวกับ getStallCodesWithPendingExtension ใน utils/stallRenewal.js
+const isExtendRequest = (request) => String(request.description || '').startsWith('[EXTEND_OF:');
+
 async function findActiveLockForExtension(userRecord) {
-    const latestRequest = await prisma.bookingRequest.findFirst({
+    const sellerFilter = [
+        userRecord?.sellerProfile?.id ? { sellerId: userRecord.sellerProfile.id } : undefined,
+        userRecord?.name ? { sellerName: userRecord.name } : undefined
+    ].filter(Boolean);
+    if (!sellerFilter.length) return null;
+
+    const candidates = await prisma.bookingRequest.findMany({
         where: {
-            status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] },
-            assignedStallCode: { not: null },
-            OR: [
-                userRecord?.sellerProfile?.id ? { sellerId: userRecord.sellerProfile.id } : undefined,
-                userRecord?.name ? { sellerName: userRecord.name } : undefined
-            ].filter(Boolean)
+            status: { in: ['PENDING', 'APPROVED', 'IN_PROGRESS', 'SUCCESS'] },
+            OR: sellerFilter
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
+        take: 20
     });
+
+    const now = Date.now();
+    const pendingExtension = candidates.find((request) => {
+        if (!isExtendRequest(request) || request.status === 'SUCCESS') return false;
+        if (request.status === 'IN_PROGRESS') {
+            const deadline = getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt);
+            if (deadline && deadline.getTime() < now) return false;
+        }
+        return true;
+    }) || null;
+
+    const latestRequest = candidates.find((request) => request.assignedStallCode
+        && request.status !== 'PENDING'
+        && (request.status === 'SUCCESS' || !isExtendRequest(request)));
 
     if (!latestRequest) return null;
 
@@ -1805,7 +1828,7 @@ async function findActiveLockForExtension(userRecord) {
     const currentRoundNumber = getBookingRoundMetaForDate(new Date()).roundNumber;
     if (roundMeta.roundNumber !== currentRoundNumber) return null; // ล็อกอยู่คนละรอบกับตอนนี้ ต่อไม่ได้แล้ว
 
-    return { latestRequest, currentBooking, roundMeta };
+    return { latestRequest, currentBooking, roundMeta, pendingExtension };
 }
 
 router.get('/booking-stall/extend', isAuthenticated, async (req, res) => {
@@ -1820,6 +1843,9 @@ router.get('/booking-stall/extend', isAuthenticated, async (req, res) => {
 
     if (!active) {
         return res.redirect('/booking-status?error=no_active_lock_to_extend');
+    }
+    if (active.pendingExtension) {
+        return res.redirect('/booking-status?error=extend_already_requested');
     }
 
     // กติกาต่อล็อก (ต่อสุดรอบได้ทันที / ต่อสั้นเริ่มได้ 1 วันก่อนวันขายสุดท้าย / ต้องต่อก่อน 20:00) ดู utils/stallRenewal.js
@@ -1849,6 +1875,9 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
         if (!active) {
             return res.redirect('/booking-status?error=no_active_lock_to_extend');
         }
+        if (active.pendingExtension) {
+            return res.redirect('/booking-status?error=extend_already_requested');
+        }
 
         const { latestRequest, currentBooking } = active;
         const newEndDate = toStartOfDay(req.body.newEndDate);
@@ -1868,17 +1897,16 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
             return res.redirect('/booking-stall/extend?error=all_days_are_holiday');
         }
 
-        const rentTotal = currentBooking.dailyStallPrice * currentBooking.stallCount * billableDays;
-        const applianceTotal = (currentBooking.smallApplianceCount * currentBooking.smallAppliancePrice
-            + currentBooking.largeApplianceCount * currentBooking.largeAppliancePrice) * currentBooking.stallCount * billableDays;
-        const lightTotal = currentBooking.lightUnitPrice * currentBooking.stallCount * billableDays;
-        const grandTotal = rentTotal + applianceTotal + lightTotal;
+        // ต่อล็อกเดิมที่แอดมินจัดไว้จริง (assignedStallCode) จำนวนล็อกนับจากที่ได้จริง ไม่ใช่ที่ขอตอนแรก
+        const stallCodes = String(latestRequest.assignedStallCode || '')
+            .split(',').map((code) => code.trim().toUpperCase()).filter(Boolean);
+        const stallCount = stallCodes.length || currentBooking.stallCount;
 
-        const availableSlots = await prisma.slot.findMany({
-            where: { zone: latestRequest.zone, isAvailable: true },
-            orderBy: { id: 'asc' },
-            take: currentBooking.stallCount
-        });
+        const rentTotal = currentBooking.dailyStallPrice * stallCount * billableDays;
+        const applianceTotal = (currentBooking.smallApplianceCount * currentBooking.smallAppliancePrice
+            + currentBooking.largeApplianceCount * currentBooking.largeAppliancePrice) * stallCount * billableDays;
+        const lightTotal = currentBooking.lightUnitPrice * stallCount * billableDays;
+        const grandTotal = rentTotal + applianceTotal + lightTotal;
 
         await prisma.$transaction(async (tx) => {
             const detailForRequest = `ขอต่อล็อก ${latestRequest.assignedStallCode || ''} ถึงวันที่ ${newEndDate.toLocaleDateString('th-TH')}`.trim();
@@ -1899,18 +1927,19 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
             const requestTag = buildBookingRequestTag(extendRequestRecord.id);
             const snapshotWithRequestRef = `${requestTag} ${detailForRequest}`.trim();
 
-            const slotsToUse = [...availableSlots];
-            const shortfall = currentBooking.stallCount - slotsToUse.length;
-            for (let i = 0; i < shortfall; i += 1) {
-                const newSlot = await tx.slot.create({
-                    data: {
-                        slotNumber: `${latestRequest.zone}-EXT${extendRequestRecord.id}-${i + 1}`,
-                        zone: latestRequest.zone,
+            // ผูก Booking กับ Slot ของล็อกเดิม (slotNumber = รหัสล็อก) ไม่ไปกินช่องว่างอื่นในโซน
+            const slotsToUse = [];
+            for (const code of stallCodes) {
+                slotsToUse.push(await tx.slot.upsert({
+                    where: { slotNumber: code },
+                    update: { isAvailable: false },
+                    create: {
+                        slotNumber: code,
+                        zone: code.replace(/[0-9].*$/, '') || latestRequest.zone,
                         price: currentBooking.dailyStallPrice,
-                        isAvailable: true
+                        isAvailable: false
                     }
-                });
-                slotsToUse.push(newSlot);
+                }));
             }
 
             for (const slot of slotsToUse) {
@@ -1920,7 +1949,7 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
                         userId: req.user.id,
                         zoneCode: latestRequest.zone,
                         selectedZoneLabel: `โซน ${latestRequest.zone}`,
-                        stallCount: currentBooking.stallCount,
+                        stallCount,
                         rentalStartDate: extendStartDate,
                         rentalEndDate: newEndDate,
                         rentalDays,
@@ -2201,7 +2230,7 @@ router.get('/booking-status', isAuthenticated, async (req, res) => {
         user: userRecord || req.user,
         booking: bookingView,
         notifications,
-        canExtendLock: Boolean(activeLockForExtension),
+        canExtendLock: Boolean(activeLockForExtension && !activeLockForExtension.pendingExtension),
         error: req.query.error || null,
         success: req.query.success || null
     });

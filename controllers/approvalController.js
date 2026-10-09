@@ -5,7 +5,7 @@ const { buildZonesData } = require('./marketController');
 const zoneAccess = require('../utils/zoneAccess');
 const stallSpacing = require('../utils/stallSpacing');
 const stallOccupancy = require('../utils/stallOccupancy');
-const { getRenewalPhase } = require('../utils/stallRenewal');
+const { getRenewalPhase, getExtensionOrigin, releaseOrRestoreStalls } = require('../utils/stallRenewal');
 
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable } = require('../utils/bookingRound');
 const { verifySlip } = require('../utils/slipVerification');
@@ -120,7 +120,11 @@ async function buildAdminBookingStallPageData(requestId) {
 
     const requestedZone = normalizeZone(bookingRequest.zone);
     const assignedStallCode = String(bookingRequest.assignedStallCode || extractAssignedStallFromDescription(bookingRequest.description) || '').trim().toUpperCase();
-    const assignedStallCodes = parseStallCodes(assignedStallCode);
+    // คำขอต่อล็อกที่ยังไม่ได้จัด เลือกล็อกเดิมไว้ให้ก่อน (แอดมินยืนยันได้เลย หรือเปลี่ยนเป็นล็อกอื่นก็ได้)
+    const extensionOrigin = await getExtensionOrigin(prisma, bookingRequest.description);
+    const extensionStallCodes = extensionOrigin?.codes || [];
+    const parsedAssignedCodes = parseStallCodes(assignedStallCode);
+    const assignedStallCodes = parsedAssignedCodes.length ? parsedAssignedCodes : extensionStallCodes;
 
     // จำกัดตัวเลือกโซนบนหน้านี้ให้ตรงกับประเภทสินค้าที่ผู้ขายลงทะเบียนไว้ (กันแอดมินจัดผิดโซน เช่น ร้านอาหารไปได้โซนแฟชั่น)
     // BookingRequest ไม่มี userId ผูกไว้ตรงๆ (sellerId ชี้โมเดล Seller ซึ่งระบบสมัครจริงไม่ได้ใช้ ปล่อยเป็น null เสมอ)
@@ -179,7 +183,9 @@ async function buildAdminBookingStallPageData(requestId) {
     const grandTotalAllStalls = Number(bookingDetail?.grandTotal || 0);
 
     // ล็อกที่เคยจัดให้คำขอนี้แล้วไม่ถือว่า "จองแล้ว" ในสายตาแอดมินคนนี้ (จะได้เลือกซ้ำ/ยืนยันใหม่ได้)
-    const bookedStallsExcludingOwn = bookedStalls.filter((code) => !assignedStallCodes.includes(code));
+    // ล็อกเดิมของคำขอต่อล็อกก็นับเป็นของคำขอนี้ด้วย
+    const ownStallCodes = [...assignedStallCodes, ...extensionStallCodes];
+    const bookedStallsExcludingOwn = bookedStalls.filter((code) => !ownStallCodes.includes(code));
 
     // ติด spacingWarning (คำแนะนำระยะห่าง ดู utils/stallSpacing.js — ไม่บล็อกการเลือก แค่ให้แอดมินเห็น) ไว้ที่
     // ล็อกว่างแต่ละล็อกทุกโซน (occupant ของล็อกที่จองแล้วติดไปแล้วโดย attachOccupantDetails() ด้านบน)
@@ -834,6 +840,9 @@ exports.confirmBookingStall = async (req, res) => {
         }
 
         const previousAssigned = parseStallCodes(requestRecord.assignedStallCode || extractAssignedStallFromDescription(requestRecord.description));
+        // คำขอต่อล็อก: ล็อกเดิมยัง BOOKED โดยคำขอเดิม ต้องจัดให้คำขอต่อได้ (ดู getExtensionOrigin)
+        const extensionOrigin = await getExtensionOrigin(prisma, requestRecord.description);
+        const extensionStallCodes = extensionOrigin?.codes || [];
         const stallsToRelease = previousAssigned.filter((code) => !selectedStalls.includes(code));
         const cleanedDescription = String(requestRecord.description || '').replace(/^\[ASSIGNED_STALL:[^\]]+\]\s*/i, '').trim();
 
@@ -856,7 +865,7 @@ exports.confirmBookingStall = async (req, res) => {
                 }
                 const isAlreadyBooked = !stall.isAvailable || String(stall.status || '').toUpperCase() !== 'AVAILABLE';
                 // ล็อกที่คำขอนี้ถืออยู่แล้วจากการจัดครั้งก่อน ไม่ถือว่า "ไม่ว่าง" สำหรับคำขอนี้เอง (จัดใหม่/ยืนยันซ้ำได้)
-                if (isAlreadyBooked && !previousAssigned.includes(code)) {
+                if (isAlreadyBooked && !previousAssigned.includes(code) && !extensionStallCodes.includes(code)) {
                     stallUnavailableCode = 'stall_unavailable';
                     throw new Error('ROLLBACK_STALL_CHECK');
                 }
@@ -901,18 +910,17 @@ exports.confirmBookingStall = async (req, res) => {
 
             for (const code of selectedStalls) {
                 const stall = stallByCode.get(code);
+                // ต่อล็อกเดิม: เก็บวันเริ่มของสัญญาเดิมไว้ ขยายแค่วันสิ้นสุด
+                const startDate = extensionStallCodes.includes(code) && extensionOrigin.startDate
+                    ? extensionOrigin.startDate
+                    : rentalStartDate;
                 await tx.stall.update({
                     where: { id: stall.id },
-                    data: { isAvailable: false, status: 'BOOKED', bookingStartDate: rentalStartDate, bookingEndDate: rentalEndDate }
+                    data: { isAvailable: false, status: 'BOOKED', bookingStartDate: startDate, bookingEndDate: rentalEndDate }
                 });
             }
 
-            if (stallsToRelease.length) {
-                await tx.stall.updateMany({
-                    where: { stallCode: { in: stallsToRelease } },
-                    data: { isAvailable: true, status: 'AVAILABLE', bookingStartDate: null, bookingEndDate: null }
-                });
-            }
+            await releaseOrRestoreStalls(tx, stallsToRelease, extensionOrigin, true);
 
             // Booking (ตัวที่หน้า seller dashboard/booking-status/booking-history อ่าน) ต้อง
             // ตามสถานะจริงของ BookingRequest ไปด้วย — เดิมโค้ดจุดนี้อัปเดตแค่ราคา ทำให้ Booking.status
@@ -994,7 +1002,9 @@ exports.rejectBookingStall = async (req, res) => {
 
         // ถ้าแอดมินเคยจัดล็อกให้แล้ว (สถานะ IN_PROGRESS) แล้วมาปฏิเสธทีหลัง ต้องปล่อยล็อกจริงทุกล็อก
         // ที่จัดไว้กลับเป็นว่างด้วย ไม่งั้นล็อกจะค้างสถานะ BOOKED ตลอดไปโดยไม่มีเจ้าของ
+        // คำขอต่อล็อกที่จัดล็อกเดิมไว้แล้ว ปฏิเสธแล้วล็อกกลับไปเป็นของสัญญาเดิม (วันสิ้นสุดเดิม) ไม่ปล่อยเป็นว่าง
         const stallCodesToRelease = parseStallCodes(requestRecord.assignedStallCode || extractAssignedStallFromDescription(requestRecord.description));
+        const extensionOrigin = await getExtensionOrigin(prisma, requestRecord.description);
 
         await prisma.bookingRequest.update({
             where: { id: requestId },
@@ -1004,12 +1014,7 @@ exports.rejectBookingStall = async (req, res) => {
             }
         });
 
-        if (stallCodesToRelease.length) {
-            await prisma.stall.updateMany({
-                where: { stallCode: { in: stallCodesToRelease } },
-                data: { isAvailable: true, status: 'AVAILABLE' }
-            });
-        }
+        await releaseOrRestoreStalls(prisma, stallCodesToRelease, extensionOrigin, false);
 
         const rejectedRequestTag = buildBookingRequestTag(requestId);
         if (rejectedRequestTag) {

@@ -9,6 +9,7 @@
 // เวลาคำนวณตามเวลาของเครื่อง server (เหมือน utils/bookingRound.js) ต้องรันเป็น Asia/Bangkok
 const prisma = require('../config/prismaClient');
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getPaymentDeadlineFromLockAssignedAt } = require('./bookingRound');
+const { buildBookingRequestTag } = require('./bookingRequestTag');
 
 const RENEWAL_CUTOFF_HOUR = 20;
 
@@ -61,6 +62,56 @@ function validateRenewal(bookingEndDate, newEndDate, now = new Date()) {
     if (!options.isOpen) return 'extend_window_closed';
     if (newEnd.getTime() < options.roundEnd.getTime() && now.getTime() < options.opensAt.getTime()) return 'too_early_to_extend';
     return null;
+}
+
+function parseStallCodes(text) {
+    return String(text || '').split(',').map((code) => code.trim().toUpperCase()).filter(Boolean);
+}
+
+// ล็อกเดิมที่คำขอต่อล็อกนี้ต่อมาจาก — ล็อกเหล่านี้ยัง BOOKED โดยคำขอเดิมอยู่ ต้องยอมให้แอดมินจัดซ้ำให้คำขอต่อได้
+// และถ้าคำขอต่อถูกปฏิเสธ/ย้ายไปล็อกอื่น ต้องคืนล็อกให้สัญญาเดิม (วันเดิม) ไม่ใช่ปล่อยเป็นว่าง
+// คืน null ถ้าไม่ใช่คำขอต่อ
+async function getExtensionOrigin(db, descriptionText) {
+    const match = /\[EXTEND_OF:(\d+)\]/i.exec(String(descriptionText || ''));
+    if (!match) return null;
+    const originalId = Number(match[1]);
+    const original = await db.bookingRequest.findUnique({
+        where: { id: originalId },
+        select: { assignedStallCode: true, description: true }
+    });
+    const assignedFromDescription = (/\[ASSIGNED_STALL:([^\]]+)\]/i.exec(String(original?.description || '')) || [])[1];
+    const originalBooking = await db.booking.findFirst({
+        where: { storeDetailSnapshot: { startsWith: buildBookingRequestTag(originalId) } },
+        orderBy: { id: 'asc' },
+        select: { rentalStartDate: true, rentalEndDate: true }
+    });
+    return {
+        codes: parseStallCodes(original?.assignedStallCode || assignedFromDescription),
+        startDate: originalBooking?.rentalStartDate || null,
+        endDate: originalBooking?.rentalEndDate || null
+    };
+}
+
+// ปล่อยล็อกที่คำขอไม่ใช้แล้ว — ล็อกเดิมของคำขอต่อ (origin) คืนกลับเป็นสัญญาเดิม ส่วนล็อกอื่นปล่อยเป็นว่าง
+async function releaseOrRestoreStalls(db, stallCodes, origin, clearDates) {
+    if (!stallCodes.length) return;
+    const originCodes = origin?.codes || [];
+    const restoreCodes = stallCodes.filter((code) => originCodes.includes(code));
+    const releaseCodes = stallCodes.filter((code) => !originCodes.includes(code));
+    if (restoreCodes.length) {
+        await db.stall.updateMany({
+            where: { stallCode: { in: restoreCodes } },
+            data: { isAvailable: false, status: 'BOOKED', bookingStartDate: origin.startDate, bookingEndDate: origin.endDate }
+        });
+    }
+    if (releaseCodes.length) {
+        await db.stall.updateMany({
+            where: { stallCode: { in: releaseCodes } },
+            data: clearDates
+                ? { isAvailable: true, status: 'AVAILABLE', bookingStartDate: null, bookingEndDate: null }
+                : { isAvailable: true, status: 'AVAILABLE' }
+        });
+    }
 }
 
 // ล็อกที่ผู้ขายยื่นคำขอต่อไว้แล้วแต่ยังไม่จบขั้นตอน (รอแอดมินอนุมัติ / รอชำระเงินและยังไม่เลยกำหนด) ห้ามถูกปล่อย
@@ -149,6 +200,8 @@ async function sendGraceReminders(now = new Date(), sendEmail) {
 
 module.exports = {
     sendGraceReminders,
+    getExtensionOrigin,
+    releaseOrRestoreStalls,
     releaseLapsedStalls,
     RENEWAL_CUTOFF_HOUR,
     getRenewalCutoff,
