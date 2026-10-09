@@ -29,7 +29,7 @@ const {
     getRoundWindow,
     BOOKING_ROUND_LENGTH_DAYS
 } = require('../utils/bookingRound');
-const { getRenewalOptions, validateRenewal } = require('../utils/stallRenewal');
+const { getRenewalOptions, validateRenewal, isUnpaidPastDeadline } = require('../utils/stallRenewal');
 const { getBillableDays, getHolidaysInRange } = require('../utils/bookingHolidays');
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
 const { buildQuotationData } = require('../controllers/quotationController');
@@ -1777,8 +1777,8 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
 // เข้าเงื่อนไขเดียวกับที่ market-map ใช้เช็ค "ล็อกที่จัดสรรแล้ว"
 // (BookingRequest.status ใน APPROVED/IN_PROGRESS/SUCCESS + มี assignedStallCode)
 // คำขอต่อล็อกนับเป็น "ล็อกที่ใช้อยู่" ก็ต่อเมื่อจ่ายเงินแล้ว (SUCCESS) — ระหว่างรอแอดมิน/รอชำระ ยังใช้คำขอเดิมเป็นฐาน
-// และ pendingExtension บอกว่ามีคำขอต่อค้างอยู่ (กันยื่นซ้ำ) ตัดคำขอ IN_PROGRESS ที่เลยกำหนดชำระแล้วออก
-// แบบเดียวกับ getStallCodesWithPendingExtension ใน utils/stallRenewal.js
+// และ pendingExtension บอกว่ามีคำขอต่อค้างอยู่ (กันยื่นซ้ำ) ตัดคำขอที่เลยกำหนดชำระและยังไม่ส่งสลิปออก
+// (isUnpaidPastDeadline ตัวเดียวกับ job ตัดสิทธิ์ใน utils/stallRenewal.js)
 const isExtendRequest = (request) => String(request.description || '').startsWith('[EXTEND_OF:');
 
 async function findActiveLockForExtension(userRecord) {
@@ -1797,15 +1797,10 @@ async function findActiveLockForExtension(userRecord) {
         take: 20
     });
 
-    const now = Date.now();
-    const pendingExtension = candidates.find((request) => {
-        if (!isExtendRequest(request) || request.status === 'SUCCESS') return false;
-        if (request.status === 'IN_PROGRESS') {
-            const deadline = getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt);
-            if (deadline && deadline.getTime() < now) return false;
-        }
-        return true;
-    }) || null;
+    const now = new Date();
+    const pendingExtension = candidates.find((request) => isExtendRequest(request)
+        && request.status !== 'SUCCESS'
+        && !isUnpaidPastDeadline(request, now)) || null;
 
     const latestRequest = candidates.find((request) => request.assignedStallCode
         && request.status !== 'PENDING'

@@ -11,7 +11,7 @@ const { isProduction } = require('./config/authSecrets');
 const { generalLimiter } = require('./middlewares/authRateLimit');
 const logger = require('./config/logger');
 const { sendStallExpiringSoonEmail } = require('./config/mailer');
-const { releaseLapsedStalls, sendGraceReminders } = require('./utils/stallRenewal');
+const { releaseLapsedStalls, sendGraceReminders, restoreUnpaidExtensions } = require('./utils/stallRenewal');
 const { ensureWeeklyRoundAnnouncement, ensureWeeklyCornerLockAnnouncement } = require('./utils/autoRoundAnnouncement');
 
 const { resolveImageUrl } = require('./utils/imageStorage');
@@ -237,7 +237,15 @@ function scheduleLapsedStallRelease() {
     logger.info('lapsed stall auto-release disabled (set ENABLE_LAPSED_RELEASE=true to enable)');
     return;
   }
-  const run = () => releaseLapsedStalls()
+  // คืนล็อกของคำขอต่อที่ไม่จ่ายเงินให้เป็นสัญญาเดิมก่อน แล้วค่อยตัดสิทธิ์ (ล็อกที่คืนแล้วเลย 20:00 จะถูกปล่อยในรอบเดียวกัน)
+  const run = () => restoreUnpaidExtensions()
+    .then((codes) => {
+      if (codes.length) logger.info({ stalls: codes }, 'restored stalls of unpaid extensions');
+    })
+    .catch((error) => {
+      logger.error({ error: error.message }, 'restoreUnpaidExtensions failed');
+    })
+    .then(() => releaseLapsedStalls())
     .then((codes) => {
       if (codes.length) logger.info({ stalls: codes }, 'released lapsed stalls');
     })

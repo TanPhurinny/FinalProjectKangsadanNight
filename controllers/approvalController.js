@@ -624,6 +624,26 @@ exports.confirmPayment = async (req, res) => {
             }
         });
 
+        // คำขอต่อล็อก: ถ้าล็อกเดิมเคยถูกคืนวันสิ้นสุดเพราะจ่ายช้า (restoreUnpaidExtensions) ขยายให้ใหม่ตามที่จ่ายจริง
+        // เฉพาะล็อกที่ยังเป็นของสัญญาเดิมหรือยังว่างอยู่ ถ้าถูกจัดให้คนอื่นไปแล้วไม่เขียนทับ
+        const paidExtensionOrigin = await getExtensionOrigin(prisma, requestRecord.description);
+        if (paidExtensionOrigin) {
+            const paidCodes = parseStallCodes(requestRecord.assignedStallCode).filter((code) => paidExtensionOrigin.codes.includes(code));
+            const extensionBooking = await prisma.booking.findFirst({
+                where: { storeDetailSnapshot: { startsWith: buildBookingRequestTag(requestId) } },
+                select: { rentalEndDate: true }
+            });
+            if (paidCodes.length && extensionBooking?.rentalEndDate) {
+                await prisma.stall.updateMany({
+                    where: {
+                        stallCode: { in: paidCodes },
+                        OR: [{ status: 'AVAILABLE' }, { status: 'BOOKED', bookingEndDate: paidExtensionOrigin.endDate }]
+                    },
+                    data: { isAvailable: false, status: 'BOOKED', bookingStartDate: paidExtensionOrigin.startDate, bookingEndDate: extensionBooking.rentalEndDate }
+                });
+            }
+        }
+
         // Booking ที่ผูกกับคำขอนี้ต้องตามสถานะไปเป็น SUCCESS ด้วย ไม่งั้นหน้า seller
         // dashboard/booking-status/booking-history จะยังค้างแสดงว่า "รอดำเนินการ" ทั้งที่จ่ายเงินจบแล้ว
         const successRequestTag = buildBookingRequestTag(requestId);

@@ -68,8 +68,15 @@ function parseStallCodes(text) {
     return String(text || '').split(',').map((code) => code.trim().toUpperCase()).filter(Boolean);
 }
 
+// คำขอที่จัดล็อกแล้ว (IN_PROGRESS) แต่เลยกำหนดชำระ 6 ชม. และยังไม่ส่งสลิป — ส่งสลิปแล้วถือว่ารอแอดมินตรวจ ยังไม่หลุด
+function isUnpaidPastDeadline(request, now = new Date()) {
+    if (request.status !== 'IN_PROGRESS' || request.paymentSlipImage) return false;
+    const deadline = getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt);
+    return Boolean(deadline && deadline.getTime() < now.getTime());
+}
+
 // ล็อกเดิมที่คำขอต่อล็อกนี้ต่อมาจาก — ล็อกเหล่านี้ยัง BOOKED โดยคำขอเดิมอยู่ ต้องยอมให้แอดมินจัดซ้ำให้คำขอต่อได้
-// และถ้าคำขอต่อถูกปฏิเสธ/ย้ายไปล็อกอื่น ต้องคืนล็อกให้สัญญาเดิม (วันเดิม) ไม่ใช่ปล่อยเป็นว่าง
+// และถ้าคำขอต่อถูกปฏิเสธ/ย้ายไปล็อกอื่น/ไม่จ่ายเงิน ต้องคืนล็อกให้สัญญาเดิม (วันเดิม) ไม่ใช่ปล่อยเป็นว่าง
 // คืน null ถ้าไม่ใช่คำขอต่อ
 async function getExtensionOrigin(db, descriptionText) {
     const match = /\[EXTEND_OF:(\d+)\]/i.exec(String(descriptionText || ''));
@@ -114,19 +121,49 @@ async function releaseOrRestoreStalls(db, stallCodes, origin, clearDates) {
     }
 }
 
+// คำขอต่อที่แอดมินจัดล็อกเดิมให้แล้ว (Stall.bookingEndDate ถูกขยายไปวันใหม่) แต่ผู้ขายไม่จ่ายภายในกำหนด
+// คืนวันสิ้นสุดของล็อกกลับเป็นสัญญาเดิม ไม่งั้นล็อกถูกกันไว้ฟรีจนถึงวันใหม่ และ job ตัดสิทธิ์มองไม่เห็น
+// ไม่แตะสถานะคำขอ (แอดมินปฏิเสธเองได้ภายหลัง) — ถ้าผู้ขายส่งสลิปช้าแล้วแอดมินยืนยัน confirmPayment ขยายให้ใหม่
+// คืนรหัสล็อกที่คืนค่า
+async function restoreUnpaidExtensions(now = new Date()) {
+    const requests = await prisma.bookingRequest.findMany({
+        where: {
+            status: 'IN_PROGRESS',
+            paymentSlipImage: null,
+            assignedStallCode: { not: null },
+            description: { startsWith: '[EXTEND_OF:' }
+        },
+        select: { status: true, paymentSlipImage: true, lockAssignedAt: true, assignedStallCode: true, description: true }
+    });
+    const restored = [];
+    for (const request of requests) {
+        if (!isUnpaidPastDeadline(request, now)) continue;
+        const origin = await getExtensionOrigin(prisma, request.description);
+        if (!origin?.endDate) continue;
+        const codes = parseStallCodes(request.assignedStallCode).filter((code) => origin.codes.includes(code));
+        if (!codes.length) continue;
+        // เฉพาะล็อกที่ยังเป็นวันของคำขอต่ออยู่ (ยังไม่ถูกคืน/ถูกปล่อย/ถูกจัดให้คนอื่น) กันเขียนทับทุก 5 นาที
+        const stalls = await prisma.stall.findMany({ where: { stallCode: { in: codes }, status: 'BOOKED' } });
+        const toRestore = stalls
+            .filter((stall) => stall.bookingEndDate && toStartOfDay(stall.bookingEndDate).getTime() !== toStartOfDay(origin.endDate).getTime())
+            .map((stall) => stall.stallCode);
+        if (!toRestore.length) continue;
+        await releaseOrRestoreStalls(prisma, toRestore, origin, false);
+        restored.push(...toRestore);
+    }
+    return restored;
+}
+
 // ล็อกที่ผู้ขายยื่นคำขอต่อไว้แล้วแต่ยังไม่จบขั้นตอน (รอแอดมินอนุมัติ / รอชำระเงินและยังไม่เลยกำหนด) ห้ามถูกปล่อย
 // แม้เลย 20:00 แล้ว — คำขอต่อเก็บเป็น BookingRequest ที่ description ขึ้นต้น [EXTEND_OF:<id คำขอเดิม>]
 async function getStallCodesWithPendingExtension(now) {
     const extendRequests = await prisma.bookingRequest.findMany({
         where: { status: { in: ['PENDING', 'IN_PROGRESS'] }, description: { startsWith: '[EXTEND_OF:' } },
-        select: { description: true, status: true, lockAssignedAt: true }
+        select: { description: true, status: true, lockAssignedAt: true, paymentSlipImage: true }
     });
     const originalIds = [];
     extendRequests.forEach((request) => {
-        if (request.status === 'IN_PROGRESS') {
-            const deadline = getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt);
-            if (deadline && deadline.getTime() < now.getTime()) return;
-        }
+        if (isUnpaidPastDeadline(request, now)) return;
         const match = /^\[EXTEND_OF:(\d+)\]/.exec(request.description);
         if (match) originalIds.push(Number(match[1]));
     });
@@ -200,6 +237,8 @@ async function sendGraceReminders(now = new Date(), sendEmail) {
 
 module.exports = {
     sendGraceReminders,
+    restoreUnpaidExtensions,
+    isUnpaidPastDeadline,
     getExtensionOrigin,
     releaseOrRestoreStalls,
     releaseLapsedStalls,
