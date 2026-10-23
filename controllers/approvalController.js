@@ -931,7 +931,7 @@ async function markPaymentConfirmed(requestRecord, actorName, actionLabel = 'ย
                 // ไม่งั้นทุกครั้งที่ยืนยันสลิปรอบใหม่จะเขียนทับของที่ผู้ขายแก้ไว้กลับเป็นค่าตอนสมัคร
                 const existingShop = await prisma.shopDetail.findUnique({
                     where: { userId: paidBooking.userId },
-                    select: { productDetail: true, shopSummary: true, shopTags: true, shopCoverImage: true }
+                    select: { productDetail: true, shopSummary: true, shopTags: true, shopCoverImage: true, logoImage: true }
                 });
                 const fillIfEmpty = (field) => (existingShop?.[field] ? {} : { [field]: latestApplication[field] || null });
                 const applicationShopData = {
@@ -948,6 +948,7 @@ async function markPaymentConfirmed(requestRecord, actorName, actionLabel = 'ย
                         ...fillIfEmpty('shopSummary'),
                         ...fillIfEmpty('shopTags'),
                         ...fillIfEmpty('shopCoverImage'),
+                        ...fillIfEmpty('logoImage'),
                         isVerified: true,
                         ...(paidZoneLabel ? { shopZoneLabel: paidZoneLabel } : {})
                     },
@@ -958,6 +959,7 @@ async function markPaymentConfirmed(requestRecord, actorName, actionLabel = 'ย
                         shopSummary: latestApplication.shopSummary,
                         shopTags: latestApplication.shopTags,
                         shopCoverImage: latestApplication.shopCoverImage,
+                        logoImage: latestApplication.logoImage,
                         isVerified: true,
                         shopZoneLabel: paidZoneLabel || null
                     }

@@ -256,6 +256,18 @@
     }
 }
 
+/* ── โลโก้ร้าน: กล่องสี่เหลี่ยมจัตุรัส ย่อทั้งรูปให้เห็นครบ (โลโก้ไม่ควรถูกครอบตัด) ── */
+.upload-box-frame--logo {
+    width: 160px;
+}
+.upload-box--logo {
+    height: 160px;
+}
+.upload-box--logo img {
+    object-fit: contain;
+    background-color: #fff;
+}
+
 /* ── แกลเลอรีรูปสินค้า/รูปเมนู: ไทล์ใหญ่ขึ้น กล่อง "เพิ่มรูป" มีไอคอน+ข้อความแทนขีด + ลอยๆ ── */
 #productImagesWrapper,
 #menuImagesWrapper {

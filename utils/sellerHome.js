@@ -231,7 +231,7 @@ async function buildSellerHome(userId, now = new Date()) {
             zoneLabel: shop.shopZoneLabel || '',
             isVerified: !!shop.isVerified,
             summary: shop.shopSummary || shop.productDetail || '',
-            image: shop.productImage || shop.productImages?.[0]?.imageUrl || shop.shopCoverImage || null,
+            image: shop.logoImage || shop.productImage || shop.productImages?.[0]?.imageUrl || shop.shopCoverImage || null,
             tags: profile.tags,
             menuCount: (shop.menuImages || []).length
         },

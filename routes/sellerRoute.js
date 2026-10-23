@@ -879,7 +879,8 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
     uploadShopProfile.fields([
         { name: 'productImages', maxCount: MAX_SHOP_PRODUCT_IMAGES },
         { name: 'menuImages', maxCount: MAX_SHOP_MENU_IMAGES },
-        { name: 'shopCoverImage', maxCount: 1 }
+        { name: 'shopCoverImage', maxCount: 1 },
+        { name: 'logoImage', maxCount: 1 }
     ])(req, res, async (err) => {
         if (err) {
             return renderWithError('upload_failed');
@@ -896,6 +897,8 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
                 ? req.files.shopCoverImage[0].url
                 : undefined;
             const removeShopCoverImage = !shopCoverImage && req.body.removeShopCoverImage === '1';
+            const logoImage = req.files?.logoImage?.[0]?.url;
+            const removeLogoImage = !logoImage && req.body.removeLogoImage === '1';
 
             // ชื่อร้าน/ประเภทสินค้าไม่รับจากฟอร์มนี้ (ดูเหตุผลใน utils/validationSchemas.js) — ถ้ายังไม่มี
             // ShopDetail มาก่อนเลย (กรณีข้อมูลเก่าก่อนมีการซิงก์อัตโนมัติ) ค่อย fallback ไปเอาจากใบสมัครล่าสุด
@@ -924,6 +927,9 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
             if ((shopCoverImage || removeShopCoverImage) && existingShop?.shopCoverImage) {
                 oldFilesToDelete.push(existingShop.shopCoverImage);
             }
+            if ((logoImage || removeLogoImage) && existingShop?.logoImage) {
+                oldFilesToDelete.push(existingShop.logoImage);
+            }
             await Promise.all(oldFilesToDelete.map((oldUrl) => deleteImage(oldUrl)));
 
             const shopDetail = await prisma.shopDetail.upsert({
@@ -932,7 +938,8 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
                     productDetail: productDetail || null,
                     shopSummary: shopSummary || null,
                     shopTags: shopTags || null,
-                    ...(shopCoverImage ? { shopCoverImage } : removeShopCoverImage ? { shopCoverImage: null } : {})
+                    ...(shopCoverImage ? { shopCoverImage } : removeShopCoverImage ? { shopCoverImage: null } : {}),
+                    ...(logoImage ? { logoImage } : removeLogoImage ? { logoImage: null } : {})
                 },
                 create: {
                     userId: req.user.id,
@@ -941,7 +948,8 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
                     productDetail: productDetail || null,
                     shopSummary: shopSummary || null,
                     shopTags: shopTags || null,
-                    shopCoverImage: shopCoverImage || null
+                    shopCoverImage: shopCoverImage || null,
+                    logoImage: logoImage || null
                 }
             });
 
@@ -1081,10 +1089,11 @@ function getReusableImages(application) {
     if (!application || application.status !== 'REJECTED') return null;
     const images = {
         cover: application.shopCoverImage || null,
+        logo: application.logoImage || null,
         products: parseUrlList(application.productImages),
         menus: parseUrlList(application.menuImages)
     };
-    return images.cover || images.products.length || images.menus.length ? images : null;
+    return images.cover || images.logo || images.products.length || images.menus.length ? images : null;
 }
 
 async function renderShopApplication(req, res, { latestApplication, error = null, success = null, formData = null }) {
@@ -1164,6 +1173,7 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
 
     uploadShopApplication.fields([
         { name: 'shopCoverImage', maxCount: 1 },
+        { name: 'logoImage', maxCount: 1 },
         { name: 'productImages', maxCount: MAX_SHOP_PRODUCT_IMAGES },
         { name: 'menuImages', maxCount: MAX_SHOP_MENU_IMAGES }
     ])(req, res, async (err) => {
@@ -1209,11 +1219,12 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
                 const previousApplication = await prisma.sellerApplication.findFirst({
                     where: { userId: req.user.id, status: 'REJECTED' },
                     orderBy: { createdAt: 'desc' },
-                    select: { shopCoverImage: true, productImages: true, menuImages: true }
+                    select: { shopCoverImage: true, logoImage: true, productImages: true, menuImages: true }
                 });
                 previousImages = previousApplication || null;
             }
             const shopCoverImage = req.files?.shopCoverImage?.[0]?.url || previousImages?.shopCoverImage || null;
+            const logoImage = req.files?.logoImage?.[0]?.url || previousImages?.logoImage || null;
             const productImagesValue = toUrlList(req.files?.productImages) || previousImages?.productImages || null;
             const menuImagesValue = toUrlList(req.files?.menuImages) || previousImages?.menuImages || null;
 
@@ -1233,6 +1244,7 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
                     bankAccountName,
                     phoneNumber,
                     shopCoverImage,
+                    logoImage,
                     productImages: productImagesValue,
                     menuImages: menuImagesValue,
                     termsAcceptedAt: new Date(),

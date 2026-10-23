@@ -33,6 +33,7 @@ function bindImagePreview(inputId, previewId, removeBtnId, removeFlagId, frameId
 }
 
 bindImagePreview('shopCoverImageUpload', 'shopCoverImagePreview', 'shopCoverImageRemoveBtn', 'removeShopCoverImageFlag', 'shopCoverImageFrame');
+bindImagePreview('logoImageUpload', 'logoImagePreview', 'logoImageRemoveBtn', 'removeLogoImageFlag', 'logoImageFrame');
 
 // ── เมนูเด่น/คำค้นหา: พิมพ์แล้วกด Enter/, เพื่อเด้งเป็นป้ายแยก กดกากบาทที่ป้ายเพื่อลบทิ้ง ──
 // เก็บค่าจริงไว้ใน hidden input (คั่นด้วยจุลภาค) ให้ backend อ่านเหมือนเดิม ไม่ต้องแก้ฝั่ง server

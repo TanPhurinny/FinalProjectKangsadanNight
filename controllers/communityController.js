@@ -43,10 +43,10 @@ function isSeller(user) {
 async function getUserAvatar(userId) {
     const shop = await prisma.shopDetail.findUnique({
         where: { userId },
-        select: { productImage: true }
+        select: { logoImage: true, productImage: true }
     });
 
-    return shop?.productImage || '/img/favicon.png';
+    return shop?.logoImage || shop?.productImage || '/img/favicon.png';
 }
 
 function parseDateTimeThai(dateValue) {
@@ -169,7 +169,7 @@ function buildPostView(post, currentUserId, activeStallCodes = [], canModerate =
         createdTime: time,
         updatedAt: post.updatedAt,
         storeName: shop.shopName || post.author?.name || 'ผู้ใช้งาน',
-        profileImage: shop.productImage || '/img/favicon.png',
+        profileImage: shop.logoImage || shop.productImage || '/img/favicon.png',
         stallNo: activeStallCodes.length ? activeStallCodes.join(', ') : 'ยังไม่มีแผง',
         stallCodes: activeStallCodes,
         authorName: post.author?.name || '-',
@@ -512,7 +512,7 @@ exports.getComments = async (req, res) => {
                 id: comment.id,
                 content: comment.content,
                 authorName: comment.user?.shop?.shopName || comment.user?.name || 'ผู้ใช้งาน',
-                profileImage: comment.user?.shop?.productImage || '/img/favicon.png',
+                profileImage: comment.user?.shop?.logoImage || comment.user?.shop?.productImage || '/img/favicon.png',
                 createdAt: new Date(comment.createdAt).toLocaleString('th-TH'),
                 canDelete: canModerate || Number(comment.userId) === Number(req.user.id)
             }))
@@ -564,7 +564,7 @@ exports.createComment = async (req, res) => {
                 id: comment.id,
                 content: comment.content,
                 authorName: comment.user?.shop?.shopName || comment.user?.name || 'ผู้ใช้งาน',
-                profileImage: comment.user?.shop?.productImage || '/img/favicon.png',
+                profileImage: comment.user?.shop?.logoImage || comment.user?.shop?.productImage || '/img/favicon.png',
                 createdAt: new Date(comment.createdAt).toLocaleString('th-TH'),
                 canDelete: true
             }

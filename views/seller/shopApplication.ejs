@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
   <link rel="stylesheet" href="/stylesheets/seller/repair.css">
-  <link rel="stylesheet" href="/stylesheets/seller/shopApplication.css?v=20261023-extras">
+  <link rel="stylesheet" href="/stylesheets/seller/shopApplication.css?v=20261023-logo">
     </head>
 
     <body>
@@ -368,15 +368,32 @@
                             <p class="field-hint">ลูกค้าค้นชื่อเมนูบนผังตลาดแล้วเจอร้านคุณ — ใส่แบบเจาะจง เช่น "หมูปิ้งนมสด" แทน "หมูปิ้ง"</p>
                         </div>
 
+                        <div class="form-group full-width">
+                            <label>โลโก้ร้าน <span class="label-optional">ถ้ามี</span></label>
+                            <div class="upload-wrapper">
+                                <label for="logoImageUpload" class="upload-box upload-box--cover upload-box--logo"
+                                    id="logoUploadLabel">
+                                    <img id="logoImagePreview" src alt="Preview" hidden>
+                                    <span class="upload-box__placeholder" id="logoUploadPlaceholder">
+                                        <span class="upload-box__icon" aria-hidden="true"><i class="fa-solid fa-store"></i></span>
+                                        <span class="upload-box__text">แตะเพื่อเลือกโลโก้</span>
+                                    </span>
+                                </label>
+                                <input type="file" name="logoImage" id="logoImageUpload"
+                                    class="upload-input" accept="image/*">
+                            </div>
+                            <p class="field-hint">ใช้เป็นรูปย่อของร้านบนผังตลาด — แยกจากรูปสินค้า ลูกค้าที่กดดูเมนูจะไม่เห็นโลโก้ปนกับรูปอาหาร</p>
+                        </div>
+
                         <div class="upload-grid">
                             <div class="form-group">
-                                <label>รูปสินค้า/โลโก้ร้าน <span class="label-optional">สูงสุด <%= maxProductImagesCount %> รูป</span></label>
+                                <label>รูปสินค้า <span class="label-optional">สูงสุด <%= maxProductImagesCount %> รูป</span></label>
                                 <div class="upload-wrapper gallery-wrapper" id="productImagesWrapper">
                                     <label for="productImagesUpload" class="upload-box" id="productImagesUploadLabel"></label>
                                 </div>
                                 <input type="file" name="productImages" id="productImagesUpload"
                                     class="upload-input" accept="image/*" multiple data-max="<%= maxProductImagesCount %>">
-                                <p class="field-hint">รูปแรกใช้เป็นรูปย่อของร้านบนผังตลาด</p>
+                                <p class="field-hint">รูปอาหาร/สินค้าจริงของร้าน (ไม่ต้องใส่โลโก้ในช่องนี้)</p>
                             </div>
 
                             <div class="form-group">
@@ -404,15 +421,15 @@
                                 <input type="file" name="shopCoverImage" id="imageUpload"
                                     class="upload-input" accept="image/*">
                             </div>
-                            <p class="field-hint">ถ้าไม่มีรูปสินค้า จะใช้รูปนี้เป็นรูปย่อบนผังตลาดแทน · ทุกช่องย่อรูปให้อัตโนมัติก่อนส่ง อัปโหลดเร็วขึ้นบนเน็ตมือถือ</p>
+                            <p class="field-hint">ถ้าไม่มีโลโก้และรูปสินค้า จะใช้รูปนี้เป็นรูปย่อบนผังตลาดแทน · ทุกช่องย่อรูปให้อัตโนมัติก่อนส่ง อัปโหลดเร็วขึ้นบนเน็ตมือถือ</p>
                         </div>
 
                         <% const prevImages = (typeof previousImages !== 'undefined' && previousImages) ? previousImages : null; %>
                         <% if (prevImages) {
-                            const prevThumbs = [prevImages.cover, ...prevImages.products, ...prevImages.menus].filter(Boolean);
+                            const prevThumbs = [prevImages.logo, prevImages.cover, ...prevImages.products, ...prevImages.menus].filter(Boolean);
                         %>
                         <label class="reuse-images" id="reuseImagesBox"
-                            data-cover="<%= prevImages.cover || '' %>" data-first-product="<%= prevImages.products[0] || '' %>">
+                            data-cover="<%= prevImages.cover || '' %>" data-logo="<%= prevImages.logo || '' %>" data-first-product="<%= prevImages.products[0] || '' %>">
                             <input type="checkbox" name="reusePreviousImages" value="1" id="reuseImagesToggle" checked>
                             <span class="reuse-images__body">
                                 <span class="reuse-images__title">ใช้รูปจากใบสมัครครั้งก่อน (<%= prevThumbs.length %> รูป)</span>
@@ -562,6 +579,6 @@
         </div>
         <% } %>
 
-        <script src="/js/seller/shopApplication.js?v=20261023-extras"></script>
+        <script src="/js/seller/shopApplication.js?v=20261023-logo"></script>
     </body>
 </html>

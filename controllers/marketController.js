@@ -425,7 +425,7 @@ exports.getSlotsPage = async (req, res) => {
         if (missingShopInfoNames.length) {
             const sellerUsers = await prisma.user.findMany({
                 where: { role: 'SELLER', name: { in: missingShopInfoNames } },
-                select: { name: true, shop: { select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true } } }
+                select: { name: true, shop: { select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true } } }
             });
             sellerUsers.forEach((u) => {
                 if (u.shop) shopInfoByName[u.name] = u.shop;
@@ -447,7 +447,8 @@ exports.getSlotsPage = async (req, res) => {
                 || fallbackShop.productType
                 || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
             const productDetail = request.seller?.productDetail || fallbackShop.productDetail || request.description || '-';
-            const shopImage = request.productImage || request.seller?.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
+            // รูปย่อร้าน: โลโก้ (ช่องแยก) ก่อน — ร้านที่ยังไม่มีโลโก้ใช้ลำดับเดิม
+            const shopImage = fallbackShop.logoImage || request.productImage || request.seller?.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
 
             stallCodes.forEach((stallCode) => {
                 bookingByStallCode[stallCode] = {
@@ -678,7 +679,7 @@ exports.getMarketMapPage = async (req, res) => {
                     name: true,
                     shop: {
                         select: {
-                            productType: true, productDetail: true, productImage: true, shopCoverImage: true, shopTags: true, shopSummary: true,
+                            productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true, shopTags: true, shopSummary: true,
                             productSubtype: true,
                             // ปุ่ม "ดูเมนูร้าน" ในการ์ดร้าน — รูปเมนู + แกลเลอรีรูปสินค้า
                             menuImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } },
@@ -748,7 +749,8 @@ exports.getMarketMapPage = async (req, res) => {
                 || fallbackShop.productType
                 || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
             const productDetail = request.seller?.productDetail || fallbackShop.productDetail || request.description || '-';
-            const shopImage = request.productImage || request.seller?.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
+            // รูปย่อร้าน: โลโก้ (ช่องแยก) ก่อน — ร้านที่ยังไม่มีโลโก้ใช้ลำดับเดิม
+            const shopImage = fallbackShop.logoImage || request.productImage || request.seller?.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
             const tags = fallbackShop.shopTags || '';
 
             stallCodes.forEach((stallCode) => {

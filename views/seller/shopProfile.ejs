@@ -13,7 +13,7 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/seller/repair.css">
-        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261002-stats">
+        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261023-logo">
         <link rel="stylesheet" href="/stylesheets/seller/taxInvoiceRequest.css">
     </head>
 
@@ -186,8 +186,32 @@
                             <span class="form-section-hint">JPG / PNG</span>
                         </div>
 
+                        <div class="form-group full-width" id="field-logo">
+                            <label>โลโก้ร้าน</label>
+                            <div class="upload-wrapper">
+                                <div class="upload-box-frame upload-box-frame--logo<%= shopRecord.logoImage ? ' has-image' : '' %>" id="logoImageFrame">
+                                    <label for="logoImageUpload" class="upload-box upload-box--cover upload-box--logo" id="logoImageUploadLabel">
+                                        <img id="logoImagePreview"
+                                            <% if (shopRecord.logoImage) { %>src="<%= shopRecord.logoImage %>"<% } %>
+                                            style="<%= shopRecord.logoImage ? 'display:block;' : '' %>"
+                                            alt="โลโก้ร้าน">
+                                        <span class="cover-upload-placeholder">
+                                            <i class="fa-solid fa-store"></i>
+                                            <span>อัปโหลดโลโก้</span>
+                                        </span>
+                                    </label>
+                                    <button type="button" class="upload-thumb-remove" id="logoImageRemoveBtn"
+                                        style="<%= shopRecord.logoImage ? '' : 'display:none;' %>" title="ลบโลโก้">&times;</button>
+                                </div>
+                                <input type="file" name="logoImage" id="logoImageUpload"
+                                    class="upload-input" accept="image/*">
+                                <input type="hidden" name="removeLogoImage" id="removeLogoImageFlag" value="">
+                            </div>
+                            <p class="field-hint">ใช้เป็นรูปย่อของร้านบนผังตลาดและคอมมูนิตี้ — ไม่แสดงปนกับรูปสินค้าตอนลูกค้ากดดูเมนู</p>
+                        </div>
+
                         <div class="form-group full-width" id="field-photos">
-                            <label>รูปสินค้า/โลโก้ร้าน (สูงสุด <%= maxProductImagesCount %> รูป)</label>
+                            <label>รูปสินค้า (สูงสุด <%= maxProductImagesCount %> รูป)</label>
                             <div class="upload-wrapper" id="productImagesWrapper">
                                 <% currentProductImages.forEach(function (img) { %>
                                 <div class="upload-thumb-item existing-thumb" data-image-id="<%= img.id %>">
@@ -202,7 +226,7 @@
                                 class="upload-input" accept="image/*" multiple
                                 data-max="<%= maxProductImagesCount %>" data-existing="<%= currentProductImages.length %>">
                             <input type="hidden" name="removeProductImageIds" id="removeProductImageIdsInput" value="">
-                            <p class="field-hint">รูปแรกในแกลเลอรีจะใช้เป็นรูปย่อของร้านในผังตลาด/คอมมูนิตี้</p>
+                            <p class="field-hint">รูปอาหาร/สินค้าจริงของร้าน ลูกค้าเห็นในแท็บ "รูปสินค้า" ตอนกดดูเมนูบนผังตลาด (ถ้ายังไม่มีโลโก้ รูปแรกจะใช้เป็นรูปย่อของร้านแทน)</p>
                         </div>
 
                         <div class="form-group full-width" id="field-menu">
@@ -408,6 +432,6 @@
 
         <script src="/js/seller/taxInvoiceForm.js?v=20261008"></script>
 
-        <script src="/js/seller/shopProfile.js?v=20261002-menu"></script>
+        <script src="/js/seller/shopProfile.js?v=20261023-logo"></script>
     </body>
 </html>

@@ -136,6 +136,7 @@ model SellerApplication {
   district          String?
   province          String?
   shopCoverImage    String?
+  logoImage         String? // โลโก้ร้าน — คัดลอกเข้า ShopDetail.logoImage ตอนอนุมัติ
   productImages     String?   @db.Text // JSON array ของ URL รูปสินค้า — สร้างเป็น ShopProductImage ตอนอนุมัติ (ถ้าร้านยังไม่มีรูป)
   menuImages        String?   @db.Text // JSON array ของ URL รูปเมนู — สร้างเป็น ShopMenuImage ตอนอนุมัติ (ถ้าร้านยังไม่มีรูป)
   termsAcceptedAt   DateTime?
@@ -171,6 +172,7 @@ model ShopDetail {
   productImage  String? // รูปหลัก/รูปย่อของสินค้า อ้างอิงรูปแรกใน productImages เสมอ (ใช้แสดงในหน้าอื่นที่ยังอ้างอิงรูปเดียว เช่น ผังตลาด/คอมมูนิตี้)
   shopSummary   String? @db.Text
   shopCoverImage String?
+  logoImage     String? // โลโก้ร้าน แยกจากรูปสินค้า — ใช้เป็นรูปย่อร้านบนผังตลาด/คอมมูนิตี้ ไม่โชว์ในแท็บ "รูปสินค้า" ของหน้าดูเมนู
   sellerTier    String?
   shopZoneLabel String?
   shopTags      String? @db.Text

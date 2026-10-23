@@ -68,13 +68,15 @@ function splitOversized(files) {
     return { ok, rejected: files.length - ok.length };
 }
 
-if (imageUpload && imagePreview) {
-    imageUpload.addEventListener('change', async function () {
-        const original = imageUpload.files[0];
+// ช่องอัปโหลดรูปเดี่ยว (รูปปก / โลโก้): ย่อรูป ตัดไฟล์ที่ใหญ่เกิน แล้วโชว์พรีวิวในกล่อง
+function bindSingleImageUpload(input, preview, placeholder) {
+    if (!input || !preview) return;
+    input.addEventListener('change', async function () {
+        const original = input.files[0];
         if (!original) {
-            imagePreview.src = '';
-            imagePreview.hidden = true;
-            if (uploadPlaceholder) uploadPlaceholder.hidden = false;
+            preview.src = '';
+            preview.hidden = true;
+            if (placeholder) placeholder.hidden = false;
             notifyForm('images:change');
             return;
         }
@@ -82,20 +84,24 @@ if (imageUpload && imagePreview) {
         const { ok, rejected } = splitOversized([file]);
         const dt = new DataTransfer();
         ok.forEach((f) => dt.items.add(f));
-        imageUpload.files = dt.files;
-        showUploadError(imageUpload, rejected ? 'รูปใหญ่เกิน 5MB ย่อแล้วยังไม่พอ กรุณาเลือกรูปอื่น' : '');
+        input.files = dt.files;
+        showUploadError(input, rejected ? 'รูปใหญ่เกิน 5MB ย่อแล้วยังไม่พอ กรุณาเลือกรูปอื่น' : '');
         if (ok.length) {
-            imagePreview.src = URL.createObjectURL(ok[0]);
-            imagePreview.onload = () => URL.revokeObjectURL(imagePreview.src);
-            imagePreview.hidden = false;
-            if (uploadPlaceholder) uploadPlaceholder.hidden = true;
+            preview.src = URL.createObjectURL(ok[0]);
+            preview.onload = () => URL.revokeObjectURL(preview.src);
+            preview.hidden = false;
+            if (placeholder) placeholder.hidden = true;
         } else {
-            imagePreview.hidden = true;
-            if (uploadPlaceholder) uploadPlaceholder.hidden = false;
+            preview.hidden = true;
+            if (placeholder) placeholder.hidden = false;
         }
         notifyForm('images:change');
     });
 }
+
+const logoImageUpload = document.getElementById('logoImageUpload');
+bindSingleImageUpload(imageUpload, imagePreview, uploadPlaceholder);
+bindSingleImageUpload(logoImageUpload, document.getElementById('logoImagePreview'), document.getElementById('logoUploadPlaceholder'));
 
 // --- กฎระเบียบร้านค้า: ต้องกดยอมรับก่อนถึงจะส่งใบสมัครได้ ---
 const rulesOverlay = document.getElementById('rulesOverlay');
@@ -593,12 +599,12 @@ document.querySelectorAll('textarea[data-counter]').forEach(function (textarea) 
     let objectUrl = null;
     let thumbKey = null;
 
-    // ลำดับเดียวกับฝั่ง server: รูปสินค้ารูปแรก → รูปปก → รูปเดิมจากใบสมัครก่อน
+    // ลำดับเดียวกับฝั่ง server: โลโก้ → รูปสินค้ารูปแรก → รูปปก → รูปเดิมจากใบสมัครก่อน
     function pickThumb() {
-        const file = (productImages && productImages.files[0]) || (imageUpload && imageUpload.files[0]);
+        const file = (logoImageUpload && logoImageUpload.files[0]) || (productImages && productImages.files[0]) || (imageUpload && imageUpload.files[0]);
         if (file) return { key: `${file.name}:${file.size}:${file.lastModified}`, file };
         if (reuseBox && reuseToggle && reuseToggle.checked) {
-            const url = reuseBox.dataset.firstProduct || reuseBox.dataset.cover;
+            const url = reuseBox.dataset.logo || reuseBox.dataset.firstProduct || reuseBox.dataset.cover;
             if (url) return { key: url, url };
         }
         return null;
@@ -910,6 +916,7 @@ const shopApplicationDraft = (function () {
         const tags = shopTagsApi ? shopTagsApi.getTags() : [];
         const imageText = (count, label) => (count ? `${label} ${count} รูป` : null);
         const images = [
+            fileCount('logoImageUpload') ? 'โลโก้ 1 รูป' : null,
             imageText(fileCount('productImagesUpload'), 'รูปสินค้า'),
             imageText(fileCount('menuImagesUpload'), 'รูปเมนู'),
             fileCount('imageUpload') ? 'รูปปก 1 รูป' : null

@@ -48,6 +48,7 @@ exports.getSellerApplicationsPage = async (req, res) => {
                 bankAccountName: application.bankAccountName || '-',
                 phoneNumber: application.phoneNumber || application.user?.phoneNumber || '-',
                 shopCoverImage: application.shopCoverImage || null,
+                logoImage: application.logoImage || null,
                 applicantName: application.user?.name || '-',
                 phoneNumber: application.user?.phoneNumber || '-',
                 email: application.user?.email || '-',
@@ -92,7 +93,7 @@ exports.approveSellerApplication = async (req, res) => {
 
         const application = await prisma.sellerApplication.findUnique({
             where: { id: applicationId },
-            select: { id: true, userId: true, shopName: true, productType: true, productSubtype: true, productSubtypeOther: true, productDetail: true, shopCoverImage: true, status: true }
+            select: { id: true, userId: true, shopName: true, productType: true, productSubtype: true, productSubtypeOther: true, productDetail: true, shopCoverImage: true, logoImage: true, status: true }
         });
 
         if (!application) {
@@ -118,6 +119,7 @@ exports.approveSellerApplication = async (req, res) => {
                     productSubtypeOther: application.productSubtypeOther,
                     productDetail: application.productDetail,
                     shopCoverImage: application.shopCoverImage,
+                    logoImage: application.logoImage,
                     isVerified: true
                 },
                 create: {
@@ -128,6 +130,7 @@ exports.approveSellerApplication = async (req, res) => {
                     productSubtypeOther: application.productSubtypeOther,
                     productDetail: application.productDetail,
                     shopCoverImage: application.shopCoverImage,
+                    logoImage: application.logoImage,
                     isVerified: true
                 }
             });
