@@ -1521,6 +1521,8 @@ async function renderBookingStallPage(req, res, { status = 200, zoneCode = '', e
         todayKey: toDateKey(now),
         // เลยบ่าย 3 แล้ว จองเริ่มขายวันนี้ไม่ได้ (ขายวันนี้ต้องชำระก่อน 15:00)
         sameDayClosed: now.getHours() >= SAME_DAY_PAYMENT_CUTOFF_HOUR,
+        serverNowMs: now.getTime(),
+        sameDayCutoffMs: getSameDayPaymentCutoff(now).getTime(),
         sameDayCutoffHour: SAME_DAY_PAYMENT_CUTOFF_HOUR,
         allowedZoneCount: allowedZones.length,
         pricing: {
@@ -1782,7 +1784,9 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
             }
         });
 
-        return res.redirect('/booking-status');
+        // พา tabToken ของแท็บที่ส่งฟอร์มไปด้วย ไม่งั้นหน้าสถานะจะใช้ cookie ที่แชร์กันทุกแท็บ (อาจเป็นอีกบัญชี)
+        const tabToken = typeof req.body.tabToken === 'string' ? req.body.tabToken : '';
+        return res.redirect(tabToken ? `/booking-status?tabToken=${encodeURIComponent(tabToken)}` : '/booking-status');
     } catch (error) {
         console.error('booking-stall POST error', error);
         try {

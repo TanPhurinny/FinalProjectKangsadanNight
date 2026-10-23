@@ -11,6 +11,12 @@
         return new Date(parts[0], parts[1] - 1, parts[2]);
     }
 
+    // ข้อความในช่อง เช่น "ส. 24 ต.ค. 2569" — ไม่ขึ้นกับภาษาของเบราว์เซอร์ (ช่อง type=date เนทีฟโชว์ 10/24/2026 ในเครื่องภาษาอังกฤษ)
+    function formatDisplay(v) {
+        const d = parseValue(v);
+        return d ? d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    }
+
     const MONTH_NAMES_TH = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
         'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
     const WEEKDAY_NAMES_TH = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
@@ -24,16 +30,45 @@
         let viewDate = parseValue(input.value) || parseValue(min) || new Date();
         let popup = null;
 
-        input.setAttribute('readonly', 'readonly');
-        input.classList.add('dp-input');
-
         const wrap = document.createElement('div');
         wrap.className = 'dp-field-wrap';
         input.parentNode.insertBefore(wrap, input);
         wrap.appendChild(input);
 
+        // ช่องที่ผู้ใช้เห็น/แตะ — ช่องจริง (input) ซ่อนไว้แต่ยังเป็นตัวที่ส่งค่าไปกับฟอร์ม
+        const display = document.createElement('input');
+        display.type = 'text';
+        display.readOnly = true;
+        display.id = input.id ? `${input.id}Display` : '';
+        display.setAttribute('aria-haspopup', 'dialog');
+        wrap.insertBefore(display, input);
+        input.classList.add('dp-native');
+        input.tabIndex = -1;
+        if (input.id) {
+            document.querySelectorAll(`label[for="${input.id}"]`).forEach((label) => { label.htmlFor = display.id; });
+        }
+
+        function syncDisplay() {
+            display.value = formatDisplay(input.value);
+            display.placeholder = 'แตะเพื่อเลือกวัน';
+        }
+        // คลาสของช่องจริง (เช่น field-input--error ที่หน้าเพจใส่) ให้ช่องแสดงผลด้วย
+        function syncClasses() {
+            display.className = `${input.className.replace(/\bdp-native\b/g, '').trim()} dp-input${locked ? ' dp-input--locked' : ''}`;
+        }
+        // หน้าเพจตั้ง input.value ตรงๆ (ไม่ยิง event) — ดักที่ setter ให้ช่องแสดงผลตามทันทุกครั้ง
+        const valueDescriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+        Object.defineProperty(input, 'value', {
+            configurable: true,
+            get() { return valueDescriptor.get.call(this); },
+            set(v) { valueDescriptor.set.call(this, v); syncDisplay(); }
+        });
+        new MutationObserver(syncClasses).observe(input, { attributes: true, attributeFilter: ['class'] });
+        syncDisplay();
+        syncClasses();
+
         function onDocClick(event) {
-            if (popup && !popup.contains(event.target) && event.target !== input) closePopup();
+            if (popup && !popup.contains(event.target) && event.target !== display) closePopup();
         }
 
         function closePopup() {
@@ -161,8 +196,8 @@
             setTimeout(() => document.addEventListener('click', onDocClick, true), 0);
         }
 
-        input.addEventListener('click', openPopup);
-        input.addEventListener('focus', openPopup);
+        display.addEventListener('click', openPopup);
+        display.addEventListener('focus', openPopup);
 
         return {
             setOptions(next) {
@@ -172,7 +207,7 @@
                 if (next.disabledDates !== undefined) disabledDates = new Set(next.disabledDates);
                 if (next.locked !== undefined) {
                     locked = Boolean(next.locked);
-                    input.classList.toggle('dp-input--locked', locked);
+                    syncClasses();
                     if (locked) closePopup();
                 }
                 if (popup) render();

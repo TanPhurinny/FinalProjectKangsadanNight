@@ -9,8 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
-  <link rel="stylesheet" href="/stylesheets/seller/bookingStall.css?v=20261023-appliances">
-  <link rel="stylesheet" href="/stylesheets/common/datePicker.css">
+  <link rel="stylesheet" href="/stylesheets/seller/bookingStall.css?v=20261023-final">
+  <link rel="stylesheet" href="/stylesheets/common/datePicker.css?v=20261023-thai">
 </head>
 <body>
 <script src="/js/common/tabSession.js"></script>
@@ -108,10 +108,11 @@
       <% } %>
 
       <!-- 01 — รอบและวันที่ -->
-      <section class="form-section" id="sectionDates">
+      <section class="form-section" id="sectionDates" data-progress-step="dates">
         <div class="form-section__head">
-          <span class="form-section__num">01</span>
+          <span class="form-section__num">1</span>
           <span class="form-section__title">รอบการจอง &amp; วันที่ขาย</span>
+          <span class="form-section__done" hidden><i class="fa-solid fa-check"></i> ครบแล้ว</span>
         </div>
 
         <div class="round-picker">
@@ -209,10 +210,11 @@
       </section>
 
       <!-- 02 — จำนวนล็อกและรายละเอียดร้าน -->
-      <section class="form-section">
+      <section class="form-section" id="sectionStalls" data-progress-step="stalls">
         <div class="form-section__head">
-          <span class="form-section__num">02</span>
+          <span class="form-section__num">2</span>
           <span class="form-section__title">ล็อกแผงและรายละเอียดร้าน</span>
+          <span class="form-section__done" hidden><i class="fa-solid fa-check"></i> ครบแล้ว</span>
         </div>
 
         <div class="field-group">
@@ -248,40 +250,57 @@
       </section>
 
       <!-- 03 — เครื่องใช้ไฟฟ้าและพัดลม -->
-      <section class="form-section" id="sectionAppliances">
+      <section class="form-section" id="sectionAppliances" data-progress-step="appliances">
         <div class="form-section__head">
-          <span class="form-section__num">03</span>
+          <span class="form-section__num">3</span>
           <span class="form-section__title">เครื่องใช้ไฟฟ้า &amp; พัดลม</span>
-          <span class="form-section__hint">ไม่มี ข้ามได้เลย</span>
+          <span class="form-section__done" hidden><i class="fa-solid fa-check"></i> ครบแล้ว</span>
         </div>
 
-        <div class="kind-table">
-          <% Object.keys(kinds).forEach(function(k) { %>
-          <div class="kind-cell">
-            <span class="kind-cell__label"><%= kinds[k].label %></span>
-            <span class="kind-cell__price"><%= kinds[k].price %> บาท/<%= kinds[k].unit %>/วัน</span>
+        <p class="ap-question">จะนำเครื่องใช้ไฟฟ้าหรือพัดลมมาใช้ที่ร้านไหม?</p>
+        <p class="field-note ap-power-note"><i class="fa-solid fa-bolt"></i> ตลาดจ่ายไฟให้ถึงเที่ยงคืน</p>
+        <div class="ap-choice" role="group" aria-label="ใช้เครื่องใช้ไฟฟ้าหรือไม่">
+          <button type="button" class="ap-choice__btn" data-choice="none" aria-pressed="false">
+            <i class="fa-solid fa-ban"></i>
+            <span><strong>ไม่ใช้</strong><small>ไม่มีค่าใช้จ่ายส่วนนี้</small></span>
+          </button>
+          <button type="button" class="ap-choice__btn" data-choice="use" aria-pressed="false">
+            <i class="fa-solid fa-plug"></i>
+            <span><strong>ใช้</strong><small>เลือกขนาด แล้วเลือกเครื่อง</small></span>
+          </button>
+        </div>
+
+        <div class="ap-picker" id="appliancePicker" hidden>
+          <p class="ap-question"><span class="ap-question__step">ก</span> เลือกขนาดก่อน</p>
+          <div class="ap-kind-cards" id="applianceKinds"></div>
+
+          <div class="ap-panel" id="appliancePanel" hidden>
+            <p class="ap-question"><span class="ap-question__step">ข</span> <span id="appliancePanelHead"></span></p>
+            <div class="ap-tiles" id="applianceTiles"></div>
+            <div class="ap-custom">
+              <input type="text" class="field-input" id="applianceCustomName" maxlength="60" aria-label="ชื่อเครื่องอื่น">
+              <button type="button" class="btn-outline" id="applianceCustomAdd"><i class="fa-solid fa-plus"></i> เพิ่ม</button>
+            </div>
+            <p class="ap-custom__hint" id="applianceCustomHint" hidden></p>
+            <div class="ap-custom-list" id="applianceList"></div>
           </div>
-          <% }) %>
-        </div>
 
-        <div class="preset-block">
-          <span class="chip-row__label">แตะเพื่อเพิ่ม</span>
-          <div class="preset-chips" id="presetChips"></div>
-        </div>
+          <div class="ap-summary" id="applianceSummary"></div>
 
-        <div class="appliance-list" id="applianceList"></div>
-        <div class="appliance-empty" id="applianceEmpty">ยังไม่มีรายการ — ถ้าไม่ได้ใช้เครื่องใช้ไฟฟ้าหรือพัดลม ข้ามหัวข้อนี้ได้เลย</div>
-        <button type="button" class="btn-outline btn-add-row" id="addApplianceBtn"><i class="fa-solid fa-plus"></i> เพิ่มรายการเอง</button>
-        <p class="field-note field-note--error" id="applianceError" hidden></p>
-
-        <div class="note-block">
-          <span class="note-block__label">เกณฑ์</span>
-          <ol class="note-block__body">
-            <li>เครื่องเล็ก = ใช้ไฟไม่เกิน <%= Number(pricing.smallApplianceMaxWatt).toLocaleString('th-TH') %> วัตต์ และขนาดรวม (กว้าง×ยาว×สูง) ไม่เกิน 250,000 ลบ.ซม. นอกเหนือจากนี้นับเป็นเครื่องใหญ่ — กรอกวัตต์ (ดูที่ป้ายบนเครื่อง) ระบบจัดประเภทให้</li>
+          <details class="rules-details ap-rules">
+            <summary>เกณฑ์การนับและราคา</summary>
+            <ol class="note-block__body">
+            <li>เครื่องไฟฟ้าเล็ก <b>ไม่เกิน <%= Number(pricing.smallApplianceMaxWatt).toLocaleString('th-TH') %> วัตต์</b> (เครื่องปั่น เครื่องปิ้งขนมปัง กาน้ำร้อน ฯลฯ) เครื่องละ <%= kinds.SMALL.price %> บาท/วัน</li>
+            <li>เครื่องไฟฟ้าใหญ่ <b>เกิน <%= Number(pricing.smallApplianceMaxWatt).toLocaleString('th-TH') %> วัตต์</b> (กระทะ/เตาไฟฟ้า เตาอบ หม้อทอด ตู้แช่ ฯลฯ) เครื่องละ <%= kinds.LARGE.price %> บาท/วัน</li>
+            <li>เครื่องเล็ก คือเครื่องใช้ไฟฟ้าไม่เกิน <%= Number(pricing.smallApplianceMaxWatt).toLocaleString('th-TH') %> วัตต์ และขนาดไม่เกิน 250,000 ลูกบาศก์เซนติเมตร (กว้าง × ยาว × สูง ในหน่วย ซม. คูณกันแล้วไม่เกิน 250,000) นอกเหนือจากนี้ทางตลาดขออนุญาตคิดเป็นเครื่องใช้ไฟฟ้าใหญ่</li>
+            <li>ตลาดจ่ายไฟให้ถึงเที่ยงคืน</li>
             <li>พัดลมคิดตามขนาดใบพัด: 10–18 นิ้ว <%= kinds.FAN_SMALL.price %> บาท / ใหญ่กว่า 18 ถึง 24 นิ้ว <%= kinds.FAN_LARGE.price %> บาท ต่อตัว/วัน (ใหญ่กว่า 24 นิ้วติดต่อแอดมินก่อน)</li>
             <li>ราคานี้ใช้กับการแจ้งล่วงหน้าในระบบเท่านั้น ถ้านำมาโดยไม่แจ้งและเก็บหน้างาน คิดสูงกว่า: เครื่องเล็ก 40 บาท / เครื่องใหญ่ 60 บาท ต่อเครื่อง/วัน</li>
           </ol>
+          </details>
         </div>
+        <p class="field-note field-note--error" id="applianceError" hidden></p>
+
       </section>
 
       <!-- 04 — แผงพิเศษ -->
@@ -291,9 +310,9 @@
       %>
       <section class="form-section" id="cornerZoneSection">
         <div class="form-section__head">
-          <span class="form-section__num">04</span>
+          <span class="form-section__num form-section__num--optional">+</span>
           <span class="form-section__title">แผงหัวมุม / แผงพิเศษ (ล็อคเต็ง)</span>
-          <span class="form-section__hint">เฉพาะจันทร์-อังคารก่อนเปิดรอบ</span>
+          <span class="form-section__hint">ไม่บังคับ · เฉพาะจันทร์-อังคารก่อนเปิดรอบ</span>
         </div>
         <p class="field-note" style="margin-top: -8px; margin-bottom: 14px;">แจ้งความสนใจเฉยๆ ยังไม่คิดเงิน จะคิดเพิ่มก็ต่อเมื่อแอดมินจัดแผงพิเศษให้จริงเท่านั้น</p>
 
@@ -320,7 +339,7 @@
       <!-- 05 — สรุปยอดและยืนยัน -->
       <section class="form-section" id="sectionSummary">
         <div class="form-section__head">
-          <span class="form-section__num">05</span>
+          <span class="form-section__num form-section__num--summary"><i class="fa-solid fa-receipt"></i></span>
           <span class="form-section__title">สรุปยอดและยืนยัน</span>
         </div>
 
@@ -349,6 +368,10 @@
 
     <!-- แถบยอดรวมติดล่างจอ: เห็นยอดเปลี่ยนทันทีระหว่างกรอก ไม่ต้องเลื่อนลงไปดูท้ายหน้า -->
     <div class="sticky-total" id="stickyTotal">
+      <div class="sticky-total__progress" aria-live="polite">
+        <div class="sticky-total__track"><div class="sticky-total__fill" id="stickyFill"></div></div>
+        <span class="sticky-total__progress-text" id="stickyProgress"></span>
+      </div>
       <div class="sticky-total__info">
         <span class="sticky-total__label" id="stickyMeta">-</span>
         <strong class="sticky-total__amount" id="stickyAmount">0 บาท</strong>
@@ -373,9 +396,6 @@
       </div>
     </div>
 
-    <datalist id="appliancePresetList">
-      <% pricing.appliancePresets.forEach(function(p) { %><option value="<%= p.name %>"></option><% }) %>
-    </datalist>
 
     <script>
       window.BOOKING_DATA = {
@@ -394,6 +414,9 @@
         bookedDates: <%- safeJson(bookedDates || []) %>,
         todayKey: <%- safeJson(todayKey) %>,
         sameDayClosed: <%= sameDayClosed ? 'true' : 'false' %>,
+        // นาฬิกาเซิร์ฟเวอร์ (Asia/Bangkok) — หน้าเปิดค้างข้าม 15:00 หรือข้ามวันแล้วฟอร์มรู้ตัวเอง ไม่พึ่งนาฬิกาเครื่องผู้ใช้
+        serverNowMs: <%= Number(serverNowMs) %>,
+        sameDayCutoffMs: <%= Number(sameDayCutoffMs) %>,
         sameDayCutoffHour: <%= Number(sameDayCutoffHour) %>,
         formValues: <%- safeJson(fv) %>,
         lastBooking: <%- safeJson(lastBooking) %>
@@ -404,8 +427,8 @@
 
   <script src="/js/common/dialogs.js"></script>
   <% if (zone) { %>
-  <script src="/js/common/datePicker.js?v=20261023-lock"></script>
-  <script src="/js/seller/bookingStall.js?v=20261023-appliances"></script>
+  <script src="/js/common/datePicker.js?v=20261023-thai"></script>
+  <script src="/js/seller/bookingStall.js?v=20261023-final"></script>
   <% } %>
 </body>
 </html>

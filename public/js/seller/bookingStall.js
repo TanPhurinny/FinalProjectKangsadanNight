@@ -8,14 +8,15 @@
     const LIGHT_UNIT_PRICE = Number(DATA.lightUnitPrice || 15);
     const MAX_STALLS = Number(DATA.maxStallsPerSeller || 2);
     const IS_FASHION = Boolean(DATA.isFashionSeller);
-    const MAX_WATT = Number(DATA.smallApplianceMaxWatt || 1200);
     const MAX_QTY = Number(DATA.maxQtyPerItem || 20);
     const HOLIDAY_SET = new Set(DATA.holidays || []);
     const BOOKED_SET = new Set(DATA.bookedDates || []);
     const TODAY = DATA.todayKey || toKey(new Date());
     // ขายวันนี้เลยต้องชำระก่อนบ่าย 3 — เลยเวลานั้น (ตามนาฬิกาเซิร์ฟเวอร์) วันแรกที่เริ่มได้คือพรุ่งนี้
     const CUTOFF_HOUR = Number(DATA.sameDayCutoffHour || 15);
-    const FIRST_START = DATA.sameDayClosed ? addDaysKey(TODAY, 1) : TODAY;
+    let FIRST_START = DATA.sameDayClosed ? addDaysKey(TODAY, 1) : TODAY;
+    // ส่วนต่างนาฬิกาเครื่องผู้ใช้กับเซิร์ฟเวอร์ — ใช้เช็คว่าเลย 15:00 / ข้ามวันแล้วหรือยังตามเวลาตลาด
+    const CLOCK_OFFSET_MS = DATA.serverNowMs ? Number(DATA.serverNowMs) - Date.now() : 0;
     const DRAFT_KEY = `bookingDraft:${DATA.userId || 0}:${DATA.zone || ''}`;
     const DRAFT_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -117,7 +118,7 @@
         if (r.phase === '1') {
             // จันทร์-อังคาร: จองได้แค่เต็มรอบ — ล็อกวันที่ไว้เลย ไม่ต้องให้แก้แล้วไปเจอ error ตอนกดส่ง
             setDates(r.cycleStart, r.cycleEnd);
-            if (hintBox) hintBox.innerHTML = '<i class="fa-solid fa-lock status-strip__icon"></i><span>ช่วงนี้จองได้เฉพาะ <b>เต็มรอบ 14 วัน</b> ระบบเลือกวันให้แล้ว — ขอล็อคเต็ง (แผงพิเศษ) ได้ในหัวข้อ 04</span>';
+            if (hintBox) hintBox.innerHTML = '<i class="fa-solid fa-lock status-strip__icon"></i><span>ช่วงนี้จองได้เฉพาะ <b>เต็มรอบ 14 วัน</b> ระบบเลือกวันให้แล้ว — ขอล็อคเต็ง (แผงพิเศษ) ได้ในหัวข้อแผงพิเศษด้านล่าง</span>';
         } else {
             const start = dateStartInput.value;
             const end = dateEndInput.value;
@@ -341,146 +342,256 @@
     }
     document.querySelectorAll('[data-stepper]').forEach((root) => bindStepper(root));
 
-    // ── รายการเครื่องใช้ไฟฟ้า/พัดลม (ระบุชื่อทุกรายการ) ──
+    // ── เครื่องใช้ไฟฟ้า/พัดลม: ใช้ไหม → เลือกขนาดก่อน (เล็ก/ใหญ่/พัดลมเล็ก/พัดลมใหญ่) → เลือกเครื่องของขนาดนั้น ──
     let appliances = [];
     let nextApplianceId = 1;
     let applianceTouched = false;
+    // '' = ยังไม่ตอบ / 'none' = ไม่ใช้ / 'use' = ใช้ — ต้องตอบเอง กันลืมแจ้งแล้วโดนเก็บหน้างานแพงกว่า
+    // เลือก "ไม่ใช้" แล้วรายการที่เคยเลือกไว้ยังจำไว้ (ไม่ถูกส่ง) กดกลับเป็น "ใช้" ก็ได้คืน
+    let applianceChoice = '';
+    // ขนาดที่กำลังเลือกเครื่องอยู่ — ทุกเครื่องที่เพิ่มในแผงนี้ได้ประเภทนี้เลย ไม่ต้องเลือกประเภทซ้ำ
+    let activeKind = '';
 
+    // เกณฑ์ของตลาด: เครื่องเล็กไม่เกิน 1,200 วัตต์ (และขนาดไม่เกิน 250,000 ลบ.ซม.) นอกนั้นนับเป็นเครื่องใหญ่
+    const WATT_TEXT = Number(DATA.smallApplianceMaxWatt || 1200).toLocaleString('th-TH');
+    const KIND_RULE = {
+        SMALL: `ไม่เกิน ${WATT_TEXT} วัตต์`,
+        LARGE: `เกิน ${WATT_TEXT} วัตต์`,
+        FAN_SMALL: 'ใบพัด 10–18 นิ้ว',
+        FAN_LARGE: 'ใบพัด 18–24 นิ้ว'
+    };
+    const KIND_INFO = {
+        SMALL: { title: 'เครื่องเล็ก', desc: 'เช่น เครื่องปั่น เครื่องปิ้งขนมปัง กาน้ำร้อน', icon: 'fa-plug' },
+        LARGE: { title: 'เครื่องใหญ่', desc: 'เช่น กระทะ/เตาไฟฟ้า เตาอบ หม้อทอด ตู้แช่', icon: 'fa-fire' },
+        FAN_SMALL: { title: 'พัดลมเล็ก', desc: 'เช่น พัดลมตั้งโต๊ะ พัดลมตั้งพื้นทั่วไป', icon: 'fa-fan' },
+        FAN_LARGE: { title: 'พัดลมใหญ่', desc: 'เช่น พัดลมอุตสาหกรรม', icon: 'fa-fan' }
+    };
+    const KIND_ORDER = ['SMALL', 'LARGE', 'FAN_SMALL', 'FAN_LARGE'];
+
+    function activeItems() { return applianceChoice === 'use' ? appliances : []; }
     function isFanKind(kind) { return Boolean(KINDS[kind] && KINDS[kind].isFan); }
+    function presetFor(item) { return PRESETS.find((p) => p.name === item.name && p.kind === item.kind) || null; }
+    function clampQty(n) { return Math.min(MAX_QTY, Math.max(1, parseInt(n, 10) || 1)); }
+    function countOfKind(kind) { return appliances.filter((a) => a.kind === kind).reduce((n, a) => n + a.qty, 0); }
 
-    // เดาประเภทจากชื่อ: ตรงกับรายการยอดนิยม หรือเป็นพัดลมที่บอกขนาดนิ้วมา
+    // เดาประเภทจากชื่อที่พิมพ์เอง ใช้แค่เตือนเมื่อดูเหมือนเลือกขนาดผิด (ไม่ย้ายให้เอง — ผู้ขายเลือกขนาดมาแล้ว)
     function guessKindFromName(name) {
         const text = String(name || '').trim();
         const preset = PRESETS.find((p) => p.name === text);
         if (preset) return preset.kind;
         if (/พัดลม/.test(text)) {
             const inch = text.match(/(\d{1,2})\s*(นิ้ว|")/);
-            if (inch) return Number(inch[1]) <= 18 ? 'FAN_SMALL' : 'FAN_LARGE';
-            return 'FAN_SMALL';
+            return inch && Number(inch[1]) > 18 ? 'FAN_LARGE' : 'FAN_SMALL';
         }
-        return null;
-    }
-
-    function itemNote(item) {
-        if (isFanKind(item.kind)) {
-            const inch = String(item.name || '').match(/(\d{1,2})\s*(นิ้ว|")/);
-            if (inch && Number(inch[1]) > 24) return { text: 'พัดลมใหญ่กว่า 24 นิ้ว ต้องติดต่อแอดมินก่อนนำมา', warn: true };
-            return null;
-        }
-        if (item.kind === 'SMALL' && item.watt > MAX_WATT) {
-            return { text: `เกิน ${MAX_WATT.toLocaleString('th-TH')} วัตต์ นับเป็นเครื่องใหญ่`, warn: true };
-        }
+        if (/ปิ้งขนมปัง|กาน้ำ|กาต้ม|หุงข้าว|ปั่น|ไมโครเวฟ|ตู้เย็นเล็ก|ชาร์จ|วาฟเฟิล|เครื่องชั่ง/.test(text)) return 'SMALL';
+        if (/ทอด|กระทะ|เตา|อบ|ย่าง|ตู้แช่|ตู้เย็นใหญ่|ทำน้ำแข็ง/.test(text)) return 'LARGE';
         return null;
     }
 
     function addAppliance(item) {
         const name = String(item.name || '').trim();
-        const existing = name && appliances.find((a) => a.name === name && a.kind === item.kind);
+        const kind = KINDS[item.kind] ? item.kind : 'SMALL';
+        const existing = name && appliances.find((a) => a.name === name && a.kind === kind);
         if (existing) {
-            existing.qty = Math.min(MAX_QTY, existing.qty + 1);
+            existing.qty = clampQty(existing.qty + (parseInt(item.qty, 10) || 1));
         } else {
-            appliances.push({ id: nextApplianceId++, name, kind: KINDS[item.kind] ? item.kind : 'SMALL', qty: Math.min(MAX_QTY, Math.max(1, parseInt(item.qty, 10) || 1)), watt: parseInt(item.watt, 10) || null });
+            appliances.push({ id: nextApplianceId++, name, kind, qty: clampQty(item.qty) });
         }
     }
 
-    function renderAppliances(focusId) {
+    // การ์ดเลือกขนาด: บอกราคาและจำนวนที่เลือกไปแล้วในขนาดนั้น
+    function renderKindCards() {
+        $('applianceKinds').innerHTML = KIND_ORDER.map((kind) => {
+            const info = KIND_INFO[kind];
+            const count = countOfKind(kind);
+            return `<button type="button" class="ap-kind-card${kind === activeKind ? ' is-active' : ''}${count ? ' has-items' : ''}" data-kind="${kind}" aria-pressed="${kind === activeKind}">
+                <i class="fa-solid ${info.icon}${kind === 'FAN_LARGE' ? ' ap-kind-card__big' : ''}"></i>
+                <span class="ap-kind-card__body">
+                    <strong>${info.title} <span class="ap-kind-card__price">${KINDS[kind].price} บ./${KINDS[kind].unit}/วัน</span></strong>
+                    <span class="ap-kind-card__rule">${KIND_RULE[kind]}</span>
+                    <small>${info.desc}</small>
+                </span>
+                ${count ? `<span class="ap-kind-card__count">${count}</span>` : ''}
+            </button>`;
+        }).join('');
+    }
+
+    $('applianceKinds').addEventListener('click', (event) => {
+        const card = event.target.closest('[data-kind]');
+        if (!card) return;
+        activeKind = card.dataset.kind;
+        $('applianceCustomName').value = '';
+        renderAppliances();
+        $('appliancePanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    // แผงของขนาดที่เลือก: ไทล์เครื่องยอดนิยม + เครื่องอื่นพิมพ์ชื่อเอง
+    function renderPanel() {
+        const panel = $('appliancePanel');
+        panel.hidden = !activeKind;
+        if (!activeKind) return;
+        const info = KIND_INFO[activeKind];
+        $('appliancePanelHead').innerHTML = `<strong>${info.title}</strong> (${KIND_RULE[activeKind]}) · ${KINDS[activeKind].price} บาท/${KINDS[activeKind].unit}/วัน — แตะเครื่องที่จะนำมา`;
+
+        $('applianceTiles').innerHTML = PRESETS.map((p, index) => ({ p, index })).filter(({ p }) => p.kind === activeKind).map(({ p, index }) => {
+            const item = appliances.find((a) => a.name === p.name && a.kind === p.kind);
+            const qty = item ? item.qty : 0;
+            return `<div class="ap-tile${qty ? ' is-on' : ''}">
+                <button type="button" class="ap-tile__main" data-preset="${index}" aria-label="เพิ่ม ${escapeHtml(p.name)}">
+                    <i class="fa-solid ${escapeHtml(p.icon || 'fa-plug')}"></i>
+                    <span class="ap-tile__name">${escapeHtml(p.name)}</span>
+                </button>
+                ${qty ? `<div class="ap-tile__qty">
+                    <button type="button" data-preset-step="-1" data-preset="${index}" aria-label="ลด">−</button>
+                    <span>${qty}</span>
+                    <button type="button" data-preset-step="1" data-preset="${index}" aria-label="เพิ่ม">+</button>
+                </div>` : ''}
+            </div>`;
+        }).join('');
+
+        $('applianceCustomName').placeholder = `ไม่มีในรายการ? พิมพ์ชื่อ${info.title}`;
+        renderCustomList();
+    }
+
+    $('applianceTiles').addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-preset]');
+        if (!btn) return;
+        const preset = PRESETS[Number(btn.dataset.preset)];
+        if (!preset) return;
+        const item = appliances.find((a) => a.name === preset.name && a.kind === preset.kind);
+        const step = btn.dataset.presetStep ? Number(btn.dataset.presetStep) : 1;
+        if (!item) {
+            if (step > 0) addAppliance({ name: preset.name, kind: preset.kind, qty: 1 });
+        } else if (item.qty + step <= 0) {
+            appliances = appliances.filter((a) => a !== item);
+        } else {
+            item.qty = clampQty(item.qty + step);
+        }
+        renderAppliances();
+    });
+
+    // เครื่องอื่นของขนาดนี้ (พิมพ์เอง) — แถวที่ไม่มีชื่อมาจากการจองรุ่นเก่า ให้พิมพ์ชื่อในแถวได้เลย
+    function renderCustomList() {
         const list = $('applianceList');
-        list.innerHTML = '';
-        appliances.forEach((item) => {
-            const row = document.createElement('div');
-            row.className = 'ap-row';
-            row.dataset.id = item.id;
-            const kindOptions = Object.keys(KINDS).map((k) => `<option value="${k}" ${k === item.kind ? 'selected' : ''}>${escapeHtml(KINDS[k].label)} · ${KINDS[k].price} บ.</option>`).join('');
-            row.innerHTML = `
-                <div class="ap-row__main">
-                    <input type="text" class="field-input ap-name" list="appliancePresetList" maxlength="60" placeholder="ชื่อเครื่อง เช่น หม้อทอด, พัดลม 16 นิ้ว" value="${escapeHtml(item.name)}" aria-label="ชื่อเครื่องใช้ไฟฟ้า">
-                    <select class="field-input ap-kind" aria-label="ประเภท">${kindOptions}</select>
+        const rows = appliances.filter((a) => a.kind === activeKind && !presetFor(a));
+        list.innerHTML = rows.map((item) => `<div class="ap-custom-row" data-id="${item.id}">
+                ${item.name
+                    ? `<span class="ap-custom-row__name">${escapeHtml(item.name)}</span>`
+                    : `<input type="text" class="field-input ap-custom-row__input${applianceTouched ? ' field-input--error' : ''}" maxlength="60" placeholder="ใส่ชื่อเครื่อง" aria-label="ชื่อเครื่อง">`}
+                <div class="ap-tile__qty ap-custom-row__qty">
+                    <button type="button" data-custom-step="-1" aria-label="ลด">−</button>
+                    <span>${item.qty}</span>
+                    <button type="button" data-custom-step="1" aria-label="เพิ่ม">+</button>
                 </div>
-                <div class="ap-row__meta">
-                    <label class="ap-watt" ${isFanKind(item.kind) ? 'hidden' : ''}>
-                        <input type="number" inputmode="numeric" class="field-input ap-watt-input" min="1" max="20000" placeholder="วัตต์" value="${item.watt || ''}" aria-label="กำลังไฟ (วัตต์)">
-                        <span>W</span>
-                    </label>
-                    <div class="stepper stepper--sm">
-                        <button type="button" class="stepper__btn" data-step="-1" aria-label="ลดจำนวน">−</button>
-                        <input type="number" inputmode="numeric" class="stepper__input ap-qty" min="1" max="${MAX_QTY}" value="${item.qty}" aria-label="จำนวน">
-                        <button type="button" class="stepper__btn" data-step="1" aria-label="เพิ่มจำนวน">+</button>
-                    </div>
-                    <span class="ap-row__fee"></span>
-                    <button type="button" class="ap-remove" aria-label="ลบรายการ"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-                <p class="ap-row__note" hidden></p>`;
-            list.appendChild(row);
+                <button type="button" class="ap-remove" data-custom-remove aria-label="ลบรายการ"><i class="fa-solid fa-xmark"></i></button>
+            </div>`).join('');
+    }
 
-            const nameInput = row.querySelector('.ap-name');
-            const kindSelect = row.querySelector('.ap-kind');
-            const wattLabel = row.querySelector('.ap-watt');
-            const wattInput = row.querySelector('.ap-watt-input');
-            const qtyInput = row.querySelector('.ap-qty');
+    $('applianceList').addEventListener('click', (event) => {
+        const row = event.target.closest('[data-id]');
+        if (!row) return;
+        const item = appliances.find((a) => a.id === Number(row.dataset.id));
+        if (!item) return;
+        const stepBtn = event.target.closest('[data-custom-step]');
+        if (event.target.closest('[data-custom-remove]') || (stepBtn && item.qty + Number(stepBtn.dataset.customStep) <= 0)) {
+            appliances = appliances.filter((a) => a !== item);
+        } else if (stepBtn) {
+            item.qty = clampQty(item.qty + Number(stepBtn.dataset.customStep));
+        } else {
+            return;
+        }
+        renderAppliances();
+    });
+    $('applianceList').addEventListener('change', (event) => {
+        const input = event.target.closest('.ap-custom-row__input');
+        const row = event.target.closest('[data-id]');
+        if (!input || !row) return;
+        const item = appliances.find((a) => a.id === Number(row.dataset.id));
+        if (item && input.value.trim()) {
+            item.name = input.value.trim().slice(0, 60);
+            renderAppliances();
+        }
+    });
 
-            const syncRow = () => {
-                const note = itemNote(item);
-                const noteEl = row.querySelector('.ap-row__note');
-                noteEl.hidden = !note;
-                noteEl.textContent = note ? note.text : '';
-                noteEl.classList.toggle('ap-row__note--warn', Boolean(note && note.warn));
-                wattLabel.hidden = isFanKind(item.kind);
-                const fee = KINDS[item.kind] ? KINDS[item.kind].price * item.qty : 0;
-                row.querySelector('.ap-row__fee').textContent = `${fee} บ./วัน`;
-                nameInput.classList.toggle('field-input--error', applianceTouched && !item.name);
-                onAppliancesChanged();
-            };
+    function addCustomAppliance() {
+        const input = $('applianceCustomName');
+        const name = input.value.trim().slice(0, 60);
+        if (!name || !activeKind) return;
+        addAppliance({ name, kind: activeKind, qty: 1 });
+        input.value = '';
+        $('applianceCustomHint').hidden = true;
+        renderAppliances();
+        input.focus();
+    }
+    $('applianceCustomAdd').addEventListener('click', addCustomAppliance);
+    $('applianceCustomName').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            addCustomAppliance();
+        }
+    });
+    // ชื่อที่พิมพ์ดูเหมือนอีกขนาด (เช่น "หม้อทอด" ในเครื่องเล็ก) → เตือนพร้อมปุ่มย้ายไปขนาดที่น่าจะถูก
+    $('applianceCustomName').addEventListener('input', () => {
+        const hint = $('applianceCustomHint');
+        const name = $('applianceCustomName').value.trim();
+        const guess = guessKindFromName(name);
+        const inch = name.match(/(\d{1,2})\s*(นิ้ว|")/);
+        if (isFanKind(activeKind) && /พัดลม/.test(name) && inch && Number(inch[1]) > 24) {
+            hint.hidden = false;
+            hint.innerHTML = 'พัดลมใหญ่กว่า 24 นิ้ว ต้องติดต่อแอดมินก่อนนำมา';
+        } else if (guess && guess !== activeKind) {
+            hint.hidden = false;
+            hint.innerHTML = `"${escapeHtml(name)}" ส่วนใหญ่เป็น<b>${KIND_INFO[guess].title}</b> <button type="button" class="link-btn" data-move-kind="${guess}">เพิ่มเป็น${KIND_INFO[guess].title}แทน</button>`;
+        } else {
+            hint.hidden = true;
+        }
+    });
+    $('applianceCustomHint').addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-move-kind]');
+        if (!btn) return;
+        activeKind = btn.dataset.moveKind;
+        addCustomAppliance();
+    });
 
-            nameInput.addEventListener('input', () => {
-                item.name = nameInput.value.trim();
-                const guess = guessKindFromName(item.name);
-                if (guess && !item.kindLocked) {
-                    item.kind = guess;
-                    kindSelect.value = guess;
-                }
-                syncRow();
-            });
-            kindSelect.addEventListener('change', () => {
-                item.kind = kindSelect.value;
-                item.kindLocked = true;
-                syncRow();
-            });
-            wattInput.addEventListener('input', () => {
-                item.watt = parseInt(wattInput.value, 10) || null;
-                // เกินเกณฑ์เครื่องเล็ก → ย้ายเป็นเครื่องใหญ่ให้เลย (เซิร์ฟเวอร์ปรับแบบเดียวกันใน parseApplianceItems)
-                if (item.kind === 'SMALL' && item.watt > MAX_WATT) {
-                    item.kind = 'LARGE';
-                    kindSelect.value = 'LARGE';
-                    const noteEl = row.querySelector('.ap-row__note');
-                    syncRow();
-                    noteEl.hidden = false;
-                    noteEl.textContent = `เกิน ${MAX_WATT.toLocaleString('th-TH')} วัตต์ ระบบนับเป็นเครื่องใหญ่ให้แล้ว`;
-                    return;
-                }
-                syncRow();
-            });
-            qtyInput.addEventListener('input', () => {
-                item.qty = Math.min(MAX_QTY, Math.max(1, parseInt(qtyInput.value, 10) || 1));
-                syncRow();
-            });
-            bindStepper(row.querySelector('.stepper'));
-            row.querySelector('.ap-remove').addEventListener('click', () => {
-                appliances = appliances.filter((a) => a.id !== item.id);
-                renderAppliances();
-            });
-            syncRow();
-            if (focusId === item.id) nameInput.focus();
+    function renderApplianceSummary() {
+        const box = $('applianceSummary');
+        const items = activeItems();
+        if (!items.length) {
+            box.innerHTML = '<span class="ap-summary__empty">ยังไม่ได้เลือกเครื่อง — เลือกขนาดด้านบนก่อน แล้วแตะเครื่องที่จะนำมา</span>';
+            return;
+        }
+        const fee = items.reduce((sum, a) => sum + KINDS[a.kind].price * a.qty, 0);
+        const lines = KIND_ORDER.map((kind) => {
+            const ofKind = items.filter((a) => a.kind === kind);
+            if (!ofKind.length) return '';
+            return `<li><b>${KIND_INFO[kind].title}:</b> ${ofKind.map((a) => `${escapeHtml(a.name || 'ยังไม่ใส่ชื่อ')} ×${a.qty}`).join(', ')}</li>`;
+        }).join('');
+        box.innerHTML = `<div class="ap-summary__top"><span class="ap-summary__label">เลือกแล้ว ${items.reduce((n, a) => n + a.qty, 0)} เครื่อง</span>
+            <strong class="ap-summary__fee">${fee} บาท/วัน</strong></div>
+            <ul class="ap-summary__list">${lines}</ul>`;
+    }
+
+    function renderAppliances() {
+        document.querySelectorAll('.ap-choice__btn').forEach((btn) => {
+            const on = btn.dataset.choice === applianceChoice;
+            btn.classList.toggle('is-on', on);
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
         });
-        $('applianceEmpty').hidden = appliances.length > 0;
+        $('appliancePicker').hidden = applianceChoice !== 'use';
+        renderKindCards();
+        renderPanel();
+        renderApplianceSummary();
         onAppliancesChanged();
     }
 
     function serializeAppliances() {
-        applianceItemsInput.value = JSON.stringify(appliances.map((a) => ({ name: a.name, kind: a.kind, qty: a.qty, watt: a.watt })));
+        applianceItemsInput.value = JSON.stringify(activeItems().map((a) => ({ name: a.name, kind: a.kind, qty: a.qty })));
     }
 
     function applianceError() {
-        if (appliances.some((a) => !a.name)) return 'กรุณาระบุชื่อเครื่องใช้ไฟฟ้า/พัดลมให้ครบทุกรายการ (เช่น หม้อทอด, พัดลม 16 นิ้ว) หรือกด × ลบแถวที่ไม่ใช้';
+        if (!applianceChoice) return 'ยังไม่ได้ตอบว่าจะนำเครื่องใช้ไฟฟ้า/พัดลมมาไหม — กด "ไม่ใช้" หรือ "ใช้" แล้วเลือกเครื่อง';
+        if (applianceChoice === 'use' && !appliances.length) return 'เลือกขนาด แล้วเลือกเครื่องที่จะนำมาอย่างน้อย 1 รายการ หรือเปลี่ยนเป็น "ไม่ใช้"';
+        if (applianceChoice === 'use' && appliances.some((a) => !a.name)) return 'ใส่ชื่อเครื่องให้ครบทุกรายการ หรือกด × ลบรายการที่ไม่ใช้';
         return '';
     }
 
@@ -491,25 +602,11 @@
         scheduleDraftSave();
     }
 
-    function renderPresetChips() {
-        const box = $('presetChips');
-        PRESETS.forEach((preset) => {
-            const kind = KINDS[preset.kind];
-            const chip = document.createElement('button');
-            chip.type = 'button';
-            chip.className = 'chip chip--preset';
-            chip.innerHTML = `${escapeHtml(preset.name)} <small>${kind ? kind.price : ''}</small>`;
-            chip.addEventListener('click', () => {
-                addAppliance({ name: preset.name, kind: preset.kind, qty: 1 });
-                renderAppliances();
-            });
-            box.appendChild(chip);
+    document.querySelectorAll('.ap-choice__btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            applianceChoice = btn.dataset.choice;
+            renderAppliances();
         });
-    }
-
-    $('addApplianceBtn').addEventListener('click', () => {
-        addAppliance({ name: '', kind: 'SMALL', qty: 1 });
-        renderAppliances(appliances[appliances.length - 1].id);
     });
 
     // ── สรุปยอด ──
@@ -517,7 +614,7 @@
         const info = getDateInfo();
         const stalls = readStallCount();
         const counts = { SMALL: 0, LARGE: 0, FAN_SMALL: 0, FAN_LARGE: 0 };
-        appliances.forEach((a) => { if (counts[a.kind] !== undefined) counts[a.kind] += a.qty; });
+        activeItems().forEach((a) => { if (counts[a.kind] !== undefined) counts[a.kind] += a.qty; });
         const price = (k) => (KINDS[k] ? KINDS[k].price : 0);
         const rent = ZONE_PRICE * stalls * info.billable;
         const light = LIGHT_UNIT_PRICE * stalls * info.billable;
@@ -550,6 +647,37 @@
             ? `${t.stalls} ล็อก · ${t.info.billable} วัน · ${thaiShort(t.info.start)}${t.info.days > 1 ? ' – ' + thaiShort(t.info.end) : ''}`
             : 'ยังไม่ได้เลือกวัน';
         $('deadlineText').textContent = deadlineText(r, t.info);
+        renderSteps();
+    }
+
+    // ── ความคืบหน้าแบบเดียวกับฟอร์มสมัครร้าน: เลขขั้นเป็นสีเขียว + "ครบแล้ว" เมื่อขั้นนั้นกรอกครบ
+    // แถบล่างจอบอกว่าครบกี่ขั้นและเหลือขั้นไหน (ขั้นบังคับ 3 ขั้น — แผงพิเศษไม่บังคับ ไม่นับ) ──
+    const STEPS = [
+        { key: 'dates', label: 'วันที่ขาย', check: () => !dateError(getRound(), getDateInfo()) },
+        { key: 'stalls', label: 'จำนวนล็อก', check: () => !stallError(getRound()) },
+        { key: 'appliances', label: 'เครื่องใช้ไฟฟ้า', check: () => !applianceError() }
+    ];
+
+    function renderSteps() {
+        const results = STEPS.map((step) => ({ ...step, done: step.check() }));
+        const doneCount = results.filter((s) => s.done).length;
+        const remaining = results.filter((s) => !s.done);
+        const complete = remaining.length === 0;
+
+        results.forEach((step) => {
+            const section = document.querySelector(`.form-section[data-progress-step="${step.key}"]`);
+            if (!section) return;
+            section.classList.toggle('is-complete', step.done);
+            const badge = section.querySelector('.form-section__done');
+            if (badge) badge.hidden = !step.done;
+        });
+
+        $('stickyFill').style.width = `${(doneCount / STEPS.length) * 100}%`;
+        const text = $('stickyProgress');
+        text.textContent = complete
+            ? 'กรอกครบแล้ว พร้อมตรวจทาน'
+            : `กรอกแล้ว ${doneCount}/${STEPS.length} ขั้น · เหลือ: ${remaining.map((s) => s.label).join(', ')}`;
+        text.classList.toggle('is-complete', complete);
     }
 
     function showError(id, message) {
@@ -603,7 +731,8 @@
                 stallCount: stallCountInput.value,
                 storeDetail: storeDetailInput.value,
                 cornerZone: corner ? corner.value : '0',
-                appliances: appliances.map((a) => ({ name: a.name, kind: a.kind, qty: a.qty, watt: a.watt }))
+                appliances: appliances.map((a) => ({ name: a.name, kind: a.kind, qty: a.qty })),
+                applianceChoice
             }));
         } catch (e) { /* โหมดส่วนตัว/ปิด storage — ไม่บันทึกร่างก็ใช้งานต่อได้ */ }
     }
@@ -632,6 +761,9 @@
         }
         appliances = [];
         (items || []).forEach((item) => addAppliance(item));
+        applianceChoice = ['none', 'use'].includes(values.applianceChoice)
+            ? values.applianceChoice
+            : (appliances.length ? 'use' : (values.noAppliances ? 'none' : ''));
     }
 
     // ── จองเหมือนครั้งก่อน ──
@@ -644,12 +776,16 @@
             if (last.storeDetail) storeDetailInput.value = last.storeDetail;
             appliances = [];
             (last.items || []).forEach((item) => addAppliance(item));
+            // ครั้งก่อนไม่ได้แจ้งเครื่องใช้ไฟฟ้า = ใช้คำตอบเดิมว่า "ไม่ใช้"
+            applianceChoice = appliances.length ? 'use' : 'none';
             renderAppliances();
             refreshAll();
             repeatBtn.textContent = 'ใช้ข้อมูลเดิมแล้ว ✓';
             repeatBtn.disabled = true;
             // รายการจากการจองรุ่นเก่ามีแค่จำนวน ไม่มีชื่อ — พาไปกรอกชื่อให้ครบ
-            if (appliances.some((a) => !a.name)) {
+            const unnamed = appliances.find((a) => !a.name);
+            if (unnamed) {
+                activeKind = unnamed.kind;
                 applianceTouched = true;
                 onAppliancesChanged();
                 renderAppliances();
@@ -669,8 +805,8 @@
             ['วันที่ขาย', `${thaiShort(t.info.start)}${t.info.days > 1 ? ' – ' + thaiShort(t.info.end) : ''} · ${t.info.days} วัน${t.info.holidays ? ` (คิดเงิน ${t.info.billable} วัน)` : ''}`],
             ['โซน', `โซน ${DATA.zone} · ${ZONE_PRICE.toLocaleString('th-TH')} บาท/ล็อก/วัน`],
             ['จำนวนล็อก', `${t.stalls} ล็อก`],
-            ['เครื่องใช้ไฟฟ้า/พัดลม', appliances.length
-                ? appliances.map((a) => `${escapeHtml(a.name)} ×${a.qty} <span class="muted">(${escapeHtml(KINDS[a.kind] ? KINDS[a.kind].label : a.kind)})</span>`).join('<br>')
+            ['เครื่องใช้ไฟฟ้า/พัดลม', activeItems().length
+                ? activeItems().map((a) => `${escapeHtml(a.name)} ×${a.qty} <span class="muted">(${escapeHtml(KINDS[a.kind] ? KINDS[a.kind].label : a.kind)})</span>`).join('<br>')
                 : 'ไม่มี'],
             ['แผงพิเศษ', corner && corner.value !== '0' ? `สนใจ ${escapeHtml(corner.dataset.label || '')} (+${corner.value} บาท/ล็อก/วัน หากได้รับจัดให้)` : 'ไม่สนใจ'],
             ['รายละเอียดร้าน', escapeHtml(storeDetailInput.value.trim() || '-')]
@@ -701,12 +837,28 @@
         serializeAppliances();
         clearDraft();
         draftEnabled = false;
-        form.submit();
+        // ต้องส่งผ่าน event "submit" — tabSession.js แนบ tabToken ของแท็บตอนนั้น (form.submit() ข้าม event
+        // ทำให้เซิร์ฟเวอร์ไปใช้ cookie ที่แชร์กันทุกแท็บ คำขออาจไปเป็นของบัญชีที่ล็อกอินอีกแท็บ)
+        if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+        } else {
+            const token = window.getTabToken ? window.getTabToken() : null;
+            if (token && !form.querySelector('input[name="tabToken"]')) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'tabToken';
+                input.value = token;
+                form.appendChild(input);
+            }
+            form.submit();
+        }
     });
 
     function validateAll() {
         const r = getRound();
         applianceTouched = true;
+        const unnamed = appliances.find((a) => !a.name);
+        if (applianceChoice === 'use' && unnamed) activeKind = unnamed.kind;
         renderAppliances();
         const checks = [
             [dateError(r, getDateInfo()), $('sectionDates')],
@@ -724,6 +876,7 @@
     }
 
     form.addEventListener('submit', (event) => {
+        if (submitting) return; // ยืนยันจากหน้าตรวจทานแล้ว ปล่อยให้ส่งจริง
         event.preventDefault();
         if (validateAll()) openReview();
     });
@@ -744,20 +897,58 @@
     roundInputs.forEach((el) => el.addEventListener('change', () => applyRound(false)));
     [dateStartInput, dateEndInput].forEach((el) => el.addEventListener('change', () => { pendingStart = null; refreshAll(); }));
     stallCountInput.addEventListener('input', refreshAll);
-    storeDetailInput.addEventListener('input', scheduleDraftSave);
-    cornerInputs.forEach((el) => el.addEventListener('change', scheduleDraftSave));
+    storeDetailInput.addEventListener('input', () => { renderSteps(); scheduleDraftSave(); });
+    cornerInputs.forEach((el) => el.addEventListener('change', () => { renderSteps(); scheduleDraftSave(); }));
     $('draftClearBtn').addEventListener('click', () => {
         clearDraft();
         window.location.reload();
     });
 
+    // ── หน้าเปิดค้างไว้: ข้าม 15:00 → ปิดการเริ่มขายวันนี้ / ข้ามวัน → บันทึกร่างแล้วโหลดหน้าใหม่ (รอบ/ช่วงคำนวณใหม่ฝั่งเซิร์ฟเวอร์) ──
+    function marketDateKey(ms) {
+        // en-CA ให้รูปแบบ YYYY-MM-DD ตรงกับ key ที่ใช้ทั้งไฟล์
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
+    }
+    function checkMarketClock() {
+        const nowMs = Date.now() + CLOCK_OFFSET_MS;
+        if (marketDateKey(nowMs) !== TODAY) {
+            // เปิดหน้าใหม่ด้วย GET เสมอ — หน้านี้อาจเป็นผลของ POST (เซิร์ฟเวอร์ตีกลับ) ถ้า reload() จะส่งฟอร์มซ้ำ
+            saveDraft();
+            const token = window.getTabToken ? window.getTabToken() : null;
+            window.location.href = `/booking-stall?zone=${encodeURIComponent(DATA.zone || '')}${token ? `&tabToken=${encodeURIComponent(token)}` : ''}`;
+            return;
+        }
+        if (!DATA.sameDayClosed && DATA.sameDayCutoffMs && nowMs >= Number(DATA.sameDayCutoffMs)) {
+            DATA.sameDayClosed = true;
+            FIRST_START = addDaysKey(TODAY, 1);
+            const hadToday = dateStartInput.value === TODAY;
+            if (hadToday) {
+                // เลื่อนไปเริ่มพรุ่งนี้โดยคงจำนวนวันเดิม (ไม่ให้ยอดเงินเปลี่ยนเพราะวันสิ้นสุดเด้งไปจบรอบ)
+                const r = getRound();
+                const length = Math.max(1, daysBetween(dateStartInput.value, dateEndInput.value));
+                const newEnd = addDaysKey(FIRST_START, length - 1);
+                setDates(FIRST_START, r && newEnd > r.cycleEnd ? r.cycleEnd : newEnd);
+            }
+            applyRound(true);
+            if (hadToday) {
+                window.showAlertDialog({
+                    title: `เลย ${CUTOFF_HOUR}:00 น. แล้ว`,
+                    message: `ขายวันนี้ต้องชำระก่อน ${CUTOFF_HOUR}:00 น. ระบบเลื่อนวันขายไปเริ่มพรุ่งนี้ (จำนวนวันเท่าเดิม) ให้แล้ว กรุณาตรวจวันที่อีกครั้ง`,
+                    tone: 'warning'
+                });
+            }
+        }
+    }
+    setInterval(checkMarketClock, 30 * 1000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkMarketClock(); });
+
     // ── เริ่มต้น: ค่าที่เซิร์ฟเวอร์ตีกลับมาก่อน > ร่างในเครื่อง > ค่าเริ่มต้น ──
-    renderPresetChips();
     let restored = false;
     if (DATA.formValues) {
         let items = [];
         try { items = JSON.parse(DATA.formValues.applianceItems || '[]') || []; } catch (e) { items = []; }
-        restoreValues(DATA.formValues, Array.isArray(items) ? items : []);
+        // ส่งฟอร์มมาแล้ว (เซิร์ฟเวอร์ตีกลับ) รายการว่าง = ผู้ขายเลือก "ไม่ใช้" ไว้
+        restoreValues({ ...DATA.formValues, noAppliances: true }, Array.isArray(items) ? items : []);
         restored = true;
     } else {
         const draft = readDraft();

@@ -134,3 +134,13 @@
     background: rgba(192, 57, 43, 0.5);
     display: inline-block;
 }
+
+/* ช่องจริงซ่อนไว้ (ส่งค่า YYYY-MM-DD) — ผู้ใช้เห็นช่องแสดงผลวันที่แบบไทยแทน */
+.dp-native {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    opacity: 0;
+    pointer-events: none;
+}
+.dp-input--locked { cursor: not-allowed; background: var(--soft-bg, #f6f8f8); color: var(--ink-soft, #5b7a84); }

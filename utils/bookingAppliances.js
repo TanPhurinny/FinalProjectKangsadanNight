@@ -12,22 +12,26 @@ const APPLIANCE_KINDS = {
 };
 const APPLIANCE_KIND_KEYS = Object.keys(APPLIANCE_KINDS);
 
-// ตัวเลือกยอดนิยมในฟอร์ม (ประเภทเป็นค่าประมาณ ผู้ขายเปลี่ยนเองได้ และถ้ากรอกวัตต์เกิน 1,200 ระบบปรับเป็นเครื่องใหญ่ให้)
+// ไทล์ให้แตะเลือกในฟอร์มจอง (ไอคอน Font Awesome) แยกตามขนาด — ผู้ขายเลือกขนาดก่อนแล้วค่อยเลือกเครื่อง
+// เครื่องที่ไม่มีในรายการ พิมพ์ชื่อเองในขนาดที่เลือก (ฟอร์มเตือนถ้าชื่อดูเหมือนอีกขนาด)
 const APPLIANCE_PRESETS = [
-    { name: 'หม้อทอดไฟฟ้า', kind: 'LARGE' },
-    { name: 'กระทะไฟฟ้า', kind: 'LARGE' },
-    { name: 'เตาปิ้งย่างไฟฟ้า', kind: 'LARGE' },
-    { name: 'กาต้มน้ำไฟฟ้า', kind: 'LARGE' },
-    { name: 'ตู้แช่เย็น', kind: 'LARGE' },
-    { name: 'หม้อหุงข้าว', kind: 'SMALL' },
-    { name: 'เครื่องปั่น', kind: 'SMALL' },
-    { name: 'ไมโครเวฟ', kind: 'SMALL' },
-    { name: 'เครื่องทำวาฟเฟิล', kind: 'SMALL' },
-    { name: 'ตู้เย็นเล็ก', kind: 'SMALL' },
-    { name: 'ลำโพง/เครื่องเสียง', kind: 'SMALL' },
-    { name: 'ไฟประดับร้าน', kind: 'SMALL' },
-    { name: 'พัดลม 16 นิ้ว', kind: 'FAN_SMALL' },
-    { name: 'พัดลมอุตสาหกรรม 24 นิ้ว', kind: 'FAN_LARGE' }
+    { name: 'กระทะไฟฟ้า', kind: 'LARGE', icon: 'fa-fire-burner' },
+    { name: 'เตาไฟฟ้า', kind: 'LARGE', icon: 'fa-fire-burner' },
+    { name: 'เตาอบไฟฟ้า', kind: 'LARGE', icon: 'fa-temperature-high' },
+    { name: 'หม้อทอดไฟฟ้า', kind: 'LARGE', icon: 'fa-fire' },
+    { name: 'ตู้แช่', kind: 'LARGE', icon: 'fa-snowflake' },
+    { name: 'เตาปิ้งย่างไฟฟ้า', kind: 'LARGE', icon: 'fa-fire' },
+    { name: 'เครื่องปั่น', kind: 'SMALL', icon: 'fa-blender' },
+    { name: 'เครื่องปิ้งขนมปัง', kind: 'SMALL', icon: 'fa-bread-slice' },
+    { name: 'กาน้ำร้อนไฟฟ้า', kind: 'SMALL', icon: 'fa-mug-hot' },
+    { name: 'หม้อหุงข้าว', kind: 'SMALL', icon: 'fa-bowl-rice' },
+    { name: 'ไมโครเวฟ', kind: 'SMALL', icon: 'fa-plug' },
+    { name: 'เครื่องทำวาฟเฟิล', kind: 'SMALL', icon: 'fa-cookie' },
+    { name: 'ตู้เย็นเล็ก', kind: 'SMALL', icon: 'fa-snowflake' },
+    { name: 'พัดลมตั้งโต๊ะ', kind: 'FAN_SMALL', icon: 'fa-fan' },
+    { name: 'พัดลมตั้งพื้น', kind: 'FAN_SMALL', icon: 'fa-fan' },
+    { name: 'พัดลมอุตสาหกรรม', kind: 'FAN_LARGE', icon: 'fa-fan' },
+    { name: 'พัดลมตั้งพื้นตัวใหญ่', kind: 'FAN_LARGE', icon: 'fa-fan' }
 ];
 
 const MAX_ITEMS = 30;
