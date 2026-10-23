@@ -2319,6 +2319,32 @@ router.get('/booking-status', isAuthenticated, async (req, res) => {
     });
 });
 
+// คำขอจองล่าสุดของผู้ขาย — BookingRequest.sellerId ของแถวเก่ายังเป็น null เลยจับคู่จากชื่อผู้ขายสำรองไว้
+async function findLatestSellerBookingRequest(userId) {
+    const userRecord = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { sellerProfile: true }
+    });
+
+    const sellerProfileId = userRecord?.sellerProfile?.id || null;
+    const sellerName = String(userRecord?.name || '').trim();
+
+    let latestRequest = null;
+    if (sellerProfileId) {
+        latestRequest = await prisma.bookingRequest.findFirst({
+            where: { sellerId: sellerProfileId },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+    if (!latestRequest && sellerName) {
+        latestRequest = await prisma.bookingRequest.findFirst({
+            where: { sellerName },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+    return latestRequest;
+}
+
 // --- 5. ผู้ขายอัปโหลดสลิปยืนยันการชำระเงิน หลังแอดมินจัดล็อกให้แล้ว ---
 router.post('/booking-payment/confirm', isSellerOrApplicant, (req, res) => {
     uploadPaymentSlip.single('paymentSlip')(req, res, async (err) => {
@@ -2338,27 +2364,7 @@ router.post('/booking-payment/confirm', isSellerOrApplicant, (req, res) => {
                 return backToStatus('error=missing_slip');
             }
 
-            const userRecord = await prisma.user.findUnique({
-                where: { id: req.user.id },
-                include: { sellerProfile: true }
-            });
-
-            const sellerProfileId = userRecord?.sellerProfile?.id || null;
-            const sellerName = String(userRecord?.name || '').trim();
-
-            let latestRequest = null;
-            if (sellerProfileId) {
-                latestRequest = await prisma.bookingRequest.findFirst({
-                    where: { sellerId: sellerProfileId },
-                    orderBy: { createdAt: 'desc' }
-                });
-            }
-            if (!latestRequest && sellerName) {
-                latestRequest = await prisma.bookingRequest.findFirst({
-                    where: { sellerName },
-                    orderBy: { createdAt: 'desc' }
-                });
-            }
+            const latestRequest = await findLatestSellerBookingRequest(req.user.id);
 
             if (!latestRequest || String(latestRequest.status || '').toUpperCase() !== 'IN_PROGRESS') {
                 return backToStatus('error=not_awaiting_payment');
@@ -2398,6 +2404,31 @@ router.post('/booking-payment/confirm', isSellerOrApplicant, (req, res) => {
             return backToStatus('error=payment_confirm_failed');
         }
     });
+});
+
+// --- 5.1 ผู้ขายลบสลิปที่ส่งไปแล้วเพื่ออัปโหลดใหม่ (ส่งผิดใบ / ตอนส่งระบบตรวจสลิปอัตโนมัติใช้ไม่ได้) ---
+// ลบได้เฉพาะตอนแอดมินยังไม่ยืนยัน (คำขอยัง IN_PROGRESS) — ล้างผลตรวจเดิมด้วย สลิปใหม่จะตรวจอัตโนมัติอีกรอบ
+router.post('/booking-payment/remove-slip', isSellerOrApplicant, async (req, res) => {
+    const tabToken = String(req.body.tabToken || req.query.tabToken || '');
+    const backToStatus = (query) => res.redirect(`/booking-status?${query}${tabToken ? `&tabToken=${encodeURIComponent(tabToken)}` : ''}`);
+
+    try {
+        const latestRequest = await findLatestSellerBookingRequest(req.user.id);
+        if (!latestRequest || String(latestRequest.status || '').toUpperCase() !== 'IN_PROGRESS' || !latestRequest.paymentSlipImage) {
+            return backToStatus('error=no_slip_to_remove');
+        }
+
+        await prisma.bookingRequest.update({
+            where: { id: latestRequest.id },
+            data: { paymentSlipImage: null, slipVerified: null, slipVerifyReason: null, slipVerifiedAmount: null }
+        });
+        await deleteImage(latestRequest.paymentSlipImage).catch(() => {});
+
+        return backToStatus('success=slip_removed');
+    } catch (error) {
+        console.error('booking-payment remove slip error', error);
+        return backToStatus('error=remove_slip_failed');
+    }
 });
 
 router.get('/notifications', isAuthenticated, async (req, res) => {

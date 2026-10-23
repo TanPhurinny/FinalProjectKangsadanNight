@@ -165,6 +165,9 @@
           ${slipVerifyAlert}
           <p class="pay-box__note">แอดมินกำลังตรวจสอบสลิปโอนเงินของคุณสำหรับ<strong>${lockMention(booking.slotLabel)}</strong> เมื่อยืนยันแล้ว ระบบจะแจ้งเลขล็อกและยืนยันว่าเป็นของคุณอย่างเป็นทางการ</p>
           <img src="${booking.paymentSlipImage}" alt="สลิปโอนเงินที่ส่งไปแล้ว" class="pay-slip-preview" />
+          <form action="/booking-payment/remove-slip" method="POST" class="mt-3 js-remove-slip-form">
+            <button type="submit" class="btn btn-outline-danger btn-custom"><i class="bi bi-arrow-repeat me-1"></i>ลบสลิปแล้วอัปโหลดใหม่</button>
+          </form>
         </div>
       `;
     } else if (booking.status === 'IN_PROGRESS') {
@@ -506,6 +509,27 @@
     if (document.body.dataset.page === 'notifications') {
       initNotificationsPage();
     }
+  });
+
+  // ปุ่ม "ลบสลิปแล้วอัปโหลดใหม่" — ถามยืนยันด้วยกล่องกลางของเว็บ (public/js/common/dialogs.js) แทน confirm() ของเบราว์เซอร์
+  // ฟอร์มถูกวาดด้วย innerHTML เลยดัก submit ที่ document; ยืนยันแล้วส่งด้วย requestSubmit() เพื่อให้ tabSession.js แนบ tabToken
+  document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (!form.classList || !form.classList.contains('js-remove-slip-form') || form.dataset.confirmed === '1') return;
+    if (!window.showConfirmDialog) return;
+    event.preventDefault();
+    window.showConfirmDialog({
+      title: 'ลบสลิปแล้วอัปโหลดใหม่?',
+      message: 'สลิปเดิมจะถูกลบออกจากระบบ แล้วคุณแนบสลิปใหม่ได้ทันที\nสลิปใหม่จะถูกตรวจอัตโนมัติอีกครั้ง',
+      tone: 'danger',
+      icon: 'fa-solid fa-rotate',
+      confirmText: 'ลบสลิป',
+      cancelText: 'ยกเลิก',
+      onConfirm: () => {
+        form.dataset.confirmed = '1';
+        form.requestSubmit();
+      }
+    });
   });
 
   window.openNotiModal = openNotiModal;

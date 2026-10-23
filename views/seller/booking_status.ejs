@@ -33,6 +33,8 @@
           const errorMessages = {
             upload_failed: 'อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',
             missing_slip: 'กรุณาแนบสลิปโอนเงินก่อนยืนยัน',
+            no_slip_to_remove: 'ไม่มีสลิปที่ลบได้ (แอดมินอาจยืนยันการชำระเงินไปแล้ว)',
+            remove_slip_failed: 'ลบสลิปไม่สำเร็จ กรุณาลองใหม่',
             slip_too_large: 'ไฟล์สลิปใหญ่เกิน 5MB กรุณาแคปหน้าจอสลิปจากแอปธนาคารแล้วส่งใหม่',
             slip_invalid_type: 'รองรับเฉพาะรูป JPG, PNG, GIF หรือ WEBP (รูป HEIC จาก iPhone ให้แคปหน้าจอสลิปแทน)',
             not_awaiting_payment: 'ไม่พบรายการที่รอชำระเงินอยู่ในขณะนี้',
@@ -49,6 +51,9 @@
     <% } %>
     <% if (typeof success !== 'undefined' && success === 'slip_uploaded') { %>
       <div class="alert alert-success" role="alert">ส่งสลิปโอนเงินสำเร็จแล้ว กรุณารอแอดมินตรวจสอบและยืนยันการชำระเงิน</div>
+    <% } %>
+    <% if (typeof success !== 'undefined' && success === 'slip_removed') { %>
+      <div class="alert alert-success" role="alert">ลบสลิปเดิมแล้ว อัปโหลดสลิปใหม่ได้ด้านล่าง</div>
     <% } %>
     <% if (typeof success !== 'undefined' && success === 'payment_confirmed') { %>
       <div class="alert alert-success" role="alert">แอดมินยืนยันการชำระเงินแล้ว ระบบบันทึกล็อกนี้เป็นของคุณเรียบร้อย</div>
@@ -126,6 +131,7 @@
   <% } %>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/common/dialogs.js"></script>
   <script src="/js/seller/statusbook.js"></script>
   <script>
     (function () {
