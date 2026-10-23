@@ -503,3 +503,871 @@ select.input-white {
         height: 92px;
     }
 }
+
+/* ── กรอกง่ายขึ้น: ช่องบังคับขึ้นก่อนเป็น 3 ขั้นมีเลขกำกับ ช่องไม่บังคับรวมไว้ท้าย + แถบความคืบหน้าติดล่างจอ ── */
+.apply-intro {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--line);
+}
+.apply-intro__lead {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+}
+.apply-intro .rules-reopen-link {
+    margin: 0;
+}
+.req-mark {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+/* หัวหมวด: [เลข] ชื่อหมวด ........ คำอธิบาย / ครบแล้ว */
+.form-section-head {
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.form-section-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border: 1px solid var(--navy);
+    color: var(--navy);
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.form-section.is-complete .form-section-num {
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+}
+.form-section-num--optional {
+    border-style: dashed;
+    border-color: var(--ink-soft);
+    color: var(--ink-soft);
+}
+.form-section-head .form-section-hint {
+    margin-left: auto;
+}
+.form-section-done {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--success);
+    white-space: nowrap;
+}
+.form-section-done[hidden] {
+    display: none;
+}
+.form-section--optional {
+    margin-top: 16px;
+    padding: 24px;
+    border: 1px dashed var(--line);
+    background: var(--soft-bg);
+}
+.form-section--optional .tag-input-box,
+.form-section--optional .input-white {
+    background-color: #fff;
+}
+
+/* ประเภทสินค้าเป็นการ์ดให้แตะเลือก ไม่ต้องเปิด dropdown */
+.type-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+.type-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    min-height: 104px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+.form-group .type-card {
+    margin: 0;
+    font-weight: 400;
+}
+.type-card:hover {
+    border-color: var(--primary);
+}
+.type-card input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+}
+.type-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--line);
+    color: var(--primary);
+    font-size: 1rem;
+}
+.type-card__label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--navy);
+}
+.type-card:has(input:checked) {
+    border-color: var(--primary);
+    background: rgba(44, 147, 168, 0.06);
+    box-shadow: inset 0 0 0 1px var(--primary);
+}
+.type-card:has(input:checked) .type-card__icon {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+.type-card:has(input:checked)::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-size: 0.85rem;
+    color: var(--primary);
+}
+.type-card:has(input:focus-visible) {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* ยังไม่เลือกประเภท = ไม่มีรายการให้ติ๊ก บอกตรง ๆ แทนกล่องว่าง */
+.subtype-empty {
+    margin: 0;
+    padding: 14px;
+    border: 1px dashed var(--line);
+    background: #fff;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    text-align: center;
+}
+.subtype-empty[hidden] {
+    display: none;
+}
+.subtype-section__head label {
+    flex-wrap: wrap;
+}
+
+/* ค้นหาในรายการ "ขายอะไรบ้าง" — .subtype-checkbox ตั้ง display เอง ต้องบังคับ [hidden] ให้ซ่อนจริง */
+.subtype-search {
+    position: relative;
+    margin-bottom: 10px;
+}
+.subtype-search[hidden],
+.subtype-checkbox[hidden],
+.subtype-noresult[hidden] {
+    display: none;
+}
+.subtype-search i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    pointer-events: none;
+}
+.subtype-search .input-white {
+    width: 100%;
+    padding-left: 40px;
+}
+.subtype-noresult {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin: 0 0 10px;
+    padding: 12px 14px;
+    border: 1px dashed var(--line);
+    background: #fff;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+}
+.subtype-noresult .field-action {
+    margin-top: 0;
+}
+.subtype-checkbox {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+}
+
+/* ช่องอ่านอย่างเดียว ให้ดูออกว่าไม่ต้องกรอก */
+.input-white.input-readonly {
+    background-color: var(--soft-bg);
+    color: var(--ink-soft);
+    cursor: default;
+}
+.input-white.input-readonly:focus {
+    border-color: var(--line);
+    box-shadow: none;
+}
+
+/* ผิดรูปแบบหลังแตะช่องแล้ว — กรอบแดงตรงช่องนั้นเลย */
+.input-white.was-touched:invalid {
+    border-color: var(--danger);
+}
+.input-white.was-touched:invalid:focus {
+    box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.12);
+}
+.form-group:has(input[type="radio"].was-touched:invalid) .type-card {
+    border-color: var(--danger);
+}
+.form-group {
+    scroll-margin-top: 96px;
+}
+.form-group--shake {
+    animation: field-shake 0.4s ease;
+}
+@keyframes field-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .form-group--shake { animation: none; }
+}
+
+.field-foot {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+.char-count {
+    flex-shrink: 0;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+}
+.char-count--near {
+    color: var(--warning);
+    font-weight: 600;
+}
+.field-action {
+    align-self: flex-start;
+    margin-top: 8px;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--primary-dark);
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.field-action:hover {
+    border-color: var(--primary);
+}
+.field-action[hidden] {
+    display: none;
+}
+.field-hint--warn {
+    color: var(--warning);
+    font-weight: 500;
+}
+
+/* รูปสินค้ากับรูปเมนูวางคู่กันบนจอกว้าง */
+.upload-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 28px;
+}
+.upload-grid .form-group {
+    margin-bottom: 20px;
+}
+.upload-box__icon {
+    font-size: 1rem;
+}
+
+/* แถบส่งติดล่างจอ: เห็นตลอดว่ากรอกไปกี่ช่องแล้ว ไม่ต้องเลื่อนลงไปหาปุ่ม */
+.submit-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 24px -36px -32px;
+    padding: 14px 36px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    background: #fff;
+    border-top: 1px solid var(--line);
+}
+.submit-progress {
+    flex: 1;
+    min-width: 0;
+}
+.submit-progress__track {
+    height: 6px;
+    background: var(--soft-bg);
+    border: 1px solid var(--line);
+    overflow: hidden;
+}
+.submit-progress__fill {
+    width: 0;
+    height: 100%;
+    background: var(--primary);
+    transition: width 0.25s ease, background-color 0.25s ease;
+}
+.submit-progress:has(.is-complete) .submit-progress__fill {
+    background: var(--success);
+}
+.submit-progress__text {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+}
+.submit-progress__text.is-complete {
+    color: var(--success);
+    font-weight: 600;
+}
+.submit-bar .submit-btn {
+    width: auto;
+    min-width: 200px;
+    margin-top: 0;
+    padding: 13px 24px;
+}
+
+@media (max-width: 640px) {
+    /* .form-card ด้านบนไฟล์นี้ทับ padding มือถือของ repair.css — ตั้งคืนให้ตรงกับ margin ติดลบของ .submit-bar */
+    .container {
+        margin-top: 20px;
+    }
+    .form-card {
+        padding: 20px;
+    }
+    .apply-intro {
+        flex-direction: column;
+    }
+    .form-section-head {
+        flex-direction: row;
+        gap: 6px 10px;
+    }
+    .form-section-head .form-section-hint {
+        flex-basis: 100%;
+        margin-left: 36px;
+        white-space: normal;
+    }
+    .form-section--optional {
+        padding: 16px;
+        margin-left: -4px;
+        margin-right: -4px;
+    }
+    .type-cards {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+    }
+    /* จอแคบ: การ์ดเป็นแถวนอน ไอคอนซ้าย ชื่อขวา กินที่น้อยลง */
+    .type-card {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        min-height: 0;
+        padding: 12px 40px 12px 12px;
+    }
+    .type-card:has(input:checked)::after {
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    .upload-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+    }
+    .submit-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        margin: 20px -20px -20px;
+        padding: 12px 20px;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    }
+    .submit-bar .submit-btn {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+/* ── สถานะใบสมัคร (รอตรวจ / อนุมัติแล้ว): 4 ขั้นเรียงแนวนอน มือถือเรียงแนวตั้ง ── */
+.status-panel__title {
+    margin: 0 0 18px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--navy);
+}
+.status-track {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0 0 18px;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--line);
+}
+.status-step {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+    border-right: 1px solid var(--line);
+}
+.status-step:last-child {
+    border-right: none;
+}
+.status-step__dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+.status-step__label {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+.status-step__note {
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+}
+.status-step--done .status-step__dot {
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+}
+.status-step--done .status-step__label {
+    color: var(--navy);
+}
+.status-step--current {
+    background: rgba(44, 147, 168, 0.06);
+    box-shadow: inset 0 -3px 0 var(--primary);
+}
+.status-step--current .status-step__dot {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.status-step--current .status-step__label {
+    color: var(--navy);
+}
+.status-step--current .status-step__note {
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+.status-panel__hint {
+    margin: 0 0 16px;
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+}
+.status-panel__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.status-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--navy);
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+.status-btn:hover {
+    border-color: var(--primary);
+    color: var(--navy);
+}
+.status-btn--primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+.status-btn--primary:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+    color: #fff;
+}
+
+.reject-reason {
+    display: block;
+    margin: 4px 0;
+}
+
+/* ── มีร่างค้างไว้ในเครื่อง ── */
+.draft-banner {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    border: 1px solid var(--primary);
+    border-left-width: 3px;
+    background: rgba(44, 147, 168, 0.06);
+    font-size: 0.9rem;
+    color: var(--navy);
+}
+.draft-banner[hidden] {
+    display: none;
+}
+.draft-banner > i {
+    color: var(--primary);
+}
+.draft-banner__text {
+    flex: 1;
+    min-width: 200px;
+}
+.draft-banner__actions {
+    display: flex;
+    gap: 8px;
+}
+.draft-banner .status-btn {
+    padding: 7px 14px;
+}
+
+/* ── ป้าย "เลือกแล้ว" เหนือช่องค้นหา ── */
+.subtype-selected {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.subtype-selected[hidden] {
+    display: none;
+}
+.subtype-selected__label {
+    flex-shrink: 0;
+    padding-top: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+.subtype-selected__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.subtype-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px 5px 10px;
+    border: 1px solid var(--primary);
+    background: var(--primary);
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.subtype-chip span {
+    font-size: 0.95rem;
+    line-height: 1;
+    opacity: 0.8;
+}
+.subtype-chip:hover span {
+    opacity: 1;
+}
+
+/* ── แนะนำเมนูเด่นจากที่ติ๊ก ── */
+.tag-suggest {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    margin-top: 8px;
+}
+.tag-suggest[hidden] {
+    display: none;
+}
+.tag-suggest__label {
+    padding-top: 5px;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+}
+.tag-suggest__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.tag-suggest__chip {
+    padding: 5px 10px;
+    border: 1px dashed var(--primary);
+    background: #fff;
+    color: var(--primary-dark);
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.tag-suggest__chip:hover {
+    border-style: solid;
+    background: rgba(44, 147, 168, 0.08);
+}
+.tag-input-box--full {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.12);
+}
+
+/* ── อัปโหลด: กำลังย่อรูป / ไฟล์ใหญ่เกิน ── */
+.upload-box.is-busy {
+    opacity: 0.55;
+    pointer-events: none;
+}
+.upload-error[hidden] {
+    display: none;
+}
+
+/* ── ใช้รูปจากใบสมัครครั้งก่อน ── */
+.reuse-images {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    background: #fff;
+    cursor: pointer;
+}
+.reuse-images input {
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    accent-color: var(--primary);
+}
+.reuse-images__body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+.reuse-images__title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--navy);
+}
+.reuse-images__thumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+.reuse-images__thumbs img {
+    width: 52px;
+    height: 52px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+}
+.reuse-images:has(input:not(:checked)) .reuse-images__thumbs {
+    opacity: 0.4;
+}
+
+/* ── พรีวิวการ์ดร้านบนผังตลาด ── */
+.shop-preview {
+    margin-top: 4px;
+}
+.shop-preview__caption {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+.shop-preview__card {
+    display: flex;
+    gap: 14px;
+    max-width: 420px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    background: #fff;
+}
+.shop-preview__thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 84px;
+    width: 84px;
+    height: 84px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    background: var(--soft-bg);
+    color: var(--ink-soft);
+    font-size: 1.4rem;
+}
+.shop-preview__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.shop-preview__info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+.shop-preview__type {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--primary-dark);
+}
+.shop-preview__name {
+    font-size: 1rem;
+    color: var(--navy);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.shop-preview__summary {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.82rem;
+    color: var(--ink);
+}
+.shop-preview .is-placeholder {
+    color: var(--ink-soft);
+    opacity: 0.7;
+}
+.shop-preview__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 3px;
+}
+.shop-preview__tags span {
+    padding: 2px 7px;
+    border: 1px solid var(--line);
+    background: var(--soft-bg);
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+}
+
+/* ── ตรวจทานก่อนส่ง (ใช้กรอบ modal เดียวกับกฎระเบียบ) ── */
+.review-section__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 6px;
+    margin: 20px 0 10px;
+}
+.review-section__head:first-child {
+    margin-top: 0;
+}
+.rules-modal__body .review-section__head h3 {
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+.review-section__edit {
+    padding: 2px 10px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--primary-dark);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.review-section__edit:hover {
+    border-color: var(--primary);
+}
+.review-list {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    gap: 8px 14px;
+    margin: 0;
+}
+.review-list dt {
+    font-weight: 500;
+    color: var(--ink-soft);
+}
+.review-list dd {
+    margin: 0;
+    color: var(--ink);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.review-value--mono {
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+.review-value--warn {
+    color: var(--warning);
+    font-weight: 600;
+}
+.review-footer {
+    display: flex;
+    gap: 10px;
+}
+.review-footer .rules-accept-btn {
+    flex: 1;
+    margin-top: 0;
+}
+
+@media (max-width: 640px) {
+    .status-track {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .status-step {
+        display: grid;
+        grid-template-columns: 26px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+    }
+    .status-step:last-child {
+        border-bottom: none;
+    }
+    .status-step--current {
+        box-shadow: inset 3px 0 0 var(--primary);
+    }
+    .status-panel__actions .status-btn {
+        flex: 1 1 100%;
+    }
+    .review-list {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 2px;
+    }
+    .review-list dd {
+        margin-bottom: 8px;
+    }
+    .review-footer {
+        flex-direction: column-reverse;
+    }
+}

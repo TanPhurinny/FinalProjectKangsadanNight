@@ -1034,13 +1034,45 @@ function getApplicationZonesByType() {
     ]));
 }
 
-router.get('/shop-application', isAuthenticated, async (req, res) => {
-    const latestApplication = await prisma.sellerApplication.findFirst({
-        where: { userId: req.user.id },
-        orderBy: { createdAt: 'desc' }
-    });
+function parseUrlList(value) {
+    try {
+        const list = JSON.parse(value || '[]');
+        return Array.isArray(list) ? list.filter(Boolean) : [];
+    } catch (error) {
+        return [];
+    }
+}
 
-    res.render('seller/shopApplication', {
+// ใบสมัครไม่ผ่าน → เติมข้อมูลเดิมให้แก้เฉพาะจุด ไม่ต้องพิมพ์ใหม่ทั้งฟอร์ม (ยกเว้นการยอมรับกฎ ต้องกดใหม่ทุกครั้ง)
+function applicationToFormData(application) {
+    return {
+        shopName: application.shopName || '',
+        productType: application.productType || '',
+        productSubtype: application.productSubtype || '',
+        productSubtypeOther: application.productSubtypeOther || '',
+        productDetail: application.productDetail || '',
+        shopSummary: application.shopSummary || '',
+        shopTags: application.shopTags || '',
+        phoneNumber: application.phoneNumber || '',
+        bankName: application.bankName || '',
+        bankAccountNumber: application.bankAccountNumber || '',
+        bankAccountName: application.bankAccountName || ''
+    };
+}
+
+// รูปของใบสมัครที่ไม่ผ่านไม่ถูกลบ (ดู rejectSellerApplication) — ให้ติ๊กใช้ซ้ำได้แทนการอัปโหลดใหม่
+function getReusableImages(application) {
+    if (!application || application.status !== 'REJECTED') return null;
+    const images = {
+        cover: application.shopCoverImage || null,
+        products: parseUrlList(application.productImages),
+        menus: parseUrlList(application.menuImages)
+    };
+    return images.cover || images.products.length || images.menus.length ? images : null;
+}
+
+async function renderShopApplication(req, res, { latestApplication, error = null, success = null, formData = null }) {
+    return res.render('seller/shopApplication', {
         user: req.user,
         latestApplication,
         bankNames: THAI_BANK_NAMES,
@@ -1049,9 +1081,42 @@ router.get('/shop-application', isAuthenticated, async (req, res) => {
         maxProductImagesCount: MAX_SHOP_PRODUCT_IMAGES,
         maxMenuImagesCount: MAX_SHOP_MENU_IMAGES,
         userPhoneNumber: await getUserPhoneNumber(req.user.id),
+        previousImages: getReusableImages(latestApplication),
+        prefilledFromRejected: !formData && latestApplication?.status === 'REJECTED',
+        error,
+        success,
+        formData: formData || (latestApplication?.status === 'REJECTED' ? applicationToFormData(latestApplication) : null)
+    });
+}
+
+router.get('/shop-application', isAuthenticated, async (req, res) => {
+    const latestApplication = await prisma.sellerApplication.findFirst({
+        where: { userId: req.user.id },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    return renderShopApplication(req, res, {
+        latestApplication,
         error: req.query.error || null,
         success: req.query.success || null
     });
+});
+
+// เช็คชื่อร้านซ้ำระหว่างพิมพ์ (แค่เตือน ไม่บล็อก) — ร้านที่อนุมัติแล้ว + ใบสมัครที่รอตรวจของคนอื่น
+// ชื่อซ้ำทำให้จับคู่ร้าน/คำขอจองจากชื่อปนกันได้ (ดูหมายเหตุ "ล็อกของฉัน" ใน CLAUDE.md)
+// ใช้ limiter เดียวกับสถิติเปิดดูร้าน (60 ครั้ง/นาที) กันยิงไล่เดาชื่อร้าน
+router.get('/shop-application/check-name', isAuthenticated, shopViewLimiter, async (req, res) => {
+    const name = String(req.query.name || '').trim().slice(0, 200);
+    if (!name) return res.json({ taken: false });
+    try {
+        const [shop, pendingApplication] = await Promise.all([
+            prisma.shopDetail.findFirst({ where: { shopName: name, NOT: { userId: req.user.id } }, select: { id: true } }),
+            prisma.sellerApplication.findFirst({ where: { shopName: name, status: 'PENDING', NOT: { userId: req.user.id } }, select: { id: true } })
+        ]);
+        return res.json({ taken: !!(shop || pendingApplication) });
+    } catch (error) {
+        return res.json({ taken: false });
+    }
 });
 
 router.post('/shop-application', isAuthenticated, (req, res) => {
@@ -1073,19 +1138,7 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
             ...req.body,
             productSubtype: Array.isArray(rawSubtype) ? rawSubtype.join(',') : (rawSubtype || '')
         };
-        return res.render('seller/shopApplication', {
-            user: req.user,
-            latestApplication,
-            bankNames: THAI_BANK_NAMES,
-            productSubtypeGroups: PRODUCT_SUBTYPE_GROUPS,
-            zonesByType: getApplicationZonesByType(),
-            maxProductImagesCount: MAX_SHOP_PRODUCT_IMAGES,
-            maxMenuImagesCount: MAX_SHOP_MENU_IMAGES,
-            userPhoneNumber: await getUserPhoneNumber(req.user.id),
-            error: errorCode,
-            success: null,
-            formData
-        });
+        return renderShopApplication(req, res, { latestApplication, error: errorCode, formData });
     }
 
     if (req.user.role !== 'CUSTOMER') {
@@ -1128,8 +1181,22 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
                 bankAccountName,
                 phoneNumber
             } = parsed.data;
-            const shopCoverImage = req.files?.shopCoverImage?.[0]?.url || null;
             const toUrlList = (files) => (files && files.length ? JSON.stringify(files.map((file) => file.url)) : null);
+
+            // ติ๊ก "ใช้รูปจากใบสมัครครั้งก่อน" — ช่องไหนไม่ได้อัปโหลดใหม่ ใช้รูปของใบสมัครที่ไม่ผ่านล่าสุดของตัวเองแทน
+            // (ดึงจาก DB ด้วย userId เสมอ ไม่รับ URL จากฟอร์ม กันอ้างรูปของคนอื่น)
+            let previousImages = null;
+            if (req.body.reusePreviousImages === '1') {
+                const previousApplication = await prisma.sellerApplication.findFirst({
+                    where: { userId: req.user.id, status: 'REJECTED' },
+                    orderBy: { createdAt: 'desc' },
+                    select: { shopCoverImage: true, productImages: true, menuImages: true }
+                });
+                previousImages = previousApplication || null;
+            }
+            const shopCoverImage = req.files?.shopCoverImage?.[0]?.url || previousImages?.shopCoverImage || null;
+            const productImagesValue = toUrlList(req.files?.productImages) || previousImages?.productImages || null;
+            const menuImagesValue = toUrlList(req.files?.menuImages) || previousImages?.menuImages || null;
 
             await prisma.sellerApplication.create({
                 data: {
@@ -1147,8 +1214,8 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
                     bankAccountName,
                     phoneNumber,
                     shopCoverImage,
-                    productImages: toUrlList(req.files?.productImages),
-                    menuImages: toUrlList(req.files?.menuImages),
+                    productImages: productImagesValue,
+                    menuImages: menuImagesValue,
                     termsAcceptedAt: new Date(),
                     status: 'PENDING'
                 }

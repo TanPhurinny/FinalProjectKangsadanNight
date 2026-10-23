@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
   <link rel="stylesheet" href="/stylesheets/seller/repair.css">
-  <link rel="stylesheet" href="/stylesheets/seller/shopApplication.css?v=20261008-gallery">
+  <link rel="stylesheet" href="/stylesheets/seller/shopApplication.css?v=20261023-extras">
     </head>
 
     <body>
@@ -67,70 +67,155 @@
                 </div>
                 <% } %>
 
-                <% if (user.role !== 'CUSTOMER') { %>
-                <p class="text-muted">บัญชีของคุณเป็น<%= user.role === 'SELLER' ? 'ผู้ขายอยู่แล้ว' : 'บัญชีที่ไม่ใช่ลูกค้าทั่วไป' %> จึงไม่ต้องสมัครเปิดร้านค้าอีก</p>
-                <% } else if (latestApplication && latestApplication.status === 'PENDING') { %>
-                <p class="text-muted"><i class="fa-solid fa-clock me-2"></i>ใบสมัครร้าน "<%= latestApplication.shopName %>" ของคุณอยู่ระหว่างตรวจสอบ กรุณารอแอดมินอนุมัติ</p>
-                <% } else if (latestApplication && latestApplication.status === 'APPROVED') { %>
-                <p class="text-muted"><i class="fa-solid fa-circle-check me-2"></i>ใบสมัครร้าน "<%= latestApplication.shopName %>" ของคุณได้รับการอนุมัติแล้ว กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่ เพื่อใช้งานเมนูร้านค้า</p>
+                <%
+                // แถบสถานะใบสมัคร: ส่งแล้ว → แอดมินตรวจ → อนุมัติ → จองล็อก
+                // role ถูกดึงจาก DB ทุก request (middlewares/jwtAuth.js refreshUserRole) อนุมัติแล้วใช้เมนูร้านค้าได้ทันที ไม่ต้องล็อกอินใหม่
+                const isSellerAccount = user.role === 'SELLER';
+                const appStatus = latestApplication ? latestApplication.status : null;
+                const showStatusTrack = isSellerAccount || (user.role === 'CUSTOMER' && (appStatus === 'PENDING' || appStatus === 'APPROVED'));
+                const fmtThaiDate = (value) => value ? new Date(value).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }) : '';
+                const approvedDone = isSellerAccount || appStatus === 'APPROVED';
+                const statusSteps = [
+                    { label: 'ส่งใบสมัคร', note: latestApplication ? fmtThaiDate(latestApplication.createdAt) : '', state: 'done' },
+                    { label: 'แอดมินตรวจสอบ', note: approvedDone ? (latestApplication && latestApplication.reviewedAt ? fmtThaiDate(latestApplication.reviewedAt) : '') : 'กำลังตรวจ', state: approvedDone ? 'done' : 'current' },
+                    { label: 'อนุมัติเป็นผู้ขาย', note: approvedDone ? 'เรียบร้อย' : 'รอผล', state: approvedDone ? 'done' : 'todo' },
+                    { label: 'เลือกโซน/จองล็อก', note: approvedDone ? 'ทำต่อได้เลย' : 'จองระหว่างรอได้', state: approvedDone ? 'current' : 'todo' }
+                ];
+                %>
+                <% if (showStatusTrack) { %>
+                <div class="status-panel">
+                    <p class="status-panel__title">
+                        <% if (approvedDone) { %>
+                        <i class="fa-solid fa-circle-check me-2"></i>ร้าน "<%= (latestApplication && latestApplication.shopName) || 'ของคุณ' %>" เปิดเป็นผู้ขายแล้ว
+                        <% } else { %>
+                        <i class="fa-solid fa-clock me-2"></i>ใบสมัครร้าน "<%= latestApplication.shopName %>" อยู่ระหว่างตรวจสอบ
+                        <% } %>
+                    </p>
+                    <ol class="status-track">
+                        <% statusSteps.forEach((step, index) => { %>
+                        <li class="status-step status-step--<%= step.state %>">
+                            <span class="status-step__dot"><% if (step.state === 'done') { %><i class="fa-solid fa-check"></i><% } else { %><%= index + 1 %><% } %></span>
+                            <span class="status-step__label"><%= step.label %></span>
+                            <% if (step.note) { %><span class="status-step__note"><%= step.note %></span><% } %>
+                        </li>
+                        <% }) %>
+                    </ol>
+                    <p class="status-panel__hint">
+                        <% if (approvedDone) { %>
+                        ใช้เมนูร้านค้าได้ทันที ไม่ต้องออกจากระบบ — ต่อไปเลือกโซนจองล็อก หรือเติมรูปและเมนูให้ร้านน่าสนใจ
+                        <% } else { %>
+                        ผลการตรวจจะแจ้งทางอีเมล — ระหว่างรอเลือกโซนและจองล็อกไว้ก่อนได้
+                        <% } %>
+                    </p>
+                    <div class="status-panel__actions">
+                        <a href="/select-zone" class="status-btn status-btn--primary"><i class="fa-solid fa-map-location-dot me-2"></i>เลือกโซน/จองล็อก</a>
+                        <% if (isSellerAccount) { %>
+                        <a href="/shop-profile" class="status-btn"><i class="fa-solid fa-store me-2"></i>ร้านค้าของฉัน</a>
+                        <% } %>
+                    </div>
+                </div>
+                <% } else if (user.role !== 'CUSTOMER') { %>
+                <p class="text-muted">บัญชีนี้ไม่ใช่บัญชีลูกค้าทั่วไป จึงไม่ต้องสมัครเปิดร้านค้า</p>
                 <% } else { %>
 
                 <% if (latestApplication && latestApplication.status === 'REJECTED') { %>
                 <div class="form-alert form-alert--danger">
                     <i class="fa-solid fa-circle-xmark"></i>
-                    <span>ใบสมัครร้าน "<%= latestApplication.shopName %>" ครั้งก่อนไม่ผ่านการอนุมัติ<%= latestApplication.rejectReason ? ` (เหตุผล: ${latestApplication.rejectReason})` : '' %> คุณสามารถแก้ไขข้อมูลและสมัครใหม่ได้ด้านล่าง</span>
+                    <span>
+                        ใบสมัครร้าน "<%= latestApplication.shopName %>" ครั้งก่อนไม่ผ่านการอนุมัติ
+                        <% if (latestApplication.rejectReason) { %><strong class="reject-reason">เหตุผล: <%= latestApplication.rejectReason %></strong><% } %>
+                        <% if (typeof prefilledFromRejected !== 'undefined' && prefilledFromRejected) { %>
+                        เติมข้อมูลเดิมไว้ให้แล้ว แก้เฉพาะจุดที่ต้องปรับแล้วส่งใหม่ได้เลย
+                        <% } else { %>
+                        แก้ไขข้อมูลแล้วสมัครใหม่ได้ด้านล่าง
+                        <% } %>
+                    </span>
                 </div>
                 <% } %>
 
-                <button type="button" class="rules-reopen-link" id="reopenRulesBtn">
-                    <i class="fa-solid fa-file-lines me-1"></i>อ่านกฎระเบียบร้านค้าอีกครั้ง
-                </button>
+                <div class="draft-banner" id="draftBanner" hidden>
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span class="draft-banner__text">มีข้อมูลที่กรอกค้างไว้ <span id="draftBannerTime"></span> — ใช้ต่อไหม?</span>
+                    <span class="draft-banner__actions">
+                        <button type="button" class="status-btn status-btn--primary" id="draftRestoreBtn">ใช้ต่อ</button>
+                        <button type="button" class="status-btn" id="draftDiscardBtn">เริ่มใหม่</button>
+                    </span>
+                </div>
+
+                <div class="apply-intro">
+                    <p class="apply-intro__lead">กรอก 3 ขั้นตอนหลักให้ครบ ใช้เวลาประมาณ 5 นาที — ช่องที่มี <span class="req-mark">*</span> ต้องกรอก</p>
+                    <button type="button" class="rules-reopen-link" id="reopenRulesBtn">
+                        <i class="fa-solid fa-file-lines me-1"></i>อ่านกฎระเบียบร้านค้าอีกครั้ง
+                    </button>
+                </div>
 
                 <form action="/shop-application" method="POST"
-                    enctype="multipart/form-data">
+                    enctype="multipart/form-data" id="shopApplicationForm"
+                    data-draft-key="shopApplicationDraft:<%= user.id %>"
+                    data-skip-draft="<%= errorMsg ? '1' : '' %>">
                     <input type="hidden" name="termsAccepted" id="termsAcceptedInput" value="<%= termsAlreadyAccepted ? 'true' : '' %>">
 
                     <%
-                    const zonesByTypeMap = (typeof zonesByType !== 'undefined' && zonesByType) ? zonesByType : {};
                     const productTypeOptions = [
-                        { value: 'FOOD', label: 'อาหาร/เครื่องดื่ม' },
-                        { value: 'FASHION', label: 'เสื้อผ้า/แฟชั่น' },
-                        { value: 'อื่นๆ', label: 'อื่นๆ' }
+                        { value: 'FOOD', label: 'อาหาร/เครื่องดื่ม', icon: 'fa-bowl-food' },
+                        { value: 'FASHION', label: 'เสื้อผ้า/แฟชั่น', icon: 'fa-shirt' },
+                        { value: 'อื่นๆ', label: 'อื่นๆ', icon: 'fa-box-open' }
                     ];
                     %>
-                    <div class="form-section">
+                    <section class="form-section" data-step="1">
                         <div class="form-section-head">
+                            <span class="form-section-num">1</span>
                             <span class="form-section-title">ข้อมูลร้าน</span>
                             <span class="form-section-hint">แสดงบนผังตลาดหลังอนุมัติ</span>
+                            <span class="form-section-done" hidden><i class="fa-solid fa-check"></i> ครบแล้ว</span>
                         </div>
 
-                        <div class="form-grid">
-                            <div class="form-group full-width">
-                                <label>ชื่อร้านค้า</label>
-                                <input type="text" name="shopName" class="input-white"
-                                    value="<%= fd.shopName || '' %>" maxlength="200"
-                                    placeholder="เช่น ร้านส้มตำป้าแดง" required>
-                                <p class="field-hint">ชื่อนี้ขึ้นบนการ์ดล็อกในผังตลาดและป้ายหน้าร้าน — หลังอนุมัติแล้วแก้เองไม่ได้ ต้องติดต่อแอดมิน</p>
-                            </div>
+                        <div class="form-group full-width">
+                            <label for="shopNameInput">ชื่อร้านค้า <span class="req-mark">*</span></label>
+                            <input type="text" name="shopName" id="shopNameInput" class="input-white"
+                                value="<%= fd.shopName || '' %>" maxlength="200"
+                                placeholder="เช่น ร้านส้มตำป้าแดง" autocomplete="organization" required>
+                            <p class="field-hint field-hint--warn" id="shopNameTakenHint" hidden>
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i>มีร้านชื่อนี้อยู่แล้ว แนะนำเติมคำให้ต่างกัน เช่น ชื่อเจ้าของหรือเมนูเด่น ลูกค้าจะได้ไม่สับสน
+                            </p>
+                            <p class="field-hint">ขึ้นบนผังตลาดและป้ายหน้าร้าน — อนุมัติแล้วต้องให้แอดมินแก้ให้</p>
+                        </div>
 
-                            <div class="form-group full-width">
-                                <label>ประเภทสินค้า</label>
-                                <select name="productType" id="productTypeSelect" class="input-white" required>
-                                    <option value="" <%= !fd.productType ? 'selected' : '' %>>เลือกประเภท...</option>
-                                    <% productTypeOptions.forEach((opt) => { %>
-                                    <option value="<%= opt.value %>" data-zones="<%= (zonesByTypeMap[opt.value] || []).join(', ') %>"
-                                        <%= fd.productType === opt.value ? 'selected' : '' %>><%= opt.label %></option>
-                                    <% }) %>
-                                </select>
-                                <p class="field-hint" id="productTypeZoneHint">ประเภทสินค้ากำหนดโซนที่จองล็อกได้หลังอนุมัติ และแก้เองไม่ได้ภายหลัง</p>
+                        <div class="form-group full-width">
+                            <label id="productTypeLabel">ขายสินค้าประเภทไหน <span class="req-mark">*</span></label>
+                            <div class="type-cards" role="radiogroup" aria-labelledby="productTypeLabel">
+                                <% productTypeOptions.forEach((opt) => { %>
+                                <label class="type-card">
+                                    <input type="radio" name="productType" value="<%= opt.value %>"
+                                        <%= fd.productType === opt.value ? 'checked' : '' %> required>
+                                    <span class="type-card__icon"><i class="fa-solid <%= opt.icon %>"></i></span>
+                                    <span class="type-card__label"><%= opt.label %></span>
+                                </label>
+                                <% }) %>
                             </div>
+                            <p class="field-hint">ประเภทสินค้ากำหนดโซนที่จองล็อกได้ และแก้เองไม่ได้หลังอนุมัติ</p>
                         </div>
 
                         <div class="form-group full-width" id="productSubtypeSection">
                             <div class="subtype-section__head">
-                                <label>ประเภทสินค้าเฉพาะ <span class="subtype-count" id="subtypeCount" hidden>0</span></label>
-                                <p class="text-muted small mb-0">เลือกได้มากกว่า 1 รายการ — ใช้จัดระยะห่างล็อกไม่ให้ร้านขายของซ้ำกันอยู่ติดกัน</p>
+                                <label>ขายอะไรบ้าง <span class="label-optional">เลือกได้หลายรายการ</span> <span class="subtype-count" id="subtypeCount" hidden>0</span></label>
+                                <p class="field-hint mt-0">ใช้จัดล็อกไม่ให้ร้านที่ขายของซ้ำกันอยู่ติดกัน</p>
                             </div>
+                            <div class="subtype-selected" id="subtypeSelected" hidden>
+                                <span class="subtype-selected__label">เลือกแล้ว</span>
+                                <span class="subtype-selected__chips" id="subtypeSelectedChips"></span>
+                            </div>
+                            <div class="subtype-search" id="subtypeSearchWrap" hidden>
+                                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                                <input type="search" id="subtypeSearch" class="input-white" autocomplete="off" enterkeyhint="search"
+                                    placeholder="ค้นหา เช่น ส้มตำ, โรตี, เสื้อผ้ามือสอง" aria-label="ค้นหาสินค้าที่ขาย">
+                            </div>
+                            <p class="subtype-noresult" id="subtypeNoResult" hidden>
+                                ไม่เจอ "<span id="subtypeNoResultText"></span>" ในรายการ
+                                <button type="button" class="field-action" id="subtypeUseOtherBtn">
+                                    <i class="fa-solid fa-plus me-1"></i>เพิ่มเป็น "อื่นๆ (ระบุเอง)"
+                                </button>
+                            </p>
                             <%
                             const selectedSubtypes = (fd.productSubtype || '').split(',').map((s) => s.trim()).filter(Boolean);
                             const subtypeGroupsByType = (typeof productSubtypeGroups !== 'undefined' && productSubtypeGroups) ? productSubtypeGroups : {};
@@ -171,106 +256,59 @@
                                         <%= (fd.productSubtypeOther || '') ? '' : 'hidden' %>>
                                 </div>
                             </details>
-                            <p class="text-muted small mb-0" id="productSubtypeHint">กรุณาเลือกประเภทสินค้าด้านบนก่อน</p>
+                            <p class="subtype-empty" id="productSubtypeHint"><i class="fa-solid fa-arrow-up me-1"></i>เลือกประเภทสินค้าด้านบนก่อน รายการจะขึ้นตรงนี้</p>
                         </div>
 
                         <div class="form-group full-width">
-                            <label>เมนูเด่น (คำค้นหา) <span class="label-optional">ไม่บังคับ</span></label>
-                            <div class="tag-input-box" id="shopTagsBox">
-                                <input type="text" id="shopTagsField" class="tag-input-field"
-                                    placeholder="พิมพ์ชื่อเมนู แล้วกด Enter เช่น หมูปิ้งนมสด">
+                            <label for="productDetailInput">รายละเอียดสินค้า <span class="req-mark">*</span></label>
+                            <textarea name="productDetail" id="productDetailInput" class="input-white" maxlength="2000" data-counter
+                                placeholder="สินค้าที่จะขาย ราคาโดยประมาณ วัตถุดิบหลัก..." required><%= fd.productDetail || '' %></textarea>
+                            <div class="field-foot">
+                                <p class="field-hint">แอดมินใช้พิจารณาใบสมัคร และขึ้นในหน้าร้านให้ลูกค้ารู้ว่าขายอะไร</p>
+                                <span class="char-count"></span>
                             </div>
-                            <input type="hidden" name="shopTags" id="shopTagsHidden" value="<%= fd.shopTags || '' %>">
-                            <p class="field-hint">ลูกค้าพิมพ์ชื่อเมนูในผังตลาดแล้วเจอร้านคุณ — ใส่แบบเจาะจง เช่น "หมูปิ้งนมสด" แทน "หมูปิ้ง" กด Enter หรือ , เพื่อเพิ่มทีละป้าย</p>
                         </div>
+                    </section>
 
-                        <div class="form-group full-width">
-                            <label>แนะนำร้านสั้น ๆ <span class="label-optional">ไม่บังคับ</span></label>
-                            <textarea name="shopSummary" class="input-white input-short" maxlength="500"
-                                placeholder="เช่น ส้มตำปูปลาร้าสูตรอีสานแท้ ตำสดทุกครก"><%= fd.shopSummary || '' %></textarea>
-                            <p class="field-hint">ขึ้นในการ์ดร้านบนผังตลาดและหน้าคอมมูนิตี้ (ไม่เกิน 500 ตัวอักษร)</p>
-                        </div>
-
-                        <div class="form-group full-width">
-                            <label>รายละเอียดสินค้า</label>
-                            <textarea name="productDetail" class="input-white" maxlength="2000"
-                                placeholder="สินค้าที่จะขาย ราคาโดยประมาณ วิธีทำ/วัตถุดิบหลัก..." required><%= fd.productDetail || '' %></textarea>
-                            <p class="field-hint">แอดมินใช้พิจารณาใบสมัคร และขึ้นในหน้าร้านให้ลูกค้ารู้ว่าขายอะไร</p>
-                        </div>
-
-                        <div class="form-group full-width">
-                            <label>รูปสินค้า/โลโก้ร้าน <span class="label-optional">ไม่บังคับ · สูงสุด <%= maxProductImagesCount %> รูป</span></label>
-                            <div class="upload-wrapper gallery-wrapper" id="productImagesWrapper">
-                                <label for="productImagesUpload" class="upload-box" id="productImagesUploadLabel"></label>
-                            </div>
-                            <input type="file" name="productImages" id="productImagesUpload"
-                                class="upload-input" accept="image/*" multiple data-max="<%= maxProductImagesCount %>">
-                            <p class="field-hint">รูปแรกใช้เป็นรูปย่อของร้านบนผังตลาดและคอมมูนิตี้</p>
-                        </div>
-
-                        <div class="form-group full-width">
-                            <label>รูปเมนูร้าน <span class="label-optional">ไม่บังคับ · สูงสุด <%= maxMenuImagesCount %> รูป</span></label>
-                            <div class="upload-wrapper gallery-wrapper" id="menuImagesWrapper">
-                                <label for="menuImagesUpload" class="upload-box" id="menuImagesUploadLabel"></label>
-                            </div>
-                            <input type="file" name="menuImages" id="menuImagesUpload"
-                                class="upload-input" accept="image/*" multiple data-max="<%= maxMenuImagesCount %>">
-                            <p class="field-hint">ถ่ายป้ายเมนู/ใบราคาให้อ่านชื่อเมนูและราคาได้ชัด — ลูกค้ากด "ดูเมนูร้าน" บนผังตลาดเพื่อดูรูปนี้</p>
-                        </div>
-
-                        <div class="form-group full-width">
-                            <label>รูปหน้าปกร้าน <span class="label-optional">ไม่บังคับ</span></label>
-                        <div class="upload-wrapper" id="coverUploadWrapper">
-                            <label for="imageUpload" class="upload-box upload-box--cover"
-                                id="uploadLabel">
-                                <img id="imagePreview" src alt="Preview" hidden>
-                                <span class="upload-box__placeholder" id="uploadPlaceholder">
-                                    <span class="upload-box__icon" aria-hidden="true">+</span>
-                                    <span class="upload-box__text">คลิกเพื่ออัปโหลดรูป</span>
-                                </span>
-                            </label>
-                            <input type="file" name="shopCoverImage" id="imageUpload"
-                                class="upload-input" accept="image/*">
-                        </div>
-                            <p class="field-hint">ใช้เป็นรูปหน้าปกร้าน (ถ้าไม่มีรูปสินค้า จะใช้รูปนี้เป็นรูปย่อบนผังตลาดแทน) — ถ้าส่งฟอร์มไม่สำเร็จต้องแนบรูปทุกช่องใหม่อีกครั้ง (เบราว์เซอร์ไม่เก็บไฟล์ค้างไว้ให้)</p>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
+                    <section class="form-section" data-step="2">
                         <div class="form-section-head">
+                            <span class="form-section-num">2</span>
                             <span class="form-section-title">ผู้ขายและการติดต่อ</span>
                             <span class="form-section-hint">เจ้าหน้าที่ใช้ติดต่อ</span>
+                            <span class="form-section-done" hidden><i class="fa-solid fa-check"></i> ครบแล้ว</span>
                         </div>
 
                         <div class="form-grid">
                             <div class="form-group">
-                                <label>ชื่อผู้ขาย</label>
-                                <input type="text" name="sellerName" class="input-white"
+                                <label for="sellerNameInput">ชื่อผู้ขาย</label>
+                                <input type="text" name="sellerName" id="sellerNameInput" class="input-white input-readonly"
                                     value="<%= user && user.name ? user.name : '' %>" readonly required>
-                                <p class="field-hint">ใช้ชื่อตามบัญชีผู้ใช้ แก้ได้ที่หน้าโปรไฟล์</p>
+                                <p class="field-hint">ดึงจากบัญชีผู้ใช้ แก้ได้ที่หน้าโปรไฟล์</p>
                             </div>
 
                             <div class="form-group">
-                                <label>เบอร์โทรศัพท์</label>
-                                <input type="tel" name="phoneNumber" class="input-white"
+                                <label for="phoneNumberInput">เบอร์โทรศัพท์ <span class="req-mark">*</span></label>
+                                <input type="tel" name="phoneNumber" id="phoneNumberInput" class="input-white" data-digits-only
                                     value="<%= fd.phoneNumber || (typeof userPhoneNumber !== 'undefined' ? userPhoneNumber : '') %>"
-                                    inputmode="numeric" maxlength="10" pattern="0[0-9]{8,9}"
+                                    inputmode="numeric" maxlength="10" pattern="0[0-9]{8,9}" autocomplete="tel"
                                     placeholder="เช่น 0812345678" required>
-                                <p class="field-hint">อนุมัติแล้วจะบันทึกเป็นเบอร์ของบัญชีนี้ ใช้จับคู่คำขอจองล็อกและให้เจ้าหน้าที่ติดต่อ</p>
+                                <p class="field-hint">ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0</p>
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="form-section">
+                    <section class="form-section" data-step="3">
                         <div class="form-section-head">
+                            <span class="form-section-num">3</span>
                             <span class="form-section-title">บัญชีธนาคาร</span>
                             <span class="form-section-hint">ไม่แสดงบนผังตลาด</span>
+                            <span class="form-section-done" hidden><i class="fa-solid fa-check"></i> ครบแล้ว</span>
                         </div>
 
                         <div class="form-grid">
                             <div class="form-group full-width">
-                                <label>ธนาคาร</label>
-                                <select name="bankName" class="input-white" required>
+                                <label for="bankNameSelect">ธนาคาร <span class="req-mark">*</span></label>
+                                <select name="bankName" id="bankNameSelect" class="input-white" required>
                                     <option value="" <%= !fd.bankName ? 'selected' : '' %> disabled>เลือกธนาคาร...</option>
                                     <% (typeof bankNames !== 'undefined' ? bankNames : []).forEach((bank) => { %>
                                     <option value="<%= bank %>" <%= fd.bankName === bank ? 'selected' : '' %>><%= bank %></option>
@@ -279,26 +317,139 @@
                             </div>
 
                             <div class="form-group">
-                                <label>เลขบัญชีธนาคาร</label>
-                                <input type="text" name="bankAccountNumber" class="input-white"
+                                <label for="bankAccountNumberInput">เลขบัญชี <span class="req-mark">*</span></label>
+                                <input type="text" name="bankAccountNumber" id="bankAccountNumberInput" class="input-white" data-digits-only
                                     value="<%= fd.bankAccountNumber || '' %>"
-                                    inputmode="numeric" minlength="4" maxlength="30"
+                                    inputmode="numeric" minlength="4" maxlength="30" autocomplete="off"
                                     placeholder="เช่น 1234567890" required>
+                                <p class="field-hint">พิมพ์เฉพาะตัวเลข ไม่ต้องใส่ขีด</p>
                             </div>
 
                             <div class="form-group">
-                                <label>ชื่อบัญชีธนาคาร</label>
-                                <input type="text" name="bankAccountName" class="input-white"
+                                <label for="bankAccountNameInput">ชื่อบัญชี <span class="req-mark">*</span></label>
+                                <input type="text" name="bankAccountName" id="bankAccountNameInput" class="input-white"
                                     value="<%= fd.bankAccountName || '' %>" maxlength="200"
                                     placeholder="เช่น นายสมชาย ใจดี" required>
+                                <button type="button" class="field-action" id="useSellerNameBtn">
+                                    <i class="fa-solid fa-user-check me-1"></i>ใช้ชื่อเดียวกับผู้ขาย
+                                </button>
                             </div>
                         </div>
-                        <p class="field-hint">ไม่แสดงบนผังตลาดหรือหน้าร้าน — ชื่อบัญชีควรตรงกับชื่อผู้ขาย</p>
-                    </div>
+                    </section>
 
-                    <button type="submit"
-                        class="submit-btn"
-                        id="submitBtn" <%= termsAlreadyAccepted ? '' : 'disabled' %>><%= termsAlreadyAccepted ? 'ส่งใบสมัคร' : 'ส่งใบสมัคร (กรุณายอมรับกฎระเบียบก่อน)' %></button>
+                    <section class="form-section form-section--optional">
+                        <div class="form-section-head">
+                            <span class="form-section-num form-section-num--optional">+</span>
+                            <span class="form-section-title">ทำให้ร้านน่าสนใจ</span>
+                            <span class="form-section-hint">ไม่บังคับ · เพิ่มทีหลังได้ที่หน้าร้านค้าของฉัน</span>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="shopSummaryInput">แนะนำร้านสั้น ๆ</label>
+                            <textarea name="shopSummary" id="shopSummaryInput" class="input-white input-short" maxlength="500" data-counter
+                                placeholder="เช่น ส้มตำปูปลาร้าสูตรอีสานแท้ ตำสดทุกครก"><%= fd.shopSummary || '' %></textarea>
+                            <div class="field-foot">
+                                <p class="field-hint">ขึ้นในการ์ดร้านบนผังตลาดและหน้าคอมมูนิตี้</p>
+                                <span class="char-count"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="shopTagsField">เมนูเด่น (คำค้นหา)</label>
+                            <div class="tag-input-box" id="shopTagsBox">
+                                <input type="text" id="shopTagsField" class="tag-input-field" enterkeyhint="done"
+                                    placeholder="พิมพ์ชื่อเมนู แล้วกด Enter เช่น หมูปิ้งนมสด">
+                            </div>
+                            <input type="hidden" name="shopTags" id="shopTagsHidden" value="<%= fd.shopTags || '' %>">
+                            <div class="tag-suggest" id="tagSuggest" hidden>
+                                <span class="tag-suggest__label">แตะเพื่อเพิ่มจากที่ติ๊กไว้:</span>
+                                <span class="tag-suggest__chips" id="tagSuggestChips"></span>
+                            </div>
+                            <p class="field-hint">ลูกค้าค้นชื่อเมนูบนผังตลาดแล้วเจอร้านคุณ — ใส่แบบเจาะจง เช่น "หมูปิ้งนมสด" แทน "หมูปิ้ง"</p>
+                        </div>
+
+                        <div class="upload-grid">
+                            <div class="form-group">
+                                <label>รูปสินค้า/โลโก้ร้าน <span class="label-optional">สูงสุด <%= maxProductImagesCount %> รูป</span></label>
+                                <div class="upload-wrapper gallery-wrapper" id="productImagesWrapper">
+                                    <label for="productImagesUpload" class="upload-box" id="productImagesUploadLabel"></label>
+                                </div>
+                                <input type="file" name="productImages" id="productImagesUpload"
+                                    class="upload-input" accept="image/*" multiple data-max="<%= maxProductImagesCount %>">
+                                <p class="field-hint">รูปแรกใช้เป็นรูปย่อของร้านบนผังตลาด</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label>รูปเมนูร้าน <span class="label-optional">สูงสุด <%= maxMenuImagesCount %> รูป</span></label>
+                                <div class="upload-wrapper gallery-wrapper" id="menuImagesWrapper">
+                                    <label for="menuImagesUpload" class="upload-box" id="menuImagesUploadLabel"></label>
+                                </div>
+                                <input type="file" name="menuImages" id="menuImagesUpload"
+                                    class="upload-input" accept="image/*" multiple data-max="<%= maxMenuImagesCount %>">
+                                <p class="field-hint">ถ่ายป้ายเมนู/ใบราคาให้อ่านชื่อและราคาได้ชัด</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label>รูปหน้าปกร้าน</label>
+                            <div class="upload-wrapper" id="coverUploadWrapper">
+                                <label for="imageUpload" class="upload-box upload-box--cover"
+                                    id="uploadLabel">
+                                    <img id="imagePreview" src alt="Preview" hidden>
+                                    <span class="upload-box__placeholder" id="uploadPlaceholder">
+                                        <span class="upload-box__icon" aria-hidden="true"><i class="fa-solid fa-image"></i></span>
+                                        <span class="upload-box__text">แตะเพื่อเลือกรูป</span>
+                                    </span>
+                                </label>
+                                <input type="file" name="shopCoverImage" id="imageUpload"
+                                    class="upload-input" accept="image/*">
+                            </div>
+                            <p class="field-hint">ถ้าไม่มีรูปสินค้า จะใช้รูปนี้เป็นรูปย่อบนผังตลาดแทน · ทุกช่องย่อรูปให้อัตโนมัติก่อนส่ง อัปโหลดเร็วขึ้นบนเน็ตมือถือ</p>
+                        </div>
+
+                        <% const prevImages = (typeof previousImages !== 'undefined' && previousImages) ? previousImages : null; %>
+                        <% if (prevImages) {
+                            const prevThumbs = [prevImages.cover, ...prevImages.products, ...prevImages.menus].filter(Boolean);
+                        %>
+                        <label class="reuse-images" id="reuseImagesBox"
+                            data-cover="<%= prevImages.cover || '' %>" data-first-product="<%= prevImages.products[0] || '' %>">
+                            <input type="checkbox" name="reusePreviousImages" value="1" id="reuseImagesToggle" checked>
+                            <span class="reuse-images__body">
+                                <span class="reuse-images__title">ใช้รูปจากใบสมัครครั้งก่อน (<%= prevThumbs.length %> รูป)</span>
+                                <span class="field-hint mt-0">ช่องไหนเลือกรูปใหม่ จะใช้รูปใหม่แทนเฉพาะช่องนั้น</span>
+                                <span class="reuse-images__thumbs">
+                                    <% prevThumbs.slice(0, 6).forEach((url) => { %><img src="<%= url %>" alt="" loading="lazy"><% }) %>
+                                </span>
+                            </span>
+                        </label>
+                        <% } %>
+
+                        <div class="shop-preview" aria-live="polite">
+                            <span class="shop-preview__caption">ตัวอย่างการ์ดร้านบนผังตลาด</span>
+                            <div class="shop-preview__card">
+                                <div class="shop-preview__thumb" id="previewThumb"><i class="fa-solid fa-store"></i></div>
+                                <div class="shop-preview__info">
+                                    <span class="shop-preview__type" id="previewType">ประเภทสินค้า</span>
+                                    <strong class="shop-preview__name" id="previewName">ชื่อร้านของคุณ</strong>
+                                    <span class="shop-preview__summary" id="previewSummary">แนะนำร้านสั้น ๆ จะขึ้นตรงนี้</span>
+                                    <span class="shop-preview__tags" id="previewTags"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <% if (errorMsg) { %>
+                        <p class="field-hint field-hint--warn"><i class="fa-solid fa-triangle-exclamation me-1"></i>ส่งไม่สำเร็จครั้งก่อน — ต้องแนบรูปทุกช่องใหม่อีกครั้ง (เบราว์เซอร์ไม่เก็บไฟล์ค้างไว้ให้)</p>
+                        <% } %>
+                    </section>
+
+                    <div class="submit-bar">
+                        <div class="submit-progress" aria-live="polite">
+                            <div class="submit-progress__track"><div class="submit-progress__fill" id="progressFill"></div></div>
+                            <span class="submit-progress__text" id="progressText"></span>
+                        </div>
+                        <button type="submit"
+                            class="submit-btn"
+                            id="submitBtn" <%= termsAlreadyAccepted ? '' : 'disabled' %>><%= termsAlreadyAccepted ? 'ส่งใบสมัคร' : 'ส่งใบสมัคร (กรุณายอมรับกฎระเบียบก่อน)' %></button>
+                    </div>
 
                 </form>
                 <% } %>
@@ -395,6 +546,22 @@
         </div>
         <% } %>
 
-        <script src="/js/seller/shopApplication.js?v=20261008-gallery"></script>
+        <% if (user.role === 'CUSTOMER' && !(latestApplication && (latestApplication.status === 'PENDING' || latestApplication.status === 'APPROVED'))) { %>
+        <div class="rules-overlay" id="reviewOverlay" hidden>
+            <div class="rules-modal" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
+                <div class="rules-modal__header">
+                    <h2 id="reviewTitle"><i class="fa-solid fa-list-check me-2"></i>ตรวจทานก่อนส่ง</h2>
+                    <p>เช็คให้แน่ใจโดยเฉพาะเลขบัญชีและเบอร์โทร — ชื่อร้านและประเภทสินค้าแก้เองไม่ได้หลังอนุมัติ</p>
+                </div>
+                <div class="rules-modal__body" id="reviewBody"></div>
+                <div class="rules-modal__footer review-footer">
+                    <button type="button" class="status-btn" id="reviewEditBtn">กลับไปแก้ไข</button>
+                    <button type="button" class="rules-accept-btn" id="reviewConfirmBtn">ยืนยันส่งใบสมัคร</button>
+                </div>
+            </div>
+        </div>
+        <% } %>
+
+        <script src="/js/seller/shopApplication.js?v=20261023-extras"></script>
     </body>
 </html>
