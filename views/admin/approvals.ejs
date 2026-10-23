@@ -15,7 +15,7 @@
             rel="stylesheet">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
-        <link rel="stylesheet" href="/stylesheets/admin/approvals.css">
+        <link rel="stylesheet" href="/stylesheets/admin/approvals.css?v=20261023-pay">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
     <body class="bg-light">
@@ -69,12 +69,19 @@
                     invalid_status: 'สถานะที่ส่งมาไม่ถูกต้อง',
                     update_failed: 'อัปเดตสถานะไม่สำเร็จ กรุณาลองใหม่',
                     stale_round_invalid: 'ปิดคำขอค้างทั้งรอบได้เฉพาะรอบที่ผ่านไปแล้ว',
-                    stale_close_failed: 'ปิดคำขอค้างทั้งรอบไม่สำเร็จ กรุณาลองใหม่'
+                    stale_close_failed: 'ปิดคำขอค้างทั้งรอบไม่สำเร็จ กรุณาลองใหม่',
+                    invalid_payment_deadline: 'วันเวลากำหนดชำระไม่ถูกต้อง',
+                    payment_deadline_not_editable: 'แก้กำหนดชำระได้เฉพาะคำขอที่จัดล็อกแล้วรอชำระเงิน',
+                    payment_deadline_failed: 'แก้กำหนดชำระไม่สำเร็จ กรุณาลองใหม่',
+                    payment_settings_invalid: `บันทึกค่ากำหนดชำระไม่ได้: ${locals.errorMessage || 'ค่าที่กรอกไม่ถูกต้อง'}`,
+                    payment_settings_failed: 'บันทึกค่ากำหนดชำระไม่สำเร็จ กรุณาลองใหม่'
                 };
                 const flashSuccessMessages = {
                     payment_confirmed: 'ยืนยันการชำระเงินเรียบร้อย เปิดเผยเลขล็อกให้ผู้ขายแล้ว',
                     status_updated: 'อัปเดตสถานะเรียบร้อย',
-                    stall_assigned: 'จัดล็อกเรียบร้อย ผู้ขายมีเวลาส่งสลิป 6 ชม.',
+                    stall_assigned: 'จัดล็อกเรียบร้อย ดูกำหนดชำระของผู้ขายได้ในแถวคำขอ',
+                    payment_deadline_updated: 'แก้กำหนดชำระเรียบร้อย ผู้ขายเห็นกำหนดใหม่แล้ว',
+                    payment_settings_saved: 'บันทึกค่ากำหนดชำระแล้ว มีผลกับการจัดล็อกครั้งถัดไป',
                     slip_rejected: 'ปฏิเสธสลิปแล้ว ระบบแจ้งผู้ขายให้อัปโหลดสลิปใหม่',
                     request_rejected: 'ปฏิเสธ/ยกเลิกคำขอแล้ว ล็อกที่จัดไว้ถูกคืนเรียบร้อย',
                     stale_closed: `ปิดคำขอค้างในรอบนี้แล้ว ${Number(locals.closedCount) || 0} รายการ ผู้ขายจะเห็นเหตุผลในแจ้งเตือน`,
@@ -140,6 +147,42 @@
                         </a>
                     </div>
                 </div>
+
+                <%
+                // กติกากำหนดชำระเงิน (utils/paymentDeadline.js) — ADMIN แก้ได้ / STAFF ดูได้อย่างเดียว
+                const pay = locals.paymentSettings || { windowHours: 6, cutoffTime: '15:00', minMinutes: 30 };
+                const canEditPay = user && user.role === 'ADMIN';
+                %>
+                <details class="pay-settings"<%= flashSuccess === 'payment_settings_saved' || flashError === 'payment_settings_invalid' ? ' open' : '' %>>
+                    <summary class="pay-settings__summary">
+                        <i class="fa-solid fa-clock" aria-hidden="true"></i>
+                        <span>กำหนดชำระเงิน: ภายใน <b class="mono"><%= pay.windowHours %></b> ชม. หลังจัดล็อก หรือก่อน <b class="mono"><%= pay.cutoffTime %></b> น. ของวันเริ่มขาย (แล้วแต่อย่างไหนถึงก่อน)</span>
+                        <span class="pay-settings__toggle"><%= canEditPay ? 'ตั้งค่า' : 'รายละเอียด' %></span>
+                    </summary>
+                    <form class="pay-settings__form" method="POST" action="/admin/approvals/payment-settings">
+                        <input type="hidden" name="round" value="<%= selectedRoundNumber %>">
+                        <label class="pay-settings__field">
+                            <span>ชำระภายใน (ชม. หลังจัดล็อก)</span>
+                            <input type="number" name="windowHours" min="1" max="72" step="1" value="<%= pay.windowHours %>" required<%= canEditPay ? '' : ' disabled' %>>
+                        </label>
+                        <label class="pay-settings__field">
+                            <span>ต้องจ่ายก่อนเวลา (วันเริ่มขาย)</span>
+                            <input type="time" name="cutoffTime" value="<%= pay.cutoffTime %>" required<%= canEditPay ? '' : ' disabled' %>>
+                        </label>
+                        <label class="pay-settings__field">
+                            <span>ให้เวลาโอนอย่างน้อย (นาที)</span>
+                            <input type="number" name="minMinutes" min="0" max="240" step="5" value="<%= pay.minMinutes %>" required<%= canEditPay ? '' : ' disabled' %>>
+                        </label>
+                        <% if (canEditPay) { %>
+                        <button type="submit" class="q-btn q-btn--go">บันทึก</button>
+                        <% } %>
+                        <p class="pay-settings__note">
+                            ตัวอย่าง: จัดล็อก 09:00 ขายวันนี้ → จ่ายภายใน <%= pay.cutoffTime %> · จัดล็อกใกล้/เลยเวลาตัด → ได้เวลาโอน <%= pay.minMinutes %> นาที ·
+                            มีผลกับการจัดล็อกครั้งถัดไป ใบที่จัดไปแล้วแก้รายใบได้ที่ปุ่ม "แก้กำหนดชำระ" ในรายละเอียดคำขอ
+                            <% if (pay.updatedByName) { %>· แก้ล่าสุดโดย <%= pay.updatedByName %><% } %>
+                        </p>
+                    </form>
+                </details>
 
                 <%
                 const sections = (typeof stageSections !== 'undefined' && Array.isArray(stageSections)) ? stageSections : [];
@@ -276,7 +319,7 @@
                                 slipVerifyReason: request.slipVerifyReason || '', rejectReason: request.rejectReason || '',
                                 cornerZoneNote: request.cornerZoneNote || '', isFinalPrice: Boolean(request.isFinalPrice),
                                 booking: request.booking, extension: request.extension, extendOfRequestId: request.extendOfRequestId,
-                                paymentDeadlineText: request.paymentDeadlineText, stageIcon: request.stageIcon,
+                                paymentDeadlineText: request.paymentDeadlineText, paymentDeadlineInput: request.paymentDeadlineInput, stageIcon: request.stageIcon,
                                 actionLogs: request.actionLogs, createdAtFullText: request.createdAtFullText
                             };
                             const searchText = [request.productName, request.sellerName, request.phone, request.assignedStallCode, request.extension && request.extension.originalStallText, '#' + request.id].filter(Boolean).join(' ').toLowerCase();
@@ -448,8 +491,8 @@
                 flashSuccess: <%- JSON.stringify((typeof success !== 'undefined' && success) || null) %>
             };
         </script>
-        <script src="/js/common/dialogs.js"></script>
-        <script src="/js/admin/approvals.js"></script>
+        <script src="/js/common/dialogs.js?v=20261023-input"></script>
+        <script src="/js/admin/approvals.js?v=20261023-pay"></script>
 
     </body>
 </html>

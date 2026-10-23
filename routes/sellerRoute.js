@@ -25,10 +25,10 @@ const {
     getBookingRoundStatusDetails,
     getBookingPhaseForRound,
     getRoundTimeline,
-    getPaymentDeadlineFromLockAssignedAt,
     getRoundWindow,
     BOOKING_ROUND_LENGTH_DAYS
 } = require('../utils/bookingRound');
+const { getPaymentDeadline } = require('../utils/paymentDeadline');
 const { getRenewalOptions, validateRenewal, isUnpaidPastDeadline } = require('../utils/stallRenewal');
 const { getBillableDays, getHolidaysInRange } = require('../utils/bookingHolidays');
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
@@ -2188,12 +2188,12 @@ async function loadSellerBookingStatus(userId) {
             }
         }
 
-        // กำหนดชำระเงินภายใน 6 ชม. นับจากเวลาที่แอดมินจัดล็อกให้ (lockAssignedAt) — เกินแล้วแค่ขึ้นเตือน
-        // ในหน้า ไม่ auto-ยกเลิก แอดมินแยกดำเนินการเอง (ดู PAYMENT_WINDOW_HOURS ใน utils/bookingRound.js)
+        // กำหนดชำระเงินที่คำนวณไว้ตอนจัดล็อก (BookingRequest.paymentDueAt ดู utils/paymentDeadline.js) — เกินแล้วแค่ขึ้นเตือน
+        // ในหน้า ไม่ auto-ยกเลิก แอดมินแยกดำเนินการเอง
         bookingView.paymentDeadline = null;
         bookingView.paymentDeadlineOverdue = false;
         if (normalizedRequestStatus === 'IN_PROGRESS' && !awaitingPaymentVerification) {
-            const deadlineDate = getPaymentDeadlineFromLockAssignedAt(latestRequest.lockAssignedAt);
+            const deadlineDate = getPaymentDeadline(latestRequest);
             if (deadlineDate) {
                 bookingView.paymentDeadline = `${formatDateThai(deadlineDate)} เวลา ${formatTimeThai(deadlineDate)} น.`;
                 bookingView.paymentDeadlineOverdue = new Date().getTime() > deadlineDate.getTime();

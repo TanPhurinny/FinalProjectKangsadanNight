@@ -122,16 +122,9 @@ function getPaymentDeadlineForRound(meta) {
     return addDays(phase2Day, -1); // อังคาร = ก่อนวันพุธ
 }
 
-// กำหนดชำระเงินภายใน 6 ชั่วโมง นับจากเวลาที่แอดมินจัดล็อกให้ (BookingRequest.lockAssignedAt)
+// ค่าเริ่มต้นของช่วงชำระเงิน (ชม. หลังจัดล็อก) — กติกาเต็มอยู่ที่ utils/paymentDeadline.js
 // เตือนในหน้าเฉยๆ ไม่ auto-ยกเลิก แอดมินแยกดำเนินการเอง
 const PAYMENT_WINDOW_HOURS = 6;
-
-function getPaymentDeadlineFromLockAssignedAt(lockAssignedAt) {
-    if (!lockAssignedAt) return null;
-    const assigned = new Date(lockAssignedAt);
-    if (Number.isNaN(assigned.getTime())) return null;
-    return new Date(assigned.getTime() + PAYMENT_WINDOW_HOURS * 60 * 60 * 1000);
-}
 
 // แถบช่วงเวลาของรอบจองถัดไป (หน้าเลือกโซน) — คำนวณจาก getBookingPhaseForRound ตัวเดียวกับฟอร์มจองแผง
 // เพื่อให้ช่วงที่บอกผู้ขายตรงกับสิ่งที่ฟอร์มยอมให้จองจริงเสมอ
@@ -186,7 +179,6 @@ module.exports = {
     getRoundTimeline,
     BOOKING_ROUND_LENGTH_DAYS,
     PAYMENT_WINDOW_HOURS,
-    getPaymentDeadlineFromLockAssignedAt,
     BOOKING_ROUND_ANCHOR_NUMBER,
     BOOKING_ROUND_ANCHOR_DATE,
     toStartOfDay,
