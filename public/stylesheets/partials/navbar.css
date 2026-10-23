@@ -3,6 +3,14 @@
 /* ให้ตัวหนังสือคมขึ้นบน macOS/iOS และตัวเลขกว้างเท่ากันทุกตัว (เรียงตรงคอลัมน์ในตาราง) — ใส่ที่ไฟล์นี้เพราะเกือบทุกหน้าโหลด navbar.css */
 html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-variant-numeric: tabular-nums; }
 
+/* iOS Safari ซูมหน้าเองเมื่อแตะช่องพิมพ์ที่ตัวหนังสือเล็กกว่า 16px และไม่ซูมกลับ — บังคับ 16px เฉพาะ iOS
+   (@supports -webkit-touch-callout จับได้แค่ iOS) หน้าตาบน Android/คอมพิวเตอร์เลยไม่เปลี่ยน */
+@supports (-webkit-touch-callout: none) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+    select,
+    textarea { font-size: 16px !important; }
+}
+
 /* markup ตั้งใจให้ .nav-container ที่มี max-width + padding คำนวณแบบ border-box
    (padding รวมอยู่ใน max-width ไม่ใช่บวกเพิ่ม) — ปกติได้ box-sizing:border-box มาฟรีจาก
    Bootstrap reset ของแต่ละหน้า แต่บางหน้าที่ include navbar partial นี้ไม่ได้โหลด Bootstrap
