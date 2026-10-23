@@ -2310,13 +2310,20 @@ router.get('/booking-status', isAuthenticated, async (req, res) => {
 // --- 5. ผู้ขายอัปโหลดสลิปยืนยันการชำระเงิน หลังแอดมินจัดล็อกให้แล้ว ---
 router.post('/booking-payment/confirm', isSellerOrApplicant, (req, res) => {
     uploadPaymentSlip.single('paymentSlip')(req, res, async (err) => {
+        // พา tabToken ของแท็บที่ส่งสลิปไปหน้าสถานะด้วย ไม่งั้นหน้าสถานะจะใช้ cookie ที่แชร์กันทุกแท็บ (อาจเป็นอีกบัญชี)
+        const tabToken = String(req.query.tabToken || (req.body && req.body.tabToken) || '');
+        const backToStatus = (query) => res.redirect(`/booking-status?${query}${tabToken ? `&tabToken=${encodeURIComponent(tabToken)}` : ''}`);
+
         if (err) {
-            return res.redirect('/booking-status?error=upload_failed');
+            console.error('upload payment slip error', err);
+            if (err.code === 'LIMIT_FILE_SIZE') return backToStatus('error=slip_too_large');
+            if (err.message === 'ประเภทไฟล์ไม่ถูกต้อง') return backToStatus('error=slip_invalid_type');
+            return backToStatus('error=upload_failed');
         }
 
         try {
             if (!req.file) {
-                return res.redirect('/booking-status?error=missing_slip');
+                return backToStatus('error=missing_slip');
             }
 
             const userRecord = await prisma.user.findUnique({
@@ -2342,11 +2349,11 @@ router.post('/booking-payment/confirm', isSellerOrApplicant, (req, res) => {
             }
 
             if (!latestRequest || String(latestRequest.status || '').toUpperCase() !== 'IN_PROGRESS') {
-                return res.redirect('/booking-status?error=not_awaiting_payment');
+                return backToStatus('error=not_awaiting_payment');
             }
 
             if (latestRequest.paymentSlipImage) {
-                return res.redirect('/booking-status?error=slip_already_uploaded');
+                return backToStatus('error=slip_already_uploaded');
             }
 
             const slipPath = req.file.url;
@@ -2373,10 +2380,10 @@ router.post('/booking-payment/confirm', isSellerOrApplicant, (req, res) => {
 
             // สลิปที่ระบบตรวจอัตโนมัติไม่ได้ (ไม่มี QR / SlipOK ใช้ไม่ได้) -> หน้าสถานะเด้ง popup บอกผู้ขายว่าแอดมินจะตรวจเอง
             const slipCheck = verifyResult && verifyResult.manual ? `&slipCheck=${verifyResult.manual}` : '';
-            return res.redirect(`/booking-status?success=slip_uploaded${slipCheck}`);
+            return backToStatus(`success=slip_uploaded${slipCheck}`);
         } catch (error) {
             console.error('booking-payment confirm error', error);
-            return res.redirect('/booking-status?error=payment_confirm_failed');
+            return backToStatus('error=payment_confirm_failed');
         }
     });
 });

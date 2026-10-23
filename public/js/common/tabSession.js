@@ -101,6 +101,12 @@
             form.appendChild(input);
         }
         input.value = tabToken;
+
+        // ฟอร์ม multipart (อัปโหลดไฟล์) — body ถูกอ่านโดย multer หลัง middleware ตรวจสิทธิ์ของ route
+        // ตอนนั้น req.body ยังว่าง ระบบเลยไปใช้ cookie (อาจเป็นบัญชีอื่นที่ล็อกอินทีหลังในแท็บอื่น) — แนบ token ไว้ใน URL ด้วย
+        if (String(form.enctype || '').toLowerCase() === 'multipart/form-data') {
+            form.setAttribute('action', withTabToken(action));
+        }
     }, true);
 
     // แนบ token กับ fetch()/XHR ที่เรียกไป API ของเว็บเดียวกัน (สำหรับสคริปต์หน้า admin/seller)
