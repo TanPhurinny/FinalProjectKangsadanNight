@@ -22,7 +22,7 @@
 }
 .quotation-pick-row:last-child { border-bottom: none; }
 .quotation-pick-row input[type="checkbox"] { width: 18px; height: 18px; flex: 0 0 auto; }
-.quotation-pick-row .qn { font-family: var(--mono, 'IBM Plex Mono', 'IBM Plex Sans Thai', ui-monospace, Menlo, Consolas, 'Leelawadee UI', 'Sukhumvit Set', monospace); color: var(--navy, #12303a); font-weight: 600; flex: 1 1 auto; }
+.quotation-pick-row .qn { font-family: var(--mono, 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif); color: var(--navy, #12303a); font-weight: 600; flex: 1 1 auto; }
 .quotation-pick-row .qa { color: var(--ink-soft, #5b7a84); }
 .quotation-pick-empty { padding: 20px; text-align: center; color: var(--ink-soft, #5b7a84); font-size: 0.9rem; }
 
@@ -72,7 +72,7 @@
     border-radius: var(--radius-sm, 3px);
     padding: 4px 10px;
     font-size: 0.72rem;
-    font-family: var(--mono, 'IBM Plex Mono', 'IBM Plex Sans Thai', ui-monospace, Menlo, Consolas, 'Leelawadee UI', 'Sukhumvit Set', monospace);
+    font-family: var(--mono, 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif);
     font-weight: 600;
     border: 1px solid transparent;
     white-space: nowrap;
@@ -100,11 +100,11 @@
     margin: -10px 0 18px;
     font-size: 0.85rem;
     color: var(--ink-soft, #5b7a84);
-    font-family: var(--mono, 'IBM Plex Mono', monospace);
+    font-family: var(--mono, 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif);
 }
 .tax-pick-summary.has-pick { color: var(--navy, #12303a); font-weight: 600; }
 
-.tax-mono { font-family: var(--mono, 'IBM Plex Mono', monospace); letter-spacing: .02em; }
+.tax-mono { font-family: var(--mono, 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif); letter-spacing: .02em; }
 .tax-optional { font-weight: 400; color: var(--ink-soft, #5b7a84); font-size: 0.8em; }
 
 .tax-field-msg {
@@ -122,7 +122,7 @@
 .tax-field-msg [hidden] { display: none; }
 .tax-field-msg .is-warn { color: #a06c1f; }
 .tax-field-msg .is-error { color: #c0392b; }
-.tax-counter { font-family: var(--mono, 'IBM Plex Mono', monospace); }
+.tax-counter { font-family: var(--mono, 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif); }
 
 .input-white.is-invalid,
 .input-white[aria-invalid="true"] { border-color: #c0392b; box-shadow: 0 0 0 2px rgba(192, 57, 43, .15); }

@@ -1,7 +1,7 @@
 /* public/css/navbar.css — gridgeist */
 
-/* ให้ตัวหนังสือคมขึ้นบน macOS/iOS — ใส่ที่ไฟล์นี้เพราะเกือบทุกหน้าโหลด navbar.css */
-html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+/* ให้ตัวหนังสือคมขึ้นบน macOS/iOS และตัวเลขกว้างเท่ากันทุกตัว (เรียงตรงคอลัมน์ในตาราง) — ใส่ที่ไฟล์นี้เพราะเกือบทุกหน้าโหลด navbar.css */
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-variant-numeric: tabular-nums; }
 
 /* markup ตั้งใจให้ .nav-container ที่มี max-width + padding คำนวณแบบ border-box
    (padding รวมอยู่ใน max-width ไม่ใช่บวกเพิ่ม) — ปกติได้ box-sizing:border-box มาฟรีจาก
@@ -24,7 +24,7 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
     top: 0;
     z-index: 1000;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    font-family: 'IBM Plex Sans Thai', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
+    font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
 }
 
 /* จังหวะระยะห่างของ navbar ทั้งแถบ (ทุก role) — ยึดสเกลเดียวกัน ไม่ผสมเลขมั่ว
@@ -285,7 +285,7 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
     background: #c0392b;
     color: #fff;
     font-size: 0.66rem;
-    font-family: var(--mono, 'IBM Plex Mono', 'IBM Plex Sans Thai', ui-monospace, Menlo, Consolas, 'Leelawadee UI', 'Sukhumvit Set', monospace);
+    font-family: var(--mono, 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif);
     font-weight: 700;
     display: inline-flex;
     align-items: center;
@@ -311,7 +311,7 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
     border-radius: 3px;
     border: 1px solid rgba(255, 255, 255, 0.24);
     font-size: 0.74rem;
-    font-family: var(--mono, 'IBM Plex Mono', 'IBM Plex Sans Thai', ui-monospace, Menlo, Consolas, 'Leelawadee UI', 'Sukhumvit Set', monospace);
+    font-family: var(--mono, 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -356,7 +356,7 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
     color: #2C93A8;
     background: transparent;
     font-size: 0.74rem;
-    font-family: var(--mono, 'IBM Plex Mono', 'IBM Plex Sans Thai', ui-monospace, Menlo, Consolas, 'Leelawadee UI', 'Sukhumvit Set', monospace);
+    font-family: var(--mono, 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif);
     font-weight: 600;
     text-decoration: none;
     white-space: nowrap;
@@ -535,7 +535,7 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
     border-radius: 2px;
     background: #c98a2e;
     color: #fff;
-    font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', ui-monospace, Menlo, Consolas, 'Leelawadee UI', 'Sukhumvit Set', monospace;
+    font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
     font-size: 0.7rem;
     font-weight: 600;
     line-height: 1.5;

@@ -22,14 +22,14 @@
 --line-soft: #e7eeef;     /* เส้นขอบจาง */
 --soft-bg: #f6f8f8;       /* พื้นหลังโซนรอง (สลับกับพื้นขาว) */
 --accent: #c98a2e;        /* warning/accent สีทอง ใช้เท่าที่จำเป็น */
---mono: 'IBM Plex Mono', 'Courier New', monospace;
+--mono: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;  /* ชื่อเดิม แต่ไม่ใช่ monospace แล้ว — ตัวเลขเรียงตรงด้วย tabular-nums */
 ```
 
 สถานะเสริม (จาก `admin/theme.css`): `--success-color #27AE60`, `--warning-color #c98a2e`, `--info-color #3498DB`, `--danger-color #c0392b` — ใช้กับ badge/alert/card-header เท่านั้น ไม่ใช่กับปุ่มหลักทั่วไป
 
 **Radius:** `--border-radius: 4px`, `--border-radius-sm: 3px` — ไม่มี pill, ไม่มี rounded-4 ที่ใดในระบบ
 **Shadow:** `--card-shadow: none` เสมอ — ลำดับชั้นมาจากเส้นขอบและสี ไม่ใช่เงา
-**Font:** body = `'Kanit', sans-serif` (ไทย/UI ทั่วไป), `--mono` สำหรับตัวเลข/metadata/label แบบ uppercase เท่านั้น (เช่น badge, timestamp, ตัวเลขสถิติ)
+**Font:** body = `'Inter', 'Prompt', …` (Inter สำหรับอังกฤษ/ตัวเลข, Prompt สำหรับไทย — Inter ต้องมาก่อน), `--mono` สำหรับตัวเลข/metadata/label แบบ uppercase เท่านั้น (เช่น badge, timestamp, ตัวเลขสถิติ)
 
 ## Grid & layout
 
@@ -60,7 +60,7 @@ Breakpoints หลัก: `991.98px` (tablet) และ `575.98px` (mobile) — 
 
 1. ห้ามใช้ `rounded-pill`, `rounded-4`, หรือ box-shadow ใหม่ — ยึด `--border-radius-sm` (3px) เป็นค่าเริ่มต้น
 2. เพิ่มโทเค็นสีใหม่ต้องประกาศใน **ทั้งสองไฟล์** `index/style.css` และ `admin/theme.css` เพื่อไม่ให้ palette เพี้ยนระหว่างหน้า public กับ admin
-3. Metadata/ตัวเลข/label สถานะ → ใช้ `--mono`; เนื้อหาอ่านทั่วไป → `'Kanit'`
+3. Metadata/ตัวเลข/label สถานะ → ใช้ `--mono`; เนื้อหาอ่านทั่วไป → `'Inter', 'Prompt'`
 4. กริดหลายชิ้น (การ์ด, สถิติ, ขั้นตอน) ให้แชร์เส้นขอบร่วมกันตามรูปแบบใน `.facts-grid`/`.about-section .row.g-4` แทนการใส่ `border` ให้การ์ดแต่ละใบแยกกัน
 5. โค้ปใหม่ ข้อความ error, comment ในไฟล์ที่แก้ ต้องเป็นภาษาไทย ตาม `CLAUDE.md`
 6. ทดสอบ responsive ที่ 991px และ 575px ก่อนส่ง PR — ดูว่าเส้นขอบสลับด้านถูกต้องหรือไม่

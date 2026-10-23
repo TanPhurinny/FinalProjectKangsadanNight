@@ -14,7 +14,7 @@
 * { box-sizing: border-box; }
 
 body {
-    font-family: 'IBM Plex Sans Thai', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
+    font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
     background: #fff;
     margin: 0;
 }
@@ -93,7 +93,7 @@ body {
 }
 
 .summary-count {
-    font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', ui-monospace, Menlo, Consolas, 'Leelawadee UI', 'Sukhumvit Set', monospace;
+    font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
     font-size: 28px;
     font-weight: 700;
     line-height: 1.1;
@@ -157,7 +157,7 @@ body {
 .expiring-table tbody tr:last-child td { border-bottom: none; }
 
 .cell-code {
-    font-family: 'IBM Plex Mono', 'IBM Plex Sans Thai', ui-monospace, Menlo, Consolas, 'Leelawadee UI', 'Sukhumvit Set', monospace;
+    font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
     font-weight: 700;
 }
 
@@ -188,7 +188,7 @@ body {
 .btn-row-action {
     padding: 6px 14px;
     border-radius: 3px;
-    font-family: 'IBM Plex Sans Thai', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
+    font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;

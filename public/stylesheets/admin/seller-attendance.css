@@ -4,7 +4,7 @@
 .att-card:last-child { border-right: none; }
 .att-card:hover { background: #f4f8fa; }
 .att-card.active { background: #eef6f9; border-bottom-color: #1c2b33; }
-.att-card-count { font-family: 'IBM Plex Mono', monospace; font-size: 1.8rem; font-weight: 700; line-height: 1; }
+.att-card-count { font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif; font-size: 1.8rem; font-weight: 700; line-height: 1; }
 .att-card-label { font-size: .8rem; color: #5b6b73; }
 .att-card-danger .att-card-count { color: #c0392b; }
 .att-card-warn .att-card-count { color: #b7791f; }
@@ -22,7 +22,7 @@
 .att-dot-future { background: transparent; border: 1px dashed #b0bec5; }
 .att-dot.is-today { outline: 2px solid #1c2b33; outline-offset: 1px; }
 .att-strip { display: flex; gap: 2px; flex-wrap: nowrap; }
-.att-strip-lg .att-dot { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 600; color: #fff; font-family: 'IBM Plex Mono', monospace; }
+.att-strip-lg .att-dot { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 600; color: #fff; font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif; }
 .att-strip-lg .att-dot-none, .att-strip-lg .att-dot-future { color: #5b6b73; }
 
 .att-bar { height: 8px; background: #e5ecef; margin-bottom: 4px; overflow: hidden; }
@@ -40,7 +40,7 @@
 .att-detail > td { background: #f7fafb; border-left: 4px solid #1c2b33; padding: 14px 18px; }
 .att-stalls { display: flex; flex-wrap: wrap; gap: 14px 28px; }
 .att-stall { min-width: 260px; }
-.att-stall-head { margin-bottom: 6px; font-family: 'IBM Plex Mono', monospace; }
+.att-stall-head { margin-bottom: 6px; font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif; }
 .att-problems { margin: 8px 0 0; padding-left: 18px; font-size: .85rem; }
 .att-problem-day { font-weight: 600; margin-right: 6px; }
 

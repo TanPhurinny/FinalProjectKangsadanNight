@@ -26,7 +26,7 @@
 }
 
 .stat-chip b {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
     font-size: 18px;
     font-weight: 600;
 }
