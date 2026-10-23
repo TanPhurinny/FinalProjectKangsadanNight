@@ -174,11 +174,11 @@
       const slipRejectedAlert = (booking.slipVerifyReason || '').startsWith('[แอดมินปฏิเสธสลิป]')
         ? `<div class="pay-alert pay-alert--danger"><i class="bi bi-x-octagon-fill"></i><span>สลิปที่ส่งไปไม่ผ่านการตรวจสอบ: <strong>${booking.slipVerifyReason.replace('[แอดมินปฏิเสธสลิป]', '').trim()}</strong> กรุณาอัปโหลดสลิปใหม่</span></div>`
         : '';
-      // กำหนดชำระเงินภายใน 6 ชม. นับจากเวลาที่แอดมินจัดล็อกให้
+      // กำหนดชำระเงินที่แอดมินกำหนดตอนจัดล็อก (ปกติ 6 ชม. หรือก่อนตลาดเปิดของวันเริ่มขาย — ดู utils/paymentDeadline.js)
       const paymentDeadlineAlert = booking.paymentDeadline
         ? `<div class="pay-alert ${booking.paymentDeadlineOverdue ? 'pay-alert--danger' : 'pay-alert--warning'}"><i class="bi bi-alarm-fill"></i><span>${booking.paymentDeadlineSameDay
-          ? (booking.paymentDeadlineOverdue ? 'เลยกำหนดชำระแล้ว (ขายวันนี้ต้องชำระก่อน 15:00 น.)' : 'ขายวันนี้ ต้องชำระก่อน 15:00 น.')
-          : (booking.paymentDeadlineOverdue ? 'ใบเสนอราคาหมดอายุแล้ว (เกิน 6 ชม. หลังจัดล็อก)' : 'กำหนดชำระเงินภายใน 6 ชม. หลังจัดล็อก')}: <strong>${booking.paymentDeadline}</strong></span></div>`
+          ? (booking.paymentDeadlineOverdue ? 'เลยกำหนดชำระแล้ว (ขายวันนี้ต้องชำระก่อนตลาดเปิด)' : 'ขายวันนี้ ต้องชำระก่อนตลาดเปิด')
+          : (booking.paymentDeadlineOverdue ? 'ใบเสนอราคาหมดอายุแล้ว (เลยกำหนดชำระ)' : 'กรุณาชำระเงินภายใน')}: <strong>${booking.paymentDeadline}</strong></span></div>`
         : '';
       paymentSection = `
         <div class="pay-box">

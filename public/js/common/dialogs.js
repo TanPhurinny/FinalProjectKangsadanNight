@@ -115,6 +115,7 @@
         pendingConfirm = null;
         inputEl.style.display = 'none';
         inputEl.value = '';
+        inputEl.type = 'text';
     }
 
     cancelBtn.addEventListener('click', close);
@@ -134,6 +135,7 @@
     // showConfirmDialog({ title, message, tone, icon, confirmText, cancelText, inputPlaceholder, onConfirm })
     // tone: 'success' | 'danger' | 'warning' | 'neutral' (default 'neutral')
     // inputPlaceholder (optional): แสดงช่องกรอกข้อความ, ค่าที่กรอกจะถูกส่งเป็นอาร์กิวเมนต์แรกของ onConfirm(value)
+    // inputType / inputValue (optional): ชนิดช่องกรอก (เช่น 'datetime-local') และค่าเริ่มต้น — ใช้คู่กับ inputPlaceholder
     window.showConfirmDialog = function showConfirmDialog(options) {
         const opts = options || {};
         const tone = opts.tone || 'neutral';
@@ -149,7 +151,9 @@
         cancelBtn.style.display = '';
         actionsEl.style.display = '';
         if (opts.inputPlaceholder) {
+            inputEl.type = opts.inputType || 'text';
             inputEl.placeholder = opts.inputPlaceholder;
+            inputEl.value = opts.inputValue || '';
             inputEl.style.display = '';
         } else {
             inputEl.style.display = 'none';

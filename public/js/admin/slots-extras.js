@@ -401,8 +401,11 @@
     // ---------- พิมพ์ผัง / ส่งออก CSV ----------
     function stallStatusText(stall) {
         if (stall.status === 'MAINTENANCE') return 'ซ่อมบำรุง';
-        if (stall.status === 'BOOKED') return stall.expiryState === 'expired' ? 'จองแล้ว (หมดสัญญา)' : 'จองแล้ว';
-        return 'ว่าง';
+        if (stall.status === 'BOOKED') {
+            if (stall.expiryState === 'expired') return 'จองแล้ว (หมดสัญญา)';
+            return stall.dayState === 'unpaid' ? 'จองแล้ว (รอยืนยันสลิป)' : 'จองแล้ว (ยืนยันสลิปแล้ว)';
+        }
+        return stall.freedFromToday ? 'ว่าง (ว่างเพิ่มจากวันนี้)' : 'ว่าง';
     }
 
     function csvCell(value) {
@@ -446,7 +449,9 @@
         const now = new Date();
         const pad = (n) => String(n).padStart(2, '0');
         link.href = url;
-        link.download = `slots-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}.csv`;
+        // ชื่อไฟล์ใช้วันที่ของผังที่กำลังดู (ดูล่วงหน้าได้ ไม่ใช่วันนี้เสมอไป)
+        const fileDate = api.VIEW_DATE.dateKey ? api.VIEW_DATE.dateKey.replace(/-/g, '') : `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+        link.download = `slots-${fileDate}.csv`;
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -455,7 +460,11 @@
 
     function printMap() {
         const stamp = $('printStamp');
-        if (stamp) stamp.textContent = `ณ ${new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}`;
+        if (stamp) {
+            stamp.textContent = api.IS_TODAY_VIEW
+                ? `ณ ${new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}`
+                : `ของวันที่ ${api.VIEW_DATE.label} (คาดการณ์จากการจองที่เข้ามาแล้ว)`;
+        }
         window.print();
     }
 
@@ -565,8 +574,29 @@
         });
     }
 
+    // ---------- เลือกวันที่ดูผัง ----------
+    // เปลี่ยนวันในปฏิทินแล้วโหลดผังของวันนั้นทันที (หน้าเรนเดอร์ฝั่ง server ตาม ?date=)
+    // ดูวันนี้แล้วเปิดแท็บค้างข้ามตี 5 (ขึ้นวันขายใหม่ ดู businessDateOf ใน utils/shopOpenStatus.js) ให้โหลดใหม่เอง สีจะได้ตรงกับวันนั้น
+    function bindDayBar() {
+        const picker = $('dayPicker');
+        if (picker) {
+            picker.addEventListener('change', () => {
+                if (picker.value) $('dayBar').submit();
+            });
+        }
+        if (!api.IS_TODAY_VIEW || !api.VIEW_DATE.todayKey) return;
+        const businessDayKey = () => {
+            const d = new Date(Date.now() - 5 * 60 * 60 * 1000);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
+        setInterval(() => {
+            if (businessDayKey() !== api.VIEW_DATE.todayKey && !document.body.classList.contains('multi-mode')) window.location.reload();
+        }, 5 * 60 * 1000);
+    }
+
     // ---------- เริ่มทำงาน ----------
     document.addEventListener('DOMContentLoaded', () => {
+        bindDayBar();
         $('toolInspect').addEventListener('click', () => toggleInspect());
         $('toolMulti').addEventListener('click', () => toggleMulti());
         $('toolPrint').addEventListener('click', printMap);

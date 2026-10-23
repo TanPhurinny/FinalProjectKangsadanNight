@@ -110,6 +110,8 @@ router.get('/approvals', approvalCtrl.getApprovalsPage);
 router.post('/approvals/confirm', approvalCtrl.confirmApproval);
 router.post('/approvals/confirm-payment', approvalCtrl.confirmPayment);
 router.post('/approvals/reject-slip', approvalCtrl.rejectPaymentSlip);
+router.post('/approvals/payment-deadline', approvalCtrl.updatePaymentDeadline);
+router.post('/approvals/payment-settings', isAdminOnly, approvalCtrl.updatePaymentSettings);
 router.get('/quotations/:requestId', async (req, res) => {
     try {
         const quotation = await buildQuotationData(req.params.requestId, req.user?.name);

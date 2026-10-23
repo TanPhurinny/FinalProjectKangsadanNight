@@ -118,6 +118,38 @@ function submitRejectSlip(requestId) {
     });
 }
 
+// แก้กำหนดชำระเงินของคำขอนี้ (ดู updatePaymentDeadline ใน approvalController.js) — ผู้ขายเห็นกำหนดใหม่ทันที
+function submitPaymentDeadline(detail) {
+    window.showConfirmDialog({
+        title: 'แก้กำหนดชำระเงิน',
+        message: `${detail.shop || 'คำขอนี้'} — กำหนดเดิม ${detail.paymentDeadlineText || '-'} เลือกวันเวลาใหม่ที่ผู้ขายต้องจ่ายเงินให้เสร็จ (เช่น ก่อนตลาดเปิด 15:00)`,
+        tone: 'neutral',
+        confirmText: 'บันทึกกำหนดใหม่',
+        inputPlaceholder: 'วันเวลากำหนดชำระ',
+        inputType: 'datetime-local',
+        inputValue: detail.paymentDeadlineInput || '',
+        onConfirm: (value) => {
+            if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(String(value || ''))) {
+                window.showAlertDialog({ title: 'กรุณาเลือกวันเวลา', message: 'ต้องเลือกทั้งวันที่และเวลาก่อนบันทึก', tone: 'warning' });
+                return;
+            }
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/admin/approvals/payment-deadline';
+            [['requestId', String(detail.id)], ['paymentDueAt', value]].forEach(([name, val]) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = name;
+                input.value = val;
+                form.appendChild(input);
+            });
+            appendRoundField(form);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+
 function submitForcePayment(requestId) {
     window.showConfirmDialog({
         title: 'ยืนยันการชำระเงินโดยไม่ตรวจสลิป',
@@ -354,6 +386,7 @@ function runAction(action, detail, fromModal) {
     if (action === 'reject') return submitRejectRequest(detail);
     if (action === 'confirm-payment') return submitConfirmPayment(detail.id);
     if (action === 'reject-slip') return submitRejectSlip(detail.id);
+    if (action === 'edit-deadline') return submitPaymentDeadline(detail);
     if (action === 'quotation') { window.location.href = `/admin/quotations/${detail.id}`; return undefined; }
     return openDetail(detail);
 }
@@ -380,11 +413,13 @@ const STAGE_ACTIONS = {
         { action: 'confirm-payment', label: 'ยืนยันการชำระเงิน', tone: 'go' }
     ],
     overdue: () => [
+        { action: 'edit-deadline', label: 'แก้กำหนดชำระ', tone: 'ghost' },
         ...(pageState.isEditable !== false ? [{ action: 'assign', label: 'เปลี่ยนล็อก', tone: 'ghost' }] : []),
         { action: 'cancel', label: 'ยกเลิกการจัดล็อก', tone: 'danger' }
     ],
     awaiting: () => [
         { action: 'cancel', label: 'ยกเลิกการจัดล็อก', tone: 'danger-ghost' },
+        { action: 'edit-deadline', label: 'แก้กำหนดชำระ', tone: 'ghost' },
         ...(pageState.isEditable !== false ? [{ action: 'assign', label: 'เปลี่ยนล็อก', tone: 'ghost' }] : [])
     ],
     done: () => [{ action: 'quotation', label: 'ใบเสนอราคา', tone: 'ghost' }],

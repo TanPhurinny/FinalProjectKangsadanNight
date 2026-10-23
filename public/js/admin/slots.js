@@ -11,6 +11,39 @@ function readJsonScript(id) {
 
 const ZONES_DATA = readJsonScript('zonesDataJson');
 const BOOKING_BY_STALL = readJsonScript('bookingByStallJson');
+// วันที่กำลังดูผัง (ดู resolveViewDate ใน utils/stallDayStatus.js) — isToday=false คือโหมดดูล่วงหน้า/ย้อนหลัง
+const VIEW_DATE = readJsonScript('viewDateJson');
+const IS_TODAY_VIEW = VIEW_DATE.isToday !== false;
+
+// ข้อความป้ายสถานะร้านต่อท้ายชื่อร้าน (tooltip + การ์ดล็อก)
+function occupantBadgeText(occ) {
+    if (!occ) return '';
+    return (occ.statusBadge === 'unpaid' ? ' 🟣 รอยืนยันสลิป' : ' 🟢 ยืนยันสลิปแล้ว')
+        + (occ.isNewCustomer ? ' · ลูกค้าใหม่' : '');
+}
+
+// ใส่ class สีสถานะของล็อก ใช้ร่วมกันทั้งผังโซนปกติและโซน D
+// พื้น: ม่วง = รอจ่าย/รอยืนยันสลิป, เขียว = ยืนยันสลิปแล้ว / ขอบ: ใกล้หมดสัญญา (เฉพาะวันนี้)
+// มุมล็อก: จุด = ลูกค้าใหม่, ⚠ = ข้อมูลล็อกกับการจองไม่ตรงกัน / เส้นประ = ว่างเพิ่มจากวันนี้ (ตอนดูวันอื่น)
+function applyStallStateClasses(cell, stall) {
+    if (stall.status === 'BOOKED') {
+        cell.classList.add('booked');
+        if (stall.expiryState === 'expired') cell.classList.add('expired');
+        else if (stall.expiryState === 'critical') cell.classList.add('expiry-critical');
+        else if (stall.expiryState === 'near') cell.classList.add('expiry-near');
+        if (stall.expiryState !== 'expired') {
+            const unpaid = stall.occupant ? stall.occupant.statusBadge === 'unpaid' : stall.dayState === 'unpaid';
+            cell.classList.add(unpaid ? 'occ-unpaid' : 'occ-paid');
+        }
+        if (stall.occupant && stall.occupant.isNewCustomer) cell.classList.add('occ-new');
+        if (!IS_TODAY_VIEW && stall.isLastDay) cell.classList.add('last-day');
+    } else if (stall.status === 'MAINTENANCE') {
+        cell.classList.add('maintenance');
+    } else {
+        if (stall.freedFromToday) cell.classList.add('freed');
+        if (stall.dataMismatch) cell.classList.add('data-mismatch');
+    }
+}
 
 // หารายละเอียดล็อก (มี expiryState) จาก ZONES_DATA ด้วยรหัสล็อก ไม่สนใจว่ากำลังดูโซนไหนอยู่บนจอตอนนี้
 function findStallByCode(code) {
@@ -39,8 +72,7 @@ function showStallTooltip(e, code, stall, status) {
         // ข้อมูลจริงจาก Slot->Booking->User->ShopDetail (ดู utils/stallOccupancy.js)
         // ถ้าไม่เจอข้อมูล (คำขอเก่า/หาไม่เจอ) โชว์ "-" แทน
         const occ = stall && stall.occupant;
-        const badgeText = occ && occ.statusBadge === 'unpaid' ? ' 🟣 ยังไม่จ่ายเงิน'
-            : (occ && occ.statusBadge === 'new' ? ' 🟢 ลูกค้าใหม่' : '');
+        const badgeText = occupantBadgeText(occ);
         if (occ && occ.productImage) {
             ttImage.src = occ.productImage;
             ttImage.hidden = false;
@@ -90,7 +122,9 @@ function showStallTooltip(e, code, stall, status) {
         ttImage.hidden = true;
         const colorText = stall && stall.lotColor && stall.lotColor !== 'ไม่มี' ? `สี${stall.lotColor}` : '-';
         document.getElementById('tt-label-shop').textContent = 'สถานะ';
-        document.getElementById('tt-shop').textContent = 'ว่าง — พร้อมให้จอง';
+        document.getElementById('tt-shop').textContent = IS_TODAY_VIEW
+            ? 'ว่าง — พร้อมให้จอง'
+            : `ว่างวันที่ ${VIEW_DATE.label}${stall && stall.freedFromToday ? ' (วันนี้ยังมีร้านอยู่)' : ''}`;
         document.getElementById('tt-label-lock').textContent = 'ประเภท/ขนาด';
         document.getElementById('tt-lock').textContent = (stall && stall.lotType) || '-';
         document.getElementById('tt-label-date').textContent = 'ราคา/วัน';
@@ -101,7 +135,9 @@ function showStallTooltip(e, code, stall, status) {
         document.getElementById('tt-name').textContent = colorText;
         document.getElementById('tt-phone-group').style.display = 'none';
         document.getElementById('tt-label-note').textContent = 'หมายเหตุ';
-        document.getElementById('tt-note').textContent = 'ล็อกว่าง';
+        document.getElementById('tt-note').textContent = stall && stall.dataMismatch
+            ? '⚠ ล็อกถูกปล่อยเป็นว่างแล้ว แต่ยังมีการจองที่ครอบวันนี้อยู่ — ตรวจสอบที่หน้าอนุมัติ'
+            : 'ล็อกว่าง';
     }
 
     adminTooltip.style.display = 'block';
@@ -306,23 +342,15 @@ function renderDZoneGrid(z, stallByCode) {
         cell.addEventListener('mouseleave', hideStallTooltip);
         cell.addEventListener('mousemove', moveStallTooltip);
 
+        applyStallStateClasses(cell, stall);
         if (stall.status === 'BOOKED') {
             booked += 1;
-            cell.classList.add('booked');
-            if (stall.expiryState === 'expired') cell.classList.add('expired');
-            else if (stall.expiryState === 'critical') cell.classList.add('expiry-critical');
-            else if (stall.expiryState === 'near') cell.classList.add('expiry-near');
-            // ป้ายสถานะร้าน (ไม่จ่ายเงิน/ลูกค้าใหม่) คำนวณไว้แล้วฝั่ง backend (ดู utils/stallOccupancy.js)
-            if (stall.occupant && stall.occupant.statusBadge) {
-                cell.classList.add(stall.occupant.statusBadge === 'unpaid' ? 'occ-unpaid' : 'occ-new');
-            }
             cell.addEventListener('click', (e) => {
                 e.stopPropagation();
                 showInfo(pos.code);
             });
         } else if (stall.status === 'MAINTENANCE') {
             maintenance += 1;
-            cell.classList.add('maintenance');
             cell.addEventListener('click', (e) => {
                 e.stopPropagation();
                 selectEmpty(pos.code, cell);
@@ -420,23 +448,15 @@ function renderGrid(z) {
             cell.addEventListener('mouseleave', hideStallTooltip);
             cell.addEventListener('mousemove', moveStallTooltip);
 
+            applyStallStateClasses(cell, stall);
             if (stall.status === 'BOOKED') {
                 booked += 1;
-                cell.classList.add('booked');
-                if (stall.expiryState === 'expired') cell.classList.add('expired');
-                else if (stall.expiryState === 'critical') cell.classList.add('expiry-critical');
-                else if (stall.expiryState === 'near') cell.classList.add('expiry-near');
-                // ป้ายสถานะร้าน (ไม่จ่ายเงิน/ลูกค้าใหม่) คำนวณไว้แล้วฝั่ง backend (ดู utils/stallOccupancy.js)
-                if (stall.occupant && stall.occupant.statusBadge) {
-                    cell.classList.add(stall.occupant.statusBadge === 'unpaid' ? 'occ-unpaid' : 'occ-new');
-                }
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     showInfo(id);
                 });
             } else if (stall.status === 'MAINTENANCE') {
                 maintenance += 1;
-                cell.classList.add('maintenance');
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     selectEmpty(id, cell);
@@ -483,8 +503,7 @@ function showInfo(id) {
     selectedStall = id;
 
     const shopName = (occ && occ.shopName) || (d && d.shop) || 'ไม่พบชื่อร้าน';
-    const badgeText = occ && occ.statusBadge === 'unpaid' ? ' 🟣 ยังไม่จ่ายเงิน'
-        : (occ && occ.statusBadge === 'new' ? ' 🟢 ลูกค้าใหม่' : '');
+    const badgeText = occupantBadgeText(occ);
 
     document.getElementById('ic-head').textContent = `แผง ${id} — ${shopName}`;
     document.getElementById('ic-shop').textContent = shopName + badgeText;
@@ -493,9 +512,10 @@ function showInfo(id) {
         : (d ? d.product : '-');
     const stallCountText = occ && occ.stallCountForShop > 1 ? `ถือรวม ${occ.stallCountForShop} ล็อก` : null;
     document.getElementById('ic-detail').textContent = (d && d.productDetail) || stallCountText || '-';
-    document.getElementById('ic-date').textContent = occ && occ.rentalPeriodText
+    const lastDayText = !IS_TODAY_VIEW && stallInfo && stallInfo.isLastDay ? ` · วันที่ ${VIEW_DATE.label} เป็นวันสุดท้าย` : '';
+    document.getElementById('ic-date').textContent = (occ && occ.rentalPeriodText
         ? occ.rentalPeriodText + (occ.daysUntilExpiry != null ? ` (เหลือ ${occ.daysUntilExpiry} วัน)` : '')
-        : ((d && d.date) || '-');
+        : ((d && d.date) || '-')) + lastDayText;
     document.getElementById('ic-payment').textContent = (occ && occ.paymentStatusText) || '-';
     document.getElementById('ic-name').textContent = (occ && occ.renterName) || (d && d.name) || '-';
     document.getElementById('ic-phone').textContent = (occ && occ.phone) || (d && d.phone) || '-';
@@ -522,6 +542,7 @@ function showInfo(id) {
     }
 
     // ล็อกที่หมดสัญญาแล้ว (expiryState === 'expired') โชว์ปุ่ม "ปล่อยล็อก" ให้แอดมินกดเอง ไม่มี auto-release
+    // (expiryState มีเฉพาะตอนดูวันนี้ — ดูวันอื่นปุ่มพวกนี้ไม่ขึ้น เพราะทำงานกับสถานะปัจจุบันของล็อก)
     document.getElementById('icExpiredActions').classList.toggle('d-none', !(stallInfo && stallInfo.expiryState === 'expired'));
 
     // ใกล้หมดสัญญา (near/critical แต่ยังไม่ expired) โชว์ปุ่ม "แจ้งเตือนร้านค้า" ให้แอดมินกดส่งอีเมลเตือนเอง
@@ -726,6 +747,8 @@ window.createSearchSuggest && createSearchSuggest({
 // ให้ slots-extras.js (สรุป/ชั้นผลตรวจ/เลือกหลายล็อก/ส่งออก) ใช้สถานะและฟังก์ชันของผังร่วมกัน
 window.slotsApi = {
     ZONES_DATA,
+    VIEW_DATE,
+    IS_TODAY_VIEW,
     BOOKING_BY_STALL,
     findStallByCode,
     findZoneOfStall,

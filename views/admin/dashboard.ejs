@@ -43,7 +43,7 @@
         const inbox = [
             { key: 'assign', label: 'รอจัดล็อก', hint: 'คำขอจองที่ยังไม่ได้เลือกล็อกให้', count: stages.assign, href: '/admin/approvals', icon: 'fa-store', tone: 'warn' },
             { key: 'slip', label: 'สลิปรอตรวจ', hint: 'ผู้ขายโอนแล้ว รอยืนยันยอด', count: stages.slip, href: '/admin/approvals', icon: 'fa-file-invoice-dollar', tone: 'urgent' },
-            { key: 'overdue', label: 'เลยกำหนดจ่าย', hint: 'จัดล็อกเกิน 6 ชม. ยังไม่ส่งสลิป', count: stages.overdue, href: '/admin/approvals', icon: 'fa-triangle-exclamation', tone: 'urgent' },
+            { key: 'overdue', label: 'เลยกำหนดจ่าย', hint: 'เลยกำหนดชำระแล้ว ยังไม่ส่งสลิป', count: stages.overdue, href: '/admin/approvals', icon: 'fa-triangle-exclamation', tone: 'urgent' },
             { key: 'repair', label: 'แจ้งซ่อมใหม่', hint: s.inProgressRepairs ? `กำลังซ่อมอีก ${s.inProgressRepairs} งาน` : 'รอตรวจสอบคำร้อง', count: s.pendingRepairs, href: '/admin/requests', icon: 'fa-screwdriver-wrench', tone: 'warn' },
             { key: 'application', label: 'ใบสมัครร้าน', hint: 'ผู้ขายใหม่รออนุมัติ', count: s.pendingApplications, href: '/admin/seller-applications', icon: 'fa-id-card', tone: 'warn' },
             { key: 'tax', label: 'ใบกำกับภาษี', hint: 'คำขอรอออกเอกสาร', count: s.pendingTaxInvoices, href: '/admin/tax-invoice-requests', icon: 'fa-file-invoice', tone: 'warn' }

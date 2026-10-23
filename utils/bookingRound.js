@@ -122,7 +122,7 @@ function getPaymentDeadlineForRound(meta) {
     return addDays(phase2Day, -1); // อังคาร = ก่อนวันพุธ
 }
 
-// กำหนดชำระเงินภายใน 6 ชั่วโมง นับจากเวลาที่แอดมินจัดล็อกให้ (BookingRequest.lockAssignedAt)
+// ค่าเริ่มต้นของช่วงชำระเงิน (ชม. หลังจัดล็อก) — กติกาเต็มอยู่ที่ utils/paymentDeadline.js
 // เตือนในหน้าเฉยๆ ไม่ auto-ยกเลิก แอดมินแยกดำเนินการเอง
 const PAYMENT_WINDOW_HOURS = 6;
 // จองขายวันนี้เลย ต้องชำระก่อนบ่าย 3 ของวันขาย — หลังเวลานี้จึงจองเริ่มขายวันนี้ไม่ได้แล้ว (ดู POST /booking-stall)

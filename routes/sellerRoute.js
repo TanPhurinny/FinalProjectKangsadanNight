@@ -24,13 +24,13 @@ const {
     getBookingRoundMetaForDate,
     getBookingPhaseForRound,
     getRoundTimeline,
-    getPaymentDeadlineFromLockAssignedAt,
     getSameDayPaymentCutoff,
     SAME_DAY_PAYMENT_CUTOFF_HOUR,
     getRoundWindow,
     getPaymentDeadlineForRound,
     BOOKING_ROUND_LENGTH_DAYS
 } = require('../utils/bookingRound');
+const { getPaymentDeadline } = require('../utils/paymentDeadline');
 const { getRenewalOptions, validateRenewal, isUnpaidPastDeadline } = require('../utils/stallRenewal');
 const { getBillableDays, getHolidaysInRange } = require('../utils/bookingHolidays');
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
@@ -2209,14 +2209,14 @@ async function loadSellerBookingStatus(userId) {
             }
         }
 
-        // กำหนดชำระเงินภายใน 6 ชม. นับจากเวลาที่แอดมินจัดล็อกให้ (lockAssignedAt) และไม่เกิน 15:00 ของวันเริ่มขาย
-        // (ขายวันนี้เลย) — เกินแล้วแค่ขึ้นเตือนในหน้า ไม่ auto-ยกเลิก แอดมินแยกดำเนินการเอง (ดู utils/bookingRound.js)
+        // กำหนดชำระเงินที่คำนวณไว้ตอนจัดล็อก (BookingRequest.paymentDueAt ดู utils/paymentDeadline.js) — เกินแล้วแค่ขึ้นเตือน
+        // ในหน้า ไม่ auto-ยกเลิก แอดมินแยกดำเนินการเอง
         bookingView.paymentDeadline = null;
         bookingView.paymentDeadlineOverdue = false;
         bookingView.paymentDeadlineSameDay = false;
         if (normalizedRequestStatus === 'IN_PROGRESS' && !awaitingPaymentVerification) {
             const rentalStartDate = latestBooking?.rentalStartDate || null;
-            const deadlineDate = getPaymentDeadlineFromLockAssignedAt(latestRequest.lockAssignedAt, rentalStartDate);
+            const deadlineDate = getPaymentDeadline(latestRequest, rentalStartDate);
             if (deadlineDate) {
                 const cutoff = rentalStartDate ? getSameDayPaymentCutoff(rentalStartDate) : null;
                 bookingView.paymentDeadlineSameDay = Boolean(cutoff && cutoff.getTime() === deadlineDate.getTime());

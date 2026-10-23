@@ -219,6 +219,9 @@ model BookingRequest {
   // เวลาที่แอดมินจัดล็อกให้ (ตั้งสถานะเป็น IN_PROGRESS) — ใช้คำนวณกำหนดชำระเงินภายใน 6 ชม.
   // (ดู getPaymentDeadlineHours ใน utils/bookingRound.js) รีเซ็ตใหม่ทุกครั้งที่จัดล็อกซ้ำ
   lockAssignedAt DateTime?
+  // กำหนดชำระเงินที่คำนวณไว้ตอนจัดล็อก (ดู utils/paymentDeadline.js) แอดมินแก้รายใบได้
+  // null = คำขอเก่าก่อนมีคอลัมน์นี้ → ใช้ lockAssignedAt + 6 ชม. แบบเดิม
+  paymentDueAt   DateTime?
   paymentConfirmedAt DateTime?
   paymentSlipImage   String?
   slipVerified       Boolean?
@@ -309,6 +312,14 @@ model BookingHoliday {
   label     String
   createdBy Int?
   createdAt DateTime @default(now())
+}
+
+// ค่าตั้งค่ากลางที่แอดมินแก้ได้จากหน้าเว็บ (key/value) เช่น กติกากำหนดชำระเงิน (utils/paymentDeadline.js)
+model AppSetting {
+  key           String   @id @db.VarChar(100)
+  value         String   @db.Text
+  updatedByName String?
+  updatedAt     DateTime @updatedAt
 }
 
 model MaintenanceReport {

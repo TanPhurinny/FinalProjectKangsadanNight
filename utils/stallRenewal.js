@@ -8,7 +8,8 @@
 // - ทุกกรณีต้องต่อก่อน D 20:00 เลยเวลานี้ล็อกหมดสิทธิ์และถูกปล่อยเป็นล็อกว่างให้คนอื่นจอง
 // เวลาคำนวณตามเวลาของเครื่อง server (เหมือน utils/bookingRound.js) — config/timezone.js บังคับเป็น Asia/Bangkok ให้แล้ว
 const prisma = require('../config/prismaClient');
-const { toStartOfDay, addDays, getBookingRoundMetaForDate, getPaymentDeadlineFromLockAssignedAt } = require('./bookingRound');
+const { toStartOfDay, addDays, getBookingRoundMetaForDate } = require('./bookingRound');
+const { getPaymentDeadline } = require('./paymentDeadline');
 const { buildBookingRequestTag } = require('./bookingRequestTag');
 
 const RENEWAL_CUTOFF_HOUR = 20;
@@ -68,11 +69,11 @@ function parseStallCodes(text) {
     return String(text || '').split(',').map((code) => code.trim().toUpperCase()).filter(Boolean);
 }
 
-// คำขอที่จัดล็อกแล้ว (IN_PROGRESS) แต่เลยกำหนดชำระ 6 ชม. และยังไม่ส่งสลิป — ส่งสลิปแล้วถือว่ารอแอดมินตรวจ ยังไม่หลุด
-// rentalStartDate (ถ้ารู้) ทำให้คำขอที่ขายวันนี้เลยครบกำหนดตอน 15:00 (ดู getPaymentDeadlineFromLockAssignedAt)
+// คำขอที่จัดล็อกแล้ว (IN_PROGRESS) แต่เลยกำหนดชำระ (ดู utils/paymentDeadline.js) และยังไม่ส่งสลิป — ส่งสลิปแล้วถือว่ารอแอดมินตรวจ ยังไม่หลุด
+// rentalStartDate (ถ้ารู้) ใช้กับคำขอเก่าที่ยังไม่มี paymentDueAt ให้คำขอที่ขายวันนี้ครบกำหนดตอน 15:00
 function isUnpaidPastDeadline(request, now = new Date(), rentalStartDate = null) {
     if (request.status !== 'IN_PROGRESS' || request.paymentSlipImage) return false;
-    const deadline = getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt, rentalStartDate);
+    const deadline = getPaymentDeadline(request, rentalStartDate);
     return Boolean(deadline && deadline.getTime() < now.getTime());
 }
 
@@ -134,7 +135,7 @@ async function restoreUnpaidExtensions(now = new Date()) {
             assignedStallCode: { not: null },
             description: { startsWith: '[EXTEND_OF:' }
         },
-        select: { status: true, paymentSlipImage: true, lockAssignedAt: true, assignedStallCode: true, description: true }
+        select: { status: true, paymentSlipImage: true, lockAssignedAt: true, paymentDueAt: true, assignedStallCode: true, description: true }
     });
     const restored = [];
     for (const request of requests) {
@@ -160,7 +161,7 @@ async function restoreUnpaidExtensions(now = new Date()) {
 async function getStallCodesWithPendingExtension(now) {
     const extendRequests = await prisma.bookingRequest.findMany({
         where: { status: { in: ['PENDING', 'IN_PROGRESS'] }, description: { startsWith: '[EXTEND_OF:' } },
-        select: { description: true, status: true, lockAssignedAt: true, paymentSlipImage: true }
+        select: { description: true, status: true, lockAssignedAt: true, paymentDueAt: true, paymentSlipImage: true }
     });
     const originalIds = [];
     extendRequests.forEach((request) => {

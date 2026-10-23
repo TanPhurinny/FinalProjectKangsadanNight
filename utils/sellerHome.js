@@ -1,7 +1,8 @@
 const prisma = require('../config/prismaClient');
 const { buildMyStallHealth } = require('../controllers/marketController');
 const { getRenewalPhase, getRenewalOptions } = require('./stallRenewal');
-const { getPaymentDeadlineFromLockAssignedAt, getRoundTimeline, toStartOfDay } = require('./bookingRound');
+const { getRoundTimeline, toStartOfDay } = require('./bookingRound');
+const { getPaymentDeadline } = require('./paymentDeadline');
 const { getOpenStatus } = require('./shopOpenStatus');
 const { buildBookingRequestTag, extractBookingRequestId } = require('./bookingRequestTag');
 const { getShopViewStats, getShopViewInsights } = require('./shopViews');
@@ -63,7 +64,7 @@ async function buildSellerHome(userId, now = new Date()) {
             ]
         },
         orderBy: { createdAt: 'desc' },
-        select: { id: true, status: true, zone: true, assignedStallCode: true, createdAt: true, lockAssignedAt: true, paymentConfirmedAt: true }
+        select: { id: true, status: true, zone: true, assignedStallCode: true, createdAt: true, lockAssignedAt: true, paymentDueAt: true, paymentConfirmedAt: true }
     });
 
     // ล็อกของฉัน: คำขอล่าสุดที่ได้ล็อกแล้วเป็นตัวกำหนดสถานะของล็อกนั้น
@@ -120,7 +121,7 @@ async function buildSellerHome(userId, now = new Date()) {
             cutoffAt: renewal ? renewal.cutoffAt : null,
             canExtend: !!(renewal && renewal.isOpen && renewal.fullRoundDays > 0),
             renewalOpen: !!(renewal && renewal.isOpen && now >= renewal.opensAt),
-            paymentDeadline: request.status === 'IN_PROGRESS' ? getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt, startByRequestId.get(request.id) || null) : null,
+            paymentDeadline: request.status === 'IN_PROGRESS' ? getPaymentDeadline(request, startByRequestId.get(request.id) || null) : null,
             health: health[code] || {},
             // ล็อกที่ยังใช้งาน = ชำระแล้วและสัญญายังไม่หมด / ที่เหลือพับไว้ใน "ล็อกที่หมดสัญญา/ถูกปล่อย"
             isCurrent: !released && phase !== 'lapsed'

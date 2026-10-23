@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
     <link rel="stylesheet" href="/stylesheets/admin/theme.css">
     <link rel="stylesheet" href="/stylesheets/responsive.css">
-    <link rel="stylesheet" href="/stylesheets/admin/bookingStall.css">
+    <link rel="stylesheet" href="/stylesheets/admin/bookingStall.css?v=20261023-dot">
   </head>
   <body>
 
@@ -202,9 +202,11 @@
                 <div class="legend-item"><div class="color-box color-spacing-warning"></div>
                   ใกล้ร้านขายของชนิดเดียวกัน (เลือกได้ตามดุลยพินิจ)</div>
                 <div class="legend-item"><div class="color-box color-occ-unpaid"></div>
-                  จองแล้วแต่ยังไม่จ่ายเงิน</div>
-                <div class="legend-item"><div class="color-box color-occ-new"></div>
-                  ลูกค้าใหม่ (ไม่เคยส่งคำขอมาก่อน)</div>
+                  จัดล็อกแล้ว รอจ่าย/รอยืนยันสลิป</div>
+                <div class="legend-item"><div class="color-box color-occ-paid"></div>
+                  ยืนยันสลิปแล้ว</div>
+                <div class="legend-item"><div class="color-box color-occ-paid color-occ-new"></div>
+                  จุดมุม = ลูกค้าใหม่ (ไม่เคยส่งคำขอมาก่อน)</div>
                 <div class="legend-item"><div class="color-box color-expiry-near"></div>
                   ใกล้หมดอายุ (≤1 วัน)</div>
                 <div class="legend-item"><div class="color-box color-expiry-critical"></div>
@@ -589,11 +591,12 @@
       if (stall && stall.expiryState === 'expired') cell.classList.add('expired');
       else if (stall && stall.expiryState === 'critical') cell.classList.add('expiry-critical');
       else if (stall && stall.expiryState === 'near') cell.classList.add('expiry-near');
-      // ป้ายสถานะร้าน (ไม่จ่ายเงิน/ลูกค้าใหม่) คำนวณไว้แล้วฝั่ง backend (ดู statusBadge ใน approvalController.js)
-      // ไม่จ่ายเงินสำคัญกว่า โชว์ได้ป้ายเดียวต่อล็อก
-      if (stall && stall.occupant && stall.occupant.statusBadge) {
-        cell.classList.add(stall.occupant.statusBadge === 'unpaid' ? 'occ-unpaid' : 'occ-new');
+      // สีพื้นบอกสถานะจ่ายเงิน (ม่วง = รอยืนยันสลิป, เขียว = ยืนยันแล้ว) ลูกค้าใหม่เป็นจุดที่มุมล็อก
+      // คำนวณไว้แล้วฝั่ง backend (ดู statusBadge/isNewCustomer ใน utils/stallOccupancy.js) — สีชุดเดียวกับ /admin/slots
+      if (stall && stall.occupant && stall.expiryState !== 'expired') {
+        cell.classList.add(stall.occupant.statusBadge === 'unpaid' ? 'occ-unpaid' : 'occ-paid');
       }
+      if (stall && stall.occupant && stall.occupant.isNewCustomer) cell.classList.add('occ-new');
       cell.addEventListener('mouseenter', (e) => showTooltip(e, code, stall, true));
       cell.addEventListener('mouseleave', hideTooltip);
       cell.addEventListener('mousemove', moveTooltip);
@@ -733,8 +736,9 @@
       // ข้อมูลร้านที่จองล็อกนี้จริง (ดึงจาก Slot->Booking->User->ShopDetail ฝั่ง backend
       // ดู buildAdminBookingStallPageData ใน approvalController.js) — ถ้าไม่เจอข้อมูล (คำขอเก่า/หาไม่เจอ) โชว์ "-" แทน
       const occ = stall && stall.occupant;
-      const badgeText = occ && occ.statusBadge === 'unpaid' ? ' 🟣 ยังไม่จ่ายเงิน'
-        : (occ && occ.statusBadge === 'new' ? ' 🟢 ลูกค้าใหม่' : '');
+      const badgeText = occ
+        ? (occ.statusBadge === 'unpaid' ? ' 🟣 รอยืนยันสลิป' : ' 🟢 ยืนยันสลิปแล้ว') + (occ.isNewCustomer ? ' · ลูกค้าใหม่' : '')
+        : '';
       const ttImage = document.getElementById('tt-image');
       if (occ && occ.productImage) {
         ttImage.src = occ.productImage;

@@ -7,7 +7,8 @@ const stallSpacing = require('../utils/stallSpacing');
 const stallOccupancy = require('../utils/stallOccupancy');
 const { getRenewalPhase, getRenewalCutoff, getExtensionOrigin, releaseOrRestoreStalls, isUnpaidPastDeadline } = require('../utils/stallRenewal');
 
-const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable, getPaymentDeadlineFromLockAssignedAt } = require('../utils/bookingRound');
+const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable } = require('../utils/bookingRound');
+const { getPaymentDeadline, getPaymentSettings, computePaymentDueAt, savePaymentSettings } = require('../utils/paymentDeadline');
 const { verifySlip } = require('../utils/slipVerification');
 const { BOOKING_REQUEST_TAG_PREFIX, buildBookingRequestTag } = require('../utils/bookingRequestTag');
 const { sendStallExpiringSoonEmail } = require('../config/mailer');
@@ -307,8 +308,8 @@ const STAGE_ORDER = ['slip', 'overdue', 'assign', 'awaiting', 'done', 'rejected'
 const STAGE_META = {
     assign: { label: 'ยังไม่ได้จัดล็อก', icon: 'fa-store', hint: 'เลือกล็อกให้ผู้ขาย หรือปฏิเสธคำขอ', todo: true },
     slip: { label: 'ส่งสลิปแล้ว รอตรวจ', icon: 'fa-file-invoice-dollar', hint: 'ผู้ขายโอนเงินแล้ว ตรวจยอดในสลิปแล้วกดยืนยันการชำระเงิน', todo: true },
-    overdue: { label: 'ไม่จ่ายตามกำหนด', icon: 'fa-triangle-exclamation', hint: 'จัดล็อกให้แล้วเกิน 6 ชม. ผู้ขายยังไม่ส่งสลิป — ยกเลิกเพื่อคืนล็อก หรือรอต่อ', todo: true },
-    awaiting: { label: 'รอผู้ขายโอนเงิน', icon: 'fa-money-bill-transfer', hint: 'จัดล็อกให้แล้ว ผู้ขายต้องส่งสลิปภายใน 6 ชม.', todo: false },
+    overdue: { label: 'ไม่จ่ายตามกำหนด', icon: 'fa-triangle-exclamation', hint: 'เลยกำหนดชำระแล้ว ผู้ขายยังไม่ส่งสลิป — ยกเลิกเพื่อคืนล็อก แก้กำหนดชำระ หรือรอต่อ', todo: true },
+    awaiting: { label: 'รอผู้ขายโอนเงิน', icon: 'fa-money-bill-transfer', hint: 'จัดล็อกให้แล้ว ผู้ขายต้องส่งสลิปภายในกำหนดชำระ (ปกติ 6 ชม. หรือก่อนตลาดเปิดของวันเริ่มขาย)', todo: false },
     done: { label: 'จ่ายเงินแล้ว', icon: 'fa-circle-check', hint: 'ยืนยันการชำระเงินแล้ว ล็อกเป็นของผู้ขาย', todo: false },
     rejected: { label: 'ปฏิเสธ/ยกเลิกแล้ว', icon: 'fa-circle-xmark', hint: '', todo: false }
 };
@@ -322,6 +323,13 @@ function getRequestStage(request, now, rentalStartDate = null) {
         return isUnpaidPastDeadline(request, now, rentalStartDate) ? 'overdue' : 'awaiting';
     }
     return 'assign'; // PENDING / APPROVED (APPROVED เป็นสถานะเก่า ยังต้องจัดล็อกเหมือนกัน)
+}
+
+// ค่าสำหรับ <input type="datetime-local"> (เวลาไทย ตาม config/timezone.js)
+function toDateTimeLocalValue(date) {
+    const d = new Date(date);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function formatThaiDateTime(date) {
@@ -364,7 +372,7 @@ function getStageSortKey(stage, request, paymentDeadline, extension) {
 exports.countApprovalTodo = async () => {
     const requests = await prisma.bookingRequest.findMany({
         where: { status: { in: ['PENDING', 'APPROVED', 'IN_PROGRESS'] } },
-        select: { id: true, createdAt: true, status: true, paymentSlipImage: true, lockAssignedAt: true }
+        select: { id: true, createdAt: true, status: true, paymentSlipImage: true, lockAssignedAt: true, paymentDueAt: true }
     });
     const linkedBookings = requests.length
         ? await prisma.booking.findMany({
@@ -615,7 +623,7 @@ exports.getApprovalsPage = async (req, res) => {
             const stage = getRequestStage(request, now, linkedBooking?.rentalStartDate || null);
             stageCounts[stage] += 1;
             kindCounts[extendOfRequestId ? 'extend' : 'new'] += 1;
-            const paymentDeadline = statusCode === 'IN_PROGRESS' ? getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt, linkedBooking?.rentalStartDate || null) : null;
+            const paymentDeadline = statusCode === 'IN_PROGRESS' ? getPaymentDeadline(request, linkedBooking?.rentalStartDate || null) : null;
             const extension = extendOfRequestId
                 ? buildExtensionInfo(requestById.get(extendOfRequestId), bookingByRequestId.get(extendOfRequestId), stage, now)
                 : null;
@@ -629,6 +637,7 @@ exports.getApprovalsPage = async (req, res) => {
                 stageIcon: STAGE_META[stage].icon,
                 paymentDeadlineText: paymentDeadline ? formatThaiDateTime(paymentDeadline) : null,
                 paymentDeadlineMs: paymentDeadline ? paymentDeadline.getTime() : null,
+                paymentDeadlineInput: paymentDeadline ? toDateTimeLocalValue(paymentDeadline) : null,
                 extension,
                 sortKey: getStageSortKey(stage, request, paymentDeadline, extension),
                 id: request.id,
@@ -735,7 +744,9 @@ exports.getApprovalsPage = async (req, res) => {
             closedCount: req.query.closed || null,
             slipAmount: req.query.slipAmount || null,
             expectedAmount: req.query.expectedAmount || null,
-            success: req.query.success || null
+            success: req.query.success || null,
+            errorMessage: req.query.message || null,
+            paymentSettings: await getPaymentSettings()
         });
     } catch (err) {
         const fallbackRoundNumber = getBookingRoundMetaForDate(new Date()).roundNumber;
@@ -1093,6 +1104,58 @@ exports.rejectPaymentSlip = async (req, res) => {
     }
 };
 
+// แอดมินแก้กำหนดชำระเงินของคำขอรายใบ (เฉพาะคำขอที่จัดล็อกแล้วรอชำระ) — รับค่าจาก <input type="datetime-local">
+// เป็นเวลาไทย (config/timezone.js) เขียนทับ paymentDueAt และบันทึกลง action log ว่าเปลี่ยนจากเวลาไหนเป็นเวลาไหน
+exports.updatePaymentDeadline = async (req, res) => {
+    try {
+        const requestId = Number.parseInt(req.body.requestId, 10);
+        const rawDue = String(req.body.paymentDueAt || '').trim();
+        if (!requestId) return res.redirect(approvalsUrl(req, 'error=missing_request_id'));
+
+        const dueAt = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(rawDue) ? new Date(`${rawDue}:00`) : null;
+        if (!dueAt || Number.isNaN(dueAt.getTime())) return res.redirect(approvalsUrl(req, 'error=invalid_payment_deadline'));
+
+        const requestRecord = await prisma.bookingRequest.findUnique({ where: { id: requestId } });
+        if (!requestRecord) return res.redirect(approvalsUrl(req, 'error=request_not_found'));
+        if (String(requestRecord.status || '').toUpperCase() !== 'IN_PROGRESS') {
+            return res.redirect(approvalsUrl(req, 'error=payment_deadline_not_editable'));
+        }
+
+        const previous = getPaymentDeadline(requestRecord);
+        await prisma.bookingRequest.update({
+            where: { id: requestId },
+            data: {
+                paymentDueAt: dueAt,
+                description: withActionLog(
+                    requestRecord.description,
+                    req.user?.name,
+                    `แก้กำหนดชำระ ${previous ? formatThaiDateTime(previous) : '-'} → ${formatThaiDateTime(dueAt)}`
+                )
+            }
+        });
+        return res.redirect(approvalsUrl(req, 'success=payment_deadline_updated'));
+    } catch (err) {
+        console.error('Update payment deadline error:', err);
+        return res.redirect(approvalsUrl(req, 'error=payment_deadline_failed'));
+    }
+};
+
+// ค่ากลางของกติกากำหนดชำระ (ชม. หลังจัดล็อก / เวลาตัดของวันเริ่มขาย / เวลาขั้นต่ำ) — มีผลกับการจัดล็อกครั้งถัดไป
+exports.updatePaymentSettings = async (req, res) => {
+    try {
+        const result = await savePaymentSettings({
+            windowHours: req.body.windowHours,
+            cutoffTime: req.body.cutoffTime,
+            minMinutes: req.body.minMinutes
+        }, req.user?.name);
+        if (result.error) return res.redirect(approvalsUrl(req, `error=payment_settings_invalid&message=${encodeURIComponent(result.error)}`));
+        return res.redirect(approvalsUrl(req, 'success=payment_settings_saved'));
+    } catch (err) {
+        console.error('Update payment settings error:', err);
+        return res.redirect(approvalsUrl(req, 'error=payment_settings_failed'));
+    }
+};
+
 exports.getBookingStallPage = async (req, res) => {
     try {
         const requestId = Number.parseInt(req.query.requestId, 10);
@@ -1203,6 +1266,10 @@ exports.confirmBookingStall = async (req, res) => {
             const averageDailyStallPrice = totalDailyStallPrice / selectedStalls.length;
             const averageDailyLightPrice = totalDailyLightPrice / selectedStalls.length;
 
+            // กำหนดชำระ: N ชม. หลังจัดล็อก หรือก่อนเวลาตัดของวันเริ่มขาย แล้วแต่อย่างไหนถึงก่อน (ดู utils/paymentDeadline.js)
+            const lockAssignedAt = new Date();
+            const paymentDueAt = computePaymentDueAt(lockAssignedAt, linkedBookings[0]?.rentalStartDate || null, await getPaymentSettings());
+
             await tx.bookingRequest.update({
                 where: { id: requestId },
                 data: {
@@ -1212,8 +1279,9 @@ exports.confirmBookingStall = async (req, res) => {
                     status: 'IN_PROGRESS',
                     assignedStallCode: joinedAssignedStallCode,
                     description: withActionLog(cleanedDescription, req.user?.name, `จัดล็อก ${joinedAssignedStallCode}`),
-                    // เริ่มนับกำหนดชำระเงินใหม่ (ภายใน 6 ชม.) ทุกครั้งที่จัดล็อก แม้เป็นการจัดซ้ำ
-                    lockAssignedAt: new Date()
+                    // เริ่มนับกำหนดชำระเงินใหม่ทุกครั้งที่จัดล็อก แม้เป็นการจัดซ้ำ
+                    lockAssignedAt,
+                    paymentDueAt
                 }
             });
 

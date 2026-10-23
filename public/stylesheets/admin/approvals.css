@@ -1885,3 +1885,85 @@
     .approvals-page .q-row,
     .approvals-page .q-btn,
 }
+
+/* ---------- กติกากำหนดชำระเงิน (utils/paymentDeadline.js) ---------- */
+.approvals-page .pay-settings {
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--navy);
+    background: #fff;
+    margin-bottom: 16px;
+}
+
+.approvals-page .pay-settings__summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    font-size: 0.88rem;
+    color: var(--ink);
+    cursor: pointer;
+    list-style: none;
+}
+
+.approvals-page .pay-settings__summary::-webkit-details-marker { display: none; }
+
+.approvals-page .pay-settings__toggle {
+    margin-left: auto;
+    flex-shrink: 0;
+    padding: 3px 10px;
+    border: 1px solid var(--line);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+}
+
+.approvals-page .pay-settings[open] .pay-settings__toggle {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
+}
+
+.approvals-page .pay-settings__form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 12px 14px 14px;
+    border-top: 1px solid var(--line);
+}
+
+.approvals-page .pay-settings__field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+}
+
+.approvals-page .pay-settings__field input {
+    width: 170px;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    background: #fff;
+}
+
+.approvals-page .pay-settings__field input:disabled {
+    background: #f4f8f9;
+    color: var(--ink-soft);
+}
+
+.approvals-page .pay-settings__note {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+}
+
+@media (max-width: 600px) {
+    .approvals-page .pay-settings__summary { align-items: flex-start; }
+    .approvals-page .pay-settings__field { flex: 1 1 100%; }
+    .approvals-page .pay-settings__field input { width: 100%; }
+}
