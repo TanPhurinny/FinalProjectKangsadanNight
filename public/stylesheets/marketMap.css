@@ -753,6 +753,105 @@ body {
     border: 1px solid var(--border);
 }
 
+/* ── รูปในการ์ดร้าน: รูปใหญ่ = ร้านขายอะไร / แถบรูปย่อ / โลโก้เล็กข้างชื่อร้าน ── */
+.ic-hero {
+    margin: 0 -18px 12px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+.ic-hero.d-none { display: none; }
+.ic-hero-main {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: var(--road);
+    cursor: zoom-in;
+}
+.ic-hero-main img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    max-height: 240px;
+    object-fit: cover;
+}
+.ic-hero-count {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    padding: 4px 9px;
+    background: var(--text);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+}
+.ic-hero-count::before { content: '\f03e'; font-family: 'Font Awesome 6 Free'; font-weight: 400; margin-right: 6px; }
+.ic-hero-count.d-none { display: none; }
+.ic-hero-thumbs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--border);
+}
+.ic-hero-thumbs.d-none { display: none; }
+.ic-hero-thumb {
+    position: relative;
+    padding: 0;
+    border: 0;
+    border-right: 1px solid var(--border);
+    background: var(--road);
+    cursor: pointer;
+}
+.ic-hero-thumb:last-child { border-right: 0; }
+.ic-hero-thumb img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.ic-hero-thumb:hover img { opacity: .85; }
+.ic-hero-thumb[data-more]::after {
+    content: attr(data-more);
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(18, 48, 58, .62);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.ic-identity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.ic-identity.d-none { display: none; }
+.ic-logo {
+    flex: 0 0 56px;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    background: #fff;
+    overflow: hidden;
+}
+.ic-logo img { width: 100%; height: 100%; object-fit: contain; }
+.ic-logo--empty { background: var(--road); color: var(--primary-dark); font-size: 20px; }
+.ic-identity-text { min-width: 0; }
+.ic-identity-name {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+.ic-identity-sub {
+    margin-top: 2px;
+    font-size: 13px;
+    color: var(--sub);
+}
+
 .ic-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -1187,7 +1286,12 @@ body {
     pointer-events: none;
     overflow: hidden;
 }
-.stall-tooltip .tt-image { display: block; width: 100%; height: 120px; object-fit: cover; }
+.stall-tooltip .tt-media { position: relative; border-bottom: 1px solid var(--border); background: var(--road); }
+.stall-tooltip .tt-media[hidden] { display: none; }
+.stall-tooltip .tt-image { display: block; width: 100%; height: 140px; object-fit: cover; }
+.stall-tooltip .tt-media--logo-only .tt-image { height: 110px; padding: 10px; object-fit: contain; background: #fff; }
+.stall-tooltip .tt-logo { position: absolute; left: 10px; bottom: -1px; width: 48px; height: 48px; object-fit: contain; background: #fff; border: 1px solid var(--border); }
+.stall-tooltip .tt-logo[hidden] { display: none; }
 .stall-tooltip .tt-header { background: var(--text); color: #fff; padding: 10px 16px; font-weight: 700; font-size: 15px; }
 .stall-tooltip.tt-vacant .tt-header { background: var(--primary); }
 .stall-tooltip.tt-maint .tt-header { background: #c98a2e; }
@@ -1966,6 +2070,7 @@ body.bulk-on .zoom-ctl, body.walk-on .zoom-ctl { bottom: 14px; }
         padding: 22px 16px calc(16px + env(safe-area-inset-bottom));
         box-shadow: 0 -10px 40px rgba(18, 48, 58, .3);
     }
+    .ic-hero { margin: 0 -16px 12px; }
     .info-card::before {
         content: '';
         position: absolute;

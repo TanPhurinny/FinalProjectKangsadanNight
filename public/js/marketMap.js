@@ -1036,20 +1036,43 @@ function renderTooltipTags(tags) {
     group.style.display = tags.length ? '' : 'none';
 }
 
-function showStallTooltip(e, code, stall) {
+// รูปที่บอกว่าร้านขายอะไร: รูปสินค้าก่อน แล้วค่อยรูปหน้าปก — โลโก้ไม่นับ (แสดงแยกเป็นรูปเล็กข้างชื่อร้าน)
+// ร้านเก่าที่ยังไม่มีทั้งสองอย่างใช้รูปที่จำไว้ตอนจอง (image) แทน ถ้าไม่ใช่รูปเดียวกับโลโก้
+function shopGalleryOf(d) {
+    if (!d) return [];
+    const list = [...(d.photos || []), d.cover].filter((url) => url && url !== d.logo);
+    if (!list.length && d.image && d.image !== d.logo) list.push(d.image);
+    return [...new Set(list)];
+}
+
+// รูปบนป้ายลอย: รูปสินค้าเต็มกว้าง + โลโก้เล็กมุมล่าง / มีแต่โลโก้ = โลโก้กลางกรอบ ไม่ครอบตัด
+function renderTooltipMedia(bk) {
+    const media = document.getElementById('tt-media');
     const img = document.getElementById('tt-image');
+    const logo = document.getElementById('tt-logo');
+    const hero = shopGalleryOf(bk)[0] || null;
+    const logoUrl = bk && bk.logo;
+    media.hidden = !(hero || logoUrl);
+    media.classList.toggle('tt-media--logo-only', !hero && !!logoUrl);
+    if (hero || logoUrl) img.src = hero || logoUrl;
+    else img.removeAttribute('src');
+    logo.hidden = !(hero && logoUrl);
+    if (hero && logoUrl) logo.src = logoUrl;
+    else logo.removeAttribute('src');
+}
+
+function showStallTooltip(e, code, stall) {
     const bk = BOOKING_BY_STALL[code];
     const mine = MY_STALLS.has(code);
     stallTooltip.className = 'stall-tooltip';
     const tags = [mine ? 'ล็อกของคุณ' : '', bk && bk.isNew && stall.status === 'BOOKED' ? 'ร้านใหม่' : '', isFavorite(code) && stall.status === 'BOOKED' ? '★ ร้านโปรด' : ''].filter(Boolean);
     document.getElementById('tt-stall-id').textContent = code + (tags.length ? ` · ${tags.join(' · ')}` : '');
-    img.hidden = true;
-    img.removeAttribute('src');
+    renderTooltipMedia(null);
 
     let hint = '';
     if (stall.status === 'BOOKED') {
         stallTooltip.classList.add('tt-booked');
-        if (bk && bk.image) { img.src = bk.image; img.hidden = false; }
+        renderTooltipMedia(bk);
         setTt('tt-shop', bk ? bk.shop : 'มีร้านค้าแล้ว');
         setTt('tt-product', bk ? (categoryOf(code) || {}).label : '');
         setTt('tt-detail', bk && bk.productDetail && bk.productDetail !== '-' ? bk.productDetail : '');
@@ -1765,7 +1788,7 @@ function renderCardMenu(id, d) {
     const sections = menuSectionsOf(d);
     btn.classList.toggle('d-none', !sections.length);
     const menuCount = (d.menuImages || []).length;
-    document.getElementById('icMenuCount').textContent = menuCount ? `${menuCount} รูป` : (tags.length ? `${tags.length} รายการ` : `${(d.photos || []).length} รูป`);
+    document.getElementById('icMenuCount').textContent = menuCount ? `${menuCount} รูป` : (tags.length ? `${tags.length} รายการ` : `${shopGalleryOf(d).length} รูป`);
     btn.onclick = () => openMenuViewer(id);
 }
 
@@ -1778,7 +1801,8 @@ function searchByTag(tag) {
 
 function showVacantInfo(id, zone) {
     document.getElementById('ic-head').textContent = `แผง ${id} — ว่าง`;
-    document.getElementById('ic-image').classList.add('d-none');
+    document.getElementById('icHero').classList.add('d-none');
+    document.getElementById('icIdentity').classList.add('d-none');
     document.querySelector('#infoCard .ic-grid').classList.add('d-none');
     document.getElementById('icTagsWrap').classList.add('d-none');
     document.getElementById('icMenuBtn').classList.add('d-none');
@@ -1793,15 +1817,60 @@ function showVacantInfo(id, zone) {
     document.getElementById('infoCardBackdrop').classList.add('show');
 }
 
+// การ์ดร้าน: รูปใหญ่ = รูปสินค้ารูปแรก (ลูกค้าเห็นทันทีว่าร้านขายอะไร) + แถบรูปย่อที่เหลือ กดแล้วเปิดหน้าดูรูปตรงรูปนั้น
+// โลโก้ไปอยู่ในกรอบเล็กข้างชื่อร้าน — ไม่มีโลโก้ใช้ไอคอนร้านแทน ไม่มีรูปสินค้าเลยก็ซ่อนรูปใหญ่ทั้งก้อน
+function renderCardImages(id, d) {
+    const gallery = shopGalleryOf(d);
+    const hero = document.getElementById('icHero');
+    const heroImg = document.getElementById('ic-image');
+    const count = document.getElementById('icHeroCount');
+    const thumbs = document.getElementById('icHeroThumbs');
+    hero.classList.toggle('d-none', !gallery.length);
+    thumbs.innerHTML = '';
+    if (gallery.length) {
+        heroImg.src = gallery[0];
+        document.getElementById('icHeroMain').onclick = () => openMenuViewer(id, 'photos', 0);
+        count.textContent = `รูปสินค้า ${gallery.length} รูป`;
+        count.classList.toggle('d-none', gallery.length < 2);
+        gallery.slice(1, 5).forEach((url, i) => {
+            const t = document.createElement('button');
+            t.type = 'button';
+            t.className = 'ic-hero-thumb';
+            t.setAttribute('aria-label', `รูปสินค้า รูปที่ ${i + 2}`);
+            t.innerHTML = '<img alt="" loading="lazy">';
+            t.querySelector('img').src = url;
+            if (i === 3 && gallery.length > 5) t.dataset.more = `+${gallery.length - 5}`;
+            t.addEventListener('click', () => openMenuViewer(id, 'photos', i + 1));
+            thumbs.appendChild(t);
+        });
+    } else {
+        heroImg.removeAttribute('src');
+    }
+    thumbs.classList.toggle('d-none', gallery.length < 2);
+
+    const logo = document.getElementById('icLogo');
+    logo.innerHTML = '';
+    if (d.logo) {
+        const img = document.createElement('img');
+        img.src = d.logo;
+        img.alt = `โลโก้ร้าน ${d.shop}`;
+        logo.appendChild(img);
+    } else {
+        logo.innerHTML = '<i class="fa-solid fa-store"></i>';
+    }
+    logo.classList.toggle('ic-logo--empty', !d.logo);
+}
+
 function showInfo(id) {
     const d = BOOKING_BY_STALL[id];
     if (!d) return;
     document.querySelector('#infoCard .ic-grid').classList.remove('d-none');
+    document.getElementById('icIdentity').classList.remove('d-none');
     document.getElementById('icTools').classList.remove('d-none');
     renderRoleActions(id, (findStall(id) && zoneOf(id)) || '', false);
     renderQuickInspect(id);
 
-    document.getElementById('ic-head').textContent = `แผง ${id} — ${d.shop}`;
+    document.getElementById('ic-head').textContent = `แผง ${id}`;
     document.getElementById('icNewBadge').classList.toggle('d-none', !d.isNew);
     const closedBadge = document.getElementById('icOpenBadge');
     closedBadge.classList.toggle('d-none', !d.closedAt);
@@ -1814,20 +1883,14 @@ function showInfo(id) {
     rememberRecent(id);
     trackView(id, 'card');
     document.getElementById('ic-shop').textContent = d.shop;
-    document.getElementById('ic-product').textContent = (categoryOf(id) || {}).label || d.product;
+    const subtype = String(d.subtype || '').split(',').map((v) => v.trim()).filter(Boolean).slice(0, 2).join(', ');
+    document.getElementById('ic-product').textContent = [(categoryOf(id) || {}).label || d.product, subtype].filter(Boolean).join(' · ');
     document.getElementById('ic-detail').textContent = d.productDetail || '-';
     document.getElementById('ic-summary').textContent = d.summary || '';
     document.getElementById('icSummaryWrap').classList.toggle('d-none', !d.summary);
     renderCardMenu(id, d);
 
-    const icImage = document.getElementById('ic-image');
-    if (d.image) {
-        icImage.src = d.image;
-        icImage.classList.remove('d-none');
-    } else {
-        icImage.classList.add('d-none');
-        icImage.removeAttribute('src');
-    }
+    renderCardImages(id, d);
 
     document.getElementById('infoCard').classList.add('show');
     document.getElementById('infoCardBackdrop').classList.add('show');
@@ -1840,7 +1903,7 @@ function menuSectionsOf(d) {
     const sections = [];
     const menuImages = (d && d.menuImages) || [];
     const tags = shopTagsOf(d);
-    const photos = (d && d.photos) || [];
+    const photos = shopGalleryOf(d);
     if (menuImages.length) sections.push({ key: 'menu', label: 'รูปเมนู', count: menuImages.length, images: menuImages });
     if (tags.length) sections.push({ key: 'items', label: 'รายการเมนู', count: tags.length, items: tags });
     if (photos.length) sections.push({ key: 'photos', label: 'รูปสินค้า', count: photos.length, images: photos });
@@ -1849,7 +1912,7 @@ function menuSectionsOf(d) {
 
 const menuViewer = { code: null, sections: [], section: null, index: 0 };
 
-function openMenuViewer(code) {
+function openMenuViewer(code, sectionKey, index) {
     const d = BOOKING_BY_STALL[code];
     const sections = menuSectionsOf(d);
     if (!sections.length) return;
@@ -1872,7 +1935,9 @@ function openMenuViewer(code) {
     });
     tabs.classList.toggle('d-none', sections.length < 2);
 
-    showMenuSection(sections[0].key);
+    const startSection = sections.find((sec) => sec.key === sectionKey) || sections[0];
+    showMenuSection(startSection.key);
+    if (index && startSection.images) showMenuImage(index);
     hideStallTooltip();
     trackView(code, 'menu');
     const viewer = document.getElementById('menuViewer');

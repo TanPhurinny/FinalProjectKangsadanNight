@@ -761,6 +761,9 @@ exports.getMarketMapPage = async (req, res) => {
                     tags,
                     summary: fallbackShop.shopSummary || '',
                     image: shopImage,
+                    // การ์ดร้านบนผังใช้ 3 รูปแยกหน้าที่: รูปสินค้า/หน้าปก = รูปใหญ่ (ร้านขายอะไร), โลโก้ = รูปเล็กข้างชื่อร้าน
+                    logo: fallbackShop.logoImage || null,
+                    cover: fallbackShop.shopCoverImage || null,
                     menuImages: (fallbackShop.menuImages || []).map((img) => img.imageUrl),
                     photos: (fallbackShop.productImages || []).map((img) => img.imageUrl),
                     isNew: newShopNames.has(request.sellerName),
