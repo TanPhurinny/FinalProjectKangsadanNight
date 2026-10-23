@@ -125,12 +125,26 @@ function getPaymentDeadlineForRound(meta) {
 // กำหนดชำระเงินภายใน 6 ชั่วโมง นับจากเวลาที่แอดมินจัดล็อกให้ (BookingRequest.lockAssignedAt)
 // เตือนในหน้าเฉยๆ ไม่ auto-ยกเลิก แอดมินแยกดำเนินการเอง
 const PAYMENT_WINDOW_HOURS = 6;
+// จองขายวันนี้เลย ต้องชำระก่อนบ่าย 3 ของวันขาย — หลังเวลานี้จึงจองเริ่มขายวันนี้ไม่ได้แล้ว (ดู POST /booking-stall)
+const SAME_DAY_PAYMENT_CUTOFF_HOUR = 15;
 
-function getPaymentDeadlineFromLockAssignedAt(lockAssignedAt) {
+function getSameDayPaymentCutoff(rentalStartDate) {
+    const start = toStartOfDay(rentalStartDate);
+    if (!start) return null;
+    start.setHours(SAME_DAY_PAYMENT_CUTOFF_HOUR, 0, 0, 0);
+    return start;
+}
+
+// ส่ง rentalStartDate มาด้วยเมื่อรู้ — กำหนดชำระจะไม่เกิน 15:00 ของวันเริ่มขาย (ผลจริงคือกรณีขายวันนี้เลย
+// เพราะจองล่วงหน้าได้แค่ 1 วัน) ถ้าแอดมินจัดล็อกให้หลัง 15:00 ของวันขายไปแล้ว ใช้ 6 ชม. ตามเดิม ไม่ให้เลยกำหนดทันทีที่จัด
+function getPaymentDeadlineFromLockAssignedAt(lockAssignedAt, rentalStartDate = null) {
     if (!lockAssignedAt) return null;
     const assigned = new Date(lockAssignedAt);
     if (Number.isNaN(assigned.getTime())) return null;
-    return new Date(assigned.getTime() + PAYMENT_WINDOW_HOURS * 60 * 60 * 1000);
+    const windowDeadline = new Date(assigned.getTime() + PAYMENT_WINDOW_HOURS * 60 * 60 * 1000);
+    const cutoff = rentalStartDate ? getSameDayPaymentCutoff(rentalStartDate) : null;
+    if (cutoff && assigned < cutoff && cutoff < windowDeadline) return cutoff;
+    return windowDeadline;
 }
 
 // แถบช่วงเวลาของรอบจองถัดไป (หน้าเลือกโซน) — คำนวณจาก getBookingPhaseForRound ตัวเดียวกับฟอร์มจองแผง
@@ -186,6 +200,8 @@ module.exports = {
     getRoundTimeline,
     BOOKING_ROUND_LENGTH_DAYS,
     PAYMENT_WINDOW_HOURS,
+    SAME_DAY_PAYMENT_CUTOFF_HOUR,
+    getSameDayPaymentCutoff,
     getPaymentDeadlineFromLockAssignedAt,
     BOOKING_ROUND_ANCHOR_NUMBER,
     BOOKING_ROUND_ANCHOR_DATE,

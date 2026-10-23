@@ -438,7 +438,7 @@ function openDetail(detail) {
 
     const booking = detail.booking;
     setText('m-rental-dates', booking ? `${booking.rentalStartDateText} – ${booking.rentalEndDateText} (${booking.rentalDays} วัน, คิดเงิน ${booking.billableDays} วัน)` : '-');
-    setText('m-stall-appliance', booking ? `${booking.stallCount} ล็อก · เครื่องเล็ก ${booking.smallApplianceCount} · เครื่องใหญ่ ${booking.largeApplianceCount}` : '-');
+    setText('m-stall-appliance', booking ? `${booking.stallCount} ล็อก · เครื่องใช้ไฟฟ้า: ${booking.applianceText || `เครื่องเล็ก ${booking.smallApplianceCount} · เครื่องใหญ่ ${booking.largeApplianceCount}`}` : '-');
     setText('m-price-label', booking ? (detail.isFinalPrice ? 'ยอดจริง' : 'ยอดประเมิน') : 'ยอด');
     setText('m-price', booking ? `${Number(booking.grandTotal).toLocaleString('th-TH')} บาท` : '-');
 

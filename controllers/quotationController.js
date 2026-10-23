@@ -82,6 +82,10 @@ async function buildQuotationData(requestId, printedByName, options = {}) {
     const grandTotal = Number(first.grandTotal || 0);
     const smallApplianceCount = Number(first.smallApplianceCount || 0);
     const largeApplianceCount = Number(first.largeApplianceCount || 0);
+    const smallFanCount = Number(first.smallFanCount || 0);
+    const largeFanCount = Number(first.largeFanCount || 0);
+    // ค่าเครื่องใช้ไฟฟ้า/พัดลมคิดตามวันที่คิดเงินจริง (หักวันหยุด) เหมือนยอดใน grandTotal
+    const applianceDays = first.billableDays ?? rentalDays;
 
     const items = [];
     if (options.perStall && stallCount > 1) {
@@ -115,18 +119,17 @@ async function buildQuotationData(requestId, printedByName, options = {}) {
             });
         }
     }
-    if (smallApplianceCount > 0) {
-        items.push({
-            name: 'ค่าเครื่องใช้ไฟฟ้า (เล็ก)', qty: smallApplianceCount, unit: 'เครื่อง', days: rentalDays,
-            unitPrice: smallAppliancePrice, discount: 0, total: smallApplianceCount * smallAppliancePrice * rentalDays
-        });
-    }
-    if (largeApplianceCount > 0) {
-        items.push({
-            name: 'ค่าเครื่องใช้ไฟฟ้า (ใหญ่)', qty: largeApplianceCount, unit: 'เครื่อง', days: rentalDays,
-            unitPrice: largeAppliancePrice, discount: 0, total: largeApplianceCount * largeAppliancePrice * rentalDays
-        });
-    }
+    const applianceLines = [
+        ['ค่าเครื่องใช้ไฟฟ้า (เล็ก)', smallApplianceCount, 'เครื่อง', smallAppliancePrice],
+        ['ค่าเครื่องใช้ไฟฟ้า (ใหญ่)', largeApplianceCount, 'เครื่อง', largeAppliancePrice],
+        ['ค่าพัดลม (10–18 นิ้ว)', smallFanCount, 'ตัว', Number(first.smallFanPrice || 0)],
+        ['ค่าพัดลม (18–24 นิ้ว)', largeFanCount, 'ตัว', Number(first.largeFanPrice || 0)]
+    ];
+    applianceLines.forEach(([name, qty, unit, unitPrice]) => {
+        if (qty > 0) {
+            items.push({ name, qty, unit, days: applianceDays, unitPrice, discount: 0, total: qty * unitPrice * applianceDays });
+        }
+    });
 
     const discount = 0;
     const totalBeforeDiscount = grandTotal;

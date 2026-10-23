@@ -385,8 +385,7 @@
 
     if (REQUEST_DATA.grandTotalAllStalls) {
       const applianceParts = [];
-      if (REQUEST_DATA.smallApplianceCount) applianceParts.push(`เครื่องเล็ก ${REQUEST_DATA.smallApplianceCount}`);
-      if (REQUEST_DATA.largeApplianceCount) applianceParts.push(`เครื่องใหญ่ ${REQUEST_DATA.largeApplianceCount}`);
+      if (REQUEST_DATA.applianceText && REQUEST_DATA.applianceText !== 'ไม่มี') applianceParts.push(REQUEST_DATA.applianceText);
       if (REQUEST_DATA.lightEnabled) applianceParts.push('เปิดไฟ');
       const extra = applianceParts.length ? ` (${applianceParts.join(', ')})` : '';
       document.getElementById('app-grand-total').textContent =

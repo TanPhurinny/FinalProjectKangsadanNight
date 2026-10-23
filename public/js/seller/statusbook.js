@@ -165,7 +165,9 @@
         : '';
       // กำหนดชำระเงินภายใน 6 ชม. นับจากเวลาที่แอดมินจัดล็อกให้
       const paymentDeadlineAlert = booking.paymentDeadline
-        ? `<div class="pay-alert ${booking.paymentDeadlineOverdue ? 'pay-alert--danger' : 'pay-alert--warning'}"><i class="bi bi-alarm-fill"></i><span>${booking.paymentDeadlineOverdue ? 'ใบเสนอราคาหมดอายุแล้ว (เกิน 6 ชม. หลังจัดล็อก)' : 'กำหนดชำระเงินภายใน 6 ชม. หลังจัดล็อก'}: <strong>${booking.paymentDeadline}</strong></span></div>`
+        ? `<div class="pay-alert ${booking.paymentDeadlineOverdue ? 'pay-alert--danger' : 'pay-alert--warning'}"><i class="bi bi-alarm-fill"></i><span>${booking.paymentDeadlineSameDay
+          ? (booking.paymentDeadlineOverdue ? 'เลยกำหนดชำระแล้ว (ขายวันนี้ต้องชำระก่อน 15:00 น.)' : 'ขายวันนี้ ต้องชำระก่อน 15:00 น.')
+          : (booking.paymentDeadlineOverdue ? 'ใบเสนอราคาหมดอายุแล้ว (เกิน 6 ชม. หลังจัดล็อก)' : 'กำหนดชำระเงินภายใน 6 ชม. หลังจัดล็อก')}: <strong>${booking.paymentDeadline}</strong></span></div>`
         : '';
       paymentSection = `
         <div class="pay-box">
@@ -230,13 +232,13 @@
         <div class="quote-card__row"><span>โซน / แผง</span><strong>${booking.slotLabel ? `${booking.zoneLabel} / ${booking.slotLabel}` : 'รอยืนยันการชำระเงิน'}</strong></div>
         ${booking.sellDaysList ? `<div class="quote-card__row quote-card__row--note"><span>วันที่ขาย (${booking.rentalDays} วัน)</span><strong>${booking.sellDaysList}</strong></div>` : ''}
         ${cornerInterestRow}
-        <div class="quote-card__row"><span>เครื่องใช้ไฟฟ้า</span><strong>${booking.smallApplianceCount} เครื่องเล็ก / ${booking.largeApplianceCount} เครื่องใหญ่</strong></div>
+        <div class="quote-card__row"><span>เครื่องใช้ไฟฟ้า</span><strong>${escapeHtml(booking.applianceText || `${booking.smallApplianceCount} เครื่องเล็ก / ${booking.largeApplianceCount} เครื่องใหญ่`)}</strong></div>
         <div class="quote-card__rule"></div>
         ${priceStatusTag}
         ${cornerAssignedTag}
         <div class="quote-card__row"><span>ค่าเช่าแผง</span><strong>${formatMoney(booking.rentTotal)}</strong></div>
         <div class="quote-card__row"><span>ค่าไฟสว่าง</span><strong>${formatMoney(booking.lightTotal)}</strong></div>
-        <div class="quote-card__row"><span>ค่าเครื่องใช้ไฟฟ้า</span><strong>${formatMoney(booking.applianceTotal)}</strong></div>
+        <div class="quote-card__row"><span>ค่าเครื่องใช้ไฟฟ้า/พัดลม</span><strong>${formatMoney(booking.applianceTotal)}</strong></div>
         <div class="quote-card__total">
           <span>${booking.isFinalPrice ? 'ยอดชำระรวม (รวม VAT)' : 'ยอดประเมินรวม (รวม VAT)'}</span>
           <strong>${formatMoney(booking.grandTotal)}</strong>

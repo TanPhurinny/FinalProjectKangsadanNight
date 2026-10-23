@@ -42,18 +42,21 @@ const bookingStallInputSchema = z.object({
     light: z.string().optional(),
     cornerZone: z.union([z.string(), z.number()]).optional(),
     storeDetail: z.string().max(2000).optional(),
+    // รายการเครื่องใช้ไฟฟ้า/พัดลมแบบ JSON — ตรวจเนื้อหาจริงที่ parseApplianceItems (utils/bookingAppliances.js)
+    applianceItems: z.string().max(8000).optional(),
+    roundChoice: z.string().max(10).optional(),
     dateStart: z.string().trim().min(1).max(20),
     dateEnd: z.string().trim().min(1).max(20)
 }).refine((value) => {
+    // เช็คแค่ว่าเป็นวันที่จริงและวันสิ้นสุดไม่ก่อนวันเริ่ม — จำนวนวันขั้นต่ำขึ้นกับช่วงของรอบ
+    // (ช่วงรายวันจองทีละ 1 วันได้) ซึ่ง POST /booking-stall เช็คด้วย getBookingPhaseForRound อยู่แล้ว
+    // เดิมบังคับ 3 วันตรงนี้ ทำให้จองทีละวันไม่ผ่านทั้งที่กติกาอนุญาต
     const start = new Date(value.dateStart);
     const end = new Date(value.dateEnd);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
-    if (end < start) return false;
-    const diffMs = end.getTime() - start.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
-    return diffDays >= 3;
+    return end >= start;
 }, {
-    message: 'รอบการจองต้องมีระยะเวลาตั้งแต่ 3 วันขึ้นไป',
+    message: 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มขาย',
     path: ['dateEnd']
 });
 

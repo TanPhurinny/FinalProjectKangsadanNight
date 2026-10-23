@@ -69,9 +69,10 @@ function parseStallCodes(text) {
 }
 
 // คำขอที่จัดล็อกแล้ว (IN_PROGRESS) แต่เลยกำหนดชำระ 6 ชม. และยังไม่ส่งสลิป — ส่งสลิปแล้วถือว่ารอแอดมินตรวจ ยังไม่หลุด
-function isUnpaidPastDeadline(request, now = new Date()) {
+// rentalStartDate (ถ้ารู้) ทำให้คำขอที่ขายวันนี้เลยครบกำหนดตอน 15:00 (ดู getPaymentDeadlineFromLockAssignedAt)
+function isUnpaidPastDeadline(request, now = new Date(), rentalStartDate = null) {
     if (request.status !== 'IN_PROGRESS' || request.paymentSlipImage) return false;
-    const deadline = getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt);
+    const deadline = getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt, rentalStartDate);
     return Boolean(deadline && deadline.getTime() < now.getTime());
 }
 

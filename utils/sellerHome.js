@@ -3,6 +3,7 @@ const { buildMyStallHealth } = require('../controllers/marketController');
 const { getRenewalPhase, getRenewalOptions } = require('./stallRenewal');
 const { getPaymentDeadlineFromLockAssignedAt, getRoundTimeline, toStartOfDay } = require('./bookingRound');
 const { getOpenStatus } = require('./shopOpenStatus');
+const { buildBookingRequestTag, extractBookingRequestId } = require('./bookingRequestTag');
 const { getShopViewStats, getShopViewInsights } = require('./shopViews');
 const { getPromo, PROMO_MAX_LENGTH } = require('./shopPromo');
 const { buildProfileChecks } = require('./shopCompleteness');
@@ -71,6 +72,20 @@ async function buildSellerHome(userId, now = new Date()) {
         parseCodes(r.assignedStallCode).forEach((code) => { if (!requestByCode.has(code)) requestByCode.set(code, r); });
     });
     const codes = [...requestByCode.keys()];
+
+    // วันเริ่มขายของคำขอที่รอชำระ — ขายวันนี้เลยต้องจ่ายก่อน 15:00 (ดู getPaymentDeadlineFromLockAssignedAt)
+    const awaitingPayment = [...new Set(requestByCode.values())].filter((r) => r.status === 'IN_PROGRESS');
+    const startByRequestId = new Map();
+    if (awaitingPayment.length) {
+        const awaitingBookings = await prisma.booking.findMany({
+            where: { OR: awaitingPayment.map((r) => ({ storeDetailSnapshot: { startsWith: buildBookingRequestTag(r.id) } })) },
+            select: { storeDetailSnapshot: true, rentalStartDate: true }
+        });
+        awaitingBookings.forEach((b) => {
+            const id = extractBookingRequestId(b.storeDetailSnapshot);
+            if (id && !startByRequestId.has(id)) startByRequestId.set(id, b.rentalStartDate);
+        });
+    }
     const [stallRows, health, openStatus, viewStats, notices, repairs, announcement] = await Promise.all([
         codes.length
             ? prisma.stall.findMany({ where: { stallCode: { in: codes } }, select: { stallCode: true, status: true, bookingEndDate: true, row: { select: { zone: { select: { code: true } } } } } })
@@ -105,7 +120,7 @@ async function buildSellerHome(userId, now = new Date()) {
             cutoffAt: renewal ? renewal.cutoffAt : null,
             canExtend: !!(renewal && renewal.isOpen && renewal.fullRoundDays > 0),
             renewalOpen: !!(renewal && renewal.isOpen && now >= renewal.opensAt),
-            paymentDeadline: request.status === 'IN_PROGRESS' ? getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt) : null,
+            paymentDeadline: request.status === 'IN_PROGRESS' ? getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt, startByRequestId.get(request.id) || null) : null,
             health: health[code] || {},
             // ล็อกที่ยังใช้งาน = ชำระแล้วและสัญญายังไม่หมด / ที่เหลือพับไว้ใน "ล็อกที่หมดสัญญา/ถูกปล่อย"
             isCurrent: !released && phase !== 'lapsed'

@@ -11,6 +11,7 @@ const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRou
 const { verifySlip } = require('../utils/slipVerification');
 const { BOOKING_REQUEST_TAG_PREFIX, buildBookingRequestTag } = require('../utils/bookingRequestTag');
 const { sendStallExpiringSoonEmail } = require('../config/mailer');
+const { describeBookingAppliances } = require('../utils/bookingAppliances');
 
 function normalizeZone(zone) {
     return String(zone || '').trim().toUpperCase();
@@ -288,6 +289,7 @@ async function buildAdminBookingStallPageData(requestId) {
             lightEnabled: !!bookingDetail?.lightEnabled,
             smallApplianceCount: bookingDetail?.smallApplianceCount ?? 0,
             largeApplianceCount: bookingDetail?.largeApplianceCount ?? 0,
+            applianceText: bookingDetail ? describeBookingAppliances(bookingDetail) : 'ไม่มี',
             grandTotalAllStalls,
             assignedStallCode,
             assignedStallCodes,
@@ -311,13 +313,13 @@ const STAGE_META = {
     rejected: { label: 'ปฏิเสธ/ยกเลิกแล้ว', icon: 'fa-circle-xmark', hint: '', todo: false }
 };
 
-function getRequestStage(request, now) {
+function getRequestStage(request, now, rentalStartDate = null) {
     const status = String(request.status || 'PENDING').toUpperCase();
     if (status === 'SUCCESS') return 'done';
     if (status === 'REJECTED') return 'rejected';
     if (status === 'IN_PROGRESS') {
         if (request.paymentSlipImage) return 'slip';
-        return isUnpaidPastDeadline(request, now) ? 'overdue' : 'awaiting';
+        return isUnpaidPastDeadline(request, now, rentalStartDate) ? 'overdue' : 'awaiting';
     }
     return 'assign'; // PENDING / APPROVED (APPROVED เป็นสถานะเก่า ยังต้องจัดล็อกเหมือนกัน)
 }
@@ -383,7 +385,7 @@ exports.countApprovalTodo = async () => {
     requests.forEach((request) => {
         const basisDate = startByRequestId.get(request.id) || request.createdAt;
         if (!isRoundEditable(getBookingRoundMetaForDate(basisDate).roundNumber)) return;
-        const stage = getRequestStage(request, now);
+        const stage = getRequestStage(request, now, startByRequestId.get(request.id) || null);
         if (stage in byStage) byStage[stage] += 1;
         if (!STAGE_META[stage].todo) return;
         total += 1;
@@ -519,7 +521,10 @@ exports.getApprovalsPage = async (req, res) => {
                 dailyStallPrice: true,
                 grandTotal: true,
                 smallApplianceCount: true,
-                largeApplianceCount: true
+                largeApplianceCount: true,
+                smallFanCount: true,
+                largeFanCount: true,
+                applianceItems: true
             }
         });
 
@@ -607,10 +612,10 @@ exports.getApprovalsPage = async (req, res) => {
                 statusCounts[statusCode] += 1;
             }
 
-            const stage = getRequestStage(request, now);
+            const stage = getRequestStage(request, now, linkedBooking?.rentalStartDate || null);
             stageCounts[stage] += 1;
             kindCounts[extendOfRequestId ? 'extend' : 'new'] += 1;
-            const paymentDeadline = statusCode === 'IN_PROGRESS' ? getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt) : null;
+            const paymentDeadline = statusCode === 'IN_PROGRESS' ? getPaymentDeadlineFromLockAssignedAt(request.lockAssignedAt, linkedBooking?.rentalStartDate || null) : null;
             const extension = extendOfRequestId
                 ? buildExtensionInfo(requestById.get(extendOfRequestId), bookingByRequestId.get(extendOfRequestId), stage, now)
                 : null;
@@ -668,7 +673,8 @@ exports.getApprovalsPage = async (req, res) => {
                         dailyStallPrice: Number(linkedBooking.dailyStallPrice || 0),
                         grandTotal: Number(linkedBooking.grandTotal || 0),
                         smallApplianceCount: linkedBooking.smallApplianceCount || 0,
-                        largeApplianceCount: linkedBooking.largeApplianceCount || 0
+                        largeApplianceCount: linkedBooking.largeApplianceCount || 0,
+                        applianceText: describeBookingAppliances(linkedBooking)
                     }
                     : null
             };

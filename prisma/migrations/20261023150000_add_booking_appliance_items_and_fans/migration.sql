@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE `Booking` ADD COLUMN `applianceItems` TEXT NULL,
+    ADD COLUMN `largeFanCount` INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN `largeFanPrice` DOUBLE NOT NULL DEFAULT 40,
+    ADD COLUMN `smallFanCount` INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN `smallFanPrice` DOUBLE NOT NULL DEFAULT 20;
+

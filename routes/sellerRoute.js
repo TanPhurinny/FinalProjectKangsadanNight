@@ -22,17 +22,30 @@ const {
     toStartOfDay,
     addDays,
     getBookingRoundMetaForDate,
-    getBookingRoundStatusDetails,
     getBookingPhaseForRound,
     getRoundTimeline,
     getPaymentDeadlineFromLockAssignedAt,
+    getSameDayPaymentCutoff,
+    SAME_DAY_PAYMENT_CUTOFF_HOUR,
     getRoundWindow,
+    getPaymentDeadlineForRound,
     BOOKING_ROUND_LENGTH_DAYS
 } = require('../utils/bookingRound');
 const { getRenewalOptions, validateRenewal, isUnpaidPastDeadline } = require('../utils/stallRenewal');
 const { getBillableDays, getHolidaysInRange } = require('../utils/bookingHolidays');
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
 const { buildQuotationData } = require('../controllers/quotationController');
+const {
+    APPLIANCE_KINDS,
+    APPLIANCE_PRESETS,
+    SMALL_APPLIANCE_MAX_WATT,
+    MAX_QTY_PER_ITEM: APPLIANCE_MAX_QTY_PER_ITEM,
+    parseApplianceItems,
+    summarizeApplianceItems,
+    dailyApplianceFee,
+    readBookingApplianceItems,
+    describeBookingAppliances
+} = require('../utils/bookingAppliances');
 const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
 
 // รูปแจ้งซ่อม (เก็บที่ Cloudinary หรือดิสก์ตาม utils/imageStorage.js)
@@ -102,8 +115,8 @@ const uploadShopProfile = multer({
 });
 
 const LIGHT_UNIT_PRICE = 15;
-const SMALL_APPLIANCE_PRICE = 20;
-const LARGE_APPLIANCE_PRICE = 40;
+const SMALL_APPLIANCE_PRICE = APPLIANCE_KINDS.SMALL.price;
+const LARGE_APPLIANCE_PRICE = APPLIANCE_KINDS.LARGE.price;
 // จำกัดจำนวนล็อคต่อ user ต่อรอบ (รวมทุกโซน) กันคนเดียวกวาดหลายล็อคแล้วปล่อยเช่าต่อ
 // เพื่อเปิดที่ให้ร้านใหม่ — FASHION ยกเว้นให้ขึ้นกับดุลยพินิจแอดมิน (ดูจุดใช้งานใน POST /booking-stall)
 const MAX_STALLS_PER_SELLER = 2;
@@ -481,6 +494,9 @@ function buildBookingView(latestBooking) {
         lightEnabled: Boolean(latestBooking.lightEnabled),
         smallApplianceCount: latestBooking.smallApplianceCount || 0,
         largeApplianceCount: latestBooking.largeApplianceCount || 0,
+        smallFanCount: latestBooking.smallFanCount || 0,
+        largeFanCount: latestBooking.largeFanCount || 0,
+        applianceText: describeBookingAppliances(latestBooking),
         createdAt: formatDateThai(latestBooking.createdAt),
         createdTime: formatTimeThai(latestBooking.createdAt),
         storeDetailSnapshot: stripBookingRequestTag(latestBooking.storeDetailSnapshot) || '-',
@@ -1360,331 +1376,247 @@ router.get("/select-zone", isAuthenticated, isSellerOrApplicant, async (req, res
 });
 
 // --- 3. หน้าจองแผงค้า ---
-router.get("/booking-stall", isAuthenticated, isSellerOrApplicant, async (req, res) => {
-    const { zone, corner } = req.query;
-    const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true } });
-    const productType = userRecord?.shop?.productType || req.sellerApplication?.productType || null;
-    const allowedZones = zoneAccess.allowedZonesFor(productType).map(z => String(z).toLowerCase());
-    const zoneCode = String(zone || '').toUpperCase();
-    const normalizedZone = zoneCode.toLowerCase();
-    const cornerZoneValue = resolveCornerZonePrice(corner);
-    const bookingRoundInfo = await ensureBookingRoundForDate(new Date());
-    const bookingRoundSummary = getBookingRoundStatusDetails(new Date());
+// ค่าที่ผู้ขายกรอกมา ส่งกลับไปเติมฟอร์มเมื่อเซิร์ฟเวอร์ตีกลับ (เดิมทุกช่องรีเซ็ตเป็นค่าเริ่มต้น ต้องกรอกใหม่หมด)
+function pickBookingFormValues(body) {
+    const b = body || {};
+    const asText = (value, max) => (typeof value === 'string' ? value.slice(0, max) : '');
+    return {
+        roundChoice: asText(b.roundChoice, 10),
+        dateStart: asText(b.dateStart, 20),
+        dateEnd: asText(b.dateEnd, 20),
+        stallCount: asText(b.stallCount, 4),
+        storeDetail: asText(b.storeDetail, 2000),
+        cornerZone: asText(b.cornerZone, 4),
+        applianceItems: asText(b.applianceItems, 8000)
+    };
+}
+
+// รายละเอียดร้านที่เคยพิมพ์ในคำขอก่อน (ตัด tag ภายในและหมายเหตุแผงพิเศษที่ระบบต่อท้ายให้ออก)
+function cleanStoreDetailSnapshot(snapshot) {
+    const text = stripBookingRequestTag(snapshot || '').replace(/\[สนใจแผงพิเศษ:[^\]]+\]/g, '').trim();
+    return text === 'ไม่มีรายละเอียดเพิ่มเติม' ? '' : text;
+}
+
+function toDateKey(dateValue) {
+    const d = new Date(dateValue);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// render หน้าจองแผงจากจุดเดียว (GET และทุกกรณีที่ POST ตีกลับ) ให้ข้อมูลรอบ/ราคา/โควตาครบเสมอ
+// gate (ถูกระงับสิทธิ์ / ไม่ได้เลือกโซน / ไม่มีสิทธิ์โซน / ไม่มีราคา) จะซ่อนฟอร์มและบอกเหตุผลแทน
+async function renderBookingStallPage(req, res, { status = 200, zoneCode = '', error = null, userRecord = null, formValues = null, cornerParam = null } = {}) {
+    const record = userRecord || await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true } });
+    const productType = record?.shop?.productType || req.sellerApplication?.productType || null;
+    const allowedZones = zoneAccess.allowedZonesFor(productType).map((z) => String(z).toUpperCase());
+    const now = new Date();
+    const bookingRoundInfo = await ensureBookingRoundForDate(now);
     const nextRoundInfo = await ensureBookingRoundForDate(addDays(bookingRoundInfo.cycleEnd, 1));
-    const currentPhase = getBookingPhaseForRound(bookingRoundInfo, new Date());
-    const nextPhase = getBookingPhaseForRound(nextRoundInfo, new Date());
 
-    const defaultStoreDetail = userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || req.sellerApplication?.productDetail || '';
-
-    if (!zoneCode) {
-        return res.status(400).render('seller/booking_stall', {
-            user: userRecord,
+    let gateError = null;
+    let zone = String(zoneCode || '').toUpperCase();
+    let zonePrice = 0;
+    if (record?.isBlacklisted) {
+        gateError = 'ร้านค้าของคุณถูกระงับสิทธิ์การจองแผง (Blacklist) กรุณาติดต่อผู้ดูแลตลาด';
+    } else if (!zone) {
+        gateError = 'กรุณาเลือกโซนจากหน้าเลือกโซนก่อนทำรายการจอง';
+    } else if (allowedZones.length && !allowedZones.includes(zone)) {
+        gateError = 'คุณไม่มีสิทธิ์จองโซนนี้ตามประเภทสินค้าของคุณ';
+    } else {
+        zonePrice = await getDailyPriceByZoneCode(zone);
+        if (!zonePrice) gateError = 'ไม่พบราคาของโซนนี้ในฐานข้อมูล';
+    }
+    if (gateError) {
+        return res.status(status === 200 ? 400 : status).render('seller/booking_stall', {
+            user: record,
             zone: null,
             zonePrice: 0,
-            error: 'กรุณาเลือกโซนจากหน้าเลือกโซนก่อนทำรายการจอง',
-            defaultStoreDetail,
-            bookingRoundInfo,
-            bookingRoundSummary,
-            nextRoundInfo,
-            currentPhase,
-            nextPhase,
-            pricing: {
-                lightUnitPrice: LIGHT_UNIT_PRICE,
-                smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                largeAppliancePrice: LARGE_APPLIANCE_PRICE,
-                cornerZoneOptions: CORNER_ZONE_OPTIONS
-            }
+            error: error || gateError,
+            gateError
         });
     }
 
-    if (allowedZones.length && !allowedZones.includes(normalizedZone)) {
-        // ป้องกันการเข้าถึงหน้าเลือกแถวสำหรับโซนที่ผู้ขายไม่มีสิทธิ
-        return res.status(403).render('seller/booking_stall', {
-            user: userRecord,
-            zone: null,
-            zonePrice: 0,
-            error: 'คุณไม่มีสิทธิ์จองโซนนี้ตามประเภทสินค้าของคุณ',
-            defaultStoreDetail,
-            bookingRoundInfo,
-            bookingRoundSummary,
-            nextRoundInfo,
-            currentPhase,
-            nextPhase,
-            pricing: {
-                lightUnitPrice: LIGHT_UNIT_PRICE,
-                smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                largeAppliancePrice: LARGE_APPLIANCE_PRICE,
-                cornerZoneOptions: CORNER_ZONE_OPTIONS
-            }
-        });
-    }
-
-    const zonePrice = await getDailyPriceByZoneCode(zoneCode);
-
-    // นับล็อคที่มีอยู่แล้วในรอบนี้ (ทุกโซน สถานะไม่ใช่ REJECTED) ให้ผู้ขายเห็นก่อนกรอกจำนวนล็อกใหม่
-    const existingLockCount = await prisma.booking.count({
+    const countLocks = (round) => prisma.booking.count({
         where: {
             userId: req.user.id,
             status: { not: 'REJECTED' },
-            rentalStartDate: { gte: bookingRoundInfo.cycleStart, lte: bookingRoundInfo.cycleEnd }
+            rentalStartDate: { gte: round.cycleStart, lte: round.cycleEnd }
+        }
+    });
+    const [currentLockCount, nextLockCount, holidaysInView, roundBookings, recentBookings] = await Promise.all([
+        countLocks(bookingRoundInfo),
+        countLocks(nextRoundInfo),
+        getHolidaysInRange(bookingRoundInfo.cycleStart, nextRoundInfo.cycleEnd),
+        prisma.booking.findMany({
+            where: {
+                userId: req.user.id,
+                status: { not: 'REJECTED' },
+                rentalEndDate: { gte: bookingRoundInfo.cycleStart },
+                rentalStartDate: { lte: nextRoundInfo.cycleEnd }
+            },
+            select: { rentalStartDate: true, rentalEndDate: true }
+        }),
+        prisma.booking.findMany({
+            where: { userId: req.user.id, status: { not: 'REJECTED' } },
+            orderBy: { createdAt: 'desc' },
+            take: 10
+        })
+    ]);
+
+    // วันที่ผู้ขายมีคำขอ/ล็อกอยู่แล้ว โชว์บนปฏิทินย่อของรอบ กันจองซ้อนวันเดิมโดยไม่รู้ตัว
+    const bookedDates = new Set();
+    roundBookings.forEach((b) => {
+        if (!b.rentalStartDate || !b.rentalEndDate) return;
+        for (let d = toStartOfDay(b.rentalStartDate); d <= toStartOfDay(b.rentalEndDate); d = addDays(d, 1)) {
+            bookedDates.add(toDateKey(d));
         }
     });
 
-    if (!zonePrice) {
-        return res.status(404).render('seller/booking_stall', {
-            user: userRecord,
-            zone: zoneCode,
-            zonePrice: 0,
-            error: 'ไม่พบราคาของโซนนี้ในฐานข้อมูล',
-            defaultStoreDetail,
-            bookingRoundInfo,
-            bookingRoundSummary,
-            nextRoundInfo,
-            currentPhase,
-            nextPhase,
-            pricing: {
-                lightUnitPrice: LIGHT_UNIT_PRICE,
-                smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                largeAppliancePrice: LARGE_APPLIANCE_PRICE,
-                cornerZoneOptions: CORNER_ZONE_OPTIONS
-            }
-        });
-    }
+    // "จองเหมือนรอบที่แล้ว" — ใช้คำขอจองใหม่ล่าสุด (ข้ามคำขอต่อล็อกที่ไม่มีรายละเอียดร้าน/เครื่องใช้ไฟฟ้าของตัวเอง)
+    const lastBookingRow = recentBookings.find((b) => !cleanStoreDetailSnapshot(b.storeDetailSnapshot).startsWith('ขอต่อล็อก')) || null;
+    const lastBooking = lastBookingRow ? {
+        roundNumber: lastBookingRow.rentalStartDate ? getBookingRoundMetaForDate(lastBookingRow.rentalStartDate).roundNumber : null,
+        zoneCode: lastBookingRow.zoneCode,
+        stallCount: lastBookingRow.stallCount || 1,
+        storeDetail: cleanStoreDetailSnapshot(lastBookingRow.storeDetailSnapshot),
+        items: readBookingApplianceItems(lastBookingRow),
+        applianceText: describeBookingAppliances(lastBookingRow)
+    } : null;
 
-    // ดึงวันหยุดที่ทับช่วงรอบปัจจุบัน+รอบถัดไป มาให้ฟอร์มปิดวันที่เลือกไม่ได้ (ดู utils/bookingHolidays.js)
-    const holidaysInView = await getHolidaysInRange(bookingRoundInfo.cycleStart, nextRoundInfo.cycleEnd);
+    const buildRoundOption = (key, round, lockCount) => {
+        const phaseInfo = getBookingPhaseForRound(round, now);
+        return {
+            key,
+            roundNumber: round.roundNumber,
+            cycleStart: toDateKey(round.cycleStart),
+            cycleEnd: toDateKey(round.cycleEnd),
+            phase: phaseInfo.phase,
+            allowCornerZone: Boolean(phaseInfo.allowCornerZone),
+            minDays: phaseInfo.minDays || 1,
+            allowSingleDay: Boolean(phaseInfo.allowSingleDay),
+            maxAdvanceStart: phaseInfo.maxAdvanceStart ? toDateKey(phaseInfo.maxAdvanceStart) : '',
+            // วันเปิดจอง (จันทร์ก่อนรอบ) — สูตรเดียวกับ phase1Start ใน getBookingPhaseForRound
+            openDate: toDateKey(addDays(addDays(round.cycleStart, 1), -5)),
+            // จองยาวช่วงจันทร์-อังคาร ต้องชำระก่อนวันพุธ (ช่วงรายวันคำนวณจากวันเริ่มขายฝั่ง client)
+            paymentDeadline: phaseInfo.phase === 1 ? toDateKey(getPaymentDeadlineForRound(round)) : '',
+            existingLockCount: lockCount
+        };
+    };
 
-    res.render("seller/booking_stall", {
-        user: userRecord,
-        zone: zoneCode,
+    return res.status(status).render('seller/booking_stall', {
+        user: record,
+        zone,
         zonePrice,
-        error: null,
-        defaultStoreDetail,
-        bookingRoundInfo,
-        bookingRoundSummary,
-        nextRoundInfo,
-        currentPhase,
-        nextPhase,
-        cornerZoneValue,
+        error,
+        gateError: null,
+        defaultStoreDetail: record?.shop?.productDetail || record?.shop?.shopSummary || req.sellerApplication?.productDetail || '',
+        formValues,
+        cornerZoneValue: resolveCornerZonePrice(formValues ? formValues.cornerZone : cornerParam),
+        roundOptions: [
+            buildRoundOption('current', bookingRoundInfo, currentLockCount),
+            buildRoundOption('next', nextRoundInfo, nextLockCount)
+        ],
         holidaysInView,
+        bookedDates: [...bookedDates],
+        lastBooking,
+        todayKey: toDateKey(now),
+        // เลยบ่าย 3 แล้ว จองเริ่มขายวันนี้ไม่ได้ (ขายวันนี้ต้องชำระก่อน 15:00)
+        sameDayClosed: now.getHours() >= SAME_DAY_PAYMENT_CUTOFF_HOUR,
+        sameDayCutoffHour: SAME_DAY_PAYMENT_CUTOFF_HOUR,
+        allowedZoneCount: allowedZones.length,
         pricing: {
             lightUnitPrice: LIGHT_UNIT_PRICE,
-            smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-            largeAppliancePrice: LARGE_APPLIANCE_PRICE,
             maxStallsPerSeller: MAX_STALLS_PER_SELLER,
             isFashionSeller: zoneAccess.normalizeProductType(productType) === 'FASHION',
-            existingLockCount,
-            cornerZoneOptions: CORNER_ZONE_OPTIONS
+            cornerZoneOptions: CORNER_ZONE_OPTIONS,
+            applianceKinds: APPLIANCE_KINDS,
+            appliancePresets: APPLIANCE_PRESETS,
+            smallApplianceMaxWatt: SMALL_APPLIANCE_MAX_WATT,
+            maxQtyPerItem: APPLIANCE_MAX_QTY_PER_ITEM
         }
     });
+}
+
+router.get("/booking-stall", isAuthenticated, isSellerOrApplicant, async (req, res) => {
+    return renderBookingStallPage(req, res, { zoneCode: req.query.zone, cornerParam: req.query.corner });
 });
 
 router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
-    try {
-        const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true, sellerProfile: true } });
-        const productType = userRecord?.shop?.productType || req.sellerApplication?.productType || null;
-        const allowedZones = zoneAccess.allowedZonesFor(productType).map(z => String(z).toLowerCase());
+    const zoneCode = String(req.body.zone || '').trim().toUpperCase();
+    const formValues = pickBookingFormValues(req.body);
+    let userRecord = null;
+    const rejectBooking = (message, status = 400) => renderBookingStallPage(req, res, { status, zoneCode, error: message, userRecord, formValues });
 
-        const zoneCode = String(req.body.zone || '').trim().toUpperCase();
-        const normalizedZone = zoneCode.toLowerCase();
-        const bookingRoundInfo = await ensureBookingRoundForDate(new Date());
-        const bookingRoundSummary = getBookingRoundStatusDetails(new Date());
-        const nextRoundInfo = await ensureBookingRoundForDate(addDays(bookingRoundInfo.cycleEnd, 1));
-        const currentPhase = getBookingPhaseForRound(bookingRoundInfo, new Date());
-        const nextPhase = getBookingPhaseForRound(nextRoundInfo, new Date());
+    try {
+        userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true, sellerProfile: true } });
+        const productType = userRecord?.shop?.productType || req.sellerApplication?.productType || null;
+        const allowedZones = zoneAccess.allowedZonesFor(productType).map(z => String(z).toUpperCase());
 
         // ร้านที่แอดมิน Blacklist จากคะแนนตรวจตลาด จองแผงรอบใหม่ไม่ได้ (ดู controllers/scoreReportController.js)
         if (userRecord?.isBlacklisted) {
-            return res.status(403).render('seller/booking_stall', {
-                user: userRecord,
-                zone: null,
-                zonePrice: 0,
-                error: 'ร้านค้าของคุณถูกระงับสิทธิ์การจองแผง (Blacklist) กรุณาติดต่อผู้ดูแลตลาด',
-                defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || req.sellerApplication?.productDetail || '',
-                bookingRoundInfo,
-                bookingRoundSummary,
-                nextRoundInfo,
-                currentPhase,
-                nextPhase,
-                cornerZoneValue: resolveCornerZonePrice(req.body.cornerZone),
-                pricing: {
-                    lightUnitPrice: LIGHT_UNIT_PRICE,
-                    smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
-                    cornerZoneOptions: CORNER_ZONE_OPTIONS
-                }
-            });
+            return rejectBooking('ร้านค้าของคุณถูกระงับสิทธิ์การจองแผง (Blacklist) กรุณาติดต่อผู้ดูแลตลาด', 403);
         }
-
         if (!zoneCode) {
-            return res.status(400).render('seller/booking_stall', {
-                user: userRecord,
-                zone: null,
-                zonePrice: 0,
-                error: 'ไม่พบโซนที่ต้องการจอง',
-                defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || req.sellerApplication?.productDetail || '',
-                bookingRoundInfo,
-                bookingRoundSummary,
-                nextRoundInfo,
-                currentPhase,
-                nextPhase,
-                cornerZoneValue: resolveCornerZonePrice(req.body.cornerZone),
-                pricing: {
-                    lightUnitPrice: LIGHT_UNIT_PRICE,
-                    smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
-                    cornerZoneOptions: CORNER_ZONE_OPTIONS
-                }
-            });
+            return rejectBooking('ไม่พบโซนที่ต้องการจอง');
         }
-
-        if (allowedZones.length && !allowedZones.includes(normalizedZone)) {
-            return res.status(403).render('seller/booking_stall', {
-                user: userRecord,
-                zone: zoneCode,
-                zonePrice: 0,
-                error: 'คุณไม่มีสิทธิ์จองโซนนี้ตามประเภทสินค้าของคุณ',
-                defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || req.sellerApplication?.productDetail || '',
-                bookingRoundInfo,
-                bookingRoundSummary,
-                nextRoundInfo,
-                currentPhase,
-                nextPhase,
-                cornerZoneValue: resolveCornerZonePrice(req.body.cornerZone),
-                pricing: {
-                    lightUnitPrice: LIGHT_UNIT_PRICE,
-                    smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
-                    cornerZoneOptions: CORNER_ZONE_OPTIONS
-                }
-            });
+        if (allowedZones.length && !allowedZones.includes(zoneCode)) {
+            return rejectBooking('คุณไม่มีสิทธิ์จองโซนนี้ตามประเภทสินค้าของคุณ', 403);
         }
 
         const zonePrice = await getDailyPriceByZoneCode(zoneCode);
         if (!zonePrice) {
-            return res.status(404).render('seller/booking_stall', {
-                user: userRecord,
-                zone: zoneCode,
-                zonePrice: 0,
-                error: 'ไม่พบราคาโซนจากฐานข้อมูล',
-                defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || req.sellerApplication?.productDetail || '',
-                bookingRoundInfo,
-                bookingRoundSummary,
-                nextRoundInfo,
-                currentPhase,
-                nextPhase,
-                cornerZoneValue: resolveCornerZonePrice(req.body.cornerZone),
-                pricing: {
-                    lightUnitPrice: LIGHT_UNIT_PRICE,
-                    smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
-                    cornerZoneOptions: CORNER_ZONE_OPTIONS
-                }
-            });
+            return rejectBooking('ไม่พบราคาโซนจากฐานข้อมูล', 404);
         }
 
         const inputValidation = bookingStallInputSchema.safeParse(req.body);
         if (!inputValidation.success) {
-            return res.status(400).render('seller/booking_stall', {
-                user: userRecord,
-                zone: zoneCode,
-                zonePrice,
-                error: 'ข้อมูลจำนวนแผง/เครื่องใช้ไฟฟ้าหรือวันที่ที่กรอกไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง',
-                defaultStoreDetail: req.body.storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || req.sellerApplication?.productDetail || '',
-                bookingRoundInfo,
-                bookingRoundSummary,
-                nextRoundInfo,
-                currentPhase,
-                nextPhase,
-                cornerZoneValue: resolveCornerZonePrice(req.body.cornerZone),
-                pricing: {
-                    lightUnitPrice: LIGHT_UNIT_PRICE,
-                    smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
-                    cornerZoneOptions: CORNER_ZONE_OPTIONS
-                }
-            });
+            return rejectBooking('ข้อมูลจำนวนแผง/เครื่องใช้ไฟฟ้าหรือวันที่ที่กรอกไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง');
         }
 
         const stallCount = Math.max(1, safeInt(req.body.stallCount, 1));
         const lightEnabled = true;
         const cornerZoneValue = resolveCornerZonePrice(req.body.cornerZone);
         const cornerZoneOption = CORNER_ZONE_OPTIONS.find((opt) => opt.value === cornerZoneValue) || null;
-        const smallApplianceCount = Math.max(0, safeInt(req.body.smallApplianceCount, 0));
-        const largeApplianceCount = Math.max(0, safeInt(req.body.largeApplianceCount, 0));
         const storeDetail = String(req.body.storeDetail || '').trim();
+
+        // ฟอร์มใหม่ส่งรายการเครื่องใช้ไฟฟ้าพร้อมชื่อเป็น JSON (applianceItems) — นับจำนวนแต่ละประเภทจากรายการนี้เท่านั้น
+        // ถ้าไม่ได้ส่งมา (API/ฟอร์มเก่า) ใช้ช่องจำนวนเครื่องเล็ก/ใหญ่แบบเดิม
+        let applianceItems = null;
+        let applianceCounts;
+        if (typeof req.body.applianceItems === 'string') {
+            const parsedAppliances = parseApplianceItems(req.body.applianceItems);
+            if (parsedAppliances.error) return rejectBooking(parsedAppliances.error);
+            applianceItems = parsedAppliances.items;
+            applianceCounts = summarizeApplianceItems(applianceItems);
+        } else {
+            applianceCounts = {
+                smallApplianceCount: Math.max(0, safeInt(req.body.smallApplianceCount, 0)),
+                largeApplianceCount: Math.max(0, safeInt(req.body.largeApplianceCount, 0)),
+                smallFanCount: 0,
+                largeFanCount: 0
+            };
+        }
 
         const startDate = toStartOfDay(req.body.dateStart);
         const endDate = toStartOfDay(req.body.dateEnd);
         if (!startDate || !endDate || endDate < startDate) {
-            return res.status(400).render('seller/booking_stall', {
-                user: userRecord,
-                zone: zoneCode,
-                zonePrice,
-                error: 'กรุณาเลือกวันที่เช่าให้ถูกต้อง',
-                defaultStoreDetail: storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || req.sellerApplication?.productDetail || '',
-                bookingRoundInfo,
-                bookingRoundSummary,
-                nextRoundInfo,
-                currentPhase,
-                nextPhase,
-                cornerZoneValue,
-                pricing: {
-                    lightUnitPrice: LIGHT_UNIT_PRICE,
-                    smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
-                    cornerZoneOptions: CORNER_ZONE_OPTIONS
-                }
-            });
+            return rejectBooking('กรุณาเลือกวันที่เช่าให้ถูกต้อง');
         }
 
         const rentalDays = getRentalDays(startDate, endDate);
 
         // กันเลือกวันที่ผ่านมาแล้ว (เช่น เลือก dateStart เป็นเมื่อวานในรอบที่กำลังเปิดอยู่)
         if (startDate < toStartOfDay(new Date())) {
-            return res.status(400).render('seller/booking_stall', {
-                user: userRecord,
-                zone: zoneCode,
-                zonePrice,
-                error: 'ไม่สามารถเลือกวันที่ที่ผ่านมาแล้วได้ กรุณาเลือกวันที่ปัจจุบันหรือวันในอนาคต',
-                defaultStoreDetail: storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || req.sellerApplication?.productDetail || '',
-                bookingRoundInfo,
-                bookingRoundSummary,
-                nextRoundInfo,
-                currentPhase,
-                nextPhase,
-                cornerZoneValue,
-                pricing: {
-                    lightUnitPrice: LIGHT_UNIT_PRICE,
-                    smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                    largeAppliancePrice: LARGE_APPLIANCE_PRICE,
-                    cornerZoneOptions: CORNER_ZONE_OPTIONS
-                }
-            });
+            return rejectBooking('ไม่สามารถเลือกวันที่ที่ผ่านมาแล้วได้ กรุณาเลือกวันที่ปัจจุบันหรือวันในอนาคต');
+        }
+
+        // ขายวันนี้เลยต้องชำระก่อน 15:00 — เลยเวลานั้นแล้วจึงจองเริ่มวันนี้ไม่ได้ (ดู getSameDayPaymentCutoff)
+        if (startDate.getTime() === toStartOfDay(new Date()).getTime() && new Date() >= getSameDayPaymentCutoff(startDate)) {
+            return rejectBooking(`เลย ${SAME_DAY_PAYMENT_CUTOFF_HOUR}:00 น. แล้ว จองขายวันนี้ไม่ได้ (ขายวันนี้ต้องชำระเงินก่อน ${SAME_DAY_PAYMENT_CUTOFF_HOUR}:00 น.) กรุณาเลือกเริ่มขายพรุ่งนี้`);
         }
 
         // จองข้ามรอบไม่ได้ (วันเริ่ม/สิ้นสุดต้องอยู่ในรอบ 14 วันเดียวกัน)
         const targetRoundMeta = getBookingRoundMetaForDate(startDate);
         const endRoundMeta = getBookingRoundMetaForDate(endDate);
-        const rejectBooking = (message) => res.status(400).render('seller/booking_stall', {
-            user: userRecord,
-            zone: zoneCode,
-            zonePrice,
-            error: message,
-            defaultStoreDetail: storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || req.sellerApplication?.productDetail || '',
-            bookingRoundInfo,
-            bookingRoundSummary,
-            nextRoundInfo,
-            currentPhase,
-            nextPhase,
-            cornerZoneValue,
-            pricing: {
-                lightUnitPrice: LIGHT_UNIT_PRICE,
-                smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                largeAppliancePrice: LARGE_APPLIANCE_PRICE,
-                cornerZoneOptions: CORNER_ZONE_OPTIONS
-            }
-        });
 
         if (endRoundMeta.roundNumber !== targetRoundMeta.roundNumber) {
             return rejectBooking('ห้ามจองข้ามรอบ กรุณาเลือกวันที่เริ่มและสิ้นสุดให้อยู่ในรอบการจองเดียวกัน');
@@ -1753,7 +1685,8 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
         // คิดเงินตาม billableDays (วันปฏิทินของช่วงที่เลือก หักวันหยุดที่ประกาศออกแล้ว) ไม่ใช่ rentalDays ดิบ
         // rentalDays ดิบยังเก็บไว้แสดง/เช็คความต่อเนื่องของการจองเหมือนเดิม — ดูหัวข้อวันหยุดด้านบน
         const rentTotal = zonePrice * stallCount * billableDays;
-        const applianceTotal = (smallApplianceCount * SMALL_APPLIANCE_PRICE + largeApplianceCount * LARGE_APPLIANCE_PRICE) * stallCount * billableDays;
+        // เครื่องใช้ไฟฟ้า + พัดลม นับรวมทั้งคำขอแล้ว จึงไม่คูณจำนวนล็อก (เดิมคูณ ทำให้ยอดจริงไม่ตรงกับที่ฟอร์ม/ใบเสนอราคาแสดง)
+        const applianceTotal = dailyApplianceFee(applianceCounts) * billableDays;
         const lightTotal = LIGHT_UNIT_PRICE * stallCount * billableDays;
         // ค่าแผงหัวมุม/แผงพิเศษยังไม่คิดตอนจอง เป็นแค่การแจ้งความสนใจ
         // จะคิดเงินจริงต่อเมื่อแอดมินจัดแผงพิเศษให้ในขั้นตอน "จัดล็อก" เท่านั้น
@@ -1824,10 +1757,15 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
                         dailyStallPrice: zonePrice,
                         lightEnabled,
                         lightUnitPrice: LIGHT_UNIT_PRICE,
-                        smallApplianceCount,
-                        largeApplianceCount,
+                        smallApplianceCount: applianceCounts.smallApplianceCount,
+                        largeApplianceCount: applianceCounts.largeApplianceCount,
                         smallAppliancePrice: SMALL_APPLIANCE_PRICE,
                         largeAppliancePrice: LARGE_APPLIANCE_PRICE,
+                        smallFanCount: applianceCounts.smallFanCount,
+                        largeFanCount: applianceCounts.largeFanCount,
+                        smallFanPrice: APPLIANCE_KINDS.FAN_SMALL.price,
+                        largeFanPrice: APPLIANCE_KINDS.FAN_LARGE.price,
+                        applianceItems: applianceItems ? JSON.stringify(applianceItems) : null,
                         applianceTotal,
                         lightTotal,
                         rentTotal,
@@ -1847,20 +1785,12 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
         return res.redirect('/booking-status');
     } catch (error) {
         console.error('booking-stall POST error', error);
-        return res.status(500).render('seller/booking_stall', {
-            user: req.user,
-            zone: req.body.zone || null,
-            zonePrice: 0,
-            error: 'เกิดข้อผิดพลาดขณะบันทึกการจอง กรุณาลองใหม่อีกครั้ง',
-            defaultStoreDetail: req.body.storeDetail || '',
-            cornerZoneValue: resolveCornerZonePrice(req.body.cornerZone),
-            pricing: {
-                lightUnitPrice: LIGHT_UNIT_PRICE,
-                smallAppliancePrice: SMALL_APPLIANCE_PRICE,
-                largeAppliancePrice: LARGE_APPLIANCE_PRICE,
-                cornerZoneOptions: CORNER_ZONE_OPTIONS
-            }
-        });
+        try {
+            return await rejectBooking('เกิดข้อผิดพลาดขณะบันทึกการจอง กรุณาลองใหม่อีกครั้ง', 500);
+        } catch (renderError) {
+            console.error('booking-stall error page render failed', renderError);
+            return res.status(500).send('เกิดข้อผิดพลาดขณะบันทึกการจอง กรุณาลองใหม่อีกครั้ง');
+        }
     }
 });
 
@@ -1989,8 +1919,8 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
         const stallCount = stallCodes.length || currentBooking.stallCount;
 
         const rentTotal = currentBooking.dailyStallPrice * stallCount * billableDays;
-        const applianceTotal = (currentBooking.smallApplianceCount * currentBooking.smallAppliancePrice
-            + currentBooking.largeApplianceCount * currentBooking.largeAppliancePrice) * stallCount * billableDays;
+        // เครื่องใช้ไฟฟ้า/พัดลมชุดเดิมของคำขอที่ต่อ คิดรวมทั้งคำขอ ไม่คูณจำนวนล็อก (เหมือนตอนจองใหม่)
+        const applianceTotal = dailyApplianceFee(currentBooking, currentBooking) * billableDays;
         const lightTotal = currentBooking.lightUnitPrice * stallCount * billableDays;
         const grandTotal = rentTotal + applianceTotal + lightTotal;
 
@@ -2047,6 +1977,11 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
                         largeApplianceCount: currentBooking.largeApplianceCount,
                         smallAppliancePrice: currentBooking.smallAppliancePrice,
                         largeAppliancePrice: currentBooking.largeAppliancePrice,
+                        smallFanCount: currentBooking.smallFanCount,
+                        largeFanCount: currentBooking.largeFanCount,
+                        smallFanPrice: currentBooking.smallFanPrice,
+                        largeFanPrice: currentBooking.largeFanPrice,
+                        applianceItems: currentBooking.applianceItems,
                         applianceTotal,
                         lightTotal,
                         rentTotal,
@@ -2258,13 +2193,17 @@ async function loadSellerBookingStatus(userId) {
             }
         }
 
-        // กำหนดชำระเงินภายใน 6 ชม. นับจากเวลาที่แอดมินจัดล็อกให้ (lockAssignedAt) — เกินแล้วแค่ขึ้นเตือน
-        // ในหน้า ไม่ auto-ยกเลิก แอดมินแยกดำเนินการเอง (ดู PAYMENT_WINDOW_HOURS ใน utils/bookingRound.js)
+        // กำหนดชำระเงินภายใน 6 ชม. นับจากเวลาที่แอดมินจัดล็อกให้ (lockAssignedAt) และไม่เกิน 15:00 ของวันเริ่มขาย
+        // (ขายวันนี้เลย) — เกินแล้วแค่ขึ้นเตือนในหน้า ไม่ auto-ยกเลิก แอดมินแยกดำเนินการเอง (ดู utils/bookingRound.js)
         bookingView.paymentDeadline = null;
         bookingView.paymentDeadlineOverdue = false;
+        bookingView.paymentDeadlineSameDay = false;
         if (normalizedRequestStatus === 'IN_PROGRESS' && !awaitingPaymentVerification) {
-            const deadlineDate = getPaymentDeadlineFromLockAssignedAt(latestRequest.lockAssignedAt);
+            const rentalStartDate = latestBooking?.rentalStartDate || null;
+            const deadlineDate = getPaymentDeadlineFromLockAssignedAt(latestRequest.lockAssignedAt, rentalStartDate);
             if (deadlineDate) {
+                const cutoff = rentalStartDate ? getSameDayPaymentCutoff(rentalStartDate) : null;
+                bookingView.paymentDeadlineSameDay = Boolean(cutoff && cutoff.getTime() === deadlineDate.getTime());
                 bookingView.paymentDeadline = `${formatDateThai(deadlineDate)} เวลา ${formatTimeThai(deadlineDate)} น.`;
                 bookingView.paymentDeadlineOverdue = new Date().getTime() > deadlineDate.getTime();
             }

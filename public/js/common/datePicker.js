@@ -19,6 +19,8 @@
         let min = (initialOptions && initialOptions.min) || null;
         let max = (initialOptions && initialOptions.max) || null;
         let disabledDates = new Set((initialOptions && initialOptions.disabledDates) || []);
+        // locked = แสดงค่าอย่างเดียว เปิดปฏิทินไม่ได้ (เช่น ช่วงที่ต้องจองเต็มรอบ ระบบเลือกวันให้แล้ว)
+        let locked = Boolean(initialOptions && initialOptions.locked);
         let viewDate = parseValue(input.value) || parseValue(min) || new Date();
         let popup = null;
 
@@ -150,7 +152,7 @@
         }
 
         function openPopup() {
-            if (popup) return;
+            if (popup || locked) return;
             viewDate = parseValue(input.value) || parseValue(min) || new Date();
             popup = document.createElement('div');
             popup.className = 'dp-popup';
@@ -168,6 +170,11 @@
                 if (next.min !== undefined) min = next.min;
                 if (next.max !== undefined) max = next.max;
                 if (next.disabledDates !== undefined) disabledDates = new Set(next.disabledDates);
+                if (next.locked !== undefined) {
+                    locked = Boolean(next.locked);
+                    input.classList.toggle('dp-input--locked', locked);
+                    if (locked) closePopup();
+                }
                 if (popup) render();
             },
             close: closePopup

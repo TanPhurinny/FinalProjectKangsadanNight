@@ -273,6 +273,13 @@ model Booking {
   largeApplianceCount Int @default(0)
   smallAppliancePrice Float @default(20)
   largeAppliancePrice Float @default(40)
+  // พัดลมคิดแยกตามขนาดใบพัด (ไม่เกิน 18 นิ้ว / ใหญ่กว่า 18 ถึง 24 นิ้ว) — ยอดรวมอยู่ใน applianceTotal ด้วย ดู utils/bookingAppliances.js
+  smallFanCount Int @default(0)
+  largeFanCount Int @default(0)
+  smallFanPrice Float @default(20)
+  largeFanPrice Float @default(40)
+  // รายการเครื่องใช้ไฟฟ้า/พัดลมที่ผู้ขายระบุชื่อมา (JSON [{ name, kind, qty, watt }]) — null = จองก่อนมีช่องระบุชื่อ
+  applianceItems String? @db.Text
   applianceTotal Float @default(0)
   lightTotal Float @default(0)
   rentTotal Float @default(0)
