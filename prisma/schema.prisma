@@ -148,6 +148,19 @@ model SellerApplication {
   @@index([userId], map: "SellerApplication_userId_fkey")
 }
 
+// รายการ "ขายอะไรบ้าง" ที่แอดมินเพิ่มเองจากคำที่ผู้ขายพิมพ์ในช่อง "อื่นๆ (ระบุเอง)" (/admin/product-subtypes)
+// รวมกับรายการหลักใน utils/productSubtypes.js ตอนแสดงฟอร์มสมัครร้าน — ซ่อนได้ (isHidden) แต่ไม่ลบ
+// เพราะร้านที่ติ๊กไว้แล้วยังต้องผ่าน validation และเทียบระยะห่างล็อกด้วยชื่อนี้ต่อ
+model ProductSubtypeOption {
+  id          Int      @id @default(autoincrement())
+  productType String   @db.VarChar(50)
+  groupName   String   @db.VarChar(100)
+  name        String   @unique @db.VarChar(100)
+  isHidden    Boolean  @default(false)
+  createdBy   Int?
+  createdAt   DateTime @default(now())
+}
+
 model ShopDetail {
   id            Int     @id @default(autoincrement())
   shopName      String?

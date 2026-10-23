@@ -114,8 +114,80 @@ const MIN_STALL_SPACING = {
     'อื่นๆ': 3
 };
 
+// ประเภทสินค้าที่มีรายการให้ติ๊ก (ตรงกับ SHOP_APPLICATION_PRODUCT_TYPES ใน routes/sellerRoute.js)
+const PRODUCT_TYPE_LABELS = {
+    FOOD: 'อาหาร/เครื่องดื่ม',
+    FASHION: 'เสื้อผ้า/แฟชั่น',
+    'อื่นๆ': 'อื่นๆ'
+};
+
+// เทียบชื่อแบบไม่สนช่องว่าง/ตัวพิมพ์ — ใช้รวมคำที่ผู้ขายพิมพ์เอง และกันแอดมินเพิ่มรายการซ้ำกับที่มีอยู่
+function normalizeSubtypeKey(value) {
+    return String(value || '').toLowerCase().replace(/\s+/g, '');
+}
+
+// --- รายการที่แอดมินเพิ่มเอง (ตาราง ProductSubtypeOption, หน้า /admin/product-subtypes) ---
+// zod refine ใน validationSchemas.js เป็น sync จึงเก็บไว้ใน memory แล้วโหลดใหม่ทุก 60 วินาที
+// (route ที่ใช้ต้อง await loadCustomSubtypes() ก่อน) — แอดมินเพิ่ม/ซ่อนแล้วล้าง cache ทันทีด้วย invalidateCustomSubtypes()
+const CUSTOM_SUBTYPE_CACHE_MS = 60 * 1000;
+let customSubtypeCache = { loadedAt: 0, rows: [] };
+
+async function loadCustomSubtypes({ force = false } = {}) {
+    if (!force && Date.now() - customSubtypeCache.loadedAt < CUSTOM_SUBTYPE_CACHE_MS) {
+        return customSubtypeCache.rows;
+    }
+    try {
+        const prisma = require('../config/prismaClient');
+        const rows = await prisma.productSubtypeOption.findMany({ orderBy: [{ productType: 'asc' }, { groupName: 'asc' }, { name: 'asc' }] });
+        customSubtypeCache = { loadedAt: Date.now(), rows };
+    } catch (error) {
+        // DB ใช้ไม่ได้ชั่วคราว: ใช้ค่าเดิมใน cache ไปก่อน (รายการหลักยังใช้ได้ครบ)
+        console.error('loadCustomSubtypes error:', error.message);
+    }
+    return customSubtypeCache.rows;
+}
+
+function invalidateCustomSubtypes() {
+    customSubtypeCache = { loadedAt: 0, rows: customSubtypeCache.rows };
+}
+
+// รายการหลัก + ที่แอดมินเพิ่ม (เฉพาะที่ไม่ซ่อน) — กลุ่มชื่อเดิมต่อท้ายในกลุ่มนั้น ชื่อกลุ่มใหม่ต่อท้ายประเภท
+function getProductSubtypeGroups() {
+    const merged = {};
+    Object.entries(PRODUCT_SUBTYPE_GROUPS).forEach(([type, groups]) => {
+        merged[type] = groups.map((g) => ({ group: g.group, items: g.items.slice() }));
+    });
+    customSubtypeCache.rows.filter((row) => !row.isHidden).forEach((row) => {
+        if (!merged[row.productType]) merged[row.productType] = [];
+        let group = merged[row.productType].find((g) => g.group === row.groupName);
+        if (!group) {
+            group = { group: row.groupName, items: [] };
+            merged[row.productType].push(group);
+        }
+        if (!group.items.includes(row.name)) group.items.push(row.name);
+    });
+    return merged;
+}
+
+// ค่าที่ส่งมาได้ — รวมรายการที่ซ่อนแล้วด้วย (ร้านที่ติ๊กไว้ก่อนซ่อนยังส่งใบสมัครใหม่ได้)
+function isAllowedSubtype(value) {
+    return ALL_PRODUCT_SUBTYPES.includes(value) || customSubtypeCache.rows.some((row) => row.name === value);
+}
+
+// ชื่อที่มีอยู่แล้วทั้งหมด (normalize) — ใช้เช็คว่าคำที่ผู้ขายพิมพ์เองมีในรายการแล้วหรือยัง
+function getExistingSubtypeKeys() {
+    return new Set([...ALL_PRODUCT_SUBTYPES, ...customSubtypeCache.rows.map((row) => row.name)].map(normalizeSubtypeKey));
+}
+
 module.exports = {
     PRODUCT_SUBTYPE_GROUPS,
     ALL_PRODUCT_SUBTYPES,
-    MIN_STALL_SPACING
+    MIN_STALL_SPACING,
+    PRODUCT_TYPE_LABELS,
+    normalizeSubtypeKey,
+    loadCustomSubtypes,
+    invalidateCustomSubtypes,
+    getProductSubtypeGroups,
+    isAllowedSubtype,
+    getExistingSubtypeKeys
 };

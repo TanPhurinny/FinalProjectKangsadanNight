@@ -8,6 +8,7 @@ const { isStaffOrAdmin, isAdminOnly } = require('../middlewares/auth');
 // --- 1. Import Controllers ---
 const userCtrl = require('../controllers/userController');
 const approvalCtrl = require('../controllers/approvalController');
+const productSubtypeCtrl = require('../controllers/productSubtypeController');
 const requestCtrl = require('../controllers/requestController');
 const marketCtrl = require('../controllers/marketController');
 const announceCtrl = require('../controllers/announcementController');
@@ -98,6 +99,11 @@ router.post('/sellers/blacklist', isAdminOnly, scoreReportCtrl.toggleBlacklist);
 router.get('/booking-holidays', isAdminOnly, bookingHolidayCtrl.getAdminHolidays);
 router.post('/booking-holidays', isAdminOnly, bookingHolidayCtrl.createHoliday);
 router.post('/booking-holidays/:id/delete', isAdminOnly, bookingHolidayCtrl.deleteHoliday);
+
+// รายการ "ขายอะไรบ้าง" ที่แอดมินเพิ่มเองจากคำที่ผู้ขายพิมพ์ในช่อง "อื่นๆ (ระบุเอง)"
+router.get('/product-subtypes', isAdminOnly, productSubtypeCtrl.getProductSubtypesPage);
+router.post('/product-subtypes', isAdminOnly, productSubtypeCtrl.addProductSubtype);
+router.post('/product-subtypes/:id/toggle', isAdminOnly, productSubtypeCtrl.toggleProductSubtype);
 
 // --- 7. Approvals & Requests ---
 router.get('/approvals', approvalCtrl.getApprovalsPage);

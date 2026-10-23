@@ -1,5 +1,5 @@
 const { z } = require('zod');
-const { ALL_PRODUCT_SUBTYPES } = require('./productSubtypes');
+const { isAllowedSubtype } = require('./productSubtypes');
 const { CLEANLINESS_ITEM_IDS } = require('./cleanlinessChecklist');
 
 const USER_ROLE_VALUES = ['ADMIN', 'STAFF', 'SELLER', 'CUSTOMER'];
@@ -100,13 +100,14 @@ const THAI_BANK_NAMES = [
 
 // checkbox หลายตัวชื่อเดียวกัน (productSubtype) — HTML ส่งมาเป็น string เดี่ยวถ้าติ๊กอันเดียว,
 // array ถ้าติ๊กหลายอัน, undefined ถ้าไม่ติ๊กเลย แปลงให้เป็น array เสมอก่อน validate แต่ละค่า
-// กับลิสต์ที่อนุญาต (utils/productSubtypes.js) กันส่งค่ามั่วมาจากนอกฟอร์ม แล้ว join คืนเป็น
+// กับลิสต์ที่อนุญาต (utils/productSubtypes.js รวมที่แอดมินเพิ่ม — route ต้อง await loadCustomSubtypes() ก่อน parse)
+// กันส่งค่ามั่วมาจากนอกฟอร์ม แล้ว join คืนเป็น
 // comma-separated string ให้ตรงกับที่เก็บใน DB (ดู utils/stallSpacing.js ตอนเทียบระยะห่างล็อก)
 const productSubtypeField = z.preprocess((value) => {
     if (value === undefined || value === null || value === '') return [];
     return Array.isArray(value) ? value : [value];
 }, z.array(z.string().trim().min(1).max(100)).max(20))
-    .refine((values) => values.every((v) => ALL_PRODUCT_SUBTYPES.includes(v)), {
+    .refine((values) => values.every((v) => isAllowedSubtype(v)), {
         message: 'ประเภทสินค้าเฉพาะที่เลือกไม่ถูกต้อง'
     })
     .transform((values) => Array.from(new Set(values)).join(','));

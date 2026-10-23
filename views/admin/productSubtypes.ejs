@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>รายการสินค้าที่ขาย — Admin</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet" />
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet" />
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/bookingHolidays.css">
+        <link rel="stylesheet" href="/stylesheets/admin/productSubtypes.css?v=20261023">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body class="bg-light">
+        <script src="/js/common/tabSession.js"></script>
+        <%- include('../partials/navbar') %>
+
+        <%
+            const errorMessages = {
+                invalid_input: 'ข้อมูลไม่ครบหรือไม่ถูกต้อง (ชื่อรายการห้ามมีจุลภาค)',
+                type_mismatch: `"${addedName || ''}" มีในรายการแล้วแต่อยู่คนละประเภทสินค้า — เลือกประเภทให้ตรงกับรายการเดิม`,
+                not_found: 'ไม่พบรายการนี้',
+                save_failed: 'บันทึกไม่สำเร็จ กรุณาลองใหม่'
+            };
+            const movedText = movedCount ? ` และย้าย ${movedCount} ร้านเข้ารายการนี้แล้ว` : '';
+            const successMessages = {
+                added: `เพิ่ม "${addedName || ''}" เข้ารายการแล้ว ขึ้นในฟอร์มสมัครร้านทันที${movedText}`,
+                moved_to_existing: `"${addedName || ''}" มีในรายการอยู่แล้ว${movedText || ' (ไม่มีร้านที่ย้ายได้)'}`,
+                hidden: `ซ่อน "${addedName || ''}" จากฟอร์มสมัครร้านแล้ว ร้านที่เลือกไว้ยังใช้ได้ตามเดิม`,
+                shown: `แสดง "${addedName || ''}" ในฟอร์มสมัครร้านอีกครั้งแล้ว`
+            };
+            const fmtDate = (value) => new Date(value).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' });
+        %>
+
+        <div class="holidays-page">
+            <header class="page-header">
+                <a href="javascript:history.back()" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+                <h2 class="header-title">รายการสินค้าที่ขาย</h2>
+                <div class="header-spacer"></div>
+            </header>
+
+            <div class="container">
+                <p class="page-sub">
+                    คำที่ผู้ขายพิมพ์เองในช่อง "อื่นๆ (ระบุเอง)" ของฟอร์มสมัครร้าน — คำเหล่านี้ไม่เข้าระบบเว้นระยะล็อก
+                    ถ้ามีหลายร้านพิมพ์คำเดียวกัน ให้เพิ่มเข้ารายการแล้วย้ายร้านเหล่านั้นเข้าไปด้วย ระบบจะเตือนเวลาจัดร้านที่ขายของซ้ำกันไว้ใกล้กัน
+                </p>
+
+                <% if (error) { %>
+                <div class="notice notice-danger"><%= errorMessages[error] || 'เกิดข้อผิดพลาด กรุณาลองใหม่' %></div>
+                <% } %>
+                <% if (success) { %>
+                <div class="notice notice-success"><%= successMessages[success] || 'บันทึกเรียบร้อย' %></div>
+                <% } %>
+
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="summary-count"><%= counts.terms %></div>
+                        <div class="summary-label">คำที่ผู้ขายพิมพ์เอง</div>
+                    </div>
+                    <div class="summary-card summary-suggest">
+                        <div class="summary-count"><%= counts.suggested %></div>
+                        <div class="summary-label">ควรเพิ่มเข้ารายการ (<%= suggestMinShops %> ร้านขึ้นไป)</div>
+                    </div>
+                    <div class="summary-card summary-past">
+                        <div class="summary-count"><%= counts.custom %></div>
+                        <div class="summary-label">รายการที่แอดมินเพิ่มแล้ว</div>
+                    </div>
+                </div>
+
+                <% Object.entries(groupsByType).forEach(([type, groups]) => { %>
+                <datalist id="groups-<%= type %>">
+                    <% groups.forEach((group) => { %><option value="<%= group %>"></option><% }) %>
+                </datalist>
+                <% }) %>
+
+                <div class="panel">
+                    <div class="panel-title">คำที่ผู้ขายพิมพ์เอง</div>
+                    <% if (!terms.length) { %>
+                    <div class="panel-body empty-note">ยังไม่มีร้านพิมพ์คำในช่อง "อื่นๆ (ระบุเอง)"</div>
+                    <% } %>
+                    <ul class="term-list">
+                        <% terms.forEach((term, index) => {
+                            const existing = term.existing;
+                            const defaultType = existing ? existing.productType : (productTypeLabels[term.suggestedType] ? term.suggestedType : 'อื่นๆ');
+                        %>
+                        <li class="term-item <%= term.suggested ? 'term-item--suggested' : '' %>">
+                            <div class="term-row">
+                                <div class="term-main">
+                                    <span class="term-label"><%= term.label %></span>
+                                    <span class="term-count"><%= term.count %> ร้าน</span>
+                                    <% if (term.inList) { %>
+                                    <span class="state-badge state-past">มีในรายการแล้ว</span>
+                                    <% } else if (term.suggested) { %>
+                                    <span class="state-badge state-suggest">ควรเพิ่มเข้ารายการ</span>
+                                    <% } %>
+                                </div>
+                                <button type="button" class="btn-row-action js-term-toggle" aria-expanded="false" aria-controls="term-form-<%= index %>">
+                                    <%= term.inList ? 'ย้ายร้านเข้ารายการ' : 'เพิ่มเข้ารายการ' %>
+                                </button>
+                            </div>
+
+                            <form method="POST" action="/admin/product-subtypes" class="term-form" id="term-form-<%= index %>" hidden>
+                                <input type="hidden" name="termKey" value="<%= term.key %>">
+                                <% if (existing) { %>
+                                <input type="hidden" name="name" value="<%= existing.name %>">
+                                <input type="hidden" name="productType" value="<%= existing.productType %>">
+                                <p class="term-existing">
+                                    มีในรายการแล้วเป็น <strong><%= existing.name %></strong>
+                                    (<%= productTypeLabels[existing.productType] || existing.productType %> / <%= existing.groupName %>) — เลือกร้านที่จะย้ายเข้ารายการนี้
+                                </p>
+                                <% } else { %>
+                                <div class="term-form__grid">
+                                    <div>
+                                        <label class="field-label">ชื่อในรายการ <span>(แก้ให้เป็นชื่อมาตรฐานได้ ห้ามมีจุลภาค)</span></label>
+                                        <input type="text" class="field-input" name="name" value="<%= term.label %>" maxlength="100" required>
+                                    </div>
+                                    <div>
+                                        <label class="field-label">ประเภทสินค้า</label>
+                                        <select class="field-input js-term-type" name="productType" required>
+                                            <% Object.entries(productTypeLabels).forEach(([value, label]) => { %>
+                                            <option value="<%= value %>" <%= value === defaultType ? 'selected' : '' %>><%= label %></option>
+                                            <% }) %>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="field-label">กลุ่ม <span>(เลือกกลุ่มเดิม หรือพิมพ์ชื่อกลุ่มใหม่)</span></label>
+                                        <input type="text" class="field-input js-term-group" name="groupName" list="groups-<%= defaultType %>"
+                                            maxlength="100" placeholder="เช่น ปิ้งย่าง" required>
+                                    </div>
+                                </div>
+                                <% } %>
+
+                                <fieldset class="term-shops">
+                                    <legend class="field-label">ย้ายร้านเหล่านี้เข้ารายการด้วย <span>(คำที่พิมพ์ไว้จะย้ายไปเป็นรายการที่ติ๊ก แล้วนับในระบบเว้นระยะล็อก)</span></legend>
+                                    <% term.shops.forEach((shop) => {
+                                        const typeMatches = shop.productType === defaultType;
+                                    %>
+                                    <label class="term-shop <%= typeMatches ? '' : 'is-disabled' %>" data-type="<%= shop.productType %>">
+                                        <input type="checkbox" name="userIds" value="<%= shop.userId %>" <%= typeMatches ? 'checked' : 'disabled' %>>
+                                        <span class="term-shop__name"><%= shop.shopName %></span>
+                                        <span class="term-shop__meta">
+                                            <%= shop.productTypeLabel %> ·
+                                            <%= shop.source === 'shop' ? 'ร้านที่เปิดแล้ว' : ({ PENDING: 'ใบสมัครรอตรวจ', REJECTED: 'ใบสมัครไม่ผ่าน', APPROVED: 'ใบสมัครอนุมัติแล้ว' }[shop.status] || 'ใบสมัคร') %>
+                                        </span>
+                                        <span class="term-shop__note">คนละประเภท ย้ายไม่ได้</span>
+                                    </label>
+                                    <% }) %>
+                                </fieldset>
+
+                                <div class="term-form__actions">
+                                    <button type="button" class="btn-row-cancel js-term-cancel">ยกเลิก</button>
+                                    <button type="submit" class="btn-submit">บันทึก</button>
+                                </div>
+                            </form>
+                        </li>
+                        <% }) %>
+                    </ul>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title">รายการที่แอดมินเพิ่ม</div>
+                    <div class="table-wrap table-wrap--flush">
+                        <table class="holidays-table">
+                            <thead>
+                                <tr>
+                                    <th>ชื่อรายการ</th>
+                                    <th>ประเภท / กลุ่ม</th>
+                                    <th>เพิ่มเมื่อ</th>
+                                    <th>สถานะ</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% if (!customRows.length) { %>
+                                <tr class="empty-row">
+                                    <td colspan="5">ยังไม่มีรายการที่แอดมินเพิ่ม — รายการหลักอยู่ใน utils/productSubtypes.js</td>
+                                </tr>
+                                <% } %>
+                                <% customRows.forEach((row) => { %>
+                                <tr class="<%= row.isHidden ? 'row-hidden' : '' %>">
+                                    <td class="cell-name"><%= row.name %></td>
+                                    <td><%= productTypeLabels[row.productType] || row.productType %> / <%= row.groupName %></td>
+                                    <td class="cell-date"><%= fmtDate(row.createdAt) %></td>
+                                    <td><span class="state-badge <%= row.isHidden ? 'state-past' : 'state-upcoming' %>"><%= row.isHidden ? 'ซ่อนอยู่' : 'แสดงในฟอร์ม' %></span></td>
+                                    <td class="cell-actions">
+                                        <form method="POST" action="/admin/product-subtypes/<%= row.id %>/toggle">
+                                            <button type="submit" class="btn-row-action"><%= row.isHidden ? 'แสดงอีกครั้ง' : 'ซ่อน' %></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="panel-foot">ซ่อนได้แต่ลบไม่ได้ — ร้านที่ติ๊กรายการนั้นไว้แล้วยังต้องใช้ชื่อนี้เทียบระยะห่างล็อกต่อ</p>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // เปิด/ปิดฟอร์มเพิ่มของแต่ละคำ + เปลี่ยนประเภทแล้วสลับกลุ่มที่แนะนำ และติ๊กได้เฉพาะร้านประเภทเดียวกัน
+            document.querySelectorAll('.term-item').forEach(function (item) {
+                var toggle = item.querySelector('.js-term-toggle');
+                var form = item.querySelector('.term-form');
+                var cancel = item.querySelector('.js-term-cancel');
+                var typeSelect = item.querySelector('.js-term-type');
+                var groupInput = item.querySelector('.js-term-group');
+
+                function setOpen(open) {
+                    form.hidden = !open;
+                    toggle.setAttribute('aria-expanded', String(open));
+                    if (open && groupInput) groupInput.focus();
+                }
+                toggle.addEventListener('click', function () { setOpen(form.hidden); });
+                cancel.addEventListener('click', function () { setOpen(false); });
+
+                // คำที่มีในรายการแล้วไม่มีช่องประเภท/กลุ่ม (ใช้ของรายการเดิม)
+                if (!typeSelect || !groupInput) return;
+                typeSelect.addEventListener('change', function () {
+                    var type = typeSelect.value;
+                    groupInput.setAttribute('list', 'groups-' + type);
+                    item.querySelectorAll('.term-shop').forEach(function (label) {
+                        var matches = label.dataset.type === type;
+                        var checkbox = label.querySelector('input');
+                        label.classList.toggle('is-disabled', !matches);
+                        checkbox.disabled = !matches;
+                        checkbox.checked = matches;
+                    });
+                });
+            });
+        </script>
+    </body>
+</html>

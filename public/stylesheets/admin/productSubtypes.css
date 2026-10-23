@@ -1,0 +1,213 @@
+/* ========================================
+   PRODUCT SUBTYPES PAGE — gridgeist
+   ต่อยอดจาก bookingHolidays.css (header / summary / panel / table ใช้ร่วมกัน)
+   หน้านี้เพิ่มแค่รายการคำที่ผู้ขายพิมพ์เอง + ฟอร์มเพิ่มเข้ารายการแบบกางในแถว
+   ======================================== */
+
+.summary-suggest { border-left-color: #c98a2e; }
+.summary-suggest .summary-count { color: #a66d1c; }
+
+.state-suggest { background: #fbf1e2; color: #a66d1c; }
+
+.empty-note {
+    color: var(--sub);
+    font-size: 13px;
+    text-align: center;
+}
+
+.term-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.term-item {
+    border-bottom: 1px solid var(--border);
+}
+
+.term-item:last-child { border-bottom: none; }
+
+.term-item--suggested {
+    box-shadow: inset 3px 0 0 #c98a2e;
+}
+
+.term-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 20px;
+}
+
+.term-main {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    min-width: 0;
+}
+
+.term-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    word-break: break-word;
+}
+
+.term-count {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sub);
+    font-variant-numeric: tabular-nums;
+}
+
+.btn-row-action,
+.btn-row-cancel {
+    padding: 6px 14px;
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: 0.15s;
+}
+
+.btn-row-action {
+    border: 1px solid var(--primary);
+    background: #fff;
+    color: var(--primary-dark);
+}
+
+.btn-row-action:hover,
+.btn-row-action[aria-expanded="true"] {
+    background: var(--primary);
+    color: #fff;
+}
+
+.btn-row-cancel {
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+}
+
+.btn-row-cancel:hover { border-color: var(--text); }
+
+.term-form {
+    padding: 16px 20px 20px;
+    border-top: 1px dashed var(--border);
+    background: #f6f8f8;
+}
+
+.term-form[hidden] { display: none; }
+
+.term-form__grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr 1.3fr;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.term-existing {
+    margin: 0 0 14px;
+    font-size: 13px;
+    color: var(--text);
+}
+
+.term-shops {
+    border: 1px solid var(--border);
+    background: #fff;
+    margin: 0 0 16px;
+    padding: 12px 14px 6px;
+    min-width: 0;
+}
+
+.term-shops legend {
+    float: left;
+    width: 100%;
+    padding: 0;
+    margin-bottom: 8px;
+}
+
+.term-shop {
+    clear: both;
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px 10px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.term-shop input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+}
+
+.term-shop__name {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.term-shop__meta {
+    color: var(--sub);
+    font-size: 12px;
+    text-align: right;
+}
+
+.term-shop__note {
+    display: none;
+    grid-column: 2 / -1;
+    color: #a66d1c;
+    font-size: 12px;
+}
+
+.term-shop.is-disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.term-shop.is-disabled .term-shop__note { display: block; }
+
+.term-form__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.table-wrap--flush {
+    border: none;
+    border-radius: 0;
+}
+
+.cell-name { font-weight: 600; }
+
+.row-hidden td { color: var(--sub); }
+
+.panel-foot {
+    margin: 0;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--sub);
+}
+
+@media (max-width: 700px) {
+    .term-row {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 12px 16px;
+    }
+    .term-form { padding: 14px 16px 16px; }
+    .term-form__grid { grid-template-columns: 1fr; }
+    .term-shop { grid-template-columns: 16px minmax(0, 1fr); }
+    .term-shop__meta {
+        grid-column: 2;
+        text-align: left;
+    }
+    .term-form__actions .btn-submit,
+    .term-form__actions .btn-row-cancel { flex: 1; }
+}

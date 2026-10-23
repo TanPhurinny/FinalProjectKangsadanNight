@@ -15,7 +15,7 @@ const { buildProfileChecks } = require('../utils/shopCompleteness');
 const { buildSellerHome } = require('../utils/sellerHome');
 const { buildSellerCalendar } = require('../utils/sellerCalendar');
 const { repairReportSchema, bookingStallInputSchema, sellerApplicationSchema, shopProfileSchema, THAI_BANK_NAMES } = require('../utils/validationSchemas');
-const { PRODUCT_SUBTYPE_GROUPS } = require('../utils/productSubtypes');
+const { loadCustomSubtypes, getProductSubtypeGroups } = require('../utils/productSubtypes');
 const { buildPromptPayQrDataUrl, PROMPTPAY_ID } = require('../utils/promptpayQr');
 const { verifySlip } = require('../utils/slipVerification');
 const {
@@ -1072,11 +1072,12 @@ function getReusableImages(application) {
 }
 
 async function renderShopApplication(req, res, { latestApplication, error = null, success = null, formData = null }) {
+    await loadCustomSubtypes();
     return res.render('seller/shopApplication', {
         user: req.user,
         latestApplication,
         bankNames: THAI_BANK_NAMES,
-        productSubtypeGroups: PRODUCT_SUBTYPE_GROUPS,
+        productSubtypeGroups: getProductSubtypeGroups(),
         zonesByType: getApplicationZonesByType(),
         maxProductImagesCount: MAX_SHOP_PRODUCT_IMAGES,
         maxMenuImagesCount: MAX_SHOP_MENU_IMAGES,
@@ -1155,6 +1156,8 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
         }
 
         try {
+            // รายการที่แอดมินเพิ่มต้องอยู่ใน cache ก่อน validate (refine ของ productSubtype เป็น sync)
+            await loadCustomSubtypes();
             const parsed = sellerApplicationSchema.safeParse(req.body);
             if (!parsed.success) {
                 return renderWithError('missing_fields');
