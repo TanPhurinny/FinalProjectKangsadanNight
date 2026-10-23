@@ -655,6 +655,12 @@
     border-color: rgba(192, 57, 43, 0.3);
 }
 
+.approvals-page .tag--slip-manual {
+    background: #fdf7ef;
+    color: var(--warning-dark);
+    border-color: var(--warning-color);
+}
+
 .approvals-page .tag--slip-pending {
     background: rgba(107, 138, 138, 0.1);
     color: var(--ink-soft);

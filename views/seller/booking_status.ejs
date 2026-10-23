@@ -98,7 +98,43 @@
     </div>
   </main>
 
+  <% if (typeof slipCheck !== 'undefined' && slipCheck && success === 'slip_uploaded') { %>
+  <%# popup หลังส่งสลิปที่ระบบตรวจอัตโนมัติไม่ได้ (ดู verifySlip ใน utils/slipVerification.js) %>
+  <div class="modal fade" id="slipCheckModal" tabindex="-1" aria-labelledby="slipCheckModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-custom">
+        <div class="modal-header">
+          <h5 class="modal-title" id="slipCheckModalTitle"><i class="bi bi-qr-code-scan me-2"></i><%= slipCheck === 'no_qr' ? 'สลิปนี้ไม่มี QR code' : 'ระบบตรวจสลิปอัตโนมัติใช้งานไม่ได้ชั่วคราว' %></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+        </div>
+        <div class="modal-body">
+          <% if (slipCheck === 'no_qr') { %>
+          <p>ระบบส่งสลิปของคุณให้แอดมินเรียบร้อยแล้ว แต่สลิปนี้<strong>ไม่มี QR code ตรวจสลิปของธนาคาร</strong> (เช่น สลิป TrueMoney Wallet, ใบเสร็จ 7-Eleven/Counter Service หรือใบเสร็จของบริษัท) ระบบจึงตรวจอัตโนมัติไม่ได้</p>
+          <p class="mb-0">แอดมินจะตรวจสลิปนี้เอง ซึ่ง<strong>อาจใช้เวลานานกว่าปกติ</strong> ครั้งหน้าถ้าโอนผ่านแอปธนาคาร (สลิปมี QR code มุมล่าง) ระบบจะตรวจให้ทันที</p>
+          <% } else { %>
+          <p class="mb-0">ระบบส่งสลิปของคุณให้แอดมินเรียบร้อยแล้ว แต่ตอนนี้ระบบตรวจสลิปอัตโนมัติใช้งานไม่ได้ แอดมินจะตรวจสลิปนี้เอง ซึ่ง<strong>อาจใช้เวลานานกว่าปกติ</strong> ไม่ต้องส่งสลิปซ้ำ</p>
+          <% } %>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-custom-primary btn-custom" data-bs-dismiss="modal">รับทราบ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <% } %>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/js/seller/statusbook.js"></script>
+  <script>
+    (function () {
+      var el = document.getElementById('slipCheckModal');
+      if (!el || !window.bootstrap) return;
+      new bootstrap.Modal(el).show();
+      // ลบ slipCheck ออกจาก URL กัน popup เด้งซ้ำตอนรีเฟรช
+      var url = new URL(window.location.href);
+      url.searchParams.delete('slipCheck');
+      window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    })();
+  </script>
 </body>
 </html>

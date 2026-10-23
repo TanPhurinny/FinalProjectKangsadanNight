@@ -463,7 +463,9 @@ function openDetail(detail) {
                 ? '<span class="tag tag--slip-ok">สลิปจริง ยอดตรง</span>'
                 : detail.slipVerified === false
                     ? `<span class="tag tag--slip-bad">สลิปมีปัญหา: ${escapeHtml(detail.slipVerifyReason || 'ตรวจไม่ผ่าน')}</span>`
-                    : '<span class="tag tag--slip-pending">ยังไม่ตรวจสลิปอัตโนมัติ</span>';
+                    : String(detail.slipVerifyReason || '').startsWith('[ตรวจเอง]')
+                        ? `<span class="tag tag--slip-manual">ตรวจเอง: ${escapeHtml(detail.slipVerifyReason.replace('[ตรวจเอง]', '').trim())}</span>`
+                        : '<span class="tag tag--slip-pending">ยังไม่ตรวจสลิปอัตโนมัติ</span>';
             document.getElementById('m-slip-tags').innerHTML = slipTag;
         }
     }

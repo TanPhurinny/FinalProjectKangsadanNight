@@ -150,6 +150,9 @@
         slipVerifyAlert = `<div class="pay-alert pay-alert--success"><i class="bi bi-patch-check-fill"></i><span>ระบบตรวจสอบสลิปอัตโนมัติแล้ว: <strong>สลิปจริง ยอดถูกต้อง</strong> รอแอดมินยืนยันขั้นสุดท้าย</span></div>`;
       } else if (booking.slipVerified === false) {
         slipVerifyAlert = `<div class="pay-alert pay-alert--danger"><i class="bi bi-exclamation-triangle-fill"></i><span>ระบบตรวจสอบสลิปอัตโนมัติแล้วพบปัญหา: <strong>${booking.slipVerifyReason || 'ตรวจสอบไม่ผ่าน'}</strong> — ถ้ามั่นใจว่าโอนถูกต้องแล้ว กรุณาติดต่อแอดมิน</span></div>`;
+      } else if ((booking.slipVerifyReason || '').startsWith('[ตรวจเอง]')) {
+        // ตรวจอัตโนมัติไม่ได้ (สลิปไม่มี QR / ระบบตรวจสลิปใช้ไม่ได้) — ไม่ได้แปลว่าสลิปผิด แค่รอแอดมินตรวจเอง
+        slipVerifyAlert = `<div class="pay-alert pay-alert--warning"><i class="bi bi-qr-code-scan"></i><span>${booking.slipVerifyReason.replace('[ตรวจเอง]', '').trim()} — อาจใช้เวลานานกว่าปกติ</span></div>`;
       }
       paymentSection = `
         <div class="pay-box">

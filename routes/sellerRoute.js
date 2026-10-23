@@ -2302,7 +2302,8 @@ router.get('/booking-status', isAuthenticated, async (req, res) => {
         notifications,
         canExtendLock: Boolean(activeLockForExtension && !activeLockForExtension.pendingExtension),
         error: req.query.error || null,
-        success: req.query.success || null
+        success: req.query.success || null,
+        slipCheck: ['no_qr', 'service'].includes(req.query.slipCheck) ? req.query.slipCheck : null
     });
 });
 
@@ -2370,7 +2371,9 @@ router.post('/booking-payment/confirm', isSellerOrApplicant, (req, res) => {
                 }
             });
 
-            return res.redirect('/booking-status?success=slip_uploaded');
+            // สลิปที่ระบบตรวจอัตโนมัติไม่ได้ (ไม่มี QR / SlipOK ใช้ไม่ได้) -> หน้าสถานะเด้ง popup บอกผู้ขายว่าแอดมินจะตรวจเอง
+            const slipCheck = verifyResult && verifyResult.manual ? `&slipCheck=${verifyResult.manual}` : '';
+            return res.redirect(`/booking-status?success=slip_uploaded${slipCheck}`);
         } catch (error) {
             console.error('booking-payment confirm error', error);
             return res.redirect('/booking-status?error=payment_confirm_failed');

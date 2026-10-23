@@ -324,6 +324,7 @@
                                 <% } else if (request.stage === 'slip') { %>
                                     <% if (request.slipVerified === true) { %><span class="flag flag--ok">สลิปจริง ยอดตรง</span>
                                     <% } else if (request.slipVerified === false) { %><span class="flag flag--danger">สลิปมีปัญหา</span><span class="q-row__note"><%= request.slipVerifyReason || 'ตรวจไม่ผ่าน' %></span>
+                                    <% } else if (String(request.slipVerifyReason || '').startsWith('[ตรวจเอง]')) { %><span class="flag flag--warn">ตรวจเอง</span><span class="q-row__note"><%= request.slipVerifyReason.replace('[ตรวจเอง]', '').trim() %></span>
                                     <% } else { %><span class="flag flag--plain">ยังไม่ตรวจอัตโนมัติ</span><% } %>
                                 <% } else if (request.stage === 'overdue') { %>
                                     <span class="flag flag--danger" data-deadline="<%= request.paymentDeadlineMs %>" data-deadline-kind="payment">เลยกำหนด <span class="mono"><%= request.paymentDeadlineText %></span></span>
