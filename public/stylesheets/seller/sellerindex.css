@@ -824,9 +824,7 @@ body {
 	font-size: 1rem;
 	font-weight: 700;
 	cursor: pointer;
-	box-shadow: 3px 3px 0 var(--navy);
 }
-.open-checkin__btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--navy); }
 .open-checkin__btn:disabled { opacity: .6; cursor: wait; }
 /* ค่าเริ่มต้นเปิดอยู่: ปุ่มปิดเป็นปุ่มรอง (ไม่เด่นเท่าการ์ดสถานะ) / ปิดแล้ว: การ์ดเทา ปุ่มยกเลิกเป็นปุ่มหลัก */
 .open-checkin.is-open .open-checkin__btn { background: var(--danger); border-color: #8e2a1f; color: #fff; }

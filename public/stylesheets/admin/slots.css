@@ -1402,7 +1402,6 @@
     color: var(--zc-cl);
     border-color: var(--text);
     border-left-width: 6px;
-    box-shadow: 3px 3px 0 var(--text);
 }
 
 .zc-title { font-size: 15px; font-weight: 700; }

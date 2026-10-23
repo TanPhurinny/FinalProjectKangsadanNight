@@ -90,7 +90,6 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
 .sh-tonight {
     background: var(--sh-paper);
     border: 2px solid var(--sh-ink);
-    box-shadow: 5px 5px 0 var(--sh-ink);
     padding: 16px;
     display: flex;
     flex-direction: column;
@@ -119,9 +118,7 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
     text-align: center;
     text-decoration: none;
     cursor: pointer;
-    box-shadow: 3px 3px 0 var(--sh-ink);
 }
-.sh-open__btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--sh-ink); }
 .sh-open__btn:disabled { opacity: .6; cursor: wait; }
 .sh-open.is-closed .sh-open__btn { background: var(--sh-ink); border-color: var(--sh-ink); }
 .sh-open__btn--go { background: var(--sh-accent); border-color: var(--sh-accent-ink); color: #fff; }
@@ -287,7 +284,7 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
 .sh-ann__body { margin: 0 0 6px; font-size: 13px; color: var(--sh-soft); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* QR dialog + toast */
-.sh-dialog { width: min(380px, calc(100vw - 24px)); padding: 16px; border: 1px solid var(--sh-ink); box-shadow: 6px 6px 0 var(--sh-ink); text-align: center; }
+.sh-dialog { width: min(380px, calc(100vw - 24px)); padding: 16px; border: 1px solid var(--sh-ink); box-shadow: 0 8px 24px rgba(18, 48, 58, .18); text-align: center; }
 .sh-dialog::backdrop { background: rgba(18, 48, 58, .55); }
 .sh-dialog .sh-sechead { text-align: left; }
 .sh-dialog img { width: min(240px, 70vw); aspect-ratio: 1; border: 1px solid var(--sh-ink); }
@@ -295,7 +292,7 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
 .sh-dialog__close { width: 36px; height: 36px; border: 1px solid var(--sh-ink); background: #fff; cursor: pointer; }
 .sh-toast {
     position: fixed; left: 50%; bottom: 24px; z-index: 3000; max-width: calc(100vw - 32px);
-    padding: 10px 16px; background: var(--sh-ink); color: #fff; font-size: 13px; box-shadow: 3px 3px 0 #000;
+    padding: 10px 16px; background: var(--sh-ink); color: #fff; font-size: 13px; box-shadow: 0 8px 24px rgba(18, 48, 58, .18);
     transform: translate(-50%, 20px); opacity: 0; pointer-events: none; transition: opacity .15s, transform .15s; word-break: break-all;
 }
 .sh-toast.show { opacity: 1; transform: translate(-50%, 0); }
