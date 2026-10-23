@@ -34,7 +34,10 @@ const { getBookingRoundMetaForDate } = require('./bookingRound');
 // (แก้ไข object ตรงๆ ในตัว ไม่ return ค่าใหม่ — เรียกแล้วใช้ zonesData ตัวเดิมต่อได้เลย)
 // หาผ่าน Slot.slotNumber(=stallCode) -> Booking ล่าสุด -> User -> ShopDetail (ยังไม่มี ShopDetail ถ้ายังไม่จ่ายเงิน
 // จึง fallback ไปดูใบสมัคร SellerApplication ล่าสุดแทน)
-async function attachOccupantDetails(zonesData) {
+// options.bookingIdByCode: { A101: bookingId } — ใช้ Booking ตัวที่ครอบ "วันที่กำลังดู" บนผัง (ดู utils/stallDayStatus.js)
+// แทน Booking ล่าสุด ไม่ส่งมา = ใช้ Booking ล่าสุดของล็อกเหมือนเดิม
+async function attachOccupantDetails(zonesData, options = {}) {
+    const bookingIdByCode = options.bookingIdByCode || null;
     const bookedStalls = [];
     zonesData.forEach((zone) => {
         zone.columns.forEach((column) => {
@@ -57,7 +60,7 @@ async function attachOccupantDetails(zonesData) {
             bookings: {
                 where: { status: { in: ['IN_PROGRESS', 'SUCCESS', 'APPROVED'] } },
                 orderBy: { id: 'desc' },
-                take: 1,
+                ...(bookingIdByCode ? {} : { take: 1 }),
                 select: {
                     id: true,
                     userId: true,
@@ -80,7 +83,8 @@ async function attachOccupantDetails(zonesData) {
 
     const missingUserIds = [];
     occupiedSlots.forEach((slot) => {
-        const occupantBooking = slot.bookings[0];
+        const wantedId = bookingIdByCode ? bookingIdByCode[slot.slotNumber] : null;
+        const occupantBooking = (wantedId && slot.bookings.find((b) => b.id === wantedId)) || slot.bookings[0];
         if (!occupantBooking) return;
         const shop = occupantBooking.user?.shop || null;
         const requestIdMatch = String(occupantBooking.storeDetailSnapshot || '').match(/^\[BOOKING_REQUEST_ID:(\d+)\]/);
@@ -152,7 +156,7 @@ async function attachOccupantDetails(zonesData) {
             ? `${toThaiDate(info.rentalStartDate)} - ${toThaiDate(info.rentalEndDate)}`
             : null;
         info.paymentStatusText = BOOKING_STATUS_LABEL[info.bookingStatus] || info.bookingStatus || null;
-        info.isUnpaid = info.bookingStatus === 'IN_PROGRESS';
+        info.isUnpaid = info.bookingStatus !== 'SUCCESS';
         info.daysUntilExpiry = info.rentalEndDate
             ? Math.ceil((new Date(info.rentalEndDate).getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
             : null;
@@ -160,8 +164,9 @@ async function attachOccupantDetails(zonesData) {
         // ถ้าหา requestId จาก tag ไม่เจอเลยสักแถว ถือว่าข้อมูลไม่พอ ไม่ฟันธงว่าใหม่ กันขึ้นป้ายผิด
         const requestIds = requestIdsByUserId.get(info.userId);
         info.isNewCustomer = !!requestIds && requestIds.size <= 1;
-        // ป้ายสถานะที่จะโชว์บนผัง (ไม่จ่ายเงินสำคัญกว่าลูกค้าใหม่ — โชว์ได้แค่ป้ายเดียวต่อล็อก)
-        info.statusBadge = info.isUnpaid ? 'unpaid' : (info.isNewCustomer ? 'new' : null);
+        // สีพื้นของล็อกบนผัง: ม่วง = รอจ่าย/รอยืนยันสลิป, เขียว = ยืนยันสลิปแล้ว (ลูกค้าใหม่แสดงเป็นจุดที่มุมล็อกแยกต่างหาก)
+        // APPROVED ยังไม่ผ่านการยืนยันสลิป จึงนับเป็นรอจ่ายด้วย
+        info.statusBadge = info.bookingStatus === 'SUCCESS' ? 'paid' : 'unpaid';
         // ลิงก์ไปหน้าอนุมัติ — เปิดไปที่ "รอบ" ของคำขอนี้เลย (หน้า /admin/approvals รองรับ query ?round=N อยู่แล้ว)
         // ไม่ได้ auto-scroll ไปเจาะจงคำขอ (หน้านั้นยังไม่รองรับ) แค่พาไปถูกรอบ แอดมินหาชื่อร้านต่อเอง
         info.approvalsUrl = info.rentalStartDate

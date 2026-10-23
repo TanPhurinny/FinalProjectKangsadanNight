@@ -345,7 +345,12 @@
     .color-recommended { background: #fff; border: 2px solid #27AE60; }
     .color-spacing-warning { background: #fdf3e0; border: 2px solid #d97706; }
     .color-occ-unpaid { background: #a855f7; border-color: #9333ea; }
-    .color-occ-new { background: #27AE60; border-color: #1E8449; }
+    .color-occ-paid { background: #27AE60; border-color: #1E8449; }
+    .color-occ-new { position: relative; }
+    .color-occ-new::after {
+      content: ''; position: absolute; top: 2px; right: 2px;
+      width: 6px; height: 6px; background: #fff; border: 2px solid #0f5132;
+    }
     .color-expiry-near { background: #fff; box-shadow: inset 0 0 0 3px #e2b83a; }
     .color-expiry-critical { background: #fff; box-shadow: inset 0 0 0 3px #c0392b; }
     .color-pink { background: #ec4899; border-color: #db2777; }
@@ -572,9 +577,23 @@
       background: #a855f7;
       color: #fff;
     }
-    .stall-cell.booked.occ-new {
+    .stall-cell.booked.occ-paid {
       background: #27AE60;
       color: #fff;
+    }
+    /* ลูกค้าใหม่ = จุดที่มุมขวาบน ไม่ใช้สีพื้น (สีพื้นบอกสถานะจ่ายเงินอย่างเดียว เหมือน /admin/slots) */
+    .stall-cell.booked.occ-new {
+      position: relative;
+    }
+    .stall-cell.booked.occ-new::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 6px;
+      height: 6px;
+      background: #fff;
+      border: 2px solid #0f5132;
     }
 
     /* ใกล้หมดอายุ/ใกล้หมดอายุมาก — ใช้ "ขอบวง" (ring) แทนเปลี่ยนพื้นหลัง จะได้ไม่ไปทับสีสถานะร้าน
