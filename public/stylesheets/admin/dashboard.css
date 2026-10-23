@@ -19,13 +19,13 @@
     --line: #d7e3e6;
     --line-soft: #e7eeef;
     --soft-bg: #f6f8f8;
-    --mono: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
+    --mono: 'IBM Plex Mono', 'IBM Plex Sans Thai', ui-monospace, Menlo, Consolas, 'Leelawadee UI', 'Sukhumvit Set', monospace;
     --gap: 1px;
 }
 
 .db-body {
     background: var(--soft-bg);
-    font-family: 'IBM Plex Sans Thai', sans-serif;
+    font-family: 'IBM Plex Sans Thai', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
     color: var(--ink);
 }
 
@@ -316,7 +316,7 @@ kbd {
     position: absolute;
     top: 4px;
     font-size: 0.6rem;
-    font-family: 'IBM Plex Sans Thai', sans-serif;
+    font-family: 'IBM Plex Sans Thai', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
 }
 
 .phase-track {

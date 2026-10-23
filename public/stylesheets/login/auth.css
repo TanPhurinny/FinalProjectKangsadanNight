@@ -9,7 +9,7 @@
     --line-soft: #e7eeef;
     --white: #ffffff;
     --bg-main: #f6f8f8;
-    --mono: 'IBM Plex Mono', 'IBM Plex Sans Thai', monospace;
+    --mono: 'IBM Plex Mono', 'IBM Plex Sans Thai', ui-monospace, Menlo, Consolas, 'Leelawadee UI', 'Sukhumvit Set', monospace;
 }
 
 .alert-auto-fade {
@@ -18,7 +18,7 @@
 }
 
 body {
-    font-family: 'IBM Plex Sans Thai', sans-serif;
+    font-family: 'IBM Plex Sans Thai', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
     background: var(--bg-main);
     color: var(--ink);
     min-height: 100vh;

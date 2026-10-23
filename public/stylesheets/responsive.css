@@ -1,5 +1,8 @@
 /* Global responsive rules for all pages */
 
+/* ให้ตัวหนังสือคมขึ้นบน macOS/iOS (หน้า index/login/resetPassword ไม่ได้โหลด navbar.css) */
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
 @media (max-width: 1199.98px) {
 
     .container,
