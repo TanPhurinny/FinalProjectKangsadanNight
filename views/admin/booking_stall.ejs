@@ -784,7 +784,7 @@
       document.getElementById('tt-label-note').textContent = 'หมายเหตุ';
       if (stall && stall.spacingWarning) {
         document.getElementById('tt-note').textContent =
-          `⚠ ห่างจากล็อก ${stall.spacingWarning.nearestCode} (ขายสินค้าชนิดเดียวกัน) แค่ ${stall.spacingWarning.distance} ล็อก — แนะนำเว้น ≥ ${REQUEST_DATA.minStallSpacing} ล็อก (เลือกได้ตามดุลยพินิจ)`;
+          `⚠ ห่างจากล็อก ${stall.spacingWarning.nearestCode} (${(stall.spacingWarning.sharedSubtypes || []).length ? `ขาย ${stall.spacingWarning.sharedSubtypes.join(', ')} เหมือนกัน` : 'ขายสินค้าชนิดเดียวกัน'}) แค่ ${stall.spacingWarning.distance} ล็อก — แนะนำเว้น ≥ ${REQUEST_DATA.minStallSpacing} ล็อก (เลือกได้ตามดุลยพินิจ)`;
       } else if (REQUEST_DATA.productSubtype && stall) {
         document.getElementById('tt-note').textContent = 'แนะนำ — ไม่มีร้านขายสินค้าชนิดเดียวกันอยู่ใกล้ ๆ · คลิกเพื่อเลือก';
       } else {

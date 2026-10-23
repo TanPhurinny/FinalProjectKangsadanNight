@@ -251,7 +251,11 @@ async function buildAdminBookingStallPageData(requestId) {
                         occupantSubtypeByCode
                     });
                     if (conflicts.length) {
-                        stall.spacingWarning = { distance: conflicts[0].distance, nearestCode: conflicts[0].code };
+                        stall.spacingWarning = {
+                            distance: conflicts[0].distance,
+                            nearestCode: conflicts[0].code,
+                            sharedSubtypes: conflicts[0].sharedSubtypes
+                        };
                     }
                 });
             });
