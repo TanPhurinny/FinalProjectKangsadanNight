@@ -667,6 +667,8 @@ exports.renderMyPostsPage = async (req, res) => {
             categories: COMMUNITY_CATEGORIES,
             categoryIcons: COMMUNITY_CATEGORY_ICONS,
             defaultCategoryIcon: DEFAULT_CATEGORY_ICON,
+            categoryColors: COMMUNITY_CATEGORY_COLORS,
+            defaultCategoryColor: DEFAULT_CATEGORY_COLOR,
             posts
         });
     } catch (error) {
@@ -676,37 +678,6 @@ exports.renderMyPostsPage = async (req, res) => {
             announcements: [],
             error: 'ไม่สามารถโหลดหน้าจัดการโพสต์ได้'
         });
-    }
-};
-
-exports.getMyPosts = async (req, res) => {
-    try {
-        if (!isSeller(req.user)) {
-            return res.status(403).json({ success: false, message: 'เฉพาะผู้ขายเท่านั้นที่เข้าถึงข้อมูลนี้ได้' });
-        }
-
-        const category = normalizeCategory(req.query.category);
-        const keyword = String(req.query.q || '').trim();
-
-        const where = {
-            userId: req.user.id
-        };
-
-        if (category) {
-            where.category = category;
-        }
-
-        if (keyword) {
-            where.content = {
-                contains: keyword
-            };
-        }
-
-        const posts = await fetchFeedPosts(req.user.id, where);
-        return res.json({ success: true, posts });
-    } catch (error) {
-        console.error('getMyPosts error:', error);
-        return res.status(500).json({ success: false, message: 'ไม่สามารถโหลดโพสต์ของคุณได้' });
     }
 };
 

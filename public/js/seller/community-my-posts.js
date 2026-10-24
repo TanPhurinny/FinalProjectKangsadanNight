@@ -1,335 +1,202 @@
 'use strict';
 
+/* ============================================================
+   community-my-posts.js — แดชบอร์ด "โพสต์ของฉัน" (/community/my-posts)
+   หน้านี้แค่สรุป/ค้นหา/ลบ ส่วนการแก้ไขส่งไปใช้ฟอร์มตัวเดียวในหน้าฟีด (/community?edit=ID)
+   จะได้ไม่มีฟอร์มแก้ไขสองชุดที่ต้องตามแก้ให้ตรงกัน
+   ============================================================ */
+
+const pageData = (() => {
+    try {
+        return JSON.parse(document.getElementById('myPostsData')?.textContent || '{}');
+    } catch (error) {
+        return {};
+    }
+})();
+
 const state = {
-    posts: Array.isArray(window.__MY_POSTS_INITIAL__) ? window.__MY_POSTS_INITIAL__ : [],
-    removeImageIds: new Set()
+    posts: Array.isArray(pageData.posts) ? pageData.posts : [],
+    query: '',
+    category: '',
+    sort: 'latest'
 };
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function formatNumber(value) {
+    return Number(value || 0).toLocaleString('th-TH');
+}
 
 function showToast(message) {
     const toastEl = document.getElementById('actionToast');
     const msgEl = document.getElementById('toastMessage');
     if (!toastEl || !msgEl) return;
-
     msgEl.textContent = message;
     bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2500, autohide: true }).show();
 }
 
-function parseJsonSafe(response) {
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-        return Promise.resolve({ success: false, message: 'รูปแบบข้อมูลตอบกลับไม่ถูกต้อง' });
+function categoryIcon(category) {
+    return (pageData.categoryIcons || {})[category] || pageData.defaultCategoryIcon || 'bi-grid';
+}
+
+function categoryColor(category) {
+    return (pageData.categoryColors || {})[category] || pageData.defaultCategoryColor || 'teal';
+}
+
+function renderStats() {
+    const totals = state.posts.reduce((acc, post) => ({
+        likes: acc.likes + Number(post.likes || 0),
+        comments: acc.comments + Number(post.comments || 0)
+    }), { likes: 0, comments: 0 });
+
+    document.getElementById('statPosts').textContent = formatNumber(state.posts.length);
+    document.getElementById('statLikes').textContent = formatNumber(totals.likes);
+    document.getElementById('statComments').textContent = formatNumber(totals.comments);
+
+    // คอมเมนต์นับหนักกว่าถูกใจ เพราะแปลว่ามีคนคุยต่อจริง
+    const top = state.posts.reduce((best, post) => {
+        const score = Number(post.likes || 0) + Number(post.comments || 0) * 2;
+        return !best || score > best.score ? { post, score } : best;
+    }, null);
+    const topEl = document.getElementById('statTop');
+    if (top && top.score > 0) {
+        topEl.textContent = top.post.content;
+        topEl.href = `/community#post-${top.post.id}`;
+    } else {
+        topEl.textContent = state.posts.length ? 'ยังไม่มีคนกดถูกใจหรือคอมเมนต์' : '—';
+        topEl.removeAttribute('href');
     }
-
-    return response.json();
 }
 
-function escapeHtml(value) {
-    const div = document.createElement('div');
-    div.textContent = String(value || '');
-    return div.innerHTML;
+function getVisiblePosts() {
+    const query = state.query.trim().toLowerCase();
+    const sorters = {
+        latest: (a, b) => new Date(b.createdAtIso || 0) - new Date(a.createdAtIso || 0),
+        likes: (a, b) => Number(b.likes || 0) - Number(a.likes || 0),
+        comments: (a, b) => Number(b.comments || 0) - Number(a.comments || 0)
+    };
+    return state.posts
+        .filter((post) => !state.category || post.category === state.category)
+        .filter((post) => !query || String(post.content || '').toLowerCase().includes(query))
+        .sort(sorters[state.sort] || sorters.latest);
 }
 
-function renderPosts() {
-    const tableBody = document.getElementById('myPostsTableBody');
-    const cardList = document.getElementById('myPostsCardList');
-    const emptyState = document.getElementById('myPostsEmptyState');
+function renderList() {
+    const list = document.getElementById('myPostsList');
+    if (!list) return;
 
-    if (!tableBody || !cardList || !emptyState) return;
-
-    tableBody.innerHTML = '';
-    cardList.innerHTML = '';
-
-    if (!state.posts.length) {
-        emptyState.classList.remove('d-none');
+    const posts = getVisiblePosts();
+    if (!posts.length) {
+        const filtered = state.query || state.category;
+        list.innerHTML = `
+            <div class="cm-empty">
+                <i class="bi ${filtered ? 'bi-search' : 'bi-journal-plus'}"></i>
+                <p class="cm-empty__title">${filtered ? 'ไม่พบโพสต์ที่ตรงเงื่อนไข' : 'คุณยังไม่ได้โพสต์'}</p>
+                <p class="cm-muted">${filtered ? 'ลองเปลี่ยนคำค้นหรือช่องที่กรอง' : 'เล่าเมนูเด็ดหรือโปรวันนี้ให้เพื่อนผู้ขายฟัง'}</p>
+                ${filtered ? '' : '<a href="/community?compose=1" class="cm-btn cm-btn--primary"><i class="bi bi-pencil-square"></i>เขียนโพสต์แรก</a>'}
+            </div>`;
         return;
     }
 
-    emptyState.classList.add('d-none');
-
-    state.posts.forEach((post) => {
-        const thumb = post.images?.[0]?.imageUrl || '/img/favicon.png';
-
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td><img class="table-thumb" src="${thumb}" alt="thumbnail"></td>
-            <td>${escapeHtml(post.category)}</td>
-            <td>${escapeHtml(post.createdAt)}</td>
-            <td>${Number(post.likes || 0)}</td>
-            <td>${Number(post.comments || 0)}</td>
-            <td>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-outline-primary js-edit" data-id="${post.id}">แก้ไข</button>
-                    <button class="btn btn-sm btn-outline-danger js-delete" data-id="${post.id}">ลบ</button>
+    list.innerHTML = posts.map((post) => {
+        const thumb = post.images?.[0]?.imageUrl;
+        const imageCount = (post.images || []).length;
+        return `
+            <article class="mp-row" role="listitem" data-id="${post.id}">
+                <a class="mp-row__thumb" href="/community#post-${post.id}" aria-label="ดูโพสต์ในฟีด">
+                    ${thumb
+                        ? `<img src="${escapeHtml(thumb)}" alt="" loading="lazy">${imageCount > 1 ? `<span>+${imageCount - 1}</span>` : ''}`
+                        : `<i class="bi ${categoryIcon(post.category)}"></i>`}
+                </a>
+                <div class="mp-row__main">
+                    <p class="mp-row__meta">
+                        <span class="cm-catmark cat-${categoryColor(post.category)}"><i class="bi ${categoryIcon(post.category)}"></i>${escapeHtml(post.category)}</span>
+                        <span>${escapeHtml(post.createdAt)}</span>
+                        ${post.isPinned ? '<span class="cm-badge cm-badge--pin"><i class="bi bi-pin-angle-fill"></i>ปักหมุดโดยแอดมิน</span>' : ''}
+                    </p>
+                    <p class="mp-row__text">${escapeHtml(post.content)}</p>
                 </div>
-            </td>
-        `;
-        tableBody.appendChild(row);
-
-        const card = document.createElement('div');
-        card.className = 'mobile-post-card';
-        card.innerHTML = `
-            <img class="thumb mb-2" src="${thumb}" alt="thumbnail">
-            <div class="fw-semibold">${escapeHtml(post.category)}</div>
-            <div class="mobile-meta mb-1">${escapeHtml(post.createdAt)}</div>
-            <div class="mobile-meta mb-2">Like ${Number(post.likes || 0)} | Comment ${Number(post.comments || 0)}</div>
-            <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-primary js-edit" data-id="${post.id}">แก้ไข</button>
-                <button class="btn btn-sm btn-outline-danger js-delete" data-id="${post.id}">ลบ</button>
-            </div>
-        `;
-        cardList.appendChild(card);
-    });
+                <dl class="mp-row__stats">
+                    <div><dt>ถูกใจ</dt><dd><i class="bi bi-heart"></i>${formatNumber(post.likes)}</dd></div>
+                    <div><dt>คอมเมนต์</dt><dd><i class="bi bi-chat"></i>${formatNumber(post.comments)}</dd></div>
+                </dl>
+                <div class="mp-row__actions">
+                    <a class="cm-btn cm-btn--ghost" href="/community#post-${post.id}"><i class="bi bi-eye"></i><span>ดู</span></a>
+                    <a class="cm-btn cm-btn--ghost" href="/community?edit=${post.id}"><i class="bi bi-pencil"></i><span>แก้ไข</span></a>
+                    <button type="button" class="cm-btn cm-btn--ghost mp-delete js-delete" data-id="${post.id}" aria-label="ลบโพสต์"><i class="bi bi-trash3"></i><span>ลบ</span></button>
+                </div>
+            </article>`;
+    }).join('');
 }
 
-/* ============================================================
-   CUSTOM FORM UI HELPERS — เหมือนกับหน้าฟีดคอมมูนิตี้ (comunity.js)
-   ใช้กับโมดัลแก้ไขโพสต์ของหน้านี้
-   ============================================================ */
-function setActiveCategoryCard(gridEl, categoryValue) {
-    if (!gridEl) return;
-
-    gridEl.querySelectorAll('.category-card').forEach((card) => {
-        const isActive = card.dataset.category === categoryValue;
-        card.classList.toggle('category-card--active', isActive);
-        card.setAttribute('aria-checked', isActive ? 'true' : 'false');
-    });
-}
-
-function initCategoryCardGroup(gridEl, hiddenSelectEl) {
-    if (!gridEl || !hiddenSelectEl) return;
-
-    gridEl.querySelectorAll('.category-card').forEach((card) => {
-        card.addEventListener('click', () => {
-            setActiveCategoryCard(gridEl, card.dataset.category);
-            hiddenSelectEl.value = card.dataset.category;
-        });
-    });
-}
-
-function initImageDropzone(dropzoneEl, inputEl, previewEl) {
-    if (!dropzoneEl || !inputEl) return;
-
-    dropzoneEl.addEventListener('click', () => inputEl.click());
-    dropzoneEl.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            inputEl.click();
-        }
-    });
-
-    ['dragenter', 'dragover'].forEach((eventName) => {
-        dropzoneEl.addEventListener(eventName, (event) => {
-            event.preventDefault();
-            dropzoneEl.classList.add('image-dropzone--active');
-        });
-    });
-
-    ['dragleave', 'drop'].forEach((eventName) => {
-        dropzoneEl.addEventListener(eventName, (event) => {
-            event.preventDefault();
-            dropzoneEl.classList.remove('image-dropzone--active');
-        });
-    });
-
-    dropzoneEl.addEventListener('drop', (event) => {
-        const droppedFiles = event.dataTransfer && event.dataTransfer.files;
-        if (!droppedFiles || !droppedFiles.length) return;
-
-        inputEl.files = droppedFiles;
-        renderImagePreview(previewEl, inputEl.files);
-    });
-}
-
-function resizeAutoGrowTextarea(textareaEl) {
-    if (!textareaEl) return;
-    textareaEl.style.height = 'auto';
-    textareaEl.style.height = `${textareaEl.scrollHeight}px`;
-}
-
-function initAutoGrowTextarea(textareaEl) {
-    if (!textareaEl) return;
-    textareaEl.addEventListener('input', () => resizeAutoGrowTextarea(textareaEl));
-}
-
-function renderImagePreview(container, files) {
-    if (!container) return;
-    container.innerHTML = '';
-
-    Array.from(files || []).slice(0, 10).forEach((file) => {
-        const item = document.createElement('div');
-        item.className = 'image-preview-item';
-
-        const image = document.createElement('img');
-        image.src = URL.createObjectURL(file);
-        image.onload = () => URL.revokeObjectURL(image.src);
-        item.appendChild(image);
-
-        container.appendChild(item);
-    });
-}
-
-function populateEditModal(postId) {
-    const post = state.posts.find((item) => Number(item.id) === Number(postId));
-    if (!post) return;
-
-    document.getElementById('editPostId').value = String(post.id);
-    document.getElementById('editPostCategory').value = post.category;
-    document.getElementById('editPostContent').value = post.content || '';
-
-    setActiveCategoryCard(document.getElementById('editCategoryGrid'), post.category);
-    document.getElementById('editPostContent').style.height = 'auto';
-
-    const existingImages = document.getElementById('editExistingImages');
-    const newImagePreview = document.getElementById('editNewImagePreview');
-    const newImageInput = document.getElementById('editPostImages');
-
-    state.removeImageIds.clear();
-    existingImages.innerHTML = '';
-    newImagePreview.innerHTML = '';
-    newImageInput.value = '';
-
-    (post.images || []).forEach((image) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'image-preview-item';
-        wrapper.dataset.imageId = String(image.id);
-        wrapper.innerHTML = `
-            <img src="${image.imageUrl}" alt="old image">
-            <button class="remove-image-btn" type="button" data-image-id="${image.id}">ลบ</button>
-        `;
-        existingImages.appendChild(wrapper);
-    });
-
-    const modalEl = document.getElementById('editPostModal');
-    modalEl.addEventListener('shown.bs.modal', () => resizeAutoGrowTextarea(document.getElementById('editPostContent')), { once: true });
-    bootstrap.Modal.getOrCreateInstance(modalEl).show();
-}
-
-async function fetchMyPosts() {
-    const category = document.getElementById('categoryFilter').value;
-    const query = document.getElementById('searchInput').value.trim();
-    const params = new URLSearchParams();
-    if (category) params.set('category', category);
-    if (query) params.set('q', query);
-
-    const response = await fetch(`/community/my-posts/data?${params.toString()}`, {
-        headers: { Accept: 'application/json' }
-    });
-
-    const result = await parseJsonSafe(response);
-    if (!response.ok || !result.success) {
-        showToast(result.message || 'ไม่สามารถโหลดรายการโพสต์ได้');
-        return;
-    }
-
-    state.posts = result.posts || [];
-    renderPosts();
+function render() {
+    renderStats();
+    renderList();
 }
 
 function handleDelete(postId) {
     window.showConfirmDialog({
         title: 'ลบโพสต์',
-        message: 'ยืนยันการลบโพสต์นี้ใช่หรือไม่? ลบแล้วกู้คืนไม่ได้',
+        message: 'ยืนยันการลบโพสต์นี้ใช่หรือไม่? คอมเมนต์และยอดถูกใจจะหายไปด้วย กู้คืนไม่ได้',
         tone: 'danger',
         confirmText: 'ลบโพสต์',
         onConfirm: async () => {
-            const response = await fetch(`/community/posts/${postId}`, {
-                method: 'DELETE',
-                headers: { Accept: 'application/json' }
-            });
+            let result = { success: false, message: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง' };
+            let ok = false;
+            try {
+                const response = await fetch(`/community/posts/${postId}`, {
+                    method: 'DELETE',
+                    headers: { Accept: 'application/json' }
+                });
+                result = await response.json();
+                ok = response.ok && result.success;
+            } catch (error) {
+                // ใช้ข้อความ default ด้านบน
+            }
 
-            const result = await parseJsonSafe(response);
-            if (!response.ok || !result.success) {
+            if (!ok) {
                 showToast(result.message || 'ลบโพสต์ไม่สำเร็จ');
                 return;
             }
 
             state.posts = state.posts.filter((post) => Number(post.id) !== Number(postId));
-            renderPosts();
-            showToast('ลบโพสต์สำเร็จ');
+            render();
+            showToast('ลบโพสต์แล้ว');
         }
     });
-}
-
-async function handleEditSubmit(event) {
-    event.preventDefault();
-
-    const postId = Number.parseInt(document.getElementById('editPostId').value, 10);
-    if (!Number.isInteger(postId)) return;
-
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    formData.append('removeImageIds', JSON.stringify(Array.from(state.removeImageIds)));
-
-    const response = await fetch(`/community/posts/${postId}`, {
-        method: 'PUT',
-        body: formData,
-        headers: { Accept: 'application/json' }
-    });
-
-    const result = await parseJsonSafe(response);
-    if (!response.ok || !result.success) {
-        showToast(result.message || 'บันทึกการแก้ไขไม่สำเร็จ');
-        return;
-    }
-
-    const updatedPost = result.post;
-    state.posts = state.posts.map((post) => Number(post.id) === Number(updatedPost.id) ? updatedPost : post);
-    renderPosts();
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('editPostModal')).hide();
-    showToast('แก้ไขโพสต์สำเร็จ');
-}
-
-function bindEvents() {
-    const filterForm = document.getElementById('myPostsFilterForm');
-    filterForm.addEventListener('submit', (event) => {
-        event.preventDefault();
-        fetchMyPosts();
-    });
-
-    document.addEventListener('click', (event) => {
-        const editButton = event.target.closest('.js-edit');
-        if (editButton) {
-            const postId = Number.parseInt(editButton.dataset.id, 10);
-            if (Number.isInteger(postId)) {
-                populateEditModal(postId);
-            }
-            return;
-        }
-
-        const deleteButton = event.target.closest('.js-delete');
-        if (deleteButton) {
-            const postId = Number.parseInt(deleteButton.dataset.id, 10);
-            if (Number.isInteger(postId)) {
-                handleDelete(postId);
-            }
-        }
-    });
-
-    const editPostImagesInput = document.getElementById('editPostImages');
-    editPostImagesInput.addEventListener('change', (event) => {
-        renderImagePreview(document.getElementById('editNewImagePreview'), event.target.files);
-    });
-
-    initCategoryCardGroup(document.getElementById('editCategoryGrid'), document.getElementById('editPostCategory'));
-    initImageDropzone(document.getElementById('editDropzone'), editPostImagesInput, document.getElementById('editNewImagePreview'));
-    initAutoGrowTextarea(document.getElementById('editPostContent'));
-
-    document.getElementById('editExistingImages').addEventListener('click', (event) => {
-        const removeButton = event.target.closest('.remove-image-btn');
-        if (!removeButton) return;
-
-        const imageId = Number.parseInt(removeButton.dataset.imageId, 10);
-        if (!Number.isInteger(imageId)) return;
-
-        state.removeImageIds.add(imageId);
-        const wrapper = removeButton.closest('.image-preview-item');
-        if (wrapper) wrapper.remove();
-    });
-
-    document.getElementById('editPostForm').addEventListener('submit', handleEditSubmit);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    bindEvents();
-    renderPosts();
+    const searchInput = document.getElementById('searchInput');
+    let searchTimer = null;
+    searchInput?.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            state.query = searchInput.value;
+            renderList();
+        }, 150);
+    });
+
+    document.getElementById('categoryFilter')?.addEventListener('change', (event) => {
+        state.category = event.target.value;
+        renderList();
+    });
+
+    document.getElementById('sortSelect')?.addEventListener('change', (event) => {
+        state.sort = event.target.value;
+        renderList();
+    });
+
+    document.addEventListener('click', (event) => {
+        const deleteButton = event.target.closest('.js-delete');
+        if (deleteButton) handleDelete(Number.parseInt(deleteButton.dataset.id, 10));
+    });
+
+    render();
 });

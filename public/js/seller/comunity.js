@@ -1346,6 +1346,26 @@ function bindInsightsPanel() {
   desktop.addEventListener('change', sync);
 }
 
+// ลิงก์จากหน้าอื่นเปิดฟอร์มในหน้านี้ได้: ?compose=1 (เขียนโพสต์), ?edit=ID (แก้ไขโพสต์ของตัวเอง — มาจากหน้าโพสต์ของฉัน)
+function handleEntryParams() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('compose') && !params.has('edit')) return;
+
+  const editId = Number.parseInt(params.get('edit'), 10);
+  params.delete('compose');
+  params.delete('edit');
+  const query = params.toString();
+  history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+
+  if (Number.isInteger(editId)) {
+    const post = findPost(editId);
+    if (post?.isOwner) openEditModal(editId);
+    else showToast('ไม่พบโพสต์นี้ หรือคุณไม่ใช่เจ้าของโพสต์');
+    return;
+  }
+  openComposer(null);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   bindFeedClicks();
   bindToolbar();
@@ -1354,6 +1374,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindInsightsPanel();
   renderFeed();
   highlightLinkedPost();
+  handleEntryParams();
   window.addEventListener('hashchange', highlightLinkedPost);
 
   // อัปเดต "x นาทีที่แล้ว" ทุกนาทีโดยไม่ต้องรีเฟรชหน้า

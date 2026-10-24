@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>จัดการโพสต์ของคุณ - คอมมูนิตี้</title>
+  <title>โพสต์ของฉัน - คอมมูนิตี้</title>
   <link rel="icon" type="image/png" href="/img/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -11,9 +11,15 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios" />
-  <link rel="stylesheet" href="/stylesheets/seller/community-my-posts.css?v=20260724-5" />
+  <!-- ใช้ token/ปุ่ม/ป้ายชุดเดียวกับหน้าฟีด แล้วเสริมเฉพาะเลย์เอาต์ของหน้านี้ -->
+  <link rel="stylesheet" href="/stylesheets/seller/comunity.css?v=20261024-3" />
+  <link rel="stylesheet" href="/stylesheets/seller/community-my-posts.css?v=20261024-1" />
 </head>
-<body>
+<%
+  const safeJson = (value) => JSON.stringify(value).replace(/</g, '\\u003c');
+  const catColor = (category) => (categoryColors && categoryColors[category]) || defaultCategoryColor;
+%>
+<body class="community-body">
 <script src="/js/common/tabSession.js"></script>
 <% if (user && user.role === 'SELLER' && !viewAsCustomer) { %>
 <%- include('../partials/navbarSeller') %>
@@ -21,126 +27,76 @@
 <%- include('../partials/navbarCustomer') %>
 <% } %>
 
-<div class="my-posts-page container py-3 py-md-4">
-  <header class="my-posts-header mb-3">
-    <div>
-      <p class="my-posts-header__eyebrow">Seller Community</p>
-      <h1 class="my-posts-header__title">จัดการโพสต์ของคุณ</h1>
-      <p class="my-posts-header__subtitle">ค้นหา กรอง และแก้ไขโพสต์ของร้านคุณ</p>
+<script type="application/json" id="myPostsData"><%- safeJson({
+  posts: posts || [],
+  categoryIcons: categoryIcons || {},
+  defaultCategoryIcon: defaultCategoryIcon,
+  categoryColors: categoryColors || {},
+  defaultCategoryColor: defaultCategoryColor
+}) %></script>
+
+<div class="cm-page mp-page">
+  <header class="cm-head">
+    <div class="cm-head__text">
+      <p class="cm-eyebrow"><a href="/community" class="mp-crumb">คอมมูนิตี้</a> / โพสต์ของฉัน</p>
+      <h1 class="cm-head__title">โพสต์ของฉัน</h1>
+      <p class="cm-head__lede">ดูว่าโพสต์ไหนคนสนใจ แก้ไขหรือลบโพสต์ของร้านคุณได้ในที่เดียว</p>
     </div>
-    <a href="/community" class="btn btn-outline-secondary">
-      <i class="bi bi-arrow-left me-2"></i>กลับหน้าคอมมูนิตี้
-    </a>
+    <div class="cm-head__actions mp-head-actions">
+      <a href="/community" class="cm-btn cm-btn--ghost"><i class="bi bi-arrow-left"></i>กลับฟีด</a>
+      <a href="/community?compose=1" class="cm-btn cm-btn--primary"><i class="bi bi-pencil-square"></i>เขียนโพสต์</a>
+    </div>
   </header>
 
-  <form id="myPostsFilterForm" class="my-posts-filter mb-3">
-    <div class="row g-2">
-      <div class="col-12 col-md-5">
-        <input type="text" class="form-control" id="searchInput" placeholder="ค้นหาจากเนื้อหาโพสต์...">
-      </div>
-      <div class="col-12 col-md-4">
-        <select class="form-select" id="categoryFilter">
-          <option value="">ทุกประเภท</option>
-          <% categories.forEach(function(category) { %>
-            <option value="<%= category %>"><%= category %></option>
-          <% }) %>
-        </select>
-      </div>
-      <div class="col-12 col-md-3 d-grid">
-        <button type="submit" class="btn btn-primary">ค้นหา</button>
-      </div>
+  <section class="mp-stats" aria-label="สรุปโพสต์ของคุณ">
+    <div class="mp-stat"><span class="mp-stat__label">โพสต์ทั้งหมด</span><span class="mp-stat__value" id="statPosts">0</span></div>
+    <div class="mp-stat"><span class="mp-stat__label">ถูกใจรวม</span><span class="mp-stat__value" id="statLikes">0</span></div>
+    <div class="mp-stat"><span class="mp-stat__label">คอมเมนต์รวม</span><span class="mp-stat__value" id="statComments">0</span></div>
+    <div class="mp-stat mp-stat--wide">
+      <span class="mp-stat__label"><i class="bi bi-fire"></i>โพสต์ที่คนสนใจที่สุด</span>
+      <a class="mp-stat__top" id="statTop" href="/community">—</a>
     </div>
-  </form>
+  </section>
 
-  <div class="my-posts-table-wrap table-responsive d-none d-lg-block">
-    <table class="table align-middle" id="myPostsTable">
-      <thead>
-        <tr>
-          <th style="width: 130px;">รูปตัวอย่าง</th>
-          <th>ประเภท</th>
-          <th>วันที่โพสต์</th>
-          <th>ยอด Like</th>
-          <th>ยอด Comment</th>
-          <th style="width: 180px;">จัดการ</th>
-        </tr>
-      </thead>
-      <tbody id="myPostsTableBody"></tbody>
-    </table>
+  <div class="mp-toolbar">
+    <label class="cm-search" for="searchInput">
+      <i class="bi bi-search"></i>
+      <span class="visually-hidden">ค้นหาโพสต์ของฉัน</span>
+      <input type="search" id="searchInput" placeholder="ค้นหาจากเนื้อหาโพสต์" autocomplete="off">
+    </label>
+    <label class="mp-select">
+      <span class="visually-hidden">กรองตามช่อง</span>
+      <select id="categoryFilter">
+        <option value="">ทุกช่อง</option>
+        <% categories.forEach(function(category) { %>
+          <option value="<%= category %>"><%= category %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label class="mp-select">
+      <span class="visually-hidden">เรียงตาม</span>
+      <select id="sortSelect">
+        <option value="latest">ล่าสุด</option>
+        <option value="likes">ถูกใจมากสุด</option>
+        <option value="comments">คอมเมนต์มากสุด</option>
+      </select>
+    </label>
   </div>
 
-  <div class="d-flex flex-column gap-2 d-lg-none" id="myPostsCardList"></div>
-
-  <div id="myPostsEmptyState" class="text-center py-4 d-none">
-    <i class="bi bi-inbox"></i>
-    ไม่พบโพสต์ที่ตรงเงื่อนไข
-  </div>
+  <div class="mp-list" role="list" id="myPostsList" aria-live="polite"></div>
 </div>
 
-<div class="modal fade" id="editPostModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-      <form id="editPostForm">
-        <input type="hidden" id="editPostId" name="postId">
-        <div class="modal-header">
-          <h5 class="modal-title">แก้ไขโพสต์</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">เลือกประเภทโพสต์</label>
-            <div class="category-card-grid" id="editCategoryGrid" role="radiogroup" aria-label="เลือกประเภทโพสต์">
-              <% categories.forEach(function(category) { %>
-                <button type="button" class="category-card" data-category="<%= category %>" role="radio" aria-checked="false">
-                  <i class="bi <%= (categoryIcons && categoryIcons[category]) || defaultCategoryIcon %>"></i>
-                  <span><%= category %></span>
-                </button>
-              <% }) %>
-            </div>
-            <select class="visually-hidden" id="editPostCategory" name="category" required>
-              <% categories.forEach(function(category) { %>
-                <option value="<%= category %>"><%= category %></option>
-              <% }) %>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">เนื้อหาโพสต์</label>
-            <textarea class="fb-style-textarea" id="editPostContent" name="content" rows="2" maxlength="5000" placeholder="คุณกำลังคิดอะไรอยู่?" required></textarea>
-          </div>
-          <div class="mb-2">รูปภาพเดิม</div>
-          <div id="editExistingImages" class="image-preview-grid mb-3"></div>
-          <div class="mb-2">
-            <label class="form-label">เพิ่มรูปใหม่ (สูงสุดรวมไม่เกิน 10 รูป)</label>
-            <div class="image-dropzone" id="editDropzone" tabindex="0" role="button" aria-label="ลากรูปมาวางหรือคลิกเพื่อเลือกไฟล์">
-              <i class="bi bi-cloud-arrow-up"></i>
-              <p class="mb-0">ลากรูปมาวางที่นี่ หรือ <span class="image-dropzone__browse">คลิกเพื่อเลือกไฟล์</span></p>
-            </div>
-            <input class="visually-hidden" type="file" id="editPostImages" name="images" accept="image/*" multiple>
-          </div>
-          <div id="editNewImagePreview" class="image-preview-grid"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-          <button type="submit" class="btn btn-primary">บันทึกการแก้ไข</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3" style="z-index: 9999;">
-  <div id="actionToast" class="toast align-items-center text-white border-0 feed-toast" role="alert">
+<div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3 cm-toast-wrap">
+  <div id="actionToast" class="toast cm-toast" role="status" aria-live="polite">
     <div class="d-flex">
-      <div class="toast-body" id="toastMessage">พร้อมใช้งาน</div>
-      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      <div class="toast-body" id="toastMessage"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="ปิด"></button>
     </div>
   </div>
 </div>
 
-<script>
-  window.__MY_POSTS_INITIAL__ = <%- JSON.stringify(posts || []) %>;
-</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/common/dialogs.js" defer></script>
-<script src="/js/seller/community-my-posts.js" defer></script>
+<script src="/js/seller/community-my-posts.js?v=20261024-1" defer></script>
 </body>
 </html>

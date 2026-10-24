@@ -65,6 +65,5 @@ router.post('/community/posts/:id/comments', requireAuth, communityController.cr
 router.delete('/community/comments/:id', requireAuth, communityController.deleteComment);
 
 router.get('/community/my-posts', requireAuth, communityController.renderMyPostsPage);
-router.get('/community/my-posts/data', requireAuth, communityController.getMyPosts);
 
 module.exports = router;
