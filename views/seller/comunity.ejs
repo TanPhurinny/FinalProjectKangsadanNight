@@ -11,7 +11,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios" />
-  <link rel="stylesheet" href="/stylesheets/seller/comunity.css?v=20261024-4">
+  <link rel="stylesheet" href="/stylesheets/seller/comunity.css?v=20261024-5">
 </head>
 <%
   // ค่าที่หน้านี้ใช้ซ้ำหลายจุด — สี/ไอคอนหมวดมาจาก COMMUNITY_CATEGORY_* ใน communityController.js
@@ -97,18 +97,9 @@
     <aside class="cm-aside" aria-label="ภาพรวมคอมมูนิตี้">
       <details class="cm-insights" id="insightsPanel">
         <summary class="cm-insights__summary">
-          <span><i class="bi bi-activity"></i>สัปดาห์นี้ <strong><%= pulse.weekPosts %></strong> โพสต์ จาก <strong><%= pulse.activeStores %></strong> ร้าน</span>
+          <span><i class="bi bi-trophy"></i>ร้านเด่นประจำสัปดาห์ · แท็กยอดฮิต</span>
           <i class="bi bi-chevron-down cm-insights__chevron"></i>
         </summary>
-
-        <section class="cm-panel">
-          <h2 class="cm-label">ชีพจรตลาด</h2>
-          <dl class="cm-stats">
-            <div class="cm-stat"><dt>โพสต์ 7 วัน</dt><dd><%= pulse.weekPosts %></dd></div>
-            <div class="cm-stat"><dt>ร้านที่คุย</dt><dd><%= pulse.activeStores %></dd></div>
-            <div class="cm-stat"><dt>ทั้งหมด</dt><dd><%= pulse.totalPosts %></dd></div>
-          </dl>
-        </section>
 
         <section class="cm-panel">
           <h2 class="cm-label"><i class="bi bi-trophy"></i>ร้านเด่นประจำสัปดาห์</h2>

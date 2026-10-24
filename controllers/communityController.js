@@ -260,7 +260,7 @@ async function fetchPostOrThrow(postId) {
 // ต้องตรงกับตัวจับ #แท็ก ใน linkifyText ของ public/js/seller/comunity.js (รองรับแท็กภาษาไทย)
 const HASHTAG_PATTERN = /#[^\s#<>.,!?()"'“”]+/g;
 
-// สรุปความเคลื่อนไหว 7 วันล่าสุดสำหรับแถบ "ชีพจรคอมมูนิตี้" บนหัวฟีด
+// ร้านเด่นประจำสัปดาห์ + แท็กยอดฮิต สำหรับแผงด้านขวาของฟีด
 // คิดจากโพสต์ที่โหลดมาแสดงอยู่แล้ว ไม่ต้อง query เพิ่ม — คะแนนร้านเด่น = โพสต์ละ 3 + ถูกใจ + คอมเมนต์
 function buildCommunityPulse(posts) {
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -290,9 +290,6 @@ function buildCommunityPulse(posts) {
         });
 
     return {
-        totalPosts: posts.length,
-        weekPosts: weekPosts.length,
-        activeStores: scoreByStore.size,
         topStores: [...scoreByStore.values()].sort((a, b) => b.score - a.score).slice(0, 5),
         trendingTags: [...tagCounts.entries()]
             .sort((a, b) => b[1] - a[1])
