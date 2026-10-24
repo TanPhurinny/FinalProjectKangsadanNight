@@ -116,6 +116,8 @@ const announceCtrl = require('./controllers/announcementController');
 // แจ้งเตือนของผู้ขาย (badge กระดิ่งใน navbarSeller) ให้ขึ้นทุกหน้า ไม่ใช่แค่ /booking-status และ /notifications
 // — cache รายผู้ใช้ 60 วินาทีกันยิง query ชุดสถานะการจองทุกครั้งที่เปลี่ยนหน้า (page ที่ส่ง notifications เองยังทับค่านี้ได้)
 const sellerNotificationCache = new Map();
+// เรียกจาก controller เมื่อแจ้งเตือนของผู้ใช้คนนั้นเปลี่ยน (เช่น เปิดดูคอมเมนต์ในโพสต์ตัวเองแล้ว) ไม่ต้องรอ cache หมดอายุ
+app.locals.clearSellerNotificationCache = (userId) => sellerNotificationCache.delete(userId);
 app.use(async (req, res, next) => {
   try {
     if (req.method !== 'GET' || req.user?.role !== 'SELLER' || res.locals.viewAsCustomer) return next();

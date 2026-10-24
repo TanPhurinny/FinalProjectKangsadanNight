@@ -1,5 +1,9 @@
 const prisma = require('../config/prismaClient');
 const { deleteImage } = require('../utils/imageStorage');
+const { markPostSeenByOwner } = require('../utils/communityNotifications');
+
+// ปักหมุดได้พร้อมกันไม่เกินนี้ — เกินกว่านี้หัวฟีดจะเต็มไปด้วยโพสต์ปักจนไม่เห็นโพสต์ใหม่
+const MAX_PINNED_POSTS = 3;
 
 const COMMUNITY_CATEGORIES = [
     'แนะนำร้าน-บริการ',
@@ -213,6 +217,9 @@ function buildPostView(post, currentUserId, activeStallCodes = [], canModerate =
             id: image.id,
             imageUrl: image.imageUrl
         })),
+        isPinned: Boolean(post.isPinned),
+        pinnedAtIso: post.pinnedAt ? new Date(post.pinnedAt).toISOString() : null,
+        canPin: canModerate,
         likes: post.likes.length,
         comments: post._count?.comments ?? post.comments.length,
         // เรียงเก่า -> ใหม่ ให้อ่านจากบนลงล่างเหมือนในหน้าต่างคอมเมนต์
@@ -563,6 +570,10 @@ exports.getComments = async (req, res) => {
 
         const canModerate = isModerator(req.user);
 
+        if (await markPostSeenByOwner(postId, req.user.id)) {
+            req.app.locals.clearSellerNotificationCache?.(req.user.id);
+        }
+
         return res.json({
             success: true,
             comments: comments.map((comment) => buildCommentView(comment, req.user.id, canModerate))
@@ -678,6 +689,64 @@ exports.renderMyPostsPage = async (req, res) => {
             announcements: [],
             error: 'ไม่สามารถโหลดหน้าจัดการโพสต์ได้'
         });
+    }
+};
+
+// ลิงก์จากแจ้งเตือนในกระดิ่ง: ตั้งว่าเห็นแล้ว แล้วพาไปที่โพสต์พร้อมเปิดหน้าต่างคอมเมนต์
+exports.openActivity = async (req, res) => {
+    const postId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(postId) || postId <= 0) return res.redirect('/community');
+
+    try {
+        if (await markPostSeenByOwner(postId, req.user.id)) {
+            req.app.locals.clearSellerNotificationCache?.(req.user.id);
+        }
+    } catch (error) {
+        console.error('openActivity error:', error);
+    }
+    return res.redirect(`/community?comments=${postId}#post-${postId}`);
+};
+
+exports.togglePin = async (req, res) => {
+    try {
+        if (!isModerator(req.user)) {
+            return res.status(403).json({ success: false, message: 'เฉพาะแอดมินหรือเจ้าหน้าที่เท่านั้นที่ปักหมุดได้' });
+        }
+
+        const postId = Number.parseInt(req.params.id, 10);
+        if (!Number.isInteger(postId) || postId <= 0) {
+            return res.status(400).json({ success: false, message: 'รหัสโพสต์ไม่ถูกต้อง' });
+        }
+
+        const post = await prisma.communityPost.findUnique({ where: { id: postId }, select: { id: true, isPinned: true } });
+        if (!post) {
+            return res.status(404).json({ success: false, message: 'ไม่พบโพสต์นี้ อาจถูกลบไปแล้ว' });
+        }
+
+        const nextPinned = !post.isPinned;
+        if (nextPinned) {
+            const pinnedCount = await prisma.communityPost.count({ where: { isPinned: true } });
+            if (pinnedCount >= MAX_PINNED_POSTS) {
+                return res.status(400).json({ success: false, message: `ปักหมุดได้พร้อมกันไม่เกิน ${MAX_PINNED_POSTS} โพสต์ เลิกปักโพสต์เก่าก่อน` });
+            }
+        }
+
+        await prisma.communityPost.update({
+            where: { id: postId },
+            data: { isPinned: nextPinned, pinnedAt: nextPinned ? new Date() : null }
+        });
+
+        const updatedPost = await fetchPostOrThrow(postId);
+        const stallCodesByUserId = await getActiveStallCodesByUserId([updatedPost.userId]);
+
+        return res.json({
+            success: true,
+            message: nextPinned ? 'ปักหมุดโพสต์แล้ว' : 'เลิกปักหมุดแล้ว',
+            post: buildPostView(updatedPost, req.user.id, stallCodesByUserId.get(updatedPost.userId) || [], true)
+        });
+    } catch (error) {
+        console.error('togglePin error:', error);
+        return res.status(500).json({ success: false, message: 'ปักหมุดไม่สำเร็จ' });
     }
 };
 

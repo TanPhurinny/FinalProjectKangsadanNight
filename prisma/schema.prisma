@@ -67,6 +67,11 @@ model CommunityPost {
   content   String   @db.LongText
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  // ปักหมุด (แอดมิน/staff) — โพสต์ที่ปักขึ้นบนสุดของฟีดเสมอ ไม่ว่าจะเรียงแบบไหน
+  isPinned  Boolean   @default(false)
+  pinnedAt  DateTime?
+  // เจ้าของโพสต์เปิดดูความเคลื่อนไหวล่าสุดเมื่อไร — ถูกใจ/คอมเมนต์ของคนอื่นที่ใหม่กว่านี้ขึ้นเป็นแจ้งเตือนในกระดิ่ง
+  ownerSeenAt DateTime?
 
   author    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   images    CommunityPostImage[]

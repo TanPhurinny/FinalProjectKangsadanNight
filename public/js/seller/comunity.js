@@ -184,6 +184,9 @@ function renderPostMenu(post) {
       <li><button class="dropdown-item cm-danger js-delete-post" type="button" data-post-id="${post.id}"><i class="bi bi-shield-exclamation"></i>ลบโพสต์ (ผู้ดูแล)</button></li>`
     : '';
 
+  const pinItem = post.canPin ? `
+      <li><button class="dropdown-item js-pin-post" type="button" data-post-id="${post.id}"><i class="bi ${post.isPinned ? 'bi-pin-angle' : 'bi-pin-angle-fill'}"></i>${post.isPinned ? 'เลิกปักหมุด' : 'ปักหมุดไว้บนสุด'}</button></li>` : '';
+
   return `
     <div class="dropdown cm-post__menu">
       <button class="cm-iconbtn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="ตัวเลือกโพสต์"><i class="bi bi-three-dots"></i></button>
@@ -191,6 +194,7 @@ function renderPostMenu(post) {
         <li><button class="dropdown-item js-save-post" type="button" data-post-id="${post.id}"><i class="bi ${isSaved ? 'bi-bookmark-x' : 'bi-bookmark'}"></i>${isSaved ? 'เลิกบันทึก' : 'บันทึกโพสต์'}</button></li>
         <li><button class="dropdown-item js-copy-link" type="button" data-post-id="${post.id}"><i class="bi bi-link-45deg"></i>คัดลอกลิงก์</button></li>
         <li><button class="dropdown-item js-copy-text" type="button" data-post-id="${post.id}"><i class="bi bi-clipboard"></i>คัดลอกข้อความ</button></li>
+        ${pinItem}
         ${ownerItems}
       </ul>
     </div>`;
@@ -232,7 +236,8 @@ function renderPostCard(post) {
   const comments = Number(post.comments || 0);
 
   return `
-    <article class="cm-post" id="post-${post.id}" data-post-id="${post.id}">
+    <article class="cm-post ${post.isPinned ? 'is-pinned' : ''}" id="post-${post.id}" data-post-id="${post.id}">
+      ${post.isPinned ? '<p class="cm-post__pinned"><i class="bi bi-pin-angle-fill"></i>ปักหมุดโดยผู้ดูแลตลาด</p>' : ''}
       <header class="cm-post__head">
         <img src="${escapeHtml(post.profileImage)}" alt="" class="cm-avatar" loading="lazy">
         <div class="cm-post__who">
@@ -345,7 +350,15 @@ function getVisiblePosts() {
     popular: (a, b) => hotScore(b) - hotScore(a) || byTime(a, b),
     discussed: (a, b) => Number(b.comments || 0) - Number(a.comments || 0) || Number(b.likes || 0) - Number(a.likes || 0) || byTime(a, b)
   };
-  return state.posts.filter((post) => matchesChannel(post) && matchesSearch(post)).sort(comparators[state.sortMode] || byTime);
+  const compare = comparators[state.sortMode] || byTime;
+  const pinnedFirst = !state.searchQuery.trim();
+  return state.posts
+    .filter((post) => matchesChannel(post) && matchesSearch(post))
+    .sort((a, b) => {
+      if (pinnedFirst && Boolean(a.isPinned) !== Boolean(b.isPinned)) return a.isPinned ? -1 : 1;
+      if (pinnedFirst && a.isPinned && b.isPinned) return new Date(b.pinnedAtIso || 0) - new Date(a.pinnedAtIso || 0);
+      return compare(a, b);
+    });
 }
 
 const EMPTY_MESSAGES = {
@@ -554,6 +567,19 @@ function toggleSave(postId) {
     updateChannelCounts();
   }
   showToast(nowSaved ? 'บันทึกโพสต์แล้ว ดูได้ที่ช่อง "ที่บันทึกไว้"' : 'เลิกบันทึกโพสต์แล้ว');
+}
+
+async function togglePin(postId) {
+  const { ok, result } = await api(`/community/posts/${postId}/pin`, { method: 'POST' });
+  if (!ok) {
+    showToast(result.message || 'ปักหมุดไม่สำเร็จ');
+    return;
+  }
+
+  const index = state.posts.findIndex((post) => Number(post.id) === Number(postId));
+  if (index >= 0) state.posts[index] = result.post;
+  renderFeed();
+  showToast(result.message);
 }
 
 function postUrl(postId) {
@@ -1119,6 +1145,7 @@ function bindFeedClicks() {
     if ((node = t.closest('.js-open-comments'))) return openComments(postIdOf(node));
     if ((node = t.closest('.js-save-post'))) return toggleSave(postIdOf(node));
     if ((node = t.closest('.js-share'))) return sharePost(postIdOf(node));
+    if ((node = t.closest('.js-pin-post'))) return togglePin(postIdOf(node));
     if ((node = t.closest('.js-copy-link'))) return copyToClipboard(postUrl(postIdOf(node)), 'คัดลอกลิงก์โพสต์แล้ว');
     if ((node = t.closest('.js-copy-text'))) return copyToClipboard(findPost(postIdOf(node))?.content || '', 'คัดลอกข้อความแล้ว');
     if ((node = t.closest('.js-edit-post'))) return openEditModal(postIdOf(node));
@@ -1349,13 +1376,21 @@ function bindInsightsPanel() {
 // ลิงก์จากหน้าอื่นเปิดฟอร์มในหน้านี้ได้: ?compose=1 (เขียนโพสต์), ?edit=ID (แก้ไขโพสต์ของตัวเอง — มาจากหน้าโพสต์ของฉัน)
 function handleEntryParams() {
   const params = new URLSearchParams(window.location.search);
-  if (!params.has('compose') && !params.has('edit')) return;
+  if (!params.has('compose') && !params.has('edit') && !params.has('comments')) return;
 
   const editId = Number.parseInt(params.get('edit'), 10);
+  const commentsId = Number.parseInt(params.get('comments'), 10);
   params.delete('compose');
   params.delete('edit');
+  params.delete('comments');
   const query = params.toString();
   history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+
+  // มาจากแจ้งเตือน "มีคอมเมนต์ใหม่" — highlightLinkedPost เลื่อนไปที่โพสต์แล้ว เปิดคอมเมนต์ต่อเลย
+  if (Number.isInteger(commentsId)) {
+    if (findPost(commentsId)) openComments(commentsId);
+    return;
+  }
 
   if (Number.isInteger(editId)) {
     const post = findPost(editId);

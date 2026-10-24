@@ -47,6 +47,7 @@ const {
     describeBookingAppliances
 } = require('../utils/bookingAppliances');
 const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
+const { buildCommunityNotifications } = require('../utils/communityNotifications');
 
 // รูปแจ้งซ่อม (เก็บที่ Cloudinary หรือดิสก์ตาม utils/imageStorage.js)
 const storage = createImageStorage({ folder: 'repairs' });
@@ -2289,12 +2290,14 @@ async function loadSellerBookingStatus(userId) {
     });
 
     const renewalNotices = await loadAdminRenewalNotices(userId);
+    const communityNotifications = await buildCommunityNotifications(userId);
 
     return {
         userRecord,
         bookingView,
         notifications: [
             ...renewalNotices,
+            ...communityNotifications,
             ...buildRepairNotifications(repairReports),
             ...buildTaxInvoiceNotifications(taxInvoiceRequests),
             ...rejectionEntries,

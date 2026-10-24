@@ -1356,6 +1356,33 @@ body.cm-lock { overflow: hidden; }
   .cm-quick:first-child { flex: 1 0 auto; }
 }
 
+/* ============================================================
+   โพสต์ปักหมุด (แอดมิน/staff) — แถบหัวการ์ด + เส้นซ้ายสีเน้น แยกจากโพสต์ทั่วไปได้โดยไม่ต้องดูสีอย่างเดียว
+   ============================================================ */
+.cm-post.is-pinned {
+  border-color: var(--cm-accent);
+  box-shadow: inset 3px 0 0 var(--cm-accent);
+}
+
+.cm-post__pinned {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 6px var(--s4);
+  border-bottom: 1px solid var(--cm-line);
+  background: var(--cm-accent-tint);
+  color: var(--cm-accent-dark);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.cm-badge--pin {
+  gap: 3px;
+  border-color: var(--cm-accent);
+  color: var(--cm-accent-dark);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cm-post.is-highlighted,
   .cm-heart-burst,

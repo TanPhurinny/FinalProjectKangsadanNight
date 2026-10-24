@@ -60,6 +60,8 @@ router.put('/community/posts/:id', requireAuth, uploadMultiple, communityControl
 router.delete('/community/posts/:id', requireAuth, communityController.deletePost);
 
 router.post('/community/posts/:id/like', requireAuth, communityController.toggleLike);
+router.post('/community/posts/:id/pin', requireAuth, communityController.togglePin);
+router.get('/community/activity/:id', requireAuth, communityController.openActivity);
 router.get('/community/posts/:id/comments', requireAuth, communityController.getComments);
 router.post('/community/posts/:id/comments', requireAuth, communityController.createComment);
 router.delete('/community/comments/:id', requireAuth, communityController.deleteComment);
