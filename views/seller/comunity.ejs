@@ -11,11 +11,17 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios" />
-  <link rel="stylesheet" href="/stylesheets/seller/comunity.css?v=20260825-3">
+  <link rel="stylesheet" href="/stylesheets/seller/comunity.css?v=20261024-2">
 </head>
-<body data-can-create-post="<%= canCreatePost ? '1' : '0' %>" data-categories='<%- JSON.stringify(categories || []) %>'
-  data-category-icons='<%- JSON.stringify(categoryIcons || {}) %>' data-default-category-icon="<%= defaultCategoryIcon %>"
-  data-category-colors='<%- JSON.stringify(categoryColors || {}) %>' data-default-category-color="<%= defaultCategoryColor %>">
+<%
+  // ค่าที่หน้านี้ใช้ซ้ำหลายจุด — สี/ไอคอนหมวดมาจาก COMMUNITY_CATEGORY_* ใน communityController.js
+  const catColor = (category) => (categoryColors && categoryColors[category]) || defaultCategoryColor;
+  const catIcon = (category) => (categoryIcons && categoryIcons[category]) || defaultCategoryIcon;
+  const emojis = ['😀', '😍', '🔥', '🎉', '👍', '🙏', '🍜', '🍢', '🧋', '🛍️', '📍', '⏰'];
+  const safeJson = (value) => JSON.stringify(value).replace(/</g, '\\u003c');
+  const hasPulse = typeof pulse !== 'undefined' && pulse;
+%>
+<body class="community-body" data-can-create-post="<%= canCreatePost ? '1' : '0' %>">
 <script src="/js/common/tabSession.js"></script>
   <% if (user && user.role === 'SELLER' && !viewAsCustomer) { %>
   <%- include('../partials/navbarSeller') %>
@@ -27,310 +33,299 @@
   <%- include('../partials/navbarCustomer') %>
   <% } %>
 
-<div class="feed-page" id="feedPage">
-  <header class="community-header">
-    <div class="community-header__main">
-      <div class="community-header__icon"><i class="bi bi-people-fill"></i></div>
-      <div>
-        <p class="community-header__eyebrow">Seller Community</p>
-        <h1 class="community-header__title">คอมมูนิตี้ผู้ขาย</h1>
-        <p class="community-header__subtitle">พูดคุย แชร์ไอเดีย และติดตามความเคลื่อนไหวของร้านค้าต่าง ๆ ในตลาด</p>
-      </div>
+<!-- ข้อมูลตั้งต้นของฟีด: โพสต์ทั้งหมดถูกวาดโดย comunity.js จากก้อนนี้ที่เดียว (ไม่มีเทมเพลตการ์ดซ้ำใน EJS) -->
+<script type="application/json" id="communityData"><%- safeJson({
+  posts: posts,
+  categories: categories || [],
+  categoryIcons: categoryIcons || {},
+  defaultCategoryIcon: defaultCategoryIcon,
+  categoryColors: categoryColors || {},
+  defaultCategoryColor: defaultCategoryColor,
+  currentUserAvatar: currentUserAvatar
+}) %></script>
+
+<div class="cm-page" id="feedPage">
+  <header class="cm-head">
+    <div class="cm-head__text">
+      <p class="cm-eyebrow">Kangsadan Night · Seller Community</p>
+      <h1 class="cm-head__title">คอมมูนิตี้ผู้ขาย</h1>
+      <p class="cm-head__lede">กระดานกลางของตลาด — แนะนำร้าน ตามหาของหาย ถามเพื่อนบ้านแผง และโปรโมทเมนูเด็ดของคุณ</p>
     </div>
     <% if (canCreatePost) { %>
-      <div class="community-header__actions">
-        <a href="/community/my-posts" class="btn btn-outline-secondary community-btn">
-          <i class="bi bi-journal-text me-2"></i>จัดการโพสต์ของคุณ
-        </a>
-        <button type="button" class="btn btn-primary community-btn" id="openCreatePostBtn" data-bs-toggle="modal" data-bs-target="#createPostModal">
-          <i class="bi bi-plus-lg me-2"></i>เขียนโพสต์
-        </button>
+      <div class="cm-head__actions">
+        <a href="/community/my-posts" class="cm-btn cm-btn--ghost"><i class="bi bi-journal-text"></i>จัดการโพสต์ของฉัน</a>
+        <button type="button" class="cm-btn cm-btn--primary js-open-composer"><i class="bi bi-pencil-square"></i>เขียนโพสต์</button>
       </div>
     <% } %>
   </header>
 
-  <% if (banners && banners.length) { %>
-  <section class="banner-section mb-3">
-    <div id="heroBannerCarousel" class="carousel slide banner-carousel" data-bs-ride="carousel" data-bs-interval="4000">
-      <div class="carousel-inner">
-        <% banners.forEach(function(banner, index) { %>
-          <div class="carousel-item <%= index === 0 ? 'active' : '' %>">
-            <img src="<%= banner.image %>" class="d-block w-100 banner-img" alt="Banner <%= index + 1 %>" loading="<%= index === 0 ? 'eager' : 'lazy' %>">
-          </div>
-        <% }) %>
-      </div>
-
-      <% if (banners.length > 1) { %>
-      <div class="carousel-indicators banner-dots">
-        <% banners.forEach(function(banner, index) { %>
-          <button type="button" data-bs-target="#heroBannerCarousel" data-bs-slide-to="<%= index %>" class="<%= index === 0 ? 'active' : '' %>" aria-label="Slide <%= index + 1 %>"></button>
-        <% }) %>
-      </div>
-      <% } %>
-    </div>
-  </section>
-  <% } %>
-
-  <section class="filter-section" id="filterSection">
-    <div class="filter-label"><i class="bi bi-funnel"></i>หมวดหมู่</div>
-    <div class="filter-scroll-wrapper">
-      <div class="filter-pills d-flex gap-2" id="filterPills">
-        <button class="filter-pill btn filter-pill--active" data-category="ทั้งหมด" type="button">
-          <i class="bi bi-grid-3x3-gap-fill"></i>ทั้งหมด
-        </button>
-        <% categories.forEach(function(category) { %>
-          <button class="filter-pill btn filter-pill--inactive cat-<%= (categoryColors && categoryColors[category]) || defaultCategoryColor %>" data-category="<%= category %>" type="button">
-            <i class="bi <%= (categoryIcons && categoryIcons[category]) || defaultCategoryIcon %>"></i><%= category %>
+  <div class="cm-layout">
+    <!-- ซ้าย: ช่องพูดคุย (เดสก์ท็อปเป็นเมนูแนวตั้งติดจอ / มือถือเป็นแท็บเลื่อนแนวนอน) -->
+    <nav class="cm-channels" id="channelNav" aria-label="ช่องพูดคุย">
+      <p class="cm-label cm-channels__label">ช่องพูดคุย</p>
+      <ul class="cm-channels__list" role="list">
+        <li>
+          <button type="button" class="cm-channel is-active" data-channel="all" aria-pressed="true">
+            <i class="bi bi-grid-3x3-gap"></i><span class="cm-channel__name">ทั้งหมด</span><span class="cm-channel__count" data-count-for="all">0</span>
           </button>
+        </li>
+        <% categories.forEach(function(category) { %>
+          <li>
+            <button type="button" class="cm-channel cat-<%= catColor(category) %>" data-channel="<%= category %>" aria-pressed="false">
+              <i class="bi <%= catIcon(category) %>"></i><span class="cm-channel__name"><%= category %></span><span class="cm-channel__count" data-count-for="<%= category %>">0</span>
+            </button>
+          </li>
         <% }) %>
-      </div>
-    </div>
-  </section>
+        <li class="cm-channels__divider" aria-hidden="true"></li>
+        <li>
+          <button type="button" class="cm-channel" data-channel="saved" aria-pressed="false">
+            <i class="bi bi-bookmark"></i><span class="cm-channel__name">ที่บันทึกไว้</span><span class="cm-channel__count" data-count-for="saved">0</span>
+          </button>
+        </li>
+        <% if (canCreatePost) { %>
+          <li>
+            <button type="button" class="cm-channel" data-channel="mine" aria-pressed="false">
+              <i class="bi bi-person"></i><span class="cm-channel__name">โพสต์ของฉัน</span><span class="cm-channel__count" data-count-for="mine">0</span>
+            </button>
+          </li>
+        <% } %>
+      </ul>
+    </nav>
 
-  <section class="feed-section mt-3" id="feedSection">
-    <div class="feed-container" id="feedContainer">
-      <% if (!posts.length) { %>
-        <div class="empty-state-card" id="emptyFeedState">
-          <i class="bi bi-chat-square-text"></i>
-          <p>ยังไม่มีโพสต์ในคอมมูนิตี้</p>
+    <!-- ขวา: ภาพรวมตลาด (มือถือพับเก็บไว้เป็นแถบเดียว กดเปิดได้) -->
+    <% if (hasPulse) { %>
+    <aside class="cm-aside" aria-label="ภาพรวมคอมมูนิตี้">
+      <details class="cm-insights" id="insightsPanel">
+        <summary class="cm-insights__summary">
+          <span><i class="bi bi-activity"></i>สัปดาห์นี้ <strong><%= pulse.weekPosts %></strong> โพสต์ จาก <strong><%= pulse.activeStores %></strong> ร้าน</span>
+          <i class="bi bi-chevron-down cm-insights__chevron"></i>
+        </summary>
+
+        <section class="cm-panel">
+          <h2 class="cm-label">ชีพจรตลาด</h2>
+          <dl class="cm-stats">
+            <div class="cm-stat"><dt>โพสต์ 7 วัน</dt><dd><%= pulse.weekPosts %></dd></div>
+            <div class="cm-stat"><dt>ร้านที่คุย</dt><dd><%= pulse.activeStores %></dd></div>
+            <div class="cm-stat"><dt>ทั้งหมด</dt><dd><%= pulse.totalPosts %></dd></div>
+          </dl>
+        </section>
+
+        <section class="cm-panel">
+          <h2 class="cm-label"><i class="bi bi-trophy"></i>ร้านเด่นประจำสัปดาห์</h2>
+          <% if (pulse.topStores.length) { %>
+            <ol class="cm-rank" role="list">
+              <% pulse.topStores.forEach(function(store, index) { %>
+                <li>
+                  <button type="button" class="cm-rank__item js-search" data-query="<%= store.storeName %>" title="ดูโพสต์ของ <%= store.storeName %>">
+                    <span class="cm-rank__no"><%= String(index + 1).padStart(2, '0') %></span>
+                    <img src="<%= store.profileImage %>" alt="" class="cm-rank__avatar" loading="lazy">
+                    <span class="cm-rank__name"><%= store.storeName %></span>
+                    <span class="cm-rank__meta"><%= store.posts %> โพสต์</span>
+                  </button>
+                </li>
+              <% }) %>
+            </ol>
+          <% } else { %>
+            <p class="cm-muted">สัปดาห์นี้ยังเงียบอยู่ — โพสต์แรกของสัปดาห์ขึ้นอันดับ 1 ทันที</p>
+          <% } %>
+        </section>
+
+        <section class="cm-panel">
+          <h2 class="cm-label"><i class="bi bi-hash"></i>แท็กยอดฮิต 30 วัน</h2>
+          <% if (pulse.trendingTags.length) { %>
+            <ul class="cm-tags" role="list">
+              <% pulse.trendingTags.forEach(function(item) { %>
+                <li><button type="button" class="cm-tag js-search" data-query="<%= item.tag %>"><%= item.tag %><span><%= item.count %></span></button></li>
+              <% }) %>
+            </ul>
+          <% } else { %>
+            <p class="cm-muted">ยังไม่มีแท็ก ลองใส่ <span class="cm-code">#ชื่อเมนู</span> ในโพสต์ให้ลูกค้าค้นเจอง่ายขึ้น</p>
+          <% } %>
+        </section>
+      </details>
+    </aside>
+    <% } %>
+
+    <!-- กลาง: ฟีด -->
+    <main class="cm-main" id="feedSection">
+      <% if (banners && banners.length) { %>
+      <section class="cm-banner" aria-label="ประกาศจากตลาด">
+        <div id="heroBannerCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="4500">
+          <div class="carousel-inner">
+            <% banners.forEach(function(banner, index) { %>
+              <div class="carousel-item <%= index === 0 ? 'active' : '' %>">
+                <img src="<%= banner.image %>" class="d-block w-100 cm-banner__img" alt="ประกาศ <%= index + 1 %>" loading="<%= index === 0 ? 'eager' : 'lazy' %>">
+              </div>
+            <% }) %>
+          </div>
+          <% if (banners.length > 1) { %>
+          <div class="carousel-indicators cm-banner__dots">
+            <% banners.forEach(function(banner, index) { %>
+              <button type="button" data-bs-target="#heroBannerCarousel" data-bs-slide-to="<%= index %>" class="<%= index === 0 ? 'active' : '' %>" aria-label="ประกาศ <%= index + 1 %>"></button>
+            <% }) %>
+          </div>
+          <% } %>
         </div>
+      </section>
       <% } %>
 
-      <% posts.forEach(function(post) { %>
-        <article
-          class="post-card"
-          id="post-<%= post.id %>"
-          data-post-id="<%= post.id %>"
-          data-category="<%= post.category %>"
-          data-content='<%- JSON.stringify(post.content || "") %>'
-          data-images='<%- JSON.stringify(post.images || []) %>'>
+      <% if (canCreatePost) { %>
+      <section class="cm-composer" aria-label="เขียนโพสต์">
+        <div class="cm-composer__row">
+          <img src="<%= currentUserAvatar %>" alt="" class="cm-avatar">
+          <button type="button" class="cm-composer__fake js-open-composer">เล่าอะไรให้เพื่อนผู้ขายฟังดี? ใส่ #แท็ก ให้ค้นเจอง่าย</button>
+        </div>
+        <div class="cm-composer__quick">
+          <button type="button" class="cm-quick js-open-composer" data-with-images="1"><i class="bi bi-images"></i>รูปภาพ</button>
+          <% categories.forEach(function(category) { %>
+            <button type="button" class="cm-quick cat-<%= catColor(category) %> js-open-composer" data-category="<%= category %>" aria-label="โพสต์ในช่อง <%= category %>" title="โพสต์ในช่อง <%= category %>"><i class="bi <%= catIcon(category) %>"></i><span><%= category %></span></button>
+          <% }) %>
+        </div>
+      </section>
+      <% } else { %>
+      <p class="cm-readonly"><i class="bi bi-info-circle"></i>เฉพาะผู้ขายที่ตั้งโพสต์ได้ — คุณกดถูกใจ คอมเมนต์ บันทึก และแชร์โพสต์ได้ตามปกติ</p>
+      <% } %>
 
-          <div class="post-header d-flex align-items-start justify-content-between">
-            <div class="d-flex align-items-center gap-2 post-meta">
-              <img src="<%= post.profileImage %>" alt="<%= post.storeName %>" class="post-avatar" loading="lazy">
-              <div>
-                <div class="post-store-name"><%= post.storeName %></div>
-                <div class="post-time"><%= post.createdAt %></div>
-              </div>
-            </div>
-
-            <div class="post-header-right">
-              <% if (post.stallCodes && post.stallCodes.length) { %>
-                <% post.stallCodes.forEach(function(code) { %>
-                  <a href="/market-map?stall=<%= encodeURIComponent(code) %>" class="stall-badge stall-badge--link" title="ดูตำแหน่งแผง <%= code %> บนผัง">
-                    <i class="bi bi-geo-alt-fill"></i><%= code %>
-                  </a>
-                <% }) %>
-              <% } else { %>
-                <div class="stall-badge"><i class="bi bi-shop"></i><%= post.stallNo %></div>
-              <% } %>
-              <% if (post.isOwner) { %>
-                <span class="owner-badge"><i class="bi bi-person-check-fill"></i>โพสต์ของคุณ</span>
-                <div class="dropdown">
-                  <button class="post-menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots-vertical"></i></button>
-                  <ul class="dropdown-menu dropdown-menu-end">
-                    <li><button class="dropdown-item js-edit-post" type="button" data-post-id="<%= post.id %>"><i class="bi bi-pencil-square"></i>แก้ไขโพสต์</button></li>
-                    <li><button class="dropdown-item text-danger js-delete-post" type="button" data-post-id="<%= post.id %>"><i class="bi bi-trash3"></i>ลบโพสต์</button></li>
-                  </ul>
-                </div>
-              <% } else if (post.canModerate) { %>
-                <div class="dropdown">
-                  <button class="post-menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots-vertical"></i></button>
-                  <ul class="dropdown-menu dropdown-menu-end">
-                    <li><button class="dropdown-item text-danger js-delete-post" type="button" data-post-id="<%= post.id %>"><i class="bi bi-shield-fill-exclamation"></i>ลบโพสต์ (แอดมิน)</button></li>
-                  </ul>
-                </div>
-              <% } %>
-            </div>
-          </div>
-
-          <div class="post-content">
-            <span class="post-category-pill cat-<%= (categoryColors && categoryColors[post.category]) || defaultCategoryColor %>"><i class="bi <%= (categoryIcons && categoryIcons[post.category]) || defaultCategoryIcon %>"></i><%= post.category %></span>
-            <p class="post-text"><%= post.content %></p>
-          </div>
-
-          <% if (post.images && post.images.length > 0) { %>
-            <div class="post-gallery post-gallery--<%= Math.min(post.images.length, 4) %>">
-              <% post.images.slice(0, 4).forEach(function(image, imgIdx) { %>
-                <%
-                  const isLastVisible = imgIdx === 3 && post.images.length > 4;
-                  const extraCount = post.images.length - 4;
-                %>
-                <div class="gallery-item">
-                  <img src="<%= image.imageUrl %>" alt="Post image <%= imgIdx + 1 %>" class="gallery-img" loading="lazy" data-post-id="<%= post.id %>" data-image-index="<%= imgIdx %>">
-                  <% if (isLastVisible) { %>
-                    <div class="gallery-overlay" data-post-id="<%= post.id %>" data-image-index="<%= imgIdx %>">
-                      <span>+<%= extraCount %></span>
-                    </div>
-                  <% } %>
-                </div>
-              <% }) %>
-            </div>
-          <% } %>
-
-          <div class="post-actions d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center gap-3">
-              <button class="action-btn like-btn <%= post.isLiked ? 'is-liked' : '' %>" type="button" data-post-id="<%= post.id %>" aria-label="Like">
-                <i class="bi <%= post.isLiked ? 'bi-heart-fill' : 'bi-heart' %>"></i>
-                <span class="action-label">ถูกใจ</span>
-                <span class="action-count"><%= post.likes %></span>
-              </button>
-
-              <button class="action-btn comment-btn" type="button" data-post-id="<%= post.id %>" aria-label="Comment">
-                <i class="bi bi-chat-round-dots"></i>
-                <span class="action-label">คอมเมนต์</span>
-                <span class="action-count"><%= post.comments %></span>
-              </button>
-
-              <button class="action-btn share-btn" type="button" data-post-id="<%= post.id %>" aria-label="Share">
-                <i class="bi bi-share"></i>
-                <span class="action-label">แชร์</span>
-              </button>
-            </div>
-          </div>
-        </article>
-      <% }) %>
-    </div>
-  </section>
-
-  <div class="modal fade" id="createPostModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <form id="createPostForm">
-          <div class="modal-header">
-            <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>สร้างโพสต์ใหม่</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">เลือกประเภทโพสต์</label>
-              <div class="category-card-grid" id="createCategoryGrid" role="radiogroup" aria-label="เลือกประเภทโพสต์">
-                <% categories.forEach(function(category) { %>
-                  <button type="button" class="category-card cat-<%= (categoryColors && categoryColors[category]) || defaultCategoryColor %>" data-category="<%= category %>" role="radio" aria-checked="false">
-                    <i class="bi <%= (categoryIcons && categoryIcons[category]) || defaultCategoryIcon %>"></i>
-                    <span><%= category %></span>
-                  </button>
-                <% }) %>
-              </div>
-              <!-- select ตัวจริงที่ฟอร์ม submit ไปใช้ ซ่อนไว้ด้วย visually-hidden ของ Bootstrap
-                   การ์ดด้านบนแค่คลิกแล้วอัปเดตค่าของ select นี้ผ่าน JS (ดู comunity.js) -->
-              <select class="visually-hidden" name="category" id="createCategorySelect" required>
-                <option value="" disabled selected>เลือกประเภทโพสต์</option>
-                <% categories.forEach(function(category) { %>
-                  <option value="<%= category %>"><%= category %></option>
-                <% }) %>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">เนื้อหาโพสต์</label>
-              <textarea class="fb-style-textarea" name="content" id="createContentInput" rows="2" maxlength="5000" placeholder="คุณกำลังคิดอะไรอยู่?" required></textarea>
-            </div>
-            <div class="mb-2">
-              <label class="form-label">อัปโหลดรูปภาพ (สูงสุด 10 รูป)</label>
-              <div class="image-dropzone" id="createDropzone" tabindex="0" role="button" aria-label="ลากรูปมาวางหรือคลิกเพื่อเลือกไฟล์">
-                <i class="bi bi-cloud-arrow-up"></i>
-                <p class="mb-0">ลากรูปมาวางที่นี่ หรือ <span class="image-dropzone__browse">คลิกเพื่อเลือกไฟล์</span></p>
-              </div>
-              <input type="file" class="visually-hidden" name="images" id="createPostImages" accept="image/*" multiple>
-            </div>
-            <div id="createImagePreview" class="image-preview-grid"></div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" id="cancelCreatePostBtn" data-bs-dismiss="modal">ยกเลิก</button>
-            <button type="submit" class="btn btn-primary">โพสต์</button>
-          </div>
-        </form>
+      <div class="cm-toolbar" id="filterSection">
+        <label class="cm-search" for="feedSearchInput">
+          <i class="bi bi-search"></i>
+          <span class="visually-hidden">ค้นหาโพสต์</span>
+          <input type="search" id="feedSearchInput" placeholder="ค้นหาโพสต์ ชื่อร้าน หรือ #แท็ก" autocomplete="off" enterkeyhint="search">
+          <button type="button" class="cm-search__clear" id="feedSearchClear" aria-label="ล้างคำค้น" hidden><i class="bi bi-x-lg"></i></button>
+        </label>
+        <div class="cm-sort" role="group" aria-label="เรียงโพสต์">
+          <button type="button" class="cm-sort__btn is-active" data-sort="latest" aria-pressed="true">ล่าสุด</button>
+          <button type="button" class="cm-sort__btn" data-sort="popular" aria-pressed="false">มาแรง</button>
+          <button type="button" class="cm-sort__btn" data-sort="discussed" aria-pressed="false">คุยกันเยอะ</button>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <div class="modal fade" id="editPostModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <form id="editPostForm">
-          <input type="hidden" name="postId" id="editPostId">
-          <div class="modal-header">
-            <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>แก้ไขโพสต์</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">เลือกประเภทโพสต์</label>
-              <div class="category-card-grid" id="editCategoryGrid" role="radiogroup" aria-label="เลือกประเภทโพสต์">
-                <% categories.forEach(function(category) { %>
-                  <button type="button" class="category-card cat-<%= (categoryColors && categoryColors[category]) || defaultCategoryColor %>" data-category="<%= category %>" role="radio" aria-checked="false">
-                    <i class="bi <%= (categoryIcons && categoryIcons[category]) || defaultCategoryIcon %>"></i>
-                    <span><%= category %></span>
-                  </button>
-                <% }) %>
-              </div>
-              <select class="visually-hidden" name="category" id="editPostCategory" required>
-                <% categories.forEach(function(category) { %>
-                  <option value="<%= category %>"><%= category %></option>
-                <% }) %>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">เนื้อหาโพสต์</label>
-              <textarea class="fb-style-textarea" name="content" id="editPostContent" rows="2" maxlength="5000" placeholder="คุณกำลังคิดอะไรอยู่?" required></textarea>
-            </div>
-            <div class="mb-2">รูปภาพเดิม</div>
-            <div id="editExistingImages" class="image-preview-grid mb-3"></div>
-            <div class="mb-2">
-              <label class="form-label">เพิ่มรูปภาพใหม่</label>
-              <div class="image-dropzone" id="editDropzone" tabindex="0" role="button" aria-label="ลากรูปมาวางหรือคลิกเพื่อเลือกไฟล์">
-                <i class="bi bi-cloud-arrow-up"></i>
-                <p class="mb-0">ลากรูปมาวางที่นี่ หรือ <span class="image-dropzone__browse">คลิกเพื่อเลือกไฟล์</span></p>
-              </div>
-              <input type="file" class="visually-hidden" name="images" id="editPostImages" accept="image/*" multiple>
-            </div>
-            <div id="editNewImagePreview" class="image-preview-grid"></div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-            <button type="submit" class="btn btn-primary">บันทึกการแก้ไข</button>
-          </div>
-        </form>
+      <div class="cm-result" id="feedResultBar" hidden></div>
+
+      <div class="cm-feed" id="feedContainer" aria-live="polite"></div>
+
+      <div class="cm-more">
+        <button type="button" class="cm-btn cm-btn--ghost cm-more__btn" id="loadMoreBtn" hidden></button>
+        <p class="cm-more__end" id="feedEnd" hidden>— ดูครบทุกโพสต์แล้ว —</p>
       </div>
-    </div>
+    </main>
   </div>
+</div>
 
-  <div class="modal fade" id="commentsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
+<% if (canCreatePost) { %>
+<button type="button" class="cm-fab js-open-composer" aria-label="เขียนโพสต์"><i class="bi bi-pencil-square"></i><span>เขียนโพสต์</span></button>
+<% } %>
+
+<% ['create', 'edit'].forEach(function(mode) { const isEdit = mode === 'edit'; %>
+<div class="modal fade cm-modal" id="<%= isEdit ? 'editPostModal' : 'createPostModal' %>" tabindex="-1" aria-hidden="true" aria-labelledby="<%= mode %>PostTitle">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div class="modal-content">
+      <form id="<%= isEdit ? 'editPostForm' : 'createPostForm' %>" novalidate>
+        <% if (isEdit) { %><input type="hidden" name="postId" id="editPostId"><% } %>
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-chat-dots me-2"></i>คอมเมนต์</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h2 class="modal-title" id="<%= mode %>PostTitle"><%= isEdit ? 'แก้ไขโพสต์' : 'โพสต์ใหม่' %></h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
         </div>
         <div class="modal-body">
-          <div id="commentsList" class="comments-list"></div>
-          <form id="commentForm" class="comment-composer mt-3">
-            <input type="hidden" id="commentPostId">
-            <img src="<%= currentUserAvatar %>" alt="คุณ" class="comment-composer__avatar">
-            <div class="comment-composer__box">
-              <textarea id="commentContent" class="comment-composer__input" placeholder="พิมพ์คอมเมนต์..." maxlength="1000" rows="1" required></textarea>
-              <button class="comment-composer__send" type="submit" aria-label="ส่งคอมเมนต์" disabled>
-                <i class="bi bi-send-fill"></i>
-              </button>
+          <div class="cm-field">
+            <span class="cm-label cm-field__label">1 · เลือกช่องที่จะโพสต์</span>
+            <div class="cm-cat-grid" id="<%= isEdit ? 'editCategoryGrid' : 'createCategoryGrid' %>" role="radiogroup" aria-label="เลือกประเภทโพสต์">
+              <% categories.forEach(function(category) { %>
+                <button type="button" class="cm-cat cat-<%= catColor(category) %>" data-category="<%= category %>" role="radio" aria-checked="false">
+                  <i class="bi <%= catIcon(category) %>"></i><span><%= category %></span>
+                </button>
+              <% }) %>
             </div>
-          </form>
+            <!-- select ตัวจริงที่ฟอร์มส่งไป การ์ดด้านบนแค่อัปเดตค่าผ่าน JS -->
+            <select class="visually-hidden" name="category" id="<%= isEdit ? 'editPostCategory' : 'createCategorySelect' %>" tabindex="-1" aria-hidden="true">
+              <option value="" selected>เลือกประเภทโพสต์</option>
+              <% categories.forEach(function(category) { %>
+                <option value="<%= category %>"><%= category %></option>
+              <% }) %>
+            </select>
+          </div>
+
+          <div class="cm-field">
+            <label class="cm-label cm-field__label" for="<%= isEdit ? 'editPostContent' : 'createContentInput' %>">2 · เขียนเนื้อหา</label>
+            <div class="cm-editor">
+              <textarea class="cm-editor__input" name="content" id="<%= isEdit ? 'editPostContent' : 'createContentInput' %>" rows="4" maxlength="5000" placeholder="เช่น วันนี้มี #ข้าวเหนียวมะม่วง ลด 10 บาท ถึงสามทุ่ม แวะแผง A12 ได้เลย"></textarea>
+              <div class="cm-editor__tools">
+                <div class="cm-emoji" data-target="<%= isEdit ? 'editPostContent' : 'createContentInput' %>" aria-label="แทรกอีโมจิ">
+                  <% emojis.forEach(function(emoji) { %><button type="button" class="cm-emoji__btn" data-emoji="<%= emoji %>"><%= emoji %></button><% }) %>
+                </div>
+                <span class="cm-counter" data-for="<%= isEdit ? 'editPostContent' : 'createContentInput' %>">0/5,000</span>
+              </div>
+            </div>
+            <% if (!isEdit) { %><p class="cm-draft" id="createDraftNote" hidden><i class="bi bi-cloud-check"></i>กู้ข้อความที่พิมพ์ค้างไว้คืนให้แล้ว <button type="button" class="cm-linkbtn" id="discardDraftBtn">ล้างร่าง</button></p><% } %>
+          </div>
+
+          <div class="cm-field">
+            <span class="cm-label cm-field__label">3 · แนบรูป <span class="cm-muted">(ไม่บังคับ สูงสุด 10 รูป รูปละไม่เกิน 5MB)</span></span>
+            <% if (isEdit) { %><div id="editExistingImages" class="cm-thumbs"></div><% } %>
+            <div class="cm-drop" id="<%= isEdit ? 'editDropzone' : 'createDropzone' %>" tabindex="0" role="button" aria-label="ลากรูปมาวางหรือคลิกเพื่อเลือกไฟล์">
+              <i class="bi bi-cloud-arrow-up"></i>
+              <span>ลากรูปมาวาง หรือ <u>เลือกจากเครื่อง</u></span>
+            </div>
+            <input type="file" class="visually-hidden" name="images" id="<%= isEdit ? 'editPostImages' : 'createPostImages' %>" accept="image/jpeg,image/png,image/gif,image/webp" multiple tabindex="-1">
+            <div id="<%= isEdit ? 'editNewImagePreview' : 'createImagePreview' %>" class="cm-thumbs"></div>
+          </div>
         </div>
-      </div>
+        <div class="modal-footer">
+          <p class="cm-form-error" role="alert" hidden></p>
+          <button type="button" class="cm-btn cm-btn--ghost" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="cm-btn cm-btn--primary cm-submit"><%= isEdit ? 'บันทึกการแก้ไข' : 'โพสต์เลย' %></button>
+        </div>
+      </form>
     </div>
   </div>
+</div>
+<% }) %>
 
-  <div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3" style="z-index: 9999;">
-    <div id="shareToast" class="toast align-items-center text-white border-0 feed-toast" role="alert">
-      <div class="d-flex">
-        <div class="toast-body" id="toastMessage">พร้อมใช้งาน</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+<div class="modal fade cm-modal" id="commentsModal" tabindex="-1" aria-hidden="true" aria-labelledby="commentsTitle">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="commentsTitle">คอมเมนต์</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+      </div>
+      <div class="modal-body">
+        <div class="cm-thread-post" id="commentsPostSummary"></div>
+        <div id="commentsList" class="cm-thread"></div>
+      </div>
+      <div class="modal-footer cm-thread-footer">
+        <form id="commentForm" class="cm-reply">
+          <input type="hidden" id="commentPostId">
+          <img src="<%= currentUserAvatar %>" alt="" class="cm-avatar cm-avatar--sm">
+          <div class="cm-reply__box">
+            <textarea id="commentContent" class="cm-reply__input" placeholder="เขียนคอมเมนต์... (Enter ส่ง, Shift+Enter ขึ้นบรรทัด)" maxlength="1000" rows="1" aria-label="เขียนคอมเมนต์"></textarea>
+            <button class="cm-reply__send" type="submit" aria-label="ส่งคอมเมนต์" disabled><i class="bi bi-send-fill"></i></button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="/js/common/dialogs.js" defer></script>
-<script src="/js/seller/comunity.js?v=20260825-3" defer></script>
+<!-- ดูรูปเต็มจอ -->
+<div class="cm-lightbox" id="imageLightbox" hidden role="dialog" aria-modal="true" aria-label="ดูรูปภาพ">
+  <button type="button" class="cm-lightbox__btn cm-lightbox__close" id="lightboxClose" aria-label="ปิด"><i class="bi bi-x-lg"></i></button>
+  <button type="button" class="cm-lightbox__btn cm-lightbox__prev" id="lightboxPrev" aria-label="รูปก่อนหน้า"><i class="bi bi-chevron-left"></i></button>
+  <img class="cm-lightbox__img" id="lightboxImg" alt="">
+  <button type="button" class="cm-lightbox__btn cm-lightbox__next" id="lightboxNext" aria-label="รูปถัดไป"><i class="bi bi-chevron-right"></i></button>
+  <div class="cm-lightbox__counter" id="lightboxCounter"></div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3 cm-toast-wrap">
+  <div id="shareToast" class="toast cm-toast" role="status" aria-live="polite">
+    <div class="d-flex">
+      <div class="toast-body" id="toastMessage"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="ปิด"></button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/common/dialogs.js" defer></script>
+<script src="/js/seller/comunity.js?v=20261024-2" defer></script>
 </body>
 </html>

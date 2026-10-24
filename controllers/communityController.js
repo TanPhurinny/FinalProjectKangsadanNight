@@ -1,4 +1,5 @@
 const prisma = require('../config/prismaClient');
+const { deleteImage } = require('../utils/imageStorage');
 
 const COMMUNITY_CATEGORIES = [
     'แนะนำร้าน-บริการ',
@@ -155,6 +156,40 @@ function isModerator(user) {
     return user?.role === 'ADMIN' || user?.role === 'STAFF';
 }
 
+// include เดียวกันทุกที่ที่ดึงโพสต์ไปแสดงบนฟีด — คอมเมนต์ดึงมาแค่ 2 อันล่าสุดไว้โชว์ใต้โพสต์
+// ส่วนจำนวนคอมเมนต์ทั้งหมดใช้ _count แทนการดึงทุกแถวมานับ
+const FEED_POST_INCLUDE = {
+    author: {
+        include: { shop: true }
+    },
+    images: true,
+    likes: {
+        select: { userId: true }
+    },
+    comments: {
+        orderBy: { createdAt: 'desc' },
+        take: 2,
+        include: {
+            user: { include: { shop: true } }
+        }
+    },
+    _count: {
+        select: { comments: true }
+    }
+};
+
+function buildCommentView(comment, currentUserId, canModerate = false) {
+    return {
+        id: comment.id,
+        content: comment.content,
+        authorName: comment.user?.shop?.shopName || comment.user?.name || 'ผู้ใช้งาน',
+        profileImage: comment.user?.shop?.logoImage || comment.user?.shop?.productImage || '/img/favicon.png',
+        createdAt: new Date(comment.createdAt).toLocaleString('th-TH'),
+        createdAtIso: new Date(comment.createdAt).toISOString(),
+        canDelete: canModerate || Number(comment.userId) === Number(currentUserId)
+    };
+}
+
 function buildPostView(post, currentUserId, activeStallCodes = [], canModerate = false) {
     const { date, time } = parseDateTimeThai(post.createdAt);
     const isOwner = Number(currentUserId) === Number(post.userId);
@@ -167,6 +202,7 @@ function buildPostView(post, currentUserId, activeStallCodes = [], canModerate =
         createdAt: `${date} ${time}`,
         createdDate: date,
         createdTime: time,
+        createdAtIso: new Date(post.createdAt).toISOString(),
         updatedAt: post.updatedAt,
         storeName: shop.shopName || post.author?.name || 'ผู้ใช้งาน',
         profileImage: shop.logoImage || shop.productImage || '/img/favicon.png',
@@ -178,7 +214,13 @@ function buildPostView(post, currentUserId, activeStallCodes = [], canModerate =
             imageUrl: image.imageUrl
         })),
         likes: post.likes.length,
-        comments: post.comments.length,
+        comments: post._count?.comments ?? post.comments.length,
+        // เรียงเก่า -> ใหม่ ให้อ่านจากบนลงล่างเหมือนในหน้าต่างคอมเมนต์
+        previewComments: post.comments
+            .filter((comment) => comment.user)
+            .slice(0, 2)
+            .reverse()
+            .map((comment) => buildCommentView(comment, currentUserId, canModerate)),
         isLiked: post.likes.some((like) => Number(like.userId) === Number(currentUserId)),
         isOwner,
         canModerate: !isOwner && canModerate
@@ -188,22 +230,7 @@ function buildPostView(post, currentUserId, activeStallCodes = [], canModerate =
 async function fetchFeedPosts(currentUserId, where = {}, canModerate = false) {
     const posts = await prisma.communityPost.findMany({
         where,
-        include: {
-            author: {
-                include: { shop: true }
-            },
-            images: true,
-            likes: {
-                select: {
-                    userId: true
-                }
-            },
-            comments: {
-                select: {
-                    id: true
-                }
-            }
-        },
+        include: FEED_POST_INCLUDE,
         orderBy: {
             createdAt: 'desc'
         }
@@ -217,21 +244,54 @@ async function fetchFeedPosts(currentUserId, where = {}, canModerate = false) {
 async function fetchPostOrThrow(postId) {
     const post = await prisma.communityPost.findUnique({
         where: { id: postId },
-        include: {
-            author: {
-                include: { shop: true }
-            },
-            images: true,
-            likes: {
-                select: { userId: true }
-            },
-            comments: {
-                select: { id: true }
-            }
-        }
+        include: FEED_POST_INCLUDE
     });
 
     return post;
+}
+
+// ต้องตรงกับตัวจับ #แท็ก ใน linkifyText ของ public/js/seller/comunity.js (รองรับแท็กภาษาไทย)
+const HASHTAG_PATTERN = /#[^\s#<>.,!?()"'“”]+/g;
+
+// สรุปความเคลื่อนไหว 7 วันล่าสุดสำหรับแถบ "ชีพจรคอมมูนิตี้" บนหัวฟีด
+// คิดจากโพสต์ที่โหลดมาแสดงอยู่แล้ว ไม่ต้อง query เพิ่ม — คะแนนร้านเด่น = โพสต์ละ 3 + ถูกใจ + คอมเมนต์
+function buildCommunityPulse(posts) {
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const weekPosts = posts.filter((post) => new Date(post.createdAtIso).getTime() >= weekAgo);
+    const scoreByStore = new Map();
+
+    weekPosts.forEach((post) => {
+        const entry = scoreByStore.get(post.storeName) || {
+            storeName: post.storeName,
+            profileImage: post.profileImage,
+            posts: 0,
+            score: 0
+        };
+        entry.posts += 1;
+        entry.score += 3 + post.likes + post.comments;
+        scoreByStore.set(post.storeName, entry);
+    });
+
+    // แท็กยอดฮิต 30 วัน — นับครั้งละโพสต์ (โพสต์เดียวพิมพ์แท็กซ้ำหลายรอบนับครั้งเดียว)
+    const monthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const tagCounts = new Map();
+    posts
+        .filter((post) => new Date(post.createdAtIso).getTime() >= monthAgo)
+        .forEach((post) => {
+            const tags = new Set((String(post.content || '').match(HASHTAG_PATTERN) || []).map((tag) => tag.toLowerCase()));
+            tags.forEach((tag) => tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1));
+        });
+
+    return {
+        totalPosts: posts.length,
+        weekPosts: weekPosts.length,
+        activeStores: scoreByStore.size,
+        topStores: [...scoreByStore.values()].sort((a, b) => b.score - a.score).slice(0, 5),
+        trendingTags: [...tagCounts.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 8)
+            .map(([tag, count]) => ({ tag, count }))
+    };
 }
 
 exports.renderFeedPage = async (req, res) => {
@@ -251,6 +311,7 @@ exports.renderFeedPage = async (req, res) => {
             categoryColors: COMMUNITY_CATEGORY_COLORS,
             defaultCategoryColor: DEFAULT_CATEGORY_COLOR,
             posts,
+            pulse: buildCommunityPulse(posts),
             currentUserAvatar,
             canCreatePost: isSeller(req.user) && !req.session?.viewAsCustomer
         });
@@ -314,18 +375,7 @@ exports.createPost = async (req, res) => {
                     }))
                 }
             },
-            include: {
-                author: {
-                    include: { shop: true }
-                },
-                images: true,
-                likes: {
-                    select: { userId: true }
-                },
-                comments: {
-                    select: { id: true }
-                }
-            }
+            include: FEED_POST_INCLUDE
         });
 
         const stallCodesByUserId = await getActiveStallCodesByUserId([req.user.id]);
@@ -410,6 +460,11 @@ exports.updatePost = async (req, res) => {
             }
         });
 
+        // ลบไฟล์จริงหลังบันทึก DB สำเร็จแล้วเท่านั้น (ถ้า transaction ล้ม รูปต้องยังอยู่)
+        await Promise.all(post.images
+            .filter((image) => removeImageIds.includes(image.id))
+            .map((image) => deleteImage(image.imageUrl)));
+
         const updatedPost = await fetchPostOrThrow(postId);
         const stallCodesByUserId = await getActiveStallCodesByUserId([req.user.id]);
 
@@ -431,7 +486,7 @@ exports.deletePost = async (req, res) => {
             return res.status(400).json({ success: false, message: 'รหัสโพสต์ไม่ถูกต้อง' });
         }
 
-        const post = await prisma.communityPost.findUnique({ where: { id: postId } });
+        const post = await prisma.communityPost.findUnique({ where: { id: postId }, include: { images: true } });
         if (!post) {
             return res.status(404).json({ success: false, message: 'ไม่พบโพสต์ที่ต้องการลบ' });
         }
@@ -441,6 +496,8 @@ exports.deletePost = async (req, res) => {
         }
 
         await prisma.communityPost.delete({ where: { id: postId } });
+        // แถวรูปหายไปกับ cascade แล้ว แต่ไฟล์บน Cloudinary/ดิสก์ต้องลบเอง ไม่งั้นค้างตลอดไป
+        await Promise.all(post.images.map((image) => deleteImage(image.imageUrl)));
         return res.json({ success: true, message: 'ลบโพสต์สำเร็จ' });
     } catch (error) {
         console.error('deletePost error:', error);
@@ -508,14 +565,7 @@ exports.getComments = async (req, res) => {
 
         return res.json({
             success: true,
-            comments: comments.map((comment) => ({
-                id: comment.id,
-                content: comment.content,
-                authorName: comment.user?.shop?.shopName || comment.user?.name || 'ผู้ใช้งาน',
-                profileImage: comment.user?.shop?.logoImage || comment.user?.shop?.productImage || '/img/favicon.png',
-                createdAt: new Date(comment.createdAt).toLocaleString('th-TH'),
-                canDelete: canModerate || Number(comment.userId) === Number(req.user.id)
-            }))
+            comments: comments.map((comment) => buildCommentView(comment, req.user.id, canModerate))
         });
     } catch (error) {
         console.error('getComments error:', error);
@@ -539,6 +589,11 @@ exports.createComment = async (req, res) => {
             return res.status(400).json({ success: false, message: 'ข้อความคอมเมนต์ยาวเกินกำหนด' });
         }
 
+        const postExists = await prisma.communityPost.count({ where: { id: postId } });
+        if (!postExists) {
+            return res.status(404).json({ success: false, message: 'ไม่พบโพสต์นี้ อาจถูกลบไปแล้ว' });
+        }
+
         const comment = await prisma.communityComment.create({
             data: {
                 postId,
@@ -560,14 +615,7 @@ exports.createComment = async (req, res) => {
             success: true,
             message: 'เพิ่มคอมเมนต์สำเร็จ',
             commentCount,
-            comment: {
-                id: comment.id,
-                content: comment.content,
-                authorName: comment.user?.shop?.shopName || comment.user?.name || 'ผู้ใช้งาน',
-                profileImage: comment.user?.shop?.logoImage || comment.user?.shop?.productImage || '/img/favicon.png',
-                createdAt: new Date(comment.createdAt).toLocaleString('th-TH'),
-                canDelete: true
-            }
+            comment: buildCommentView(comment, req.user.id, true)
         });
     } catch (error) {
         console.error('createComment error:', error);
