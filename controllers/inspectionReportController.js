@@ -5,6 +5,7 @@ const { getRoundCalendarDates, toDateKey } = require('../utils/inspectionScoring
 const { normalizeProductType } = require('../utils/zoneAccess');
 const { CLEANLINESS_CHECKLIST, CLEANLINESS_ITEM_IDS } = require('../utils/cleanlinessChecklist');
 const { buildPreferredWalkOrder } = require('../utils/inspectionWalkOrder');
+const { stripInternalTags } = require('../utils/bookingRequestTag');
 const { reportHelpers } = require('./scoreReportController');
 
 // รายงานตรวจตลาด "รายวัน" ไม่เน้นคะแนน — งานตรวจปัญหา = มาขาย/ไม่มาขาย + ปัญหาย่อย (ไฟฟ้าเกิน ฯลฯ)
@@ -100,7 +101,7 @@ async function loadHeldStalls() {
                 shop: {
                     shopName: shop.shopName || request.productName || '',
                     productType: shop.productType || '',
-                    productDetail: shop.productDetail || request.description || ''
+                    productDetail: shop.productDetail || stripInternalTags(request.description) || ''
                 }
             }
         };

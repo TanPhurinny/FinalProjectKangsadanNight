@@ -6,6 +6,7 @@ const { toDateKey } = require('../utils/inspectionScoring');
 const { normalizeProductType } = require('../utils/zoneAccess');
 const { CLEANLINESS_CHECKLIST, CLEANLINESS_ITEM_IDS } = require('../utils/cleanlinessChecklist');
 const { buildPreferredWalkOrder } = require('../utils/inspectionWalkOrder');
+const { stripInternalTags } = require('../utils/bookingRequestTag');
 
 // ใช้แกะ requestId จาก Booking.storeDetailSnapshot เหมือน scoreReportController.js เพื่อย้อนกลับไปหา
 // BookingRequest.assignedStallCode จริงของรอบที่ดูอยู่ (Booking มีช่วงวันเช่า แต่ไม่มีล็อคที่ได้จริง)
@@ -216,7 +217,7 @@ exports.getMarketInspectionPage = async (req, res) => {
                 if (!stallCodes.length) return;
 
                 const shop = request.user?.shop || {};
-                const productDetail = shop.productDetail || request.description || '-';
+                const productDetail = shop.productDetail || stripInternalTags(request.description) || '-';
                 const productType = shop.productType || '';
 
                 stallCodes.forEach((stallCode) => {

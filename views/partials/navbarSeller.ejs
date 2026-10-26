@@ -3,7 +3,7 @@
     const currentPath = locals.path || '';
     const notificationList = (typeof notifications !== 'undefined' && Array.isArray(notifications)) ? notifications : [];
     const unreadNotifications = notificationList.filter(function(item) {
-        return !item.isRead;
+        return !item.isRead && !item.upcoming && (!item.step || item.action || item.step === 3);
     }).length;
 %>
 

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>รีวิวร้านค้า — Admin</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet" />
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet" />
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/shopReviews.css?v=20261026">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body class="bg-light">
+        <script src="/js/common/tabSession.js"></script>
+        <%- include('../partials/navbar') %>
+        <%
+            const tabs = [
+                { key: 'all', label: 'ทั้งหมด', count: counts.all },
+                { key: 'reported', label: 'ร้านรายงาน รอตรวจ', count: counts.reported },
+                { key: 'hidden', label: 'ซ่อนอยู่', count: counts.hidden },
+                { key: 'low', label: '1–2 ดาว', count: counts.low }
+            ];
+            const starRow = function (n) { return [1, 2, 3, 4, 5].map(function (i) { return '<i class="fa-' + (i <= n ? 'solid' : 'regular') + ' fa-star"></i>'; }).join(''); };
+            const dateFmt = { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' };
+        %>
+
+        <div class="reviews-page">
+            <header class="page-header">
+                <a href="javascript:history.back()" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+                <h2 class="header-title">รีวิวร้านค้า</h2>
+                <div class="header-spacer"></div>
+            </header>
+
+            <div class="container">
+                <p class="page-sub">
+                    รีวิวจากสมาชิกที่แสดงในการ์ดร้านบนผังตลาด — ซ่อนเฉพาะรีวิวที่ผิดกติกา (คำหยาบ สแปม ข้อมูลส่วนตัว ไม่เกี่ยวกับร้าน)
+                    รีวิวที่ซ่อนไม่แสดงให้คนอื่นเห็นและไม่นับคะแนนเฉลี่ย คะแนนต่ำอย่างเดียวไม่ใช่เหตุผลในการซ่อน
+                </p>
+
+                <% if (error) { %>
+                <div class="notice notice-danger"><%= error %></div>
+                <% } %>
+                <% if (success) { %>
+                <div class="notice notice-success"><%= success %></div>
+                <% } %>
+
+                <nav class="filter-tabs" aria-label="กรองรีวิว">
+                    <% tabs.forEach(function (tab) { %>
+                    <a href="/admin/shop-reviews?filter=<%= tab.key %><%= q ? '&q=' + encodeURIComponent(q) : '' %>"
+                        class="filter-tab<%= filter === tab.key ? ' active' : '' %><%= tab.key === 'reported' && tab.count ? ' has-todo' : '' %>">
+                        <span><%= tab.label %></span><b><%= tab.count %></b>
+                    </a>
+                    <% }) %>
+                </nav>
+
+                <form class="search-bar" method="GET" action="/admin/shop-reviews">
+                    <input type="hidden" name="filter" value="<%= filter %>">
+                    <input type="search" class="field-input" name="q" value="<%= q %>" placeholder="ค้นหาชื่อร้าน รหัสล็อก ชื่อผู้รีวิว หรือข้อความ">
+                    <button type="submit" class="btn-submit">ค้นหา</button>
+                </form>
+
+                <div class="review-list">
+                    <% if (!reviews.length) { %>
+                    <div class="empty-row">ไม่มีรีวิวในหมวดนี้</div>
+                    <% } %>
+                    <% reviews.forEach(function (rv) {
+                        const shopName = (rv.shop.shop && rv.shop.shop.shopName) || rv.shop.name;
+                        const isReported = rv.reportCount > 0 && !rv.isHidden;
+                    %>
+                    <article class="review-row<%= rv.isHidden ? ' is-hidden' : '' %><%= isReported ? ' is-reported' : '' %>">
+                        <div class="rr-shop">
+                            <span class="rr-code"><%= rv.stallCode || '-' %></span>
+                            <b><%= shopName %></b>
+                            <% if (rv.stallCode) { %><a href="/market-map?stall=<%= encodeURIComponent(rv.stallCode) %>" target="_blank" rel="noopener">ดูบนผัง</a><% } %>
+                        </div>
+                        <div class="rr-body">
+                            <div class="rr-head">
+                                <span class="rr-stars" aria-label="<%= rv.rating %> ดาว"><%- starRow(rv.rating) %></span>
+                                <b><%= rv.user.name %></b>
+                                <small>@<%= rv.user.username %> · <%= rv.user.role === 'SELLER' ? 'ผู้ขาย' : 'ลูกค้า' %></small>
+                                <span class="rr-date"><%= new Date(rv.createdAt).toLocaleString('th-TH', dateFmt) %></span>
+                            </div>
+                            <% if (rv.comment) { %><p class="rr-comment"><%= rv.comment %></p><% } else { %><p class="rr-comment rr-muted">ให้คะแนนอย่างเดียว ไม่มีข้อความ</p><% } %>
+                            <% if (rv.sellerReply) { %>
+                            <div class="rr-reply"><b>ร้านตอบ:</b> <%= rv.sellerReply %></div>
+                            <% } %>
+                            <% if (isReported) { %>
+                            <div class="rr-flag"><i class="fa-solid fa-flag"></i> ร้านรายงาน (<%= rv.reportCount %> ครั้ง) — <%= rv.reportReason || '-' %></div>
+                            <% } %>
+                            <% if (rv.isHidden) { %>
+                            <div class="rr-flag rr-flag-hidden"><i class="fa-solid fa-eye-slash"></i> ซ่อนอยู่ — <%= rv.hiddenReason || '-' %></div>
+                            <% } %>
+                        </div>
+                        <div class="rr-actions">
+                            <% if (rv.isHidden) { %>
+                            <form method="POST" action="/admin/shop-reviews/<%= rv.id %>/unhide">
+                                <input type="hidden" name="filter" value="<%= filter %>"><input type="hidden" name="q" value="<%= q %>">
+                                <button type="submit" class="btn-row">เลิกซ่อน</button>
+                            </form>
+                            <% } else { %>
+                            <form method="POST" action="/admin/shop-reviews/<%= rv.id %>/hide" class="js-hide-form" data-shop="<%= shopName %>">
+                                <input type="hidden" name="filter" value="<%= filter %>"><input type="hidden" name="q" value="<%= q %>">
+                                <input type="hidden" name="reason" value="">
+                                <button type="submit" class="btn-row btn-row-danger">ซ่อนรีวิว</button>
+                            </form>
+                            <% if (isReported) { %>
+                            <form method="POST" action="/admin/shop-reviews/<%= rv.id %>/dismiss">
+                                <input type="hidden" name="filter" value="<%= filter %>"><input type="hidden" name="q" value="<%= q %>">
+                                <button type="submit" class="btn-row">ไม่ผิดกติกา</button>
+                            </form>
+                            <% } %>
+                            <% } %>
+                        </div>
+                    </article>
+                    <% }) %>
+                </div>
+                <% if (reviews.length >= 200) { %>
+                <p class="page-sub">แสดง 200 รายการล่าสุด — ใช้ช่องค้นหาเพื่อหารีวิวที่เก่ากว่านี้</p>
+                <% } %>
+            </div>
+        </div>
+
+        <script src="/js/common/dialogs.js"></script>
+        <script>
+            document.querySelectorAll('.js-hide-form').forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (form.dataset.confirmed === '1') return;
+                    event.preventDefault();
+                    window.showConfirmDialog({
+                        title: 'ซ่อนรีวิว',
+                        message: 'รีวิวนี้ของร้าน ' + form.dataset.shop + ' จะไม่แสดงในผังตลาดและไม่นับคะแนนเฉลี่ย ผู้รีวิวและร้านจะเห็นเหตุผลที่ซ่อน',
+                        tone: 'danger',
+                        confirmText: 'ซ่อนรีวิว',
+                        inputPlaceholder: 'เหตุผลที่ซ่อน (เช่น คำหยาบ / สแปม)',
+                        onConfirm: function (reason) {
+                            if (!String(reason || '').trim()) {
+                                window.showAlertDialog({ title: 'ยังไม่ได้ใส่เหตุผล', message: 'กรุณาระบุเหตุผลที่ซ่อนรีวิว', tone: 'warning' });
+                                return;
+                            }
+                            form.querySelector('[name="reason"]').value = reason.trim();
+                            form.dataset.confirmed = '1';
+                            form.submit();
+                        }
+                    });
+                });
+            });
+        </script>
+    </body>
+</html>

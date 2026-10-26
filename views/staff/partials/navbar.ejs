@@ -37,6 +37,13 @@ const currentPath = locals.path || '';
                 class="nav-item <%= currentPath.includes('/staff/seller-scores') ? 'active' : '' %>">
                 <i class="fas fa-calendar-check"></i> การมาขายร้านค้า
             </a>
+            <a href="/admin/shop-reviews"
+                class="nav-item <%= currentPath.includes('/shop-reviews') ? 'active' : '' %>">
+                <i class="fas fa-star-half-stroke"></i> รีวิวร้านค้า
+                <% if (typeof reportedReviews !== 'undefined' && reportedReviews) { %>
+                <span class="nav-badge" title="รีวิวที่ร้านรายงานรอตรวจ <%= reportedReviews %>"><%= reportedReviews > 99 ? '99+' : reportedReviews %></span>
+                <% } %>
+            </a>
 
             <div class="nav-actions d-flex align-items-center">
                 <a href="/profile"

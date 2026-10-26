@@ -74,8 +74,19 @@ const eventBoothLimiter = rateLimit({
     message: 'ส่งคำขอบ่อยเกินไป กรุณาลองใหม่อีกครั้งในภายหลัง'
 });
 
+// เขียน/แก้รีวิวร้าน — สมาชิกที่ล็อกอินแล้วเท่านั้นอยู่แล้ว กันกดส่งรัวๆ/ไล่รีวิวทุกร้านในเวลาสั้นๆ
+const shopReviewLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: skipInNonProduction,
+    message: { success: false, message: 'ส่งรีวิวบ่อยเกินไป กรุณาลองใหม่อีกครั้งในภายหลัง' }
+});
+
 module.exports = {
     eventBoothLimiter,
+    shopReviewLimiter,
     shopViewLimiter,
     authLimiter,
     forgotPasswordLimiter,

@@ -21,6 +21,7 @@ const bookingHolidayCtrl = require('../controllers/bookingHolidayController');
 const eventBoothCtrl = require('../controllers/eventBoothController');
 const rentalStatementCtrl = require('../controllers/rentalStatementController');
 const leaseContractCtrl = require('../controllers/leaseContractController');
+const shopReviewCtrl = require('../controllers/shopReviewController');
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
 const storage = createImageStorage({ folder: 'announcements', prefix: 'ann' });
@@ -93,7 +94,8 @@ router.post('/community-banners/:id/delete', bannerCtrl.deleteBanner);
 // --- 6. User Management (เฉพาะ Admin) ---
 router.get('/users', isAdminOnly, userCtrl.getUsersPage);
 router.post('/users/update-role', isAdminOnly, userCtrl.updateRole);
-router.get('/users/delete/:id', isAdminOnly, userCtrl.deleteUser);
+router.post('/users/bulk-role', isAdminOnly, userCtrl.bulkUpdateRole);
+router.post('/users/:id/delete', isAdminOnly, userCtrl.deleteUser);
 
 // --- 6.1 คะแนนร้านค้าจากการตรวจตลาด + Blacklist (เฉพาะ Admin) ---
 router.get('/sellers/scores', isAdminOnly, scoreReportCtrl.getSellerScoresPage);
@@ -115,6 +117,12 @@ router.post('/event-booths/approve', eventBoothCtrl.approve);
 router.post('/event-booths/reject', eventBoothCtrl.reject);
 router.post('/event-booths/confirm-payment', eventBoothCtrl.confirmPayment);
 router.post('/event-booths/reject-slip', eventBoothCtrl.rejectSlip);
+
+// --- 6.6 ดูแลรีวิวร้านค้า — รีวิวที่ร้านรายงาน / ซ่อน-เลิกซ่อน (ดู controllers/shopReviewController.js) ---
+router.get('/shop-reviews', shopReviewCtrl.getAdminPage);
+router.post('/shop-reviews/:id/hide', shopReviewCtrl.hide);
+router.post('/shop-reviews/:id/unhide', shopReviewCtrl.unhide);
+router.post('/shop-reviews/:id/dismiss', shopReviewCtrl.dismissReport);
 
 // --- 7. Approvals & Requests ---
 router.get('/approvals', approvalCtrl.getApprovalsPage);

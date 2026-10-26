@@ -2,6 +2,7 @@ const QRCode = require('qrcode');
 const prisma = require('../config/prismaClient');
 const { buildZonesData } = require('./marketController');
 const { getStallOwnerIndex, recordShopView } = require('../utils/shopViews');
+const { getRatingSummaries } = require('../utils/shopReviews');
 
 // งานเสริมของผังตลาด: QR ร้าน, ป้ายหน้าร้าน (พิมพ์), ผังตลาดฉบับพิมพ์ และเก็บสถิติการเปิดดูร้าน
 // แยกจาก marketController.js ที่ดูแลการสร้างข้อมูลผัง (buildZonesData) อยู่แล้ว
@@ -51,11 +52,15 @@ exports.getStallSign = async (req, res) => {
             ? await prisma.shopDetail.findUnique({ where: { userId: owner.userId }, select: { shopName: true, shopTags: true, productType: true } })
             : null;
         const tags = String(shop?.shopTags || '').split(',').map((t) => t.trim()).filter(Boolean).slice(0, 6);
+        const rating = owner.userId ? (await getRatingSummaries([owner.userId])).get(owner.userId) : null;
         return res.render('marketSign', {
             code,
             shopName: shop?.shopName || owner.shopName,
             tags,
             qr: await qrSvg(stallMapUrl(req, code)),
+            // QR ที่สอง: เปิดหน้าต่างรีวิวของร้านทันที (marketMap.js อ่าน ?reviews=1)
+            reviewQr: await qrSvg(`${stallMapUrl(req, code)}&reviews=1`),
+            rating: rating || null,
             url: stallMapUrl(req, code)
         });
     } catch (error) {

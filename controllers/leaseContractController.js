@@ -66,10 +66,13 @@ function buildLeaseContractNotifications(requests, formatDate, formatTime) {
                     : `คำขอสัญญาเช่าช่วง ${period} ไม่ได้รับการอนุมัติ${request.adminNote ? ` เหตุผล: ${request.adminNote}` : ''}`,
                 date: formatDate(when),
                 time: formatTime(when),
+                at: when ? new Date(when).toISOString() : null,
                 status: isIssued ? 'SUCCESS' : 'REJECTED',
                 isRead: false,
                 isNew: true,
-                link: isIssued ? `/lease-contracts/${request.id}` : '/documents/lease-contract'
+                link: isIssued ? `/lease-contracts/${request.id}` : '/documents/lease-contract',
+                linkLabel: isIssued ? 'ดูสัญญาเช่า' : 'ขอใหม่',
+                linkIcon: isIssued ? 'bi-file-earmark-text' : 'bi-file-earmark-plus'
             };
         });
 }

@@ -83,6 +83,16 @@ function withTabToken(redirectPath, token) {
     return `${redirectPath}${separator}tabToken=${encodeURIComponent(token)}`;
 }
 
+// ?next= กลับไปหน้าที่ค้างไว้หลังล็อกอิน (เช่น กด "เข้าสู่ระบบเพื่อรีวิว" ในการ์ดร้านบนผังตลาด)
+// รับเฉพาะ path ภายในเว็บ (/...) กัน open redirect ไปเว็บอื่น (//evil.com, /\evil.com, https://...)
+function safeNextPath(value) {
+    const path = String(value || '').trim();
+    if (!path || path.length > 300) return null;
+    if (!path.startsWith('/') || path.startsWith('//') || path.startsWith('/\\')) return null;
+    if (/[\u0000-\u001f]/.test(path) || /^\/(login|logout|register)(\/|\?|$)/.test(path)) return null;
+    return path;
+}
+
 function buildLoginRedirectTarget(user) {
     if (user.role === 'ADMIN') {
         return '/admin/dashboard';
@@ -162,7 +172,8 @@ exports.renderLoginPage = (req, res) => {
         registerSuccess: null,
         forgotError: null,
         forgotSuccess: null,
-        activeTab: 'login'
+        activeTab: ['register', 'forgot'].includes(req.query.tab) ? req.query.tab : 'login',
+        next: safeNextPath(req.query.next)
     });
 };
 
@@ -200,7 +211,7 @@ exports.login = async (req, res) => {
             req.session.user = userModel.sanitizeUser(user);
         }
 
-        const redirectPath = buildLoginRedirectTarget(user);
+        const redirectPath = safeNextPath(req.body.next) || buildLoginRedirectTarget(user);
 
         // สำหรับ seller ที่ submit ฟอร์มแบบ HTML (ไม่ผ่าน fetch JSON)
         // แนบ tabToken ไปกับ URL เพื่อให้ auth ต่อแท็บทำงานได้สม่ำเสมอ

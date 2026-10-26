@@ -6,9 +6,6 @@
         <title>จัดการผู้ใช้งาน | Kangsadan Admin</title>
         <link rel="icon" type="image/png" href="/img/favicon.png">
         <link
-            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
-            rel="stylesheet">
-        <link
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
             rel="stylesheet">
         <link
@@ -16,150 +13,139 @@
             rel="stylesheet">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
-        <link rel="stylesheet" href="/stylesheets/admin/users.css">
-        <link rel="stylesheet" href="/stylesheets/responsive.css">
-
+        <link rel="stylesheet" href="/stylesheets/admin/users.css?v=20261026">
     </head>
-    <body>
+    <body class="um-body">
         <script src="/js/common/tabSession.js"></script>
         <%- include('../partials/navbar') %>
 
-        <header class="site-header">
-            <a href="javascript:history.back()" class="btn-back"><i
-                    class="fa-solid fa-arrow-left"></i></a>
-            <h2 class="header-title">จัดการผู้ใช้งาน</h2>
-            <div class="header-spacer"></div>
-        </header>
-
-        <div class="users-container container py-5">
-            <div class="d-flex justify-content-between align-items-center mb-5">
+        <main class="um-page" id="umApp" data-me="<%= user ? user.id : '' %>">
+            <header class="um-head">
                 <div>
-                    <p class="text-muted small">ตรวจสอบ แก้ไขบทบาท
-                        และดูข้อมูลสมาชิกทั้งหมดตามประเภทสมาชิก</p>
-                    <div class="d-flex flex-wrap gap-2">
-                        <span
-                            class="badge bg-info-subtle text-info-emphasis px-3 py-2">
-                            ผู้ใช้ทั้งหมด <span id="totalUsersCount"><%=
-                                allUsers.length %></span> คน
-                        </span>
-                        <span
-                            class="badge bg-light text-secondary border px-3 py-2">
-                            กำลังแสดง <span id="visibleUsersCount"><%=
-                                allUsers.length %></span> คน
-                        </span>
-                    </div>
+                    <p class="um-kicker">ระบบหลังบ้าน · สมาชิก</p>
+                    <h1 class="um-title">จัดการผู้ใช้งาน</h1>
+                    <p class="um-lead">ค้นหาสมาชิก ดูข้อมูลติดต่อ ร้านค้า และล็อกที่ถืออยู่ เปลี่ยนบทบาททีละคนหรือหลายคนพร้อมกัน
+                        กดแถวใดก็ได้เพื่อเปิดแผงรายละเอียด</p>
                 </div>
-            </div>
+                <div class="um-head-actions">
+                    <button type="button" class="um-btn um-btn--ghost" id="exportBtn">
+                        <i class="fa-solid fa-file-arrow-down"></i> ส่งออก CSV
+                    </button>
+                </div>
+            </header>
 
-            <div class="row g-3 mb-4">
-                <div class="col-md-8">
-                    <div class="input-group">
-                        <span
-                            class="input-group-text bg-white border-end-0"><i
-                                class="fas fa-search text-muted"></i></span>
-                        <input type="text" id="searchInput"
-                            class="form-control search-box border-start-0"
-                            placeholder="ค้นหาชื่อ หรือ Username...">
-                    </div>
+            <% if (error) { %>
+            <div class="um-notice um-notice--danger" role="alert"><i class="fa-solid fa-circle-exclamation"></i> <%= error %></div>
+            <% } %>
+
+            <!-- ดัชนีบทบาท: ตัวเลขแต่ละช่องกดเพื่อกรองได้ (ทำหน้าที่เป็นแท็บ) -->
+            <nav class="um-index" id="roleIndex" aria-label="กรองตามบทบาท"></nav>
+
+            <section class="um-toolbar" aria-label="ค้นหาและตัวกรอง">
+                <div class="um-search">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <input type="search" id="searchInput" autocomplete="off"
+                        placeholder="ค้นหาชื่อ ชื่อผู้ใช้ เบอร์ อีเมล ชื่อร้าน รหัสล็อก หรือ #ID"
+                        aria-label="ค้นหาผู้ใช้">
+                    <kbd class="um-kbd" title="กด / เพื่อค้นหา">/</kbd>
                 </div>
-                <div class="col-md-4">
-                    <select id="roleFilter"
-                        class="form-select search-box">
-                        <option value="ALL">ทุกบทบาท</option>
-                        <option value="ADMIN">ADMIN</option>
-                        <option value="STAFF">STAFF</option>
-                        <option value="SELLER">SELLER</option>
-                        <option value="CUSTOMER">CUSTOMER</option>
+                <label class="um-sort">
+                    <span>เรียง</span>
+                    <select id="sortSelect" aria-label="เรียงลำดับ">
+                        <option value="role">ตามบทบาท</option>
+                        <option value="name">ชื่อ ก–ฮ</option>
+                        <option value="newest">สมัครล่าสุด</option>
+                        <option value="oldest">สมัครนานที่สุด</option>
+                        <option value="activity">คำขอจองมากสุด</option>
                     </select>
+                </label>
+                <div class="um-chips" id="filterChips" role="group" aria-label="ตัวกรองเพิ่มเติม">
+                    <button type="button" class="um-chip" data-filter="shop"><i class="fa-solid fa-store"></i> มีร้านค้า <b></b></button>
+                    <button type="button" class="um-chip" data-filter="stall"><i class="fa-solid fa-table-cells-large"></i> ถือล็อกอยู่ <b></b></button>
+                    <button type="button" class="um-chip" data-filter="new"><i class="fa-solid fa-seedling"></i> สมัครใหม่ 30 วัน <b></b></button>
+                    <button type="button" class="um-chip" data-filter="incomplete"><i class="fa-solid fa-address-card"></i> ข้อมูลติดต่อไม่ครบ <b></b></button>
+                    <button type="button" class="um-chip um-chip--danger" data-filter="blacklist"><i class="fa-solid fa-ban"></i> แบล็กลิสต์ <b></b></button>
                 </div>
+            </section>
+
+            <div class="um-meta">
+                <span id="resultMeta" aria-live="polite"></span>
+                <button type="button" class="um-link" id="clearFilters" hidden><i class="fa-solid fa-xmark"></i> ล้างตัวกรองทั้งหมด</button>
             </div>
 
-            <div
-                class="table-card border overflow-hidden">
-                <div class="table-responsive">
-                    <table class="table align-middle mb-0" id="userTable">
-                        <thead class="thead-custom bg-light">
-                            <tr class="small fw-bold text-muted text-uppercase">
-                                <th class="py-3 px-4">รายชื่อสมาชิก</th>
-                                <th class="py-3">ชื่อผู้ใช้</th>
-                                <th class="py-3">บทบาท</th>
-                                <th class="py-3 text-center">จัดการ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% allUsers.forEach(u => { %>
-                            <tr class="user-row border-bottom"
-                                data-name="<%= u.name.toLowerCase() %>"
-                                data-username="<%= u.username.toLowerCase() %>"
-                                data-role="<%= u.role %>">
-                                <td class="px-4">
-                                    <div
-                                        class="user-info-cell d-flex align-items-center justify-content-between"
-                                        onclick="viewUserDetail('<%= encodeURIComponent(JSON.stringify(u)) %>')">
-                                        <div class="d-flex align-items-center">
-                                            <div class="avatar-circle me-3"><%=
-                                                u.name.charAt(0) %></div>
-                                            <div>
-                                                <div
-                                                    class="fw-bold clickable-name text-dark"><%=
-                                                    u.name %></div>
-                                                <small class="text-muted"
-                                                    style="font-size: 0.7rem;">ID:
-                                                    #<%= u.id %></small>
-                                            </div>
-                                        </div>
-                                        <span class="detail-arrow"
-                                            aria-hidden="true"><i
-                                                class="fas fa-chevron-right"></i></span>
-                                    </div>
-                                </td>
-                                <td class="text-muted small font-monospace"><%=
-                                    u.username %></td>
-                                <td>
-                                    <%
-                                    let roleClass = 'role-customer';
-                                    if (u.role === 'ADMIN') roleClass =
-                                    'role-admin';
-                                    else if (u.role === 'STAFF') roleClass =
-                                    'role-staff';
-                                    else if (u.role === 'SELLER') roleClass =
-                                    'role-seller';
-                                    %>
-                                    <span class="role-badge <%= roleClass %>">
-                                        <i
-                                            class="fas fa-circle me-1 small"></i><%=
-                                        u.role %>
-                                    </span>
-                                </td>
-                                <td class="text-center">
-                                    <button class="btn-action btn-view"
-                                        onclick="viewUserDetail('<%= encodeURIComponent(JSON.stringify(u)) %>')"
-                                        title="ดูข้อมูล">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button class="btn-action btn-edit"
-                                        onclick="openEditModal('<%= u.id %>', '<%= u.name %>', '<%= u.role %>')"
-                                        title="เปลี่ยนสิทธิ์">
-                                        <i class="fas fa-user-shield"></i>
-                                    </button>
-                                    <button class="btn-action btn-delete"
-                                        onclick="deleteUser('<%= u.id %>')"
-                                        title="ลบผู้ใช้">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            <% }) %>
-                        </tbody>
-                    </table>
+            <section class="um-table" aria-label="รายชื่อผู้ใช้">
+                <div class="um-row um-row--head" role="row">
+                    <label class="um-check" title="เลือกทั้งหมดในหน้านี้">
+                        <input type="checkbox" id="selectPage" aria-label="เลือกทั้งหมดในหน้านี้">
+                    </label>
+                    <span>สมาชิก</span>
+                    <span>ติดต่อ</span>
+                    <span>บทบาท</span>
+                    <span>ร้าน / ล็อก</span>
+                    <span>สมัครเมื่อ</span>
+                    <span class="um-col-actions">จัดการ</span>
+                </div>
+                <div id="userRows"></div>
+                <div class="um-empty" id="emptyState" hidden>
+                    <i class="fa-solid fa-user-slash"></i>
+                    <p>ไม่พบผู้ใช้ที่ตรงกับเงื่อนไข</p>
+                    <button type="button" class="um-btn um-btn--ghost" data-action="clear-filters">ล้างตัวกรอง</button>
+                </div>
+            </section>
+
+            <nav class="um-pager" id="pager" aria-label="เปลี่ยนหน้า"></nav>
+        </main>
+
+        <!-- แถบทำรายการหลายคน: โผล่เมื่อเลือกอย่างน้อย 1 คน -->
+        <form class="um-bulk" id="bulkBar" action="/admin/users/bulk-role" method="POST" hidden>
+            <div class="um-bulk-count"><b id="bulkCount">0</b> คนที่เลือก</div>
+            <div id="bulkIds"></div>
+            <label class="um-bulk-role">
+                <span>เปลี่ยนบทบาทเป็น</span>
+                <select name="newRole" id="bulkRole" required>
+                    <option value="" selected disabled>เลือกบทบาท</option>
+                    <option value="ADMIN">ผู้ดูแล (ADMIN)</option>
+                    <option value="STAFF">พนักงาน (STAFF)</option>
+                    <option value="SELLER">ผู้ขาย (SELLER)</option>
+                    <option value="CUSTOMER">ลูกค้า (CUSTOMER)</option>
+                </select>
+            </label>
+            <button type="submit" class="um-btn" id="bulkApply" disabled>ยืนยัน</button>
+            <button type="button" class="um-btn um-btn--ghost" id="bulkExport"><i class="fa-solid fa-file-arrow-down"></i> CSV</button>
+            <button type="button" class="um-icon-btn" id="bulkClear" title="ยกเลิกการเลือก" aria-label="ยกเลิกการเลือก"><i class="fa-solid fa-xmark"></i></button>
+        </form>
+
+        <!-- แผงรายละเอียดสมาชิก -->
+        <div class="um-scrim" id="drawerScrim" hidden></div>
+        <aside class="um-drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerName" hidden>
+            <div class="um-drawer-bar">
+                <button type="button" class="um-icon-btn" data-action="close-drawer" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+                <span class="um-drawer-pos" id="drawerPos"></span>
+                <div class="um-drawer-nav">
+                    <button type="button" class="um-icon-btn" data-action="prev" aria-label="คนก่อนหน้า" title="คนก่อนหน้า (←)"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button type="button" class="um-icon-btn" data-action="next" aria-label="คนถัดไป" title="คนถัดไป (→)"><i class="fa-solid fa-chevron-right"></i></button>
                 </div>
             </div>
+            <div class="um-drawer-body" id="drawerBody"></div>
+        </aside>
+
+        <!-- กล่องยืนยันของเว็บ (แทน confirm() ของเบราว์เซอร์) -->
+        <div class="um-scrim um-scrim--dialog" id="dialogScrim" hidden></div>
+        <div class="um-dialog" id="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialogTitle" hidden>
+            <form id="dialogForm" method="POST">
+                <h2 class="um-dialog-title" id="dialogTitle"></h2>
+                <div class="um-dialog-body" id="dialogBody"></div>
+                <div class="um-dialog-actions">
+                    <button type="button" class="um-btn um-btn--ghost" data-action="close-dialog">ยกเลิก</button>
+                    <button type="submit" class="um-btn" id="dialogConfirm"></button>
+                </div>
+            </form>
         </div>
 
-        <%- include('./userModals') %>
+        <div class="um-toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-        <script
-            src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-        <script src="/js/admin/users.js"></script>
+        <script type="application/json" id="usersData"><%- JSON.stringify(users).replace(/</g, '\\u003c') %></script>
+        <script>window.UM_FLASH = <%- JSON.stringify(successMessage || null).replace(/</g, '\\u003c') %>;</script>
+        <script src="/js/admin/users.js?v=20261026"></script>
     </body>
 </html>

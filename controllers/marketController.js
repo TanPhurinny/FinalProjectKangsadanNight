@@ -8,6 +8,8 @@ const { buildStallHistory } = require('../utils/stallHistory');
 const { resolveViewDate, buildStallStatusForDate } = require('../utils/stallDayStatus');
 const { getClosedShopsToday, getOpenStatus, businessDateOf } = require('../utils/shopOpenStatus');
 const { getPromosToday } = require('../utils/shopPromo');
+const { getRatingSummaries } = require('../utils/shopReviews');
+const { stripInternalTags } = require('../utils/bookingRequestTag');
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundTimeline, BOOKING_ROUND_LENGTH_DAYS } = require('../utils/bookingRound');
 const adminDashboard = require('../utils/adminDashboard');
 const eventBooth = require('../utils/eventBooth');
@@ -491,7 +493,7 @@ exports.getSlotsPage = async (req, res) => {
             const shopInfo = request.user?.shop || {};
             const product = shopInfo.productType
                 || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
-            const productDetail = shopInfo.productDetail || request.description || '-';
+            const productDetail = shopInfo.productDetail || stripInternalTags(request.description) || '-';
             // รูปย่อร้าน: โลโก้ (ช่องแยก) ก่อน — ร้านที่ยังไม่มีโลโก้ใช้ลำดับเดิม
             const shopImage = shopInfo.logoImage || request.productImage || shopInfo.productImage || shopInfo.shopCoverImage || null;
 
@@ -506,7 +508,7 @@ exports.getSlotsPage = async (req, res) => {
                     name: request.sellerName || '-',
                     phone: request.phone || '-',
                     date: toThaiDateShort(request.createdAt),
-                    note: request.description || '-'
+                    note: stripInternalTags(request.description) || '-'
                 };
             });
         });
@@ -742,10 +744,12 @@ exports.getMarketMapPage = async (req, res) => {
 
         // ร้านที่ผู้ขายกด "ปิดร้านวันนี้" (ทุกร้านเปิดเป็นค่าเริ่มต้น) — ลูกค้าเห็นร้านนั้นจางลงพร้อมป้ายปิด
         const shopUserIdList = Object.values(shopInfoByUserId).map((shop) => shop.userId);
-        const [closedAtByUserId, promoByUserId] = await Promise.all([
+        const [closedAtByUserId, promoByUserId, ratingByUserId] = await Promise.all([
             getClosedShopsToday(shopUserIdList),
             // โปรวันนี้ที่ผู้ขายตั้งจากหน้าหลักผู้ขาย
-            getPromosToday(shopUserIdList)
+            getPromosToday(shopUserIdList),
+            // คะแนนรีวิวเฉลี่ย (ตัวรีวิวเต็มๆ โหลดตอนเปิดหน้าต่างรีวิว — GET /shop-reviews/:code)
+            getRatingSummaries(shopUserIdList)
         ]);
 
         // โพสต์คอมมูนิตี้ล่าสุดของแต่ละร้าน โชว์ในการ์ดร้าน (ตัดข้อความสั้นๆ พอให้รู้ว่าร้านมีอะไรใหม่)
@@ -794,7 +798,7 @@ exports.getMarketMapPage = async (req, res) => {
             const fallbackShop = shopInfoByUserId[request.userId] || {};
             const product = fallbackShop.productType
                 || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
-            const productDetail = fallbackShop.productDetail || request.description || '-';
+            const productDetail = fallbackShop.productDetail || stripInternalTags(request.description) || '-';
             // รูปย่อร้าน: โลโก้ (ช่องแยก) ก่อน — ร้านที่ยังไม่มีโลโก้ใช้ลำดับเดิม
             const shopImage = fallbackShop.logoImage || request.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
             const tags = fallbackShop.shopTags || '';
@@ -816,7 +820,8 @@ exports.getMarketMapPage = async (req, res) => {
                     subtype: fallbackShop.productSubtype || '',
                     closedAt: closedAtByUserId.get(fallbackShop.userId) || null,
                     promo: promoByUserId.get(fallbackShop.userId) || null,
-                    post: latestPostByUserId.get(fallbackShop.userId) || null
+                    post: latestPostByUserId.get(fallbackShop.userId) || null,
+                    rating: ratingByUserId.get(fallbackShop.userId) || { avg: 0, count: 0 }
                 };
             });
         });
