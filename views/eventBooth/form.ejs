@@ -46,14 +46,19 @@
                             <input class="eb-input" id="companyName" name="companyName" maxlength="150" required autocomplete="organization" value="<%= values.companyName || '' %>">
                         </div>
                         <div class="eb-field">
-                            <label for="contactName">ชื่อผู้ติดต่อ <span class="eb-must">*</span></label>
-                            <input class="eb-input" id="contactName" name="contactName" maxlength="100" required autocomplete="name" value="<%= values.contactName || '' %>">
+                            <label for="firstName">ชื่อผู้ติดต่อ <span class="eb-must">*</span></label>
+                            <input class="eb-input" id="firstName" name="firstName" maxlength="50" required autocomplete="given-name" value="<%= values.firstName || '' %>">
+                        </div>
+                        <div class="eb-field">
+                            <label for="lastName">นามสกุล <span class="eb-must">*</span></label>
+                            <input class="eb-input" id="lastName" name="lastName" maxlength="50" required autocomplete="family-name" value="<%= values.lastName || '' %>">
                         </div>
                         <div class="eb-field">
                             <label for="phone">เบอร์โทร <span class="eb-must">*</span></label>
-                            <input class="eb-input" id="phone" name="phone" type="tel" inputmode="tel" maxlength="12" required autocomplete="tel" placeholder="0812345678" value="<%= values.phone || '' %>">
+                            <input class="eb-input" id="phone" name="phone" type="tel" inputmode="tel" maxlength="12" required autocomplete="tel" value="<%= values.phone || '' %>">
+                            <span class="eb-help">เบอร์มือถือ 10 หลักที่ติดต่อได้</span>
                         </div>
-                        <div class="eb-field eb-field--full">
+                        <div class="eb-field">
                             <label for="email">อีเมล <span class="eb-opt">(แนะนำ)</span></label>
                             <input class="eb-input" id="email" name="email" type="email" maxlength="150" autocomplete="email" value="<%= values.email || '' %>">
                             <span class="eb-help">ใช้ส่งผลการพิจารณาและลิงก์ติดตามคำขอ — ถ้าไม่กรอก ต้องเก็บลิงก์ติดตามที่ได้หลังส่งคำขอไว้เอง</span>

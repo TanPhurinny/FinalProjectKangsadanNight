@@ -179,7 +179,8 @@ const cleanlinessInspectionInputSchema = z.object({
 const trimmedText = (min, max, message) => z.preprocess((value) => String(value ?? '').trim(), z.string().min(min, message).max(max, message));
 const eventBoothRequestSchema = z.object({
     companyName: trimmedText(2, 150, 'กรุณากรอกชื่อบริษัท/หน่วยงาน (2–150 ตัวอักษร)'),
-    contactName: trimmedText(2, 100, 'กรุณากรอกชื่อผู้ติดต่อ (2–100 ตัวอักษร)'),
+    firstName: trimmedText(1, 50, 'กรุณากรอกชื่อผู้ติดต่อ (ไม่เกิน 50 ตัวอักษร)'),
+    lastName: trimmedText(1, 50, 'กรุณากรอกนามสกุลผู้ติดต่อ (ไม่เกิน 50 ตัวอักษร)'),
     phone: z.preprocess((value) => String(value ?? '').replace(/[\s-]/g, ''), z.string().regex(/^0\d{8,9}$/, 'เบอร์โทรต้องเป็นตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0')),
     email: z.preprocess((value) => {
         const text = String(value ?? '').trim();

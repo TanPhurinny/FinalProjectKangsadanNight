@@ -75,9 +75,12 @@ async function renderForm(req, res, { status = 200, error = null, values = null 
     let prefill = {};
     if (req.user) {
         const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, select: { name: true, phoneNumber: true, email: true, shop: { select: { shopName: true } } } });
+        // ชื่อในบัญชีเก็บเป็นช่องเดียว — แยกคำแรกเป็นชื่อ ที่เหลือเป็นนามสกุล (ผู้ใช้แก้ได้ในฟอร์ม)
+        const [firstName = '', ...rest] = String(userRecord?.name || '').trim().split(/\s+/);
         prefill = {
             companyName: userRecord?.shop?.shopName || '',
-            contactName: userRecord?.name || '',
+            firstName,
+            lastName: rest.join(' '),
             phone: userRecord?.phoneNumber || '',
             email: userRecord?.email || ''
         };
@@ -114,7 +117,8 @@ exports.getForm = async (req, res) => {
 exports.submitForm = async (req, res) => {
     const values = {
         companyName: req.body.companyName,
-        contactName: req.body.contactName,
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
         phone: req.body.phone,
         email: req.body.email,
         eventTitle: req.body.eventTitle,
@@ -148,7 +152,8 @@ exports.submitForm = async (req, res) => {
             data: {
                 trackingToken: eventBooth.newTrackingToken(),
                 companyName: data.companyName,
-                contactName: data.contactName,
+                // ตารางเก็บชื่อผู้ติดต่อช่องเดียว รวมชื่อ-นามสกุลก่อนบันทึก
+                contactName: `${data.firstName} ${data.lastName}`,
                 phone: data.phone,
                 email: data.email || null,
                 eventTitle: data.eventTitle,
