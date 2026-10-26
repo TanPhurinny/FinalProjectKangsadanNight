@@ -10,7 +10,7 @@ const { getRenewalPhase, getRenewalCutoff, getExtensionOrigin, releaseOrRestoreS
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow, isRoundEditable } = require('../utils/bookingRound');
 const { getPaymentDeadline, getPaymentSettings, computePaymentDueAt, savePaymentSettings } = require('../utils/paymentDeadline');
 const { verifySlip } = require('../utils/slipVerification');
-const { BOOKING_REQUEST_TAG_PREFIX, buildBookingRequestTag } = require('../utils/bookingRequestTag');
+const { BOOKING_REQUEST_TAG_PREFIX, buildBookingRequestTag, stripInternalTags } = require('../utils/bookingRequestTag');
 const { sendStallExpiringSoonEmail } = require('../config/mailer');
 const { describeBookingAppliances } = require('../utils/bookingAppliances');
 const { isEventBoothCode } = require('../utils/eventBooth');
@@ -114,19 +114,6 @@ function parseActionLogs(descriptionText) {
         logs.push({ at: Number(match[1]), actor: match[2], action: match[3] });
     }
     return logs;
-}
-
-// ตัด tag ภายในทั้งหมดออกจาก description ก่อนโชว์เป็นโน้ตจริงให้แอดมินอ่าน
-function stripInternalTags(descriptionText) {
-    return String(descriptionText || '')
-        .replace(/\[BOOKING_REQUEST_ID:\d+\]\s*/gi, '')
-        .replace(/\[EXTEND_OF:\d+\]\s*/gi, '')
-        .replace(/\[ASSIGNED_STALL:[^\]]+\]\s*/gi, '')
-        .replace(/\[สนใจแผงพิเศษ:[^\]]+\]\s*/g, '')
-        .replace(/\[REJECT_REASON:[^\]]+\]\s*/g, '')
-        .replace(/\[REJECTED_AT:\s*\d+\]\s*/g, '')
-        .replace(/\[LOG:[^\]]*\]\s*/g, '')
-        .trim();
 }
 
 const PRODUCT_TYPE_LABEL = {

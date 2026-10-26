@@ -33,7 +33,7 @@ const {
 const { getPaymentDeadline } = require('../utils/paymentDeadline');
 const { getRenewalOptions, validateRenewal, isUnpaidPastDeadline } = require('../utils/stallRenewal');
 const { getBillableDays, getHolidaysInRange } = require('../utils/bookingHolidays');
-const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
+const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId, stripInternalTags } = require('../utils/bookingRequestTag');
 const { buildQuotationData } = require('../controllers/quotationController');
 const {
     APPLIANCE_KINDS,
@@ -2170,7 +2170,7 @@ async function loadSellerBookingStatus(userId) {
             largeApplianceCount: 0,
             createdAt: formatDateThai(latestRequest.createdAt),
             createdTime: formatTimeThai(latestRequest.createdAt),
-            storeDetailSnapshot: stripBookingRequestTag(latestRequest.description).replace(/\s*\[(REJECT_REASON|REJECTED_AT|EXTEND_OF)[^\]]*\]/g, '').trim() || '-',
+            storeDetailSnapshot: stripInternalTags(latestRequest.description) || '-',
             isFinalPrice: false
         };
     }

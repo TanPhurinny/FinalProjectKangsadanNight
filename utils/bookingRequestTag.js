@@ -19,4 +19,18 @@ function extractBookingRequestId(snapshotText) {
     return match ? Number.parseInt(match[1], 10) : null;
 }
 
-module.exports = { BOOKING_REQUEST_TAG_PREFIX, buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId };
+// ตัด tag ภายในทั้งหมดที่ฝังไว้ใน BookingRequest.description (ผูกคำขอ/ต่อสัญญา/ล็อกที่จัด/เหตุผลไม่อนุมัติ/ประวัติแอดมิน [LOG:])
+// ออกก่อนนำไปแสดง — ทุกหน้าที่โชว์ description (โน้ตแอดมิน, "ขายอะไรบ้าง" บนผังตลาด ฯลฯ) ต้องผ่านตัวนี้
+function stripInternalTags(descriptionText) {
+    return String(descriptionText || '')
+        .replace(/\[BOOKING_REQUEST_ID:\d+\]\s*/gi, '')
+        .replace(/\[EXTEND_OF:\d+\]\s*/gi, '')
+        .replace(/\[ASSIGNED_STALL:[^\]]+\]\s*/gi, '')
+        .replace(/\[สนใจแผงพิเศษ:[^\]]+\]\s*/g, '')
+        .replace(/\[REJECT_REASON:[^\]]+\]\s*/g, '')
+        .replace(/\[REJECTED_AT:\s*\d+\]\s*/g, '')
+        .replace(/\[LOG:[^\]]*\]\s*/g, '')
+        .trim();
+}
+
+module.exports = { BOOKING_REQUEST_TAG_PREFIX, buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId, stripInternalTags };

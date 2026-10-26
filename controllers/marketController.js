@@ -8,6 +8,7 @@ const { buildStallHistory } = require('../utils/stallHistory');
 const { resolveViewDate, buildStallStatusForDate } = require('../utils/stallDayStatus');
 const { getClosedShopsToday, getOpenStatus, businessDateOf } = require('../utils/shopOpenStatus');
 const { getPromosToday } = require('../utils/shopPromo');
+const { stripInternalTags } = require('../utils/bookingRequestTag');
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundTimeline, BOOKING_ROUND_LENGTH_DAYS } = require('../utils/bookingRound');
 const adminDashboard = require('../utils/adminDashboard');
 const eventBooth = require('../utils/eventBooth');
@@ -491,7 +492,7 @@ exports.getSlotsPage = async (req, res) => {
             const shopInfo = request.user?.shop || {};
             const product = shopInfo.productType
                 || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
-            const productDetail = shopInfo.productDetail || request.description || '-';
+            const productDetail = shopInfo.productDetail || stripInternalTags(request.description) || '-';
             // รูปย่อร้าน: โลโก้ (ช่องแยก) ก่อน — ร้านที่ยังไม่มีโลโก้ใช้ลำดับเดิม
             const shopImage = shopInfo.logoImage || request.productImage || shopInfo.productImage || shopInfo.shopCoverImage || null;
 
@@ -506,7 +507,7 @@ exports.getSlotsPage = async (req, res) => {
                     name: request.sellerName || '-',
                     phone: request.phone || '-',
                     date: toThaiDateShort(request.createdAt),
-                    note: request.description || '-'
+                    note: stripInternalTags(request.description) || '-'
                 };
             });
         });
@@ -794,7 +795,7 @@ exports.getMarketMapPage = async (req, res) => {
             const fallbackShop = shopInfoByUserId[request.userId] || {};
             const product = fallbackShop.productType
                 || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
-            const productDetail = fallbackShop.productDetail || request.description || '-';
+            const productDetail = fallbackShop.productDetail || stripInternalTags(request.description) || '-';
             // รูปย่อร้าน: โลโก้ (ช่องแยก) ก่อน — ร้านที่ยังไม่มีโลโก้ใช้ลำดับเดิม
             const shopImage = fallbackShop.logoImage || request.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
             const tags = fallbackShop.shopTags || '';
