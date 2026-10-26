@@ -18,6 +18,7 @@ const bannerCtrl = require('../controllers/communityBannerController');
 const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
 const bookingHolidayCtrl = require('../controllers/bookingHolidayController');
 const eventBoothCtrl = require('../controllers/eventBoothController');
+const rentalStatementCtrl = require('../controllers/rentalStatementController');
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
 const storage = createImageStorage({ folder: 'announcements', prefix: 'ann' });
@@ -132,6 +133,11 @@ router.get('/quotations/:requestId', async (req, res) => {
 });
 router.get('/requests', requestCtrl.getRequestsPage);
 router.post('/requests/update-status', requestCtrl.updateStatus);
+
+// --- 7a. รายงานการชำระค่าเช่า (อ่านอย่างเดียว) — เฉพาะ Admin เพราะมีเลขบัตร/ที่อยู่ผู้เช่าและยอดเงินทั้งตลาด ---
+router.get('/rental-statements', isAdminOnly, rentalStatementCtrl.getOverviewPage);
+router.get('/rental-statements/user/:id', isAdminOnly, rentalStatementCtrl.getSellerPage);
+router.get('/rental-statements/stall/:code', isAdminOnly, rentalStatementCtrl.getStallPage);
 
 // --- 7b. คำขอใบกำกับภาษี ---
 router.get('/tax-invoice-requests', async (req, res) => {

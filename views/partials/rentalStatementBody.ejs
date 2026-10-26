@@ -1,0 +1,72 @@
+<%
+// เนื้อรายงานการเช่าของร้านเดียว (ยอดสรุป + ตารางรายรอบ + สรุปต่อล็อก) — หน้าร้านค้า /rental-statement
+// และหน้าแอดมิน /admin/rental-statements/user/:id ใช้ชุดเดียวกัน · statement จาก buildSellerStatement
+const t = statement.totals;
+const bahtFmt = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+%>
+<div class="rs-stats" aria-label="ยอดสรุป">
+    <div class="rs-stat rs-stat--paid">
+        <p class="rs-stat__label">ชำระแล้วรวม</p>
+        <p class="rs-stat__value"><%= bahtFmt(t.paid) %><small>บาท</small></p>
+        <p class="rs-stat__note"><%= t.paidCount %> รายการ</p>
+    </div>
+    <div class="rs-stat rs-stat--due">
+        <p class="rs-stat__label">ค้างชำระ</p>
+        <p class="rs-stat__value"><%= bahtFmt(t.outstanding) %><small>บาท</small></p>
+        <p class="rs-stat__note"><%= t.outstandingCount %> รายการ</p>
+    </div>
+    <div class="rs-stat">
+        <p class="rs-stat__label">จำนวนรอบที่เช่า</p>
+        <p class="rs-stat__value"><%= t.rounds %><small>รอบ</small></p>
+        <p class="rs-stat__note">นับเฉพาะที่ชำระแล้ว</p>
+    </div>
+    <div class="rs-stat">
+        <p class="rs-stat__label">ล็อก × วันที่เช่า</p>
+        <p class="rs-stat__value"><%= t.stallDays %><small>ล็อก-วัน</small></p>
+        <p class="rs-stat__note"><%= t.stallCodes.length %> ล็อก<%= t.stallCodes.length ? ': ' + t.stallCodes.slice(0, 6).join(', ') + (t.stallCodes.length > 6 ? ' …' : '') : '' %></p>
+    </div>
+</div>
+
+<section class="rs-section">
+    <div class="rs-section-head">
+        <h2 class="rs-section-title">รายการเช่าและการชำระเงินรายรอบ</h2>
+        <span class="rs-section-meta"><%= statement.range.label %></span>
+    </div>
+    <%- include('rentalStatementTable', { rows: statement.rows, docPrefix: docPrefix, showTenant: false, stallMode: false }) %>
+    <p class="rs-hint" style="margin-top:8px">ยอดรวมรวมภาษีมูลค่าเพิ่มแล้ว (ตามใบเสร็จ) · "ค้างชำระ" = จัดล็อกให้แล้วแต่ยังไม่ได้ยืนยันสลิป</p>
+</section>
+
+<section class="rs-section">
+    <div class="rs-section-head">
+        <h2 class="rs-section-title">สรุปต่อล็อก</h2>
+        <span class="rs-section-meta">เฉพาะที่ชำระแล้ว · คำขอที่มีหลายล็อกแบ่งยอดเท่าๆ กันต่อล็อก</span>
+    </div>
+    <% if (!statement.byStall.length) { %>
+    <div class="rs-empty">ยังไม่มีล็อกที่ชำระแล้วในช่วงนี้</div>
+    <% } else { %>
+    <div class="rs-table-wrap">
+        <table class="rs-table">
+            <thead>
+                <tr>
+                    <th>ล็อก</th>
+                    <th>ช่วงที่เช่า (แรก – ล่าสุด)</th>
+                    <th class="rs-num">จำนวนรอบ</th>
+                    <th class="rs-num">วันคิดเงิน</th>
+                    <th class="rs-num">ยอดชำระ (บาท)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% statement.byStall.forEach((s) => { %>
+                <tr>
+                    <td class="rs-code"><% if (docPrefix === '/admin') { %><a href="/admin/rental-statements/stall/<%= s.stallCode %>"><%= s.stallCode %></a><% } else { %><%= s.stallCode %><% } %></td>
+                    <td><%= s.periodText %></td>
+                    <td class="rs-num"><%= s.rounds %></td>
+                    <td class="rs-num"><%= s.days %></td>
+                    <td class="rs-num"><%= bahtFmt(s.amount) %></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+    <% } %>
+</section>

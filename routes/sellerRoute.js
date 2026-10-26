@@ -34,7 +34,8 @@ const { getPaymentDeadline } = require('../utils/paymentDeadline');
 const { getRenewalOptions, validateRenewal, isUnpaidPastDeadline } = require('../utils/stallRenewal');
 const { getBillableDays, getHolidaysInRange } = require('../utils/bookingHolidays');
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
-const { buildQuotationData } = require('../controllers/quotationController');
+const { buildQuotationData, COMPANY_INFO } = require('../controllers/quotationController');
+const rentalStatement = require('../utils/rentalStatement');
 const {
     APPLIANCE_KINDS,
     APPLIANCE_PRESETS,
@@ -825,6 +826,43 @@ router.get('/booking-history', isAuthenticated, async (req, res) => {
         user: req.user,
         bookings: bookingHistoryView
     });
+});
+
+// --- รายงานการเช่าและชำระเงินของร้าน (หลายรอบ ยอดสะสม) — อ่านอย่างเดียว ดู utils/rentalStatement.js ---
+async function renderRentalStatement(req, res, extra = {}) {
+    const range = rentalStatement.parseStatementRange(req.query);
+    const statement = await rentalStatement.buildSellerStatement(req.user.id, range);
+    if (!statement) return res.redirect('/seller');
+    return res.render('seller/rentalStatement', {
+        user: req.user,
+        statement,
+        company: COMPANY_INFO,
+        queryString: rentalStatement.rangeQueryString(range),
+        printedAt: new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }),
+        ...extra
+    });
+}
+
+router.get('/rental-statement', isSellerOnly, async (req, res) => {
+    try {
+        return await renderRentalStatement(req, res);
+    } catch (error) {
+        console.error('rental statement error', error);
+        return res.redirect('/booking-history');
+    }
+});
+
+router.get('/rental-statement.csv', isSellerOnly, async (req, res) => {
+    try {
+        const range = rentalStatement.parseStatementRange(req.query);
+        const rows = await rentalStatement.loadStatementRows({ userId: req.user.id, range });
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${rentalStatement.csvFilename('rental-statement', range)}"`);
+        return res.send(rentalStatement.statementRowsToCsv(rows));
+    } catch (error) {
+        console.error('rental statement csv error', error);
+        return res.redirect('/rental-statement');
+    }
 });
 
 // จำนวนรูปสินค้า/รูปเมนูสูงสุดที่แกลเลอรีในหน้าโปรไฟล์ร้านค้ารับได้

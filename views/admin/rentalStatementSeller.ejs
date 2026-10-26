@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>รายงานการเช่า <%= statement.seller.shopName %> — Admin</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+    <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+    <link rel="stylesheet" href="/stylesheets/rentalStatement.css?v=20261026">
+</head>
+<body class="rs-body">
+    <script src="/js/common/tabSession.js"></script>
+    <%- include('../partials/navbar') %>
+    <% const s = statement.seller; %>
+
+    <main class="rs-page">
+        <div class="rs-print-head">
+            <div><strong><%= company.nameTh %></strong><%= company.address %> · เลขประจำตัวผู้เสียภาษี <%= company.taxId %></div>
+            <div style="text-align:right"><strong>รายงานการเช่าและชำระเงิน</strong>ช่วง: <%= statement.range.label %> · พิมพ์เมื่อ <%= printedAt %></div>
+        </div>
+
+        <header class="rs-head">
+            <div>
+                <p class="rs-kicker"><a href="/admin/rental-statements?<%= queryString %>" style="color:inherit">รายงานการชำระค่าเช่า</a> / ต่อร้าน</p>
+                <h1 class="rs-title"><%= s.shopName %></h1>
+                <p class="rs-lead">ผู้เช่า <%= s.name %> · อ่านอย่างเดียว ใช้ประกอบการเขียนสัญญาเช่า</p>
+            </div>
+            <div class="rs-head-actions">
+                <button type="button" class="rs-btn" onclick="window.print()"><i class="fa-solid fa-print"></i> พิมพ์</button>
+                <a class="rs-btn" href="/admin/rental-statements/user/<%= s.id %>?<%= queryString %>&format=csv"><i class="fa-solid fa-file-csv"></i> CSV</a>
+            </div>
+        </header>
+
+        <%- include('../partials/rentalStatementFilter', { action: '/admin/rental-statements/user/' + s.id, range: statement.range }) %>
+
+        <section class="rs-section">
+            <dl class="rs-facts">
+                <div class="rs-fact"><dt>ชื่อผู้เช่า (ตามใบสมัครร้าน)</dt><dd><%= s.sellerName %></dd></div>
+                <div class="rs-fact"><dt>เลขบัตรประชาชน</dt><dd><%= s.idCardNumber %></dd></div>
+                <div class="rs-fact"><dt>เบอร์โทร</dt><dd><%= s.phone %></dd></div>
+                <div class="rs-fact"><dt>อีเมล</dt><dd><%= s.email %></dd></div>
+                <div class="rs-fact" style="grid-column:span 2"><dt>ที่อยู่</dt><dd><%= s.address %></dd></div>
+                <div class="rs-fact"><dt>ประเภทสินค้า</dt><dd><%= s.productType %></dd></div>
+                <div class="rs-fact"><dt>สมัครสมาชิกเมื่อ</dt><dd><%= s.memberSinceText %></dd></div>
+            </dl>
+        </section>
+
+        <%- include('../partials/rentalStatementBody', { statement, docPrefix: '/admin' }) %>
+    </main>
+</body>
+</html>

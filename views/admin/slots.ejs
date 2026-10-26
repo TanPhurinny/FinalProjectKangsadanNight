@@ -365,6 +365,13 @@
                         <ul class="ic-history-notes" id="icHistoryNotes"></ul>
                         <div class="ic-history-repairs" id="icHistoryRepairs"></div>
                     </div>
+                    <% if (user && user.role === 'ADMIN') { %>
+                    <div class="ic-approvals-link-wrap">
+                        <a id="icRentalLink" href="#" target="_blank" rel="noopener" class="ic-approvals-link">
+                            <i class="fa-solid fa-file-invoice-dollar"></i> ประวัติเช่าและรายได้ของล็อกนี้
+                        </a>
+                    </div>
+                    <% } %>
                     <div class="ic-approvals-link-wrap d-none" id="icApprovalsLinkWrap">
                         <a id="icApprovalsLink" href="#" target="_blank" rel="noopener" class="ic-approvals-link">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i> ดูคำขอนี้ที่หน้าอนุมัติ

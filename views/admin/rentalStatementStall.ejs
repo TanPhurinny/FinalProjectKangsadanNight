@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ประวัติเช่าล็อก <%= stall.stallCode %> — Admin</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+    <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+    <link rel="stylesheet" href="/stylesheets/rentalStatement.css?v=20261026">
+</head>
+<body class="rs-body">
+    <script src="/js/common/tabSession.js"></script>
+    <%- include('../partials/navbar') %>
+    <% const baht = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); const t = stall.totals; %>
+
+    <main class="rs-page">
+        <div class="rs-print-head">
+            <div><strong><%= company.nameTh %></strong><%= company.address %></div>
+            <div style="text-align:right"><strong>ประวัติการเช่าล็อก <%= stall.stallCode %></strong>ช่วง: <%= stall.range.label %> · พิมพ์เมื่อ <%= printedAt %></div>
+        </div>
+
+        <header class="rs-head">
+            <div>
+                <p class="rs-kicker"><a href="/admin/rental-statements?<%= queryString %>" style="color:inherit">รายงานการชำระค่าเช่า</a> / ต่อล็อก</p>
+                <h1 class="rs-title">ล็อก <%= stall.stallCode %></h1>
+                <p class="rs-lead">ใครเช่าล็อกนี้ช่วงไหน และรายได้ของล็อกนี้ — คำขอที่จองหลายล็อกพร้อมกันแบ่งยอดเท่าๆ กันต่อล็อก</p>
+            </div>
+            <div class="rs-head-actions">
+                <button type="button" class="rs-btn" onclick="window.print()"><i class="fa-solid fa-print"></i> พิมพ์</button>
+                <a class="rs-btn" href="/admin/rental-statements/stall/<%= stall.stallCode %>?<%= queryString %>&format=csv"><i class="fa-solid fa-file-csv"></i> CSV</a>
+            </div>
+        </header>
+
+        <%- include('../partials/rentalStatementFilter', { action: '/admin/rental-statements/stall/' + stall.stallCode, range: stall.range }) %>
+
+        <div class="rs-stats">
+            <div class="rs-stat rs-stat--paid">
+                <p class="rs-stat__label">รายได้ล็อกนี้ (ชำระแล้ว)</p>
+                <p class="rs-stat__value"><%= baht(t.stallPaid) %><small>บาท</small></p>
+                <p class="rs-stat__note"><%= t.paidCount %> รายการ</p>
+            </div>
+            <div class="rs-stat rs-stat--due">
+                <p class="rs-stat__label">ค้างชำระ</p>
+                <p class="rs-stat__value"><%= baht(t.stallOutstanding) %><small>บาท</small></p>
+                <p class="rs-stat__note"><%= t.outstandingCount %> รายการ</p>
+            </div>
+            <div class="rs-stat">
+                <p class="rs-stat__label">ผู้เช่า</p>
+                <p class="rs-stat__value"><%= t.tenants %><small>ร้าน</small></p>
+                <p class="rs-stat__note"><%= t.rounds %> รอบ</p>
+            </div>
+        </div>
+
+        <section class="rs-section">
+            <div class="rs-section-head">
+                <h2 class="rs-section-title">ประวัติการเช่า</h2>
+                <span class="rs-section-meta"><%= stall.range.label %></span>
+            </div>
+            <%- include('../partials/rentalStatementTable', { rows: stall.rows, docPrefix: '/admin', showTenant: true, stallMode: true }) %>
+        </section>
+    </main>
+</body>
+</html>

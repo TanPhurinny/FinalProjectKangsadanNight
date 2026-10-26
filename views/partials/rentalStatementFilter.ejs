@@ -1,0 +1,32 @@
+<%
+// ตัวกรองช่วงรายงาน: เลือกช่วงวันที่ หรือเลือกเป็นรอบ — action = path ของหน้าปัจจุบัน
+// extraHidden: { name: value } ที่ต้องส่งต่อ (เช่น คำค้นในหน้าภาพรวม)
+const hidden = typeof extraHidden !== 'undefined' && extraHidden ? extraHidden : {};
+%>
+<form class="rs-filter" method="get" action="<%= action %>">
+    <% Object.keys(hidden).forEach((key) => { if (hidden[key]) { %><input type="hidden" name="<%= key %>" value="<%= hidden[key] %>"><% } }) %>
+    <label class="rs-field">ตั้งแต่วันที่
+        <input type="date" name="from" value="<%= range.round ? '' : range.fromKey %>">
+    </label>
+    <label class="rs-field">ถึงวันที่
+        <input type="date" name="to" value="<%= range.round ? '' : range.toKey %>">
+    </label>
+    <span class="rs-filter-sep">หรือ</span>
+    <label class="rs-field">รอบที่
+        <input type="number" name="round" min="1" inputmode="numeric" placeholder="เช่น 49" value="<%= range.round || '' %>" style="min-width:110px;width:110px">
+    </label>
+    <button type="submit" class="rs-btn rs-btn--primary"><i class="fa-solid fa-filter"></i> แสดง</button>
+    <a class="rs-btn" href="<%= action %><%= hidden.q ? '?q=' + encodeURIComponent(hidden.q) : '' %>">ตั้งแต่ ม.ค.–วันนี้</a>
+    <span class="rs-range-label">ช่วงรายงาน: <strong><%= range.label %></strong></span>
+</form>
+<script>
+    // กรอกช่องรอบแล้วให้ช่วงวันที่ว่าง (รอบมีลำดับความสำคัญกว่าในฝั่ง server อยู่แล้ว แค่กันสับสน)
+    (function () {
+        var form = document.currentScript.previousElementSibling;
+        var round = form.querySelector('[name="round"]');
+        form.addEventListener('submit', function () {
+            if (round.value) form.querySelectorAll('[type="date"]').forEach(function (el) { el.disabled = true; });
+            else round.disabled = true;
+        });
+    })();
+</script>

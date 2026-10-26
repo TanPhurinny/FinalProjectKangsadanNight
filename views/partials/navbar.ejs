@@ -61,6 +61,7 @@ const isStaff = user && user.role === 'STAFF';
             </a>
             <%
                 const moreLinks = [
+                    { href: '/admin/rental-statements', icon: 'fa-file-invoice-dollar', label: 'รายงานการชำระค่าเช่า', match: '/rental-statements' },
                     { href: '/admin/tax-invoice-requests', icon: 'fa-file-invoice', label: 'คำขอใบกำกับภาษี', match: 'tax-invoice-requests' },
                     { href: '/admin/announcements', icon: 'fa-bullhorn', label: 'จัดการประกาศ', match: 'announcements' },
                     { href: '/admin/community-banners', icon: 'fa-images', label: 'แบนเนอร์คอมมูนิตี้', match: '/community-banners' },

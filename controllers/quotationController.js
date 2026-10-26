@@ -171,4 +171,4 @@ async function buildQuotationData(requestId, printedByName, options = {}) {
     };
 }
 
-module.exports = { buildQuotationData };
+module.exports = { buildQuotationData, buildQuotationNumber, splitEvenly, COMPANY_INFO };

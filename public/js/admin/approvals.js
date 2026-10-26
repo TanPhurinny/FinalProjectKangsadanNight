@@ -554,7 +554,7 @@ async function loadSellerHistory(requestId) {
                 <div><dt>วันที่มาขาย</dt><dd class="mono">${a.presentDays}</dd></div>
                 <div><dt>วันที่ขาดขาย</dt><dd class="mono${a.absentDays ? ' is-bad' : ''}">${a.absentDays}</dd></div>
             </dl>
-            ${data.seller ? `<p class="seller-history__meta">สมัครสมาชิกเมื่อ ${escapeHtml(data.seller.memberSinceText)}${c.extensions ? ` · เคยต่อล็อก ${c.extensions} ครั้ง` : ''}</p>` : ''}
+            ${data.seller ? `<p class="seller-history__meta">สมัครสมาชิกเมื่อ ${escapeHtml(data.seller.memberSinceText)}${c.extensions ? ` · เคยต่อล็อก ${c.extensions} ครั้ง` : ''} · <a href="/admin/rental-statements/user/${Number(data.seller.id)}" target="_blank" rel="noopener">ยอดเช่า/ชำระทั้งหมด</a></p>` : ''}
             ${(data.recentRejections || []).length ? `<ul class="seller-history__rejects">${data.recentRejections.map((r) => `<li><span class="mono">#${r.id}</span> ${r.cancelled ? 'ยกเลิก' : 'ปฏิเสธ'} ${escapeHtml(r.dateText)} — ${escapeHtml(r.reason)}</li>`).join('')}</ul>` : ''}`;
     } catch (error) {
         box.innerHTML = '<span class="q-muted">โหลดประวัติร้านไม่สำเร็จ</span>';

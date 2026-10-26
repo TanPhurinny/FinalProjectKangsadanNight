@@ -348,6 +348,8 @@
 
     window.onStallInfoShown = function (code) {
         infoShownFor = code;
+        const rentalLink = $('icRentalLink');
+        if (rentalLink) rentalLink.href = `/admin/rental-statements/stall/${encodeURIComponent(code)}`;
         const wrap = $('icHistory');
         wrap.classList.add('d-none');
         if (historyCache.has(code)) {

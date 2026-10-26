@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>รายงานการชำระเงิน — Admin</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+    <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+    <link rel="stylesheet" href="/stylesheets/rentalStatement.css?v=20261026">
+</head>
+<body class="rs-body">
+    <script src="/js/common/tabSession.js"></script>
+    <%- include('../partials/navbar') %>
+    <% const baht = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); %>
+
+    <main class="rs-page">
+        <div class="rs-print-head">
+            <div><strong><%= company.nameTh %></strong><%= company.address %></div>
+            <div style="text-align:right"><strong>รายงานการชำระค่าเช่าทุกร้าน</strong>ช่วง: <%= range.label %> · พิมพ์เมื่อ <%= printedAt %></div>
+        </div>
+
+        <header class="rs-head">
+            <div>
+                <p class="rs-kicker">รายงาน · อ่านอย่างเดียว</p>
+                <h1 class="rs-title">รายงานการชำระค่าเช่า</h1>
+                <p class="rs-lead">ยอดเช่าและยอดชำระของทุกร้านในช่วงที่เลือก กดชื่อร้านเพื่อดูรายรอบ (ใช้ประกอบการเขียนสัญญาเช่า)
+                    หรือกดรหัสล็อกเพื่อดูว่าใครเช่าล็อกนั้นช่วงไหน</p>
+            </div>
+            <div class="rs-head-actions">
+                <a class="rs-btn" href="/admin/lease-contracts"><i class="fa-solid fa-file-signature"></i> คำขอสัญญาเช่า</a>
+                <button type="button" class="rs-btn" onclick="window.print()"><i class="fa-solid fa-print"></i> พิมพ์</button>
+                <a class="rs-btn" href="/admin/rental-statements?<%= queryString %><%= q ? '&q=' + encodeURIComponent(q) : '' %>&format=csv"><i class="fa-solid fa-file-csv"></i> CSV</a>
+            </div>
+        </header>
+
+        <%- include('../partials/rentalStatementFilter', { action: '/admin/rental-statements', range, extraHidden: { q } }) %>
+
+        <div class="rs-stats" aria-label="ยอดรวมทั้งตลาด">
+            <div class="rs-stat rs-stat--paid">
+                <p class="rs-stat__label">ชำระแล้วทั้งตลาด</p>
+                <p class="rs-stat__value"><%= baht(totals.paid) %><small>บาท</small></p>
+                <p class="rs-stat__note"><%= totals.paidCount %> รายการ</p>
+            </div>
+            <div class="rs-stat rs-stat--due">
+                <p class="rs-stat__label">ค้างชำระ</p>
+                <p class="rs-stat__value"><%= baht(totals.outstanding) %><small>บาท</small></p>
+                <p class="rs-stat__note"><%= totals.outstandingCount %> รายการ</p>
+            </div>
+            <div class="rs-stat">
+                <p class="rs-stat__label">แยกยอดที่ชำระแล้ว</p>
+                <p class="rs-stat__note" style="font-size:13px;margin:0;line-height:1.7">
+                    ค่าเช่าแผง <b><%= baht(totals.rentTotal) %></b><br>
+                    ค่าไฟ <b><%= baht(totals.lightTotal) %></b><br>
+                    เครื่องใช้ไฟฟ้า <b><%= baht(totals.applianceTotal) %></b>
+                </p>
+            </div>
+            <div class="rs-stat">
+                <p class="rs-stat__label">ร้านที่เช่า / ล็อก-วัน</p>
+                <p class="rs-stat__value"><%= sellers.length %><small>ร้าน</small></p>
+                <p class="rs-stat__note"><%= totals.stallDays %> ล็อก-วัน · <%= totals.stallCodes.length %> ล็อก</p>
+            </div>
+        </div>
+
+        <section class="rs-section">
+            <div class="rs-section-head">
+                <h2 class="rs-section-title">สรุปต่อร้าน</h2>
+                <form method="get" action="/admin/rental-statements" class="rs-no-print" style="display:flex;gap:8px">
+                    <% if (range.round) { %><input type="hidden" name="round" value="<%= range.round %>"><% } else { %>
+                    <input type="hidden" name="from" value="<%= range.fromKey %>"><input type="hidden" name="to" value="<%= range.toKey %>"><% } %>
+                    <label class="rs-field" style="grid-template-columns:auto"><input type="search" name="q" value="<%= q %>" placeholder="ค้นชื่อ ร้าน หรือรหัสล็อก" aria-label="ค้นหาร้าน"></label>
+                    <button class="rs-btn rs-btn--sm" type="submit">ค้นหา</button>
+                </form>
+            </div>
+            <% if (!sellers.length) { %>
+            <div class="rs-empty"><%= q ? 'ไม่พบร้านที่ตรงกับคำค้น' : 'ไม่มีรายการเช่าในช่วงนี้' %></div>
+            <% } else { %>
+            <div class="rs-table-wrap">
+                <table class="rs-table">
+                    <thead>
+                        <tr>
+                            <th>ผู้เช่า / ร้าน</th>
+                            <th>ล็อก</th>
+                            <th class="rs-num">รอบ</th>
+                            <th class="rs-num">ล็อก-วัน</th>
+                            <th class="rs-num">ชำระแล้ว (บาท)</th>
+                            <th class="rs-num">ค้างชำระ (บาท)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% sellers.forEach((s) => { %>
+                        <tr>
+                            <td>
+                                <% if (s.userId) { %><a href="/admin/rental-statements/user/<%= s.userId %>?<%= queryString %>"><%= s.name %></a><% } else { %><%= s.name %><% } %>
+                                <div class="rs-muted"><%= s.shopName %></div>
+                            </td>
+                            <td class="rs-code" style="white-space:normal;max-width:260px">
+                                <% s.stallCodes.forEach((code, i) => { %><a href="/admin/rental-statements/stall/<%= code %>?<%= queryString %>"><%= code %></a><%= i < s.stallCodes.length - 1 ? ', ' : '' %><% }) %>
+                                <% if (!s.stallCodes.length) { %><span class="rs-muted">ยังไม่มีที่ชำระแล้ว</span><% } %>
+                            </td>
+                            <td class="rs-num"><%= s.rounds %></td>
+                            <td class="rs-num"><%= s.stallDays %></td>
+                            <td class="rs-num"><strong><%= baht(s.paid) %></strong><div class="rs-muted"><%= s.paidCount %> รายการ</div></td>
+                            <td class="rs-num"><% if (s.outstanding) { %><span style="color:var(--rs-warning);font-weight:600"><%= baht(s.outstanding) %></span><div class="rs-muted"><%= s.outstandingCount %> รายการ</div><% } else { %><span class="rs-muted">-</span><% } %></td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2">รวม <%= sellers.length %> ร้าน</td>
+                            <td class="rs-num"></td>
+                            <td class="rs-num"><%= sellers.reduce((a, s) => a + s.stallDays, 0) %></td>
+                            <td class="rs-num"><%= baht(sellers.reduce((a, s) => a + s.paid, 0)) %></td>
+                            <td class="rs-num"><%= baht(sellers.reduce((a, s) => a + s.outstanding, 0)) %></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <% } %>
+        </section>
+    </main>
+</body>
+</html>
