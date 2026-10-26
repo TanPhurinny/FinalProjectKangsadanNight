@@ -1,0 +1,159 @@
+/* กรอบบริบทรอบผังย่อยของโซน — ใช้คู่กับ /js/zoneContext.js ทุกหน้าที่มีผังย่อย */
+.zc {
+    --zc-band: 30px;
+    --zc-walk: #fbf7e9;
+    --zc-walk-line: #d9cfa8;
+    --zc-zone-bg: #f4f5f7;
+    --zc-zone-line: #cfd4dc;
+    --zc-zone-text: #6b7280;
+    --zc-facility-bg: #e3f1fb;
+    --zc-facility-line: #b9dcf2;
+    --zc-facility-text: #2a6f9e;
+    --zc-parking-bg: #eceef1;
+    display: grid;
+    grid-template-columns: auto auto auto;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+        ". n ."
+        "w body e"
+        ". s .";
+    gap: 10px;
+    width: max-content;
+    margin: 0 auto;
+    font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
+}
+
+.zc-body {
+    grid-area: body;
+    display: flex;
+    align-items: stretch;
+    width: max-content;
+}
+.zc-body > * { align-self: flex-start; }
+/* ช่องว่างระหว่างกลุ่มแถวเดิมถูกแทนด้วยแถบทางเดิน */
+.zc-body > [class*="group-end"] { margin-right: 0 !important; }
+
+.zc-aisle {
+    align-self: stretch !important;
+    width: 26px;
+    flex: 0 0 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        linear-gradient(to bottom, var(--zc-walk-line) 50%, transparent 50%) center / 1px 8px repeat-y,
+        var(--zc-walk);
+}
+.zc-aisle span {
+    writing-mode: vertical-rl;
+    font-size: 10px;
+    letter-spacing: .2em;
+    color: #b3a676;
+    background: var(--zc-walk);
+    padding: 6px 0;
+}
+
+.zc-side { display: flex; gap: 6px; }
+.zc-side--n { grid-area: n; flex-direction: column; }
+.zc-side--s { grid-area: s; flex-direction: column; }
+.zc-side--w { grid-area: w; flex-direction: row; }
+.zc-side--e { grid-area: e; flex-direction: row; }
+
+.zc-band { display: flex; gap: 6px; }
+.zc-side--n .zc-band,
+.zc-side--s .zc-band { flex-direction: row; min-height: var(--zc-band); }
+.zc-side--w .zc-band,
+.zc-side--e .zc-band { flex-direction: column; min-width: var(--zc-band); }
+
+.zc-item {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    margin: 0;
+    padding: 4px 8px;
+    border: 1px solid var(--zc-zone-line);
+    background: var(--zc-zone-bg);
+    color: var(--zc-zone-text);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+.zc-side--w .zc-item,
+.zc-side--e .zc-item { padding: 10px 4px; }
+.zc-side--w .zc-item .zc-text,
+.zc-side--e .zc-item .zc-text { writing-mode: vertical-rl; }
+
+/* โซนข้างเคียง: กล่องเส้นประ กดแล้วไปโซนนั้น */
+.zc-item--zone { border-style: dashed; }
+button.zc-item--zone { cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+button.zc-item--zone:hover,
+button.zc-item--zone:focus-visible { background: #fff; color: #111827; border-color: #111827; outline: none; }
+.zc-arrow { font-size: 13px; line-height: 1; }
+
+.zc-item--walk {
+    background:
+        linear-gradient(to right, var(--zc-walk-line) 50%, transparent 50%) center / 8px 1px repeat-x,
+        var(--zc-walk);
+    border-color: var(--zc-walk-line);
+    color: #9a8a4f;
+}
+.zc-side--w .zc-item--walk,
+.zc-side--e .zc-item--walk {
+    background:
+        linear-gradient(to bottom, var(--zc-walk-line) 50%, transparent 50%) center / 1px 8px repeat-y,
+        var(--zc-walk);
+}
+.zc-item--walk .zc-text,
+.zc-aisle span { background: var(--zc-walk); }
+.zc-item--walk .zc-text { padding: 0 6px; }
+.zc-side--w .zc-item--walk .zc-text,
+.zc-side--e .zc-item--walk .zc-text { padding: 6px 0; }
+
+/* ทางเข้า: แถบเหลืองดำแบบป้ายบนผังภาพรวม */
+.zc-item--entrance {
+    position: relative;
+    background: #fff8e1;
+    border-color: #e2b83a;
+    color: #7a5b00;
+}
+.zc-item--entrance::before {
+    content: '';
+    position: absolute;
+    background: repeating-linear-gradient(90deg, #e2b83a 0 12px, #333 12px 24px);
+}
+.zc-side--s .zc-item--entrance::before { left: 0; right: 0; bottom: 0; height: 5px; }
+.zc-side--n .zc-item--entrance::before { left: 0; right: 0; top: 0; height: 5px; }
+.zc-side--w .zc-item--entrance::before { top: 0; bottom: 0; left: 0; width: 5px; background: repeating-linear-gradient(180deg, #e2b83a 0 12px, #333 12px 24px); }
+.zc-side--e .zc-item--entrance::before { top: 0; bottom: 0; right: 0; width: 5px; background: repeating-linear-gradient(180deg, #e2b83a 0 12px, #333 12px 24px); }
+
+.zc-item--parking { background: var(--zc-parking-bg); border-color: #c4c9d0; color: #4b5563; }
+.zc-item--edge { background: transparent; border-style: dotted; color: #9aa1ac; }
+.zc-item--edge i { color: #d64545; }
+.zc-item--facility { background: var(--zc-facility-bg); border-color: var(--zc-facility-line); color: var(--zc-facility-text); flex-grow: 0; padding: 4px 14px; }
+
+@media (max-width: 600px) {
+    .zc { --zc-band: 24px; gap: 6px; }
+    .zc-item { font-size: 10px; padding: 3px 6px; gap: 4px; }
+    .zc-aisle { width: 18px; flex-basis: 18px; }
+    .zc-aisle span { font-size: 9px; }
+}
+
+/* โซนที่ยาวมาก: ป้ายด้านข้าง/ทางเดินติดอยู่ด้านบนจอตอนเลื่อนผัง ไม่ไปอยู่กลางคอลัมน์ที่พ้นจอ */
+.zc-side--w .zc-item,
+.zc-side--e .zc-item,
+.zc-aisle { align-items: flex-start; }
+.zc-side--w .zc-item > *,
+.zc-side--e .zc-item > *,
+.zc-aisle span { position: sticky; top: 12px; }
+.zc-side--w .zc-item,
+.zc-side--e .zc-item { flex-direction: column; justify-content: flex-start; align-items: center; }
+
+/* ป้ายแนวนอนไม่ให้ถูกบีบจนตัวหนังสือซ้อนกัน */
+.zc-side--n .zc-item,
+.zc-side--s .zc-item { min-width: max-content; }
+.zc-item--facility { flex-shrink: 0; }

@@ -387,6 +387,7 @@ function renderGrid(z) {
             column.stalls.forEach((stall) => { stallByCode[stall.code] = stall; });
         });
         renderDZoneGrid(z, stallByCode);
+        if (window.wrapZoneContext) window.wrapZoneContext(grid, z, { onZone: openZone });
         return;
     }
 
@@ -495,6 +496,8 @@ function renderGrid(z) {
 
     // โซน G: วางบูธบนผังที่มีล็อกโซน F/B ห้องน้ำ ออฟฟิศโดยรอบ ให้รู้ตำแหน่งจริง (public/js/eventZonePlan.js)
     if (z === 'G' && window.mountEventZonePlan) window.mountEventZonePlan(grid);
+    // โซนอื่น: กรอบบอกว่าแต่ละทิศติดอะไร + แถบทางเดินระหว่างแถว (public/js/zoneContext.js)
+    else if (window.wrapZoneContext) window.wrapZoneContext(grid, z, { onZone: openZone });
 
     document.getElementById('drawerStats').innerHTML = `ทั้งหมด <b>${total}</b> ล็อก &nbsp;·&nbsp; จอง <b>${booked}</b> &nbsp;·&nbsp; ซ่อมบำรุง <b>${maintenance}</b> &nbsp;·&nbsp; ว่าง <b>${total - booked - maintenance}</b>`;
 }

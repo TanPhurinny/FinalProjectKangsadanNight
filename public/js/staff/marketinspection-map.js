@@ -138,6 +138,7 @@
                 column.stalls.forEach((stall) => { stallByCode[stall.code] = stall; });
             });
             renderDZoneGrid(canvasEl, stallByCode);
+            if (window.wrapZoneContext) window.wrapZoneContext(canvasEl, zoneKey, { onZone: selectZone });
             return;
         }
 
@@ -198,6 +199,8 @@
         });
         // โซน G: วางบูธบนผังที่มีล็อกโดยรอบ (public/js/eventZonePlan.js)
         if (zoneKey === 'G' && window.mountEventZonePlan) window.mountEventZonePlan(canvasEl);
+        // โซนอื่น: กรอบบอกว่าแต่ละทิศติดอะไร + แถบทางเดินระหว่างแถว (public/js/zoneContext.js)
+        else if (window.wrapZoneContext) window.wrapZoneContext(canvasEl, zoneKey, { onZone: selectZone });
     }
 
     // เลือกโซนแล้วเรนเดอร์กริดล็อคของโซนนั้นทันที โดยไม่ต้องกดกลับไปหน้าเลือกโซนก่อน

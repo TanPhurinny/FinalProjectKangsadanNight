@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="/stylesheets/responsive.css">
     <link rel="stylesheet" href="/stylesheets/admin/bookingStall.css?v=20261026-event">
     <link rel="stylesheet" href="/stylesheets/eventZonePlan.css?v=20261026">
+        <link rel="stylesheet" href="/stylesheets/zoneContext.css?v=20261026">
   </head>
   <body>
 
@@ -335,6 +336,7 @@
 
     <script src="/js/common/dialogs.js"></script>
     <script src="/js/eventZonePlan.js?v=20261026"></script>
+        <script src="/js/zoneContext.js?v=20261026"></script>
     <script>
   const PAGE_DATA = <%- JSON.stringify(pageData || {}) %>;
   const REQUEST_DATA = PAGE_DATA.bookingRequest || {};
@@ -676,6 +678,7 @@
         column.stalls.forEach((stall) => { stallByCode[stall.code] = stall; });
       });
       renderDZoneGrid(gridContainer, stallByCode);
+      if (window.wrapZoneContext) window.wrapZoneContext(gridContainer, zoneKey, { onZone: selectZone });
       return;
     }
 
@@ -743,6 +746,8 @@
     });
     // โซน G: วางบูธบนผังที่มีล็อกโดยรอบ (public/js/eventZonePlan.js)
     if (zoneKey === 'G' && window.mountEventZonePlan) window.mountEventZonePlan(gridContainer);
+    // โซนอื่น: กรอบบอกว่าแต่ละทิศติดอะไร + แถบทางเดินระหว่างแถว (public/js/zoneContext.js)
+    else if (window.wrapZoneContext) window.wrapZoneContext(gridContainer, zoneKey, { onZone: selectZone });
   }
 
   function showTooltip(e, code, stall, isBooked) {
