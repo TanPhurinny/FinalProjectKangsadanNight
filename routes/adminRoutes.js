@@ -90,7 +90,8 @@ router.post('/community-banners/:id/delete', bannerCtrl.deleteBanner);
 // --- 6. User Management (เฉพาะ Admin) ---
 router.get('/users', isAdminOnly, userCtrl.getUsersPage);
 router.post('/users/update-role', isAdminOnly, userCtrl.updateRole);
-router.get('/users/delete/:id', isAdminOnly, userCtrl.deleteUser);
+router.post('/users/bulk-role', isAdminOnly, userCtrl.bulkUpdateRole);
+router.post('/users/:id/delete', isAdminOnly, userCtrl.deleteUser);
 
 // --- 6.1 คะแนนร้านค้าจากการตรวจตลาด + Blacklist (เฉพาะ Admin) ---
 router.get('/sellers/scores', isAdminOnly, scoreReportCtrl.getSellerScoresPage);

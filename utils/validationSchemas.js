@@ -65,6 +65,15 @@ const updateRoleSchema = z.object({
     newRole: upperCaseEnum(USER_ROLE_VALUES)
 });
 
+// เปลี่ยนบทบาทหลายคนพร้อมกันจากหน้าจัดการผู้ใช้ — ฟอร์มส่ง userIds มาเป็นค่าเดียวหรือหลายค่า
+const bulkUpdateRoleSchema = z.object({
+    userIds: z.preprocess(
+        (value) => (Array.isArray(value) ? value : [value]).filter((v) => v !== undefined && v !== ''),
+        z.array(z.coerce.number().int().positive()).min(1).max(500)
+    ),
+    newRole: upperCaseEnum(USER_ROLE_VALUES)
+});
+
 const repairReportSchema = z.object({
     location: z.string().trim().min(1).max(200),
     category: z.string().trim().min(1).max(100),
@@ -199,6 +208,7 @@ module.exports = {
     MAX_STALL_COUNT,
     MAX_APPLIANCE_COUNT,
     updateRoleSchema,
+    bulkUpdateRoleSchema,
     repairReportSchema,
     repairStatusUpdateSchema,
     announcementSchema,
