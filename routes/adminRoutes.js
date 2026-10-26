@@ -18,6 +18,7 @@ const bannerCtrl = require('../controllers/communityBannerController');
 const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
 const bookingHolidayCtrl = require('../controllers/bookingHolidayController');
 const eventBoothCtrl = require('../controllers/eventBoothController');
+const shopReviewCtrl = require('../controllers/shopReviewController');
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
 const storage = createImageStorage({ folder: 'announcements', prefix: 'ann' });
@@ -113,6 +114,12 @@ router.post('/event-booths/approve', eventBoothCtrl.approve);
 router.post('/event-booths/reject', eventBoothCtrl.reject);
 router.post('/event-booths/confirm-payment', eventBoothCtrl.confirmPayment);
 router.post('/event-booths/reject-slip', eventBoothCtrl.rejectSlip);
+
+// --- 6.6 ดูแลรีวิวร้านค้า — รีวิวที่ร้านรายงาน / ซ่อน-เลิกซ่อน (ดู controllers/shopReviewController.js) ---
+router.get('/shop-reviews', shopReviewCtrl.getAdminPage);
+router.post('/shop-reviews/:id/hide', shopReviewCtrl.hide);
+router.post('/shop-reviews/:id/unhide', shopReviewCtrl.unhide);
+router.post('/shop-reviews/:id/dismiss', shopReviewCtrl.dismissReport);
 
 // --- 7. Approvals & Requests ---
 router.get('/approvals', approvalCtrl.getApprovalsPage);

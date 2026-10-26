@@ -332,7 +332,8 @@
         'tax-invoice-issued': ['bi-file-earmark-text', 'border-type-success', 'text-success-custom'],
         'tax-invoice-cancelled': ['bi-file-earmark-text', 'border-type-cancelled', 'text-danger'],
         'community-comment': ['bi-chat-dots-fill', 'border-type-success', 'text-success-custom'],
-        'community-like': ['bi-heart-fill', 'border-type-success', 'text-danger']
+        'community-like': ['bi-heart-fill', 'border-type-success', 'text-danger'],
+        'shop-review': ['bi-star-fill', 'border-type-success', 'text-warning']
       };
       const [iconClass, borderClass, iconColor] = iconMap[item.type] || ['bi-bell', 'border-type-pending-review', 'text-warning'];
 
@@ -445,7 +446,8 @@
         'tax-invoice-issued': ['bi-file-earmark-text', 'border-type-success', 'text-success-custom'],
         'tax-invoice-cancelled': ['bi-file-earmark-text', 'border-type-cancelled', 'text-danger'],
         'community-comment': ['bi-chat-dots-fill', 'border-type-success', 'text-success-custom'],
-        'community-like': ['bi-heart-fill', 'border-type-success', 'text-danger']
+        'community-like': ['bi-heart-fill', 'border-type-success', 'text-danger'],
+        'shop-review': ['bi-star-fill', 'border-type-success', 'text-warning']
       };
       const [iconClass, borderClass, iconColor] = iconMap[item.type] || ['bi-bell', 'border-type-pending-review', 'text-warning'];
       return `

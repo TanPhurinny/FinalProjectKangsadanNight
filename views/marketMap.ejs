@@ -14,7 +14,7 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
             rel="stylesheet" />
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
-        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261026-event">
+        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261026-review2">
         <link rel="stylesheet" href="/stylesheets/eventZonePlan.css?v=20261026">
         <link rel="stylesheet" href="/stylesheets/zoneContext.css?v=20261026">
         <link rel="stylesheet" href="/stylesheets/common/searchSuggest.css?v=20261002">
@@ -100,6 +100,8 @@
                         class="fa-solid fa-tag fa-xs"></i> มีโปรวันนี้ <small data-qcount="PROMO"></small></button>
                 <button class="qtag qtag-menu" onclick="quickStatusFilter(this,'HAS_MENU')"><i
                         class="fa-solid fa-book-open fa-xs"></i> มีรูปเมนู <small data-qcount="HAS_MENU"></small></button>
+                <button class="qtag qtag-rated" onclick="quickStatusFilter(this,'TOP_RATED')" title="ร้านที่ได้คะแนนรีวิวเฉลี่ย 4 ดาวขึ้นไป"><i
+                        class="fa-solid fa-star fa-xs"></i> 4 ดาวขึ้นไป <small data-qcount="TOP_RATED"></small></button>
                 <button class="qtag qtag-new" onclick="quickStatusFilter(this,'NEW')"><i
                         class="fa-solid fa-seedling fa-xs"></i> ร้านใหม่ <small data-qcount="NEW"></small></button>
                 <button class="qtag qtag-fav" onclick="quickStatusFilter(this,'FAV')"><i
@@ -294,6 +296,7 @@
                         <div class="ic-identity-text">
                             <div class="ic-identity-name" id="ic-shop"></div>
                             <div class="ic-identity-sub" id="ic-product"></div>
+                            <button type="button" class="ic-rating d-none" id="icRating" aria-label="ดูรีวิวร้าน"></button>
                         </div>
                     </div>
                     <div class="ic-open-badge d-none" id="icOpenBadge"></div>
@@ -317,6 +320,7 @@
                     <button type="button" class="ic-menu-btn d-none" id="icMenuBtn">
                         <i class="fa-solid fa-book-open"></i> ดูเมนูร้าน <span class="ic-menu-count" id="icMenuCount"></span>
                     </button>
+                    <div class="ic-section d-none" id="icReviews"></div>
                     <div class="ic-section d-none" id="icPost"></div>
                     <div class="ic-section d-none" id="icNeighbors"></div>
                     <div class="ic-section d-none" id="icFacilities"></div>
@@ -392,6 +396,25 @@
             </div>
         </div>
 
+        <!-- รีวิวร้าน: สรุปดาว + รายการรีวิว + ฟอร์มรีวิว (สมาชิกที่ล็อกอินแล้ว) — เนื้อหาโหลดจาก GET /shop-reviews/:code ใน marketMap.js -->
+        <div class="menu-viewer review-viewer" id="reviewViewer" hidden>
+            <div class="mv-backdrop" data-rv-close></div>
+            <div class="mv-panel rv-panel" role="dialog" aria-modal="true" aria-labelledby="rvTitle">
+                <div class="mv-head">
+                    <div>
+                        <div class="mv-kicker">รีวิวร้าน · แผง <span id="rvStall"></span></div>
+                        <div class="mv-title" id="rvTitle"></div>
+                    </div>
+                    <button type="button" class="mv-close" data-rv-close aria-label="ปิด">✕</button>
+                </div>
+                <div class="rv-body" id="rvBody">
+                    <div class="rv-summary" id="rvSummary"></div>
+                    <div class="rv-compose" id="rvCompose"></div>
+                    <ol class="rv-list" id="rvList"></ol>
+                </div>
+            </div>
+        </div>
+
         <!-- QR ร้าน + ป้ายหน้าร้าน (เจ้าของล็อก/แอดมิน/staff) -->
         <div class="menu-viewer qr-viewer" id="qrViewer" hidden>
             <div class="mv-backdrop" data-qr-close></div>
@@ -423,7 +446,7 @@
         <script src="/js/common/searchSuggest.js?v=20261002"></script>
         <script src="/js/eventZonePlan.js?v=20261026"></script>
         <script src="/js/zoneContext.js?v=20261026"></script>
-        <script src="/js/marketMap.js?v=20261026-zc"></script>
+        <script src="/js/marketMap.js?v=20261026-review2"></script>
         <script src="/js/marketNav.js?v=20261026-event"></script>
     </body>
 </html>

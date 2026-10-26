@@ -388,3 +388,50 @@
 }
 .vs-col:hover::after, .vs-col:focus-within::after { opacity: 1; }
 .vs-empty { margin: 0; padding: 8px 14px 12px; font-size: 0.82rem; color: var(--ink-soft); }
+
+/* ── รีวิวร้านคุณจากสมาชิก: ตัวเลข 3 ช่อง (ใช้ .vs-tiles เดียวกับสถิติคนดู) + รายการรีวิวพร้อมตอบ/รายงาน ── */
+.shop-reviews { margin: 18px 0 0; border: 1px solid var(--navy); scroll-margin-top: 90px; }
+.shop-reviews .vs-tiles { grid-template-columns: repeat(3, 1fr); }
+.sr-stars { display: inline-flex; gap: 1px; color: #e2b83a; font-size: 0.72rem; }
+.sr-stars .fa-regular { color: #c9d3d6; }
+.vs-tile .sr-stars { margin-top: 2px; }
+.sr-list { list-style: none; margin: 0; padding: 0; }
+.sr-item { padding: 12px 14px; border-bottom: 1px dashed var(--line); }
+.sr-item:last-child { border-bottom: 0; }
+.sr-item.is-hidden { background: #f6f8f8; }
+.sr-item.is-hidden .sr-comment { color: var(--ink-soft); text-decoration: line-through; }
+.sr-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 0.86rem; }
+.sr-head b { color: var(--navy); }
+.sr-head small { margin-left: auto; color: var(--ink-soft); font-family: var(--mono); font-size: 0.75rem; }
+.sr-badge { padding: 0 6px; border: 1px solid #c98a2e; color: #8a5a12; font-size: 0.7rem; font-weight: 600; }
+.sr-badge-hidden { border-color: #c0392b; color: #922b21; }
+.sr-comment { margin: 6px 0 0; font-size: 0.88rem; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
+.sr-hidden-reason { margin: 4px 0 0; font-size: 0.78rem; color: #922b21; }
+.sr-reply { margin-top: 8px; padding: 8px 10px; border-left: 3px solid var(--primary); background: #f4f8f9; font-size: 0.82rem; }
+.sr-reply b { color: var(--navy); }
+.sr-reply p { margin: 3px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
+.sr-reply-form { margin-top: 8px; }
+.sr-reply-form textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    font-family: inherit;
+    font-size: 0.88rem;
+    resize: vertical;
+}
+.sr-reply-form textarea:focus { outline: none; border-color: var(--navy); }
+.sr-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 8px; }
+.sr-btn {
+    padding: 5px 12px;
+    border: 1px solid var(--navy);
+    background: var(--navy);
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.sr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.sr-btn-ghost { background: #fff; color: var(--navy); }
+.sr-btn-ghost:hover { background: #f6f8f8; }
+.sr-btn-report { border-color: var(--line); color: var(--ink-soft); }

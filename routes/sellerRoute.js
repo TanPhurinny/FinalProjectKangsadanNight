@@ -9,6 +9,7 @@ const marketMapCtrl = require('../controllers/marketMapController');
 const { shopViewLimiter } = require('../middlewares/authRateLimit');
 const { isStaffOrAdmin } = require('../middlewares/auth');
 const { getShopViewStats } = require('../utils/shopViews');
+const { getSellerReviewPanel, buildReviewNotifications } = require('../utils/shopReviews');
 const { setOpenStatus } = require('../utils/shopOpenStatus');
 const { setPromo } = require('../utils/shopPromo');
 const { buildProfileChecks } = require('../utils/shopCompleteness');
@@ -855,11 +856,13 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
     });
 
     // ขอใบกำกับภาษี — รวมมาไว้ในหน้าร้านค้าของฉันแทนที่จะแยกเป็นหน้าเมนูของตัวเอง (ดู taxInvoiceController.js)
-    const [eligibleQuotations, taxInvoiceProfiles, taxInvoiceRequests, viewStats] = await Promise.all([
+    const [eligibleQuotations, taxInvoiceProfiles, taxInvoiceRequests, viewStats, reviewPanel] = await Promise.all([
         taxInvoiceCtrl.getEligibleQuotationsForUser(req.user.id),
         taxInvoiceCtrl.getTaxInvoiceProfilesForUser(req.user.id),
         taxInvoiceCtrl.buildTaxInvoiceListRows({ requestedByUserId: req.user.id }),
-        getShopViewStats(req.user.id)
+        getShopViewStats(req.user.id),
+        // รีวิวร้านจากสมาชิก — ผู้ขายตอบ/รายงานรีวิวได้ (public/js/seller/shopReviews.js)
+        getSellerReviewPanel(req.user.id)
     ]);
 
     res.render('seller/shopProfile', {
@@ -869,6 +872,7 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
         maxProductImages: MAX_SHOP_PRODUCT_IMAGES,
         maxMenuImages: MAX_SHOP_MENU_IMAGES,
         viewStats,
+        reviewPanel,
         eligibleQuotations,
         taxInvoiceProfiles,
         taxInvoiceRequests,
@@ -2297,6 +2301,8 @@ async function loadSellerBookingStatus(userId) {
 
     const renewalNotices = await loadAdminRenewalNotices(userId);
     const communityNotifications = await buildCommunityNotifications(userId);
+    // รีวิวร้านใหม่ที่ยังไม่ได้ตอบ (utils/shopReviews.js)
+    const reviewNotifications = await buildReviewNotifications(userId);
     const eventBoothRequests = await prisma.eventBoothRequest.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
@@ -2311,6 +2317,7 @@ async function loadSellerBookingStatus(userId) {
             ...buildEventBoothNotifications(eventBoothRequests),
             ...renewalNotices,
             ...communityNotifications,
+            ...reviewNotifications,
             ...buildRepairNotifications(repairReports),
             ...buildTaxInvoiceNotifications(taxInvoiceRequests),
             ...rejectionEntries,

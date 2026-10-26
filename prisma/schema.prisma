@@ -38,6 +38,8 @@ model User {
   recordedCleanlinessInspections StallCleanlinessInspection[]
   assignedRepairReports MaintenanceReport[] @relation("MaintenanceReportAssignedTo")
   dailyInspectionSubmissions DailyInspectionSubmission[]
+  shopReviewsWritten  ShopReview[] @relation("ShopReviewAuthor")
+  shopReviewsReceived ShopReview[] @relation("ShopReviewShop")
   // Blacklist จากคะแนนตรวจตลาด — อยู่บน User (ไม่ใช่ Seller model ที่ไม่มีที่ไหนในระบบสร้างข้อมูลจริงเลย)
   isBlacklisted   Boolean   @default(false)
   blacklistedAt   DateTime?
@@ -850,4 +852,32 @@ model EventBoothRequest {
   @@index([userId], map: "EventBoothRequest_userId_fkey")
   @@index([status])
   @@index([assignedStallCode])
+}
+
+// รีวิวร้านค้าจากสมาชิก (ต้องล็อกอิน) — ผูกกับเจ้าของร้าน (shopUserId) ไม่ใช่รหัสล็อก รีวิวจึงตามร้านไปเมื่อย้าย/ต่อล็อก
+// 1 คนต่อ 1 ร้านมีรีวิวเดียว (รีวิวซ้ำ = แก้ของเดิม) / เจ้าของร้าน แอดมิน staff รีวิวไม่ได้ — ดู utils/shopReviews.js
+// ร้านตอบกลับได้ 1 ข้อความ + รายงานรีวิวไม่เหมาะสม → แอดมินซ่อน (isHidden) ที่ /admin/shop-reviews รีวิวที่ซ่อนไม่นับคะแนนเฉลี่ย
+model ShopReview {
+  id              Int       @id @default(autoincrement())
+  shopUserId      Int
+  userId          Int
+  stallCode       String?   @db.VarChar(32)
+  rating          Int
+  comment         String?   @db.Text
+  sellerReply     String?   @db.Text
+  sellerRepliedAt DateTime?
+  reportCount     Int       @default(0)
+  reportReason    String?   @db.Text
+  reportedAt      DateTime?
+  isHidden        Boolean   @default(false)
+  hiddenReason    String?   @db.Text
+  hiddenAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  shop            User      @relation("ShopReviewShop", fields: [shopUserId], references: [id], onDelete: Cascade)
+  user            User      @relation("ShopReviewAuthor", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([shopUserId, userId])
+  @@index([shopUserId, isHidden, createdAt])
+  @@index([userId])
 }

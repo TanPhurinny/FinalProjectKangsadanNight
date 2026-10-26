@@ -8,6 +8,7 @@ const { buildStallHistory } = require('../utils/stallHistory');
 const { resolveViewDate, buildStallStatusForDate } = require('../utils/stallDayStatus');
 const { getClosedShopsToday, getOpenStatus, businessDateOf } = require('../utils/shopOpenStatus');
 const { getPromosToday } = require('../utils/shopPromo');
+const { getRatingSummaries } = require('../utils/shopReviews');
 const { stripInternalTags } = require('../utils/bookingRequestTag');
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundTimeline, BOOKING_ROUND_LENGTH_DAYS } = require('../utils/bookingRound');
 const adminDashboard = require('../utils/adminDashboard');
@@ -743,10 +744,12 @@ exports.getMarketMapPage = async (req, res) => {
 
         // ร้านที่ผู้ขายกด "ปิดร้านวันนี้" (ทุกร้านเปิดเป็นค่าเริ่มต้น) — ลูกค้าเห็นร้านนั้นจางลงพร้อมป้ายปิด
         const shopUserIdList = Object.values(shopInfoByUserId).map((shop) => shop.userId);
-        const [closedAtByUserId, promoByUserId] = await Promise.all([
+        const [closedAtByUserId, promoByUserId, ratingByUserId] = await Promise.all([
             getClosedShopsToday(shopUserIdList),
             // โปรวันนี้ที่ผู้ขายตั้งจากหน้าหลักผู้ขาย
-            getPromosToday(shopUserIdList)
+            getPromosToday(shopUserIdList),
+            // คะแนนรีวิวเฉลี่ย (ตัวรีวิวเต็มๆ โหลดตอนเปิดหน้าต่างรีวิว — GET /shop-reviews/:code)
+            getRatingSummaries(shopUserIdList)
         ]);
 
         // โพสต์คอมมูนิตี้ล่าสุดของแต่ละร้าน โชว์ในการ์ดร้าน (ตัดข้อความสั้นๆ พอให้รู้ว่าร้านมีอะไรใหม่)
@@ -817,7 +820,8 @@ exports.getMarketMapPage = async (req, res) => {
                     subtype: fallbackShop.productSubtype || '',
                     closedAt: closedAtByUserId.get(fallbackShop.userId) || null,
                     promo: promoByUserId.get(fallbackShop.userId) || null,
-                    post: latestPostByUserId.get(fallbackShop.userId) || null
+                    post: latestPostByUserId.get(fallbackShop.userId) || null,
+                    rating: ratingByUserId.get(fallbackShop.userId) || { avg: 0, count: 0 }
                 };
             });
         });

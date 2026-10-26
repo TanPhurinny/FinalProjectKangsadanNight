@@ -631,7 +631,7 @@ let currentLayer = LAYER_KEYS.includes(layerParam)
 
 // ตัวกรองที่ทำให้ล็อกอื่นจางลง (ให้เห็นเฉพาะที่ตรง) — ตัวกรองหมวดสินค้าใช้เงื่อนไขแยกอยู่แล้ว
 function isDimmingFilter(status) {
-    return isLayerFilter(status) || ['HAS_MENU', 'NEW', 'FAV', 'RECENT', 'OPEN', 'PROMO'].includes(status);
+    return isLayerFilter(status) || ['HAS_MENU', 'NEW', 'FAV', 'RECENT', 'OPEN', 'PROMO', 'TOP_RATED'].includes(status);
 }
 
 // ==========================================
@@ -673,6 +673,12 @@ function hasPromo(code) {
     return !!(d && d.promo && !d.closedAt);
 }
 
+// ร้านที่ได้คะแนนรีวิวเฉลี่ย 4 ดาวขึ้นไป (ไม่นับรีวิวที่แอดมินซ่อน — server ตัดออกแล้ว)
+function hasTopRating(code) {
+    const r = BOOKING_BY_STALL[code] && BOOKING_BY_STALL[code].rating;
+    return !!(r && r.count > 0 && r.avg >= 4);
+}
+
 function hasMenu(code) {
     const d = BOOKING_BY_STALL[code];
     return !!(d && (d.menuImages || []).length);
@@ -687,7 +693,8 @@ function updateQuickTagCounts() {
         FAV: booked.filter((s) => isFavorite(s.code)).length,
         RECENT: booked.filter((s) => isRecent(s.code)).length,
         OPEN: booked.filter((s) => !isClosedToday(s.code)).length,
-        PROMO: booked.filter((s) => hasPromo(s.code)).length
+        PROMO: booked.filter((s) => hasPromo(s.code)).length,
+        TOP_RATED: booked.filter((s) => hasTopRating(s.code)).length
     };
     Object.keys(counts).forEach((key) => {
         const el = document.querySelector(`[data-qcount="${key}"]`);
@@ -706,6 +713,9 @@ function paintStallLayer(cell, code) {
     if (isClosedToday(code)) {
         cell.classList.add('shop-closed');
         cell.insertAdjacentHTML('beforeend', '<span class="cell-mark cell-mark-closed" aria-hidden="true">ปิด</span>');
+    } else if (hasTopRating(code) && currentLayer === 'category') {
+        // ร้านรีวิว 4 ดาวขึ้นไป: "★4.7" มุมซ้ายล่างเดียวกับป้ายปิด (ร้านปิดโชว์ "ปิด" แทน) — เฉพาะชั้นหมวดสินค้าที่ลูกค้าเห็น
+        cell.insertAdjacentHTML('beforeend', `<span class="cell-mark cell-mark-rated" aria-hidden="true">★${Number(BOOKING_BY_STALL[code].rating.avg).toFixed(1)}</span>`);
     }
 }
 
@@ -1172,6 +1182,7 @@ function stallMatchesFilter(id, stall) {
         if (currentStatusFilter === 'RECENT') return stall.status === 'BOOKED' && isRecent(id);
         if (currentStatusFilter === 'OPEN') return stall.status === 'BOOKED' && !isClosedToday(id);
         if (currentStatusFilter === 'PROMO') return stall.status === 'BOOKED' && hasPromo(id);
+        if (currentStatusFilter === 'TOP_RATED') return stall.status === 'BOOKED' && hasTopRating(id);
         if (currentStatusFilter === 'INSP_CLOSED') return stall.status === 'BOOKED' && isClosedToday(id);
         if (currentStatusFilter === 'REP_ANY') return !!repairStatusOf(id);
         if (currentStatusFilter === 'EMPTY') {
@@ -1666,6 +1677,248 @@ function renderCardExtras(id, d) {
 }
 
 // ==========================================
+// รีวิวร้าน — คะแนนเฉลี่ยมากับข้อมูลผัง (d.rating) ส่วนตัวรีวิวโหลดจาก GET /shop-reviews/:code ตอนเปิดการ์ด
+// อ่านได้ทุกคน เขียนได้เฉพาะสมาชิกที่ล็อกอิน (ไม่ใช่เจ้าของร้าน/แอดมิน/staff) — server เช็คซ้ำเสมอ ดู utils/shopReviews.js
+// ==========================================
+const reviewCache = new Map();
+const RATING_WORDS = { 1: 'แย่', 2: 'พอใช้', 3: 'ดี', 4: 'ดีมาก', 5: 'ยอดเยี่ยม' };
+
+function starsHtml(value, cls = '') {
+    const full = Math.round(Number(value) || 0);
+    return `<span class="rv-stars ${cls}" aria-hidden="true">${[1, 2, 3, 4, 5].map((i) => `<i class="fa-${i <= full ? 'solid' : 'regular'} fa-star"></i>`).join('')}</span>`;
+}
+
+function ratingText(r) {
+    return r && r.count ? `${Number(r.avg).toFixed(1)} · ${r.count} รีวิว` : 'ยังไม่มีรีวิว';
+}
+
+function reviewItemHtml(rv, compact = false) {
+    const text = rv.comment && compact && rv.comment.length > 120 ? `${rv.comment.slice(0, 120)}…` : rv.comment;
+    const comment = text ? `<p class="rv-comment">${escapeHtml(text)}</p>` : '';
+    const reply = rv.reply && !compact
+        ? `<div class="rv-reply"><b>ร้านตอบกลับ</b> <small>${escapeHtml(formatAgo(rv.reply.at))}</small><p>${escapeHtml(rv.reply.text)}</p></div>`
+        : '';
+    return `<li class="rv-item${rv.mine ? ' rv-mine' : ''}">
+        <div class="rv-item-head">${starsHtml(rv.rating)}<b>${escapeHtml(rv.author)}</b>${rv.mine ? '<span class="rv-tag">รีวิวของคุณ</span>' : ''}<small>${escapeHtml(formatAgo(rv.createdAt))}</small></div>
+        ${comment}${reply}
+    </li>`;
+}
+
+async function loadReviews(code, force = false) {
+    if (!force && reviewCache.has(code)) return reviewCache.get(code);
+    const response = await fetch(`/shop-reviews/${encodeURIComponent(code)}`, { headers: { Accept: 'application/json' } });
+    const payload = await response.json();
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'โหลดรีวิวไม่สำเร็จ');
+    reviewCache.set(code, payload);
+    return payload;
+}
+
+function isCardShowing(code) {
+    return document.getElementById('infoCard').classList.contains('show')
+        && document.getElementById('ic-head').textContent === `แผง ${code}`;
+}
+
+// คะแนนเฉลี่ยใต้ชื่อร้าน + ส่วน "รีวิวจากสมาชิก" (2 รีวิวล่าสุด) ในการ์ดร้าน — บูธกิจกรรมไม่มีรีวิว
+function renderCardRating(id, d) {
+    const ratingBtn = document.getElementById('icRating');
+    const section = document.getElementById('icReviews');
+    if (d.isEvent) {
+        ratingBtn.classList.add('d-none');
+        section.classList.add('d-none');
+        return;
+    }
+    const r = d.rating || { avg: 0, count: 0 };
+    ratingBtn.innerHTML = r.count
+        ? `${starsHtml(r.avg)} <b>${Number(r.avg).toFixed(1)}</b> <span>(${r.count} รีวิว)</span>`
+        : `${starsHtml(0)} <span>ยังไม่มีรีวิว</span>`;
+    ratingBtn.classList.remove('d-none');
+    ratingBtn.onclick = () => openReviewViewer(id);
+
+    section.innerHTML = `<div class="ics-head">รีวิวจากสมาชิก <small>${escapeHtml(ratingText(r))}</small></div>
+        <ol class="rv-list rv-list-compact" id="icReviewList">${r.count ? '<li class="rv-loading">กำลังโหลดรีวิว…</li>' : ''}</ol>
+        <button type="button" class="ic-review-btn" id="icReviewBtn"><i class="fa-regular fa-star"></i> ${r.count ? 'ดูรีวิวทั้งหมด / เขียนรีวิว' : 'เป็นคนแรกที่รีวิวร้านนี้'}</button>`;
+    section.classList.remove('d-none');
+    document.getElementById('icReviewBtn').onclick = () => openReviewViewer(id);
+    if (!r.count) return;
+    loadReviews(id).then((data) => {
+        const list = document.getElementById('icReviewList');
+        if (!list || !isCardShowing(id)) return;
+        list.innerHTML = data.reviews.slice(0, 2).map((rv) => reviewItemHtml(rv, true)).join('');
+    }).catch(() => {
+        const list = document.getElementById('icReviewList');
+        if (list) list.innerHTML = '<li class="rv-loading">โหลดรีวิวไม่สำเร็จ</li>';
+    });
+}
+
+const reviewViewer = { code: null, rating: 0 };
+
+async function openReviewViewer(code) {
+    const d = BOOKING_BY_STALL[code];
+    if (!d) return;
+    reviewViewer.code = code;
+    document.getElementById('rvStall').textContent = code;
+    document.getElementById('rvTitle').textContent = d.shop;
+    document.getElementById('rvSummary').innerHTML = '';
+    document.getElementById('rvCompose').innerHTML = '';
+    document.getElementById('rvList').innerHTML = '<li class="rv-loading">กำลังโหลดรีวิว…</li>';
+    hideStallTooltip();
+    const viewer = document.getElementById('reviewViewer');
+    viewer.hidden = false;
+    document.body.classList.add('mv-open');
+    viewer.querySelector('.mv-close').focus();
+    try {
+        renderReviewViewer(await loadReviews(code, true));
+    } catch (error) {
+        document.getElementById('rvList').innerHTML = `<li class="rv-loading">${escapeHtml(error.message)}</li>`;
+    }
+}
+
+function closeReviewViewer() {
+    document.getElementById('reviewViewer').hidden = true;
+    document.body.classList.remove('mv-open');
+}
+
+function renderReviewViewer(data) {
+    const code = reviewViewer.code;
+    const { summary } = data;
+    const max = Math.max(1, ...Object.values(summary.breakdown));
+    document.getElementById('rvSummary').innerHTML = `
+        <div class="rv-score">
+            <b>${summary.count ? Number(summary.avg).toFixed(1) : '–'}</b>
+            ${starsHtml(summary.avg, 'rv-stars-lg')}
+            <small>${summary.count ? `จาก ${summary.count} รีวิว` : 'ยังไม่มีรีวิว'}</small>
+        </div>
+        <div class="rv-bars">${[5, 4, 3, 2, 1].map((n) => `
+            <div class="rv-bar-row"><span>${n} <i class="fa-solid fa-star"></i></span>
+                <div class="rv-bar"><div style="width:${Math.round((summary.breakdown[n] / max) * 100)}%"></div></div>
+                <small>${summary.breakdown[n]}</small></div>`).join('')}
+        </div>`;
+
+    renderReviewCompose(data);
+
+    // รีวิวของตัวเองขึ้นก่อน ที่เหลือใหม่ → เก่า
+    const mine = data.reviews.find((rv) => rv.mine);
+    const items = [mine, ...data.reviews.filter((rv) => !rv.mine)].filter(Boolean);
+    document.getElementById('rvList').innerHTML = items.length
+        ? items.map((rv) => reviewItemHtml(rv)).join('')
+        : '<li class="rv-loading">ยังไม่มีใครรีวิวร้านนี้</li>';
+
+    // อัปเดตคะแนนบนการ์ด/ตัวกรองให้ตรงกับรีวิวล่าสุด (เพิ่งรีวิวเสร็จไม่ต้องรีโหลดหน้า)
+    const d = BOOKING_BY_STALL[code];
+    if (d) {
+        d.rating = { avg: summary.avg, count: summary.count };
+        updateQuickTagCounts();
+        if (isCardShowing(code)) renderCardRating(code, d);
+    }
+}
+
+function renderReviewCompose(data) {
+    const box = document.getElementById('rvCompose');
+    const check = data.canReview || {};
+    if (!check.ok) {
+        // ล็อกอิน/สมัครเสร็จแล้วกลับมาที่ร้านนี้พร้อมเปิดหน้าต่างรีวิว (safeNextPath ใน authController.js)
+        const next = encodeURIComponent(`/market-map?stall=${encodeURIComponent(reviewViewer.code)}&reviews=1`);
+        const notes = {
+            login: `<p>รีวิวได้เฉพาะสมาชิก เข้าสู่ระบบแล้วจะกลับมาที่ร้านนี้ให้อัตโนมัติ</p><div class="rv-note-actions"><a class="ad-btn" href="/login?next=${next}"><i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบเพื่อรีวิว</a><a class="ad-btn ad-ghost" href="/login?tab=register&amp;next=${next}">สมัครสมาชิก</a></div>`,
+            owner: '<p>นี่คือร้านของคุณ — ดูและตอบรีวิวได้ที่หน้า <a href="/shop-profile#shop-reviews">ร้านค้าของฉัน</a></p>',
+            role: '<p>บัญชีแอดมิน/เจ้าหน้าที่ไม่ให้คะแนนร้าน — ดูแลรีวิวได้ที่ <a href="/admin/shop-reviews">หน้ารีวิวร้านค้า</a></p>'
+        };
+        box.innerHTML = `<div class="rv-note">${notes[check.reason] || ''}</div>`;
+        return;
+    }
+    const mine = data.mine;
+    const mineHasReply = data.reviews.some((rv) => rv.mine && rv.reply);
+    reviewViewer.rating = mine ? mine.rating : 0;
+    box.innerHTML = `
+        <form class="rv-form" id="rvForm" novalidate>
+            <div class="rv-form-head">${mine ? 'แก้รีวิวของคุณ' : 'ให้คะแนนร้านนี้'}</div>
+            ${mine && mine.isHidden ? `<p class="rv-hidden-note">รีวิวนี้ถูกแอดมินซ่อน${mine.hiddenReason ? `: ${escapeHtml(mine.hiddenReason)}` : ''} — คนอื่นไม่เห็นรีวิวนี้</p>` : ''}
+            <div class="rv-pick" role="radiogroup" aria-label="คะแนน">
+                ${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="rv-pick-star" data-star="${n}" role="radio" aria-label="${n} ดาว ${RATING_WORDS[n]}"><i class="fa-solid fa-star"></i></button>`).join('')}
+                <span class="rv-pick-word" id="rvPickWord"></span>
+            </div>
+            <textarea id="rvComment" maxlength="500" rows="3" placeholder="เล่าให้คนอื่นฟังหน่อย อร่อยไหม คุ้มไหม บริการเป็นยังไง (ไม่บังคับ)">${escapeHtml(mine && mine.comment ? mine.comment : '')}</textarea>
+            <div class="rv-form-foot">
+                <small id="rvCount"></small>
+                ${mine ? '<button type="button" class="ad-btn ad-ghost" id="rvDelete">ลบรีวิว</button>' : ''}
+                <button type="submit" class="ad-btn" id="rvSubmit">${mine ? 'บันทึกการแก้ไข' : 'ส่งรีวิว'}</button>
+            </div>
+            ${mineHasReply ? '<p class="rv-hint">ถ้าแก้รีวิว คำตอบเดิมของร้านจะหายไป</p>' : ''}
+        </form>`;
+
+    const paintPick = (hover) => {
+        const v = hover || reviewViewer.rating;
+        box.querySelectorAll('.rv-pick-star').forEach((btn) => {
+            const n = Number(btn.dataset.star);
+            btn.classList.toggle('on', n <= v);
+            btn.setAttribute('aria-checked', n === reviewViewer.rating ? 'true' : 'false');
+        });
+        document.getElementById('rvPickWord').textContent = v ? RATING_WORDS[v] : 'แตะดาวเพื่อให้คะแนน';
+    };
+    box.querySelectorAll('.rv-pick-star').forEach((btn) => {
+        btn.addEventListener('click', () => { reviewViewer.rating = Number(btn.dataset.star); paintPick(); });
+        btn.addEventListener('mouseenter', () => paintPick(Number(btn.dataset.star)));
+        btn.addEventListener('mouseleave', () => paintPick());
+    });
+    paintPick();
+
+    const textarea = document.getElementById('rvComment');
+    const paintCount = () => { document.getElementById('rvCount').textContent = `${textarea.value.length}/500`; };
+    textarea.addEventListener('input', paintCount);
+    paintCount();
+
+    document.getElementById('rvForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!reviewViewer.rating) {
+            window.showAlertDialog({ title: 'ยังไม่ได้ให้คะแนน', message: 'แตะดาว 1–5 ดวงก่อนส่งรีวิว', tone: 'warning' });
+            return;
+        }
+        sendReview('save');
+    });
+    const del = document.getElementById('rvDelete');
+    if (del) {
+        del.addEventListener('click', () => window.showConfirmDialog({
+            title: 'ลบรีวิว',
+            message: 'ลบรีวิวของคุณสำหรับร้านนี้ใช่หรือไม่',
+            tone: 'danger',
+            confirmText: 'ลบรีวิว',
+            onConfirm: () => sendReview('delete')
+        }));
+    }
+}
+
+async function sendReview(action) {
+    const code = reviewViewer.code;
+    const btn = document.getElementById('rvSubmit');
+    if (btn) btn.disabled = true;
+    try {
+        const response = await fetch(`/shop-reviews/${encodeURIComponent(code)}${action === 'delete' ? '/delete' : ''}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(action === 'delete' ? {} : { rating: reviewViewer.rating, comment: document.getElementById('rvComment').value })
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
+        reviewCache.set(code, payload);
+        renderReviewViewer(payload);
+        showMapToast(payload.message);
+    } catch (error) {
+        window.showAlertDialog({ title: 'บันทึกรีวิวไม่สำเร็จ', message: error.message, tone: 'danger' });
+    } finally {
+        if (btn && btn.isConnected) btn.disabled = false;
+    }
+}
+
+(function setupReviewViewer() {
+    const viewer = document.getElementById('reviewViewer');
+    if (!viewer) return;
+    viewer.querySelectorAll('[data-rv-close]').forEach((el) => el.addEventListener('click', closeReviewViewer));
+    document.addEventListener('keydown', (e) => {
+        if (!viewer.hidden && e.key === 'Escape') closeReviewViewer();
+    });
+})();
+
+// ==========================================
 // ดูล่าสุด (เก็บในเครื่อง) + สถิติการเปิดดูร้านให้ผู้ขาย (ส่งแบบ beacon ไม่รอผล)
 // ==========================================
 const RECENT_KEY = 'kangsadan.recentShops';
@@ -1918,6 +2171,7 @@ function showInfo(id) {
     promoEl.classList.toggle('d-none', !hasPromo(id));
     if (hasPromo(id)) promoEl.querySelector('span').textContent = d.promo;
     renderCardTools(id);
+    renderCardRating(id, d);
     renderCardExtras(id, d);
     rememberRecent(id);
     trackView(id, 'card');
@@ -2102,6 +2356,7 @@ const STATUS_LABELS = {
     RECENT: 'ร้านที่ดูล่าสุด',
     OPEN: 'ร้านที่เปิดอยู่ตอนนี้',
     PROMO: 'ร้านที่มีโปรวันนี้',
+    TOP_RATED: 'ร้านที่ได้รีวิว 4 ดาวขึ้นไป',
     INSP_CLOSED: 'ร้านที่แจ้งปิดร้านวันนี้',
     REP_ANY: 'ล็อกที่มีงานซ่อมค้าง'
 };
@@ -2222,7 +2477,12 @@ function openStallDeepLink(code, showCard = true) {
 // สคริปต์นี้โหลดแบบไม่มี defer อยู่ท้าย body จึง DOM พร้อมใช้งานแล้ว ไม่ต้องรอ DOMContentLoaded
 const stallParam = new URLSearchParams(window.location.search).get('stall');
 if (stallParam) {
-    openStallDeepLink(stallParam.trim().toUpperCase());
+    const stallCode = stallParam.trim().toUpperCase();
+    openStallDeepLink(stallCode);
+    // ?reviews=1 — เปิดหน้าต่างรีวิวต่อเลย (QR "สแกนรีวิวร้าน" บนป้ายหน้าร้าน / กลับมาหลังล็อกอินเพื่อรีวิว)
+    if (new URLSearchParams(window.location.search).get('reviews') === '1' && BOOKING_BY_STALL[stallCode] && !BOOKING_BY_STALL[stallCode].isEvent) {
+        openReviewViewer(stallCode);
+    }
 }
 
 // ==========================================

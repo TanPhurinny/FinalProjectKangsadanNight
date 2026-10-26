@@ -66,6 +66,10 @@
                             <% } %>
 
                             <form method="POST" action="/login">
+                                <% if (typeof next !== 'undefined' && next) { %>
+                                <!-- ล็อกอินแล้วกลับไปหน้าเดิม (ดู safeNextPath ใน authController.js) -->
+                                <input type="hidden" name="next" value="<%= next %>">
+                                <% } %>
                                 <div class="field-group mb-3">
                                     <label class="field-label" for="loginUsername">Username
                                     or Email</label>

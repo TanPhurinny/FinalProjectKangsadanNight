@@ -13,7 +13,7 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/seller/repair.css">
-        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261023-logo">
+        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261026-review">
         <link rel="stylesheet" href="/stylesheets/seller/taxInvoiceRequest.css">
     </head>
 
@@ -124,6 +124,61 @@
                     </div>
                     <% if (!vs.totals.card) { %>
                     <p class="vs-empty">ยังไม่มีคนเปิดดูร้านใน 7 วันนี้ — ใส่ป้ายเมนูกับรูปเมนูให้ครบ แล้วพิมพ์ป้าย QR ติดหน้าร้านจากผังตลาด ลูกค้าจะเจอร้านง่ายขึ้น</p>
+                    <% } %>
+                </section>
+                <% } %>
+
+                <% if (locals.reviewPanel) {
+                    const rp = locals.reviewPanel;
+                    const starRow = function (n) { return [1, 2, 3, 4, 5].map(function (i) { return '<i class="fa-' + (i <= Math.round(n) ? 'solid' : 'regular') + ' fa-star"></i>'; }).join(''); };
+                    const dateFmt = { day: 'numeric', month: 'short', year: '2-digit' };
+                %>
+                <section class="shop-reviews" id="shop-reviews" aria-labelledby="shopReviewsTitle">
+                    <div class="pm-head">
+                        <span class="pm-title" id="shopReviewsTitle">รีวิวร้านคุณจากสมาชิก</span>
+                        <span class="pm-score">ลูกค้าเห็นในการ์ดร้านบนผังตลาด</span>
+                    </div>
+                    <div class="vs-tiles">
+                        <div class="vs-tile"><span>คะแนนเฉลี่ย</span><b><%= rp.count ? rp.avg.toFixed(1) : '–' %></b><span class="sr-stars" aria-hidden="true"><%- starRow(rp.avg) %></span></div>
+                        <div class="vs-tile"><span>รีวิวทั้งหมด</span><b><%= rp.count %></b></div>
+                        <div class="vs-tile"><span>ยังไม่ได้ตอบ</span><b><%= rp.unanswered %></b><% if (rp.newThisWeek) { %><span>ใหม่ 7 วัน <%= rp.newThisWeek %></span><% } %></div>
+                    </div>
+                    <% if (!rp.reviews.length) { %>
+                    <p class="vs-empty">ยังไม่มีรีวิว — สมาชิกรีวิวได้จากการ์ดร้านบนผังตลาด ป้าย QR หน้าร้านช่วยให้ลูกค้าเปิดร้านคุณแล้วรีวิวได้ทันที</p>
+                    <% } else { %>
+                    <ol class="sr-list">
+                        <% rp.reviews.forEach(function (rv) { %>
+                        <li class="sr-item<%= rv.isHidden ? ' is-hidden' : '' %>" data-review-id="<%= rv.id %>">
+                            <div class="sr-head">
+                                <span class="sr-stars" aria-label="<%= rv.rating %> ดาว"><%- starRow(rv.rating) %></span>
+                                <b><%= rv.author %></b>
+                                <% if (rv.isHidden) { %><span class="sr-badge sr-badge-hidden" title="<%= rv.hiddenReason || '' %>">แอดมินซ่อนแล้ว</span><% } else if (rv.reported) { %><span class="sr-badge">รายงานแล้ว รอแอดมินตรวจ</span><% } %>
+                                <small><%= new Date(rv.createdAt).toLocaleDateString('th-TH', dateFmt) %></small>
+                            </div>
+                            <% if (rv.comment) { %><p class="sr-comment"><%= rv.comment %></p><% } %>
+                            <% if (rv.isHidden && rv.hiddenReason) { %><p class="sr-hidden-reason">เหตุผลที่ซ่อน: <%= rv.hiddenReason %></p><% } %>
+                            <div class="sr-reply<%= rv.reply ? '' : ' d-none' %>" data-reply-view>
+                                <b>คำตอบของร้าน</b>
+                                <p data-reply-text><%= rv.reply ? rv.reply.text : '' %></p>
+                            </div>
+                            <% if (!rv.isHidden) { %>
+                            <form class="sr-reply-form d-none" data-reply-form>
+                                <textarea maxlength="500" rows="2" placeholder="ขอบคุณลูกค้า หรือชี้แจงสั้นๆ (ทุกคนเห็นคำตอบนี้)"><%= rv.reply ? rv.reply.text : '' %></textarea>
+                                <div class="sr-actions">
+                                    <button type="button" class="sr-btn sr-btn-ghost" data-reply-cancel>ยกเลิก</button>
+                                    <button type="submit" class="sr-btn">บันทึกคำตอบ</button>
+                                </div>
+                            </form>
+                            <div class="sr-actions" data-review-actions>
+                                <button type="button" class="sr-btn sr-btn-ghost" data-reply-open><i class="fa-solid fa-reply"></i> <%= rv.reply ? 'แก้คำตอบ' : 'ตอบรีวิว' %></button>
+                                <% if (!rv.reported) { %>
+                                <button type="button" class="sr-btn sr-btn-ghost sr-btn-report" data-report><i class="fa-regular fa-flag"></i> รายงานรีวิวไม่เหมาะสม</button>
+                                <% } %>
+                            </div>
+                            <% } %>
+                        </li>
+                        <% }); %>
+                    </ol>
                     <% } %>
                 </section>
                 <% } %>
@@ -433,5 +488,7 @@
         <script src="/js/seller/taxInvoiceForm.js?v=20261008"></script>
 
         <script src="/js/seller/shopProfile.js?v=20261023-logo"></script>
+        <script src="/js/common/dialogs.js"></script>
+        <script src="/js/seller/shopReviews.js?v=20261026"></script>
     </body>
 </html>
