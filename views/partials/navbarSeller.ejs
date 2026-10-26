@@ -37,18 +37,30 @@
             <a href="/shop-profile" class="nav-item <%= currentPath.includes('shop-profile') ? 'active' : '' %>">
                 <i class="fas fa-store"></i> ร้านค้าของฉัน
             </a>
-            <a href="/repair" class="nav-item <%= currentPath.includes('repair') ? 'active' : '' %>">
-                <i class="fas fa-tools"></i> แจ้งซ่อม
-            </a>
-            <a href="/booking-history" class="nav-item <%= currentPath.includes('booking-history') ? 'active' : '' %>">
-                <i class="fas fa-clock-rotate-left"></i> ประวัติการจอง
-            </a>
-            <a href="/documents" class="nav-item <%= (currentPath.includes('/documents') || currentPath.includes('/lease-contracts') || currentPath.includes('/tax-invoices')) ? 'active' : '' %>">
-                <i class="fas fa-folder-open"></i> ขอเอกสาร
-            </a>
-            <a href="/announcements" class="nav-item <%= currentPath.includes('announcements') ? 'active' : '' %>">
-                <i class="fas fa-bullhorn"></i> ประกาศ
-            </a>
+            <%
+                // เมนูที่ใช้ไม่บ่อยรวมไว้ใน "เพิ่มเติม" แบบเดียวกับ navbar แอดมิน (views/partials/navbar.ejs) กันแถบเมนูล้นจอ
+                const moreLinks = [
+                    { href: '/booking-history', icon: 'fa-clock-rotate-left', label: 'ประวัติการจอง', match: ['booking-history'] },
+                    { href: '/rental-statement', icon: 'fa-file-invoice-dollar', label: 'รายงานการเช่าและชำระเงิน', match: ['rental-statement'] },
+                    { href: '/documents', icon: 'fa-folder-open', label: 'ขอเอกสาร (ใบกำกับภาษี / สัญญาเช่า)', match: ['/documents', '/lease-contracts', '/tax-invoices'] },
+                    { href: '/repair', icon: 'fa-tools', label: 'แจ้งซ่อม', match: ['repair'] },
+                    { href: '/announcements', icon: 'fa-bullhorn', label: 'ประกาศ', match: ['announcements'] }
+                ];
+                const linkActive = function(link) { return link.match.some(function(m) { return currentPath.includes(m); }); };
+                const isMoreActive = moreLinks.some(linkActive);
+            %>
+            <details class="nav-dropdown">
+                <summary class="nav-item <%= isMoreActive ? 'active' : '' %>">
+                    <i class="fas fa-ellipsis-h"></i> เพิ่มเติม
+                </summary>
+                <div class="nav-dropdown__panel">
+                    <% moreLinks.forEach(function(link) { %>
+                    <a href="<%= link.href %>" class="<%= linkActive(link) ? 'active' : '' %>">
+                        <i class="fas <%= link.icon %>"></i> <%= link.label %>
+                    </a>
+                    <% }) %>
+                </div>
+            </details>
 
             <a href="/notifications" class="nav-item nav-notification nav-notification--icon-only <%= currentPath.includes('notifications') ? 'active' : '' %>" title="แจ้งเตือน" aria-label="แจ้งเตือน">
                 <i class="fas fa-bell"></i>
@@ -67,7 +79,7 @@
                 <a href="/switch-view/customer" class="switch-view-btn" title="ดูมุมมองลูกค้าทั่วไป">
                     <i class="fas fa-right-left"></i> สลับเป็นลูกค้า
                 </a>
-                <a href="/logout" class="logout-link">
+                <a href="/logout" class="logout-link" style="white-space:nowrap">
                     <i class="fas fa-sign-out-alt me-1"></i>ออกจากระบบ
                 </a>
             </div>
