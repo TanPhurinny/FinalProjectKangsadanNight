@@ -95,48 +95,19 @@ async function getActiveStallCodesByUserId(userIds) {
     const stallCodesByUserId = new Map();
     if (!uniqueUserIds.length) return stallCodesByUserId;
 
-    const users = await prisma.user.findMany({
-        where: { id: { in: uniqueUserIds } },
-        select: {
-            id: true,
-            name: true,
-            sellerProfile: { select: { id: true } }
-        }
-    });
-    if (!users.length) return stallCodesByUserId;
-
-    const sellerIds = users.map((user) => user.sellerProfile?.id).filter(Boolean);
-    const sellerNames = users.map((user) => user.name).filter(Boolean);
-
-    // BookingRequest.sellerId บางแถวเป็น null (สร้างมาก่อนที่ระบบจะผูก Seller profile)
-    // จึงต้อง fallback จับคู่ด้วยชื่อผู้ขาย (sellerName) เหมือนกับที่ sellerRoute.js ใช้อยู่แล้ว
-    const orConditions = [
-        sellerIds.length ? { sellerId: { in: sellerIds } } : null,
-        sellerNames.length ? { sellerName: { in: sellerNames } } : null
-    ].filter(Boolean);
-    if (!orConditions.length) return stallCodesByUserId;
-
     const activeRequests = await prisma.bookingRequest.findMany({
         where: {
             status: 'SUCCESS',
             assignedStallCode: { not: null },
-            OR: orConditions
+            userId: { in: uniqueUserIds }
         },
-        select: { sellerId: true, sellerName: true, assignedStallCode: true }
-    });
-
-    const sellerIdToUserId = new Map();
-    const sellerNameToUserId = new Map();
-    users.forEach((user) => {
-        if (user.sellerProfile?.id) sellerIdToUserId.set(user.sellerProfile.id, user.id);
-        if (user.name) sellerNameToUserId.set(user.name, user.id);
+        select: { userId: true, assignedStallCode: true }
     });
 
     activeRequests.forEach((request) => {
         if (!request.assignedStallCode) return;
 
-        const userId = sellerIdToUserId.get(request.sellerId) ?? sellerNameToUserId.get(request.sellerName);
-        if (!userId) return;
+        const userId = request.userId;
 
         // assignedStallCode เก็บได้ทั้งล็อกเดียว ("A901") หรือหลายล็อกคั่นด้วย comma ("A901,A902")
         // ต้องแตกออกเป็นรายล็อก ไม่งั้นได้ badge เดียวที่มีค่าเป็น "A901,A902" ซึ่งกดแล้วหาล็อกบนผังไม่เจอ

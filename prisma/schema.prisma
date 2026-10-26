@@ -20,6 +20,7 @@ model User {
   avatarUrl     String?
   announcements Announcement[]
   bookings      Booking[]
+  bookingRequests BookingRequest[]
   requests      MaintenanceReport[] @relation("MaintenanceReportReporter")
   shop          ShopDetail?
   sellerProfile Seller?
@@ -219,6 +220,8 @@ model BookingRequest {
   assignedStallCode String?
   productImage String?
   sellerId     Int?
+  // เจ้าของคำขอ (ผู้ใช้ที่กดจอง) — sellerId ชี้ตาราง Seller ซึ่งไม่เคยถูกสร้างแถว จึงเป็น null เสมอ ใช้ userId แทน
+  userId       Int?
   status       Status   @default(PENDING)
   createdAt    DateTime @default(now())
   // เวลาที่แอดมินจัดล็อกให้ (ตั้งสถานะเป็น IN_PROGRESS) — ใช้คำนวณกำหนดชำระเงินภายใน 6 ชม.
@@ -234,9 +237,11 @@ model BookingRequest {
   slipVerifiedAmount Float?
   confirmedByName    String?
   seller       Seller?  @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   taxInvoiceRequestItems TaxInvoiceRequestItem[]
 
   @@index([sellerId], map: "BookingRequest_sellerId_fkey")
+  @@index([userId], map: "BookingRequest_userId_fkey")
 }
 
 model BookingRound {

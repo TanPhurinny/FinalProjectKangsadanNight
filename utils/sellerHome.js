@@ -48,21 +48,14 @@ async function buildSellerHome(userId, now = new Date()) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
-            sellerProfile: { select: { id: true } },
             shop: { include: { menuImages: { select: { id: true } }, productImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } } } }
         }
     });
-    const sellerName = String(user?.name || '').trim();
     const shop = user?.shop || {};
 
-    // คำขอจองของร้านนี้ — ส่วนใหญ่ไม่ได้ผูก sellerId จึงเทียบชื่อผู้ขายด้วย (เหมือนผังตลาด)
+    // คำขอจองของร้านนี้
     const requests = await prisma.bookingRequest.findMany({
-        where: {
-            OR: [
-                ...(user?.sellerProfile?.id ? [{ sellerId: user.sellerProfile.id }] : []),
-                ...(sellerName ? [{ sellerName }] : [])
-            ]
-        },
+        where: { userId },
         orderBy: { createdAt: 'desc' },
         select: { id: true, status: true, zone: true, assignedStallCode: true, createdAt: true, lockAssignedAt: true, paymentDueAt: true, paymentConfirmedAt: true }
     });

@@ -12,20 +12,14 @@ async function getStallOwnerIndex() {
     if (Date.now() - ownerCache.at < OWNER_CACHE_MS) return ownerCache.byCode;
     const requests = await prisma.bookingRequest.findMany({
         where: { status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] }, assignedStallCode: { not: null } },
-        select: { assignedStallCode: true, sellerName: true, productName: true, seller: { select: { shopName: true } } }
+        select: { assignedStallCode: true, userId: true, productName: true }
     });
-    const names = [...new Set(requests.map((r) => r.sellerName).filter(Boolean))];
-    const users = names.length
-        ? await prisma.user.findMany({ where: { role: 'SELLER', name: { in: names } }, select: { id: true, name: true } })
-        : [];
-    const userIdByName = new Map(users.map((u) => [u.name, u.id]));
     const byCode = new Map();
     requests.forEach((request) => {
-        const userId = userIdByName.get(request.sellerName);
         String(request.assignedStallCode || '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean).forEach((code) => {
             byCode.set(code, {
-                userId: userId || null,
-                shopName: request.seller?.shopName || request.productName || '-'
+                userId: request.userId || null,
+                shopName: request.productName || '-'
             });
         });
     });

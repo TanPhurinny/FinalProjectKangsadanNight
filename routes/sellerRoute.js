@@ -1546,7 +1546,7 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
     const rejectBooking = (message, status = 400) => renderBookingStallPage(req, res, { status, zoneCode, error: message, userRecord, formValues });
 
     try {
-        userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true, sellerProfile: true } });
+        userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true } });
         const productType = userRecord?.shop?.productType || req.sellerApplication?.productType || null;
         const allowedZones = zoneAccess.allowedZonesFor(productType).map(z => String(z).toUpperCase());
 
@@ -1719,7 +1719,7 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
                     phone: userRecord?.phoneNumber || req.sellerApplication?.phoneNumber || '-',
                     zone: zoneCode,
                     productImage: userRecord?.shop?.productImage || req.sellerApplication?.shopCoverImage || null,
-                    sellerId: userRecord?.sellerProfile?.id || null,
+                    userId: req.user.id,
                     status: 'PENDING'
                 }
             });
@@ -1804,16 +1804,12 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
 const isExtendRequest = (request) => String(request.description || '').startsWith('[EXTEND_OF:');
 
 async function findActiveLockForExtension(userRecord) {
-    const sellerFilter = [
-        userRecord?.sellerProfile?.id ? { sellerId: userRecord.sellerProfile.id } : undefined,
-        userRecord?.name ? { sellerName: userRecord.name } : undefined
-    ].filter(Boolean);
-    if (!sellerFilter.length) return null;
+    if (!userRecord?.id) return null;
 
     const candidates = await prisma.bookingRequest.findMany({
         where: {
             status: { in: ['PENDING', 'APPROVED', 'IN_PROGRESS', 'SUCCESS'] },
-            OR: sellerFilter
+            userId: userRecord.id
         },
         orderBy: { createdAt: 'desc' },
         take: 20
@@ -1849,7 +1845,7 @@ async function findActiveLockForExtension(userRecord) {
 }
 
 router.get('/booking-stall/extend', isAuthenticated, async (req, res) => {
-    const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { sellerProfile: true } });
+    const userRecord = await prisma.user.findUnique({ where: { id: req.user.id } });
 
     // ร้านที่แอดมิน Blacklist จากคะแนนตรวจตลาด ต่อล็อกไม่ได้ (ดู controllers/scoreReportController.js)
     if (userRecord?.isBlacklisted) {
@@ -1880,7 +1876,7 @@ router.get('/booking-stall/extend', isAuthenticated, async (req, res) => {
 
 router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
     try {
-        const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true, sellerProfile: true } });
+        const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true } });
 
         // ร้านที่แอดมิน Blacklist จากคะแนนตรวจตลาด ต่อล็อกไม่ได้ (ดู controllers/scoreReportController.js)
         if (userRecord?.isBlacklisted) {
@@ -1936,7 +1932,7 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
                     phone: userRecord?.phoneNumber || '-',
                     zone: latestRequest.zone,
                     productImage: latestRequest.productImage || null,
-                    sellerId: userRecord?.sellerProfile?.id || null,
+                    userId: req.user.id,
                     status: 'PENDING'
                 }
             });
@@ -2050,11 +2046,8 @@ async function loadAdminRenewalNotices(userId) {
 async function loadSellerBookingStatus(userId) {
     const userRecord = await prisma.user.findUnique({
         where: { id: userId },
-        include: { sellerProfile: true, shop: true }
+        include: { shop: true }
     });
-
-    const sellerProfileId = userRecord?.sellerProfile?.id || null;
-    const sellerName = String(userRecord?.name || '').trim();
 
     // เอารายการคำขอล่าสุดของผู้ขายรายนี้เสมอ (ไม่ว่าจะอยู่สถานะไหน) เพื่อให้สะท้อน
     // ความคืบหน้าจริงล่าสุด ไม่ใช่แค่รายการที่เคยผ่านสถานะใดสถานะหนึ่งมาก่อน
@@ -2068,21 +2061,11 @@ async function loadSellerBookingStatus(userId) {
             && /^\[EXTEND_OF:\d+\]/.test(String(request.description || '')))) || null;
     };
 
-    if (sellerProfileId) {
-        latestRequest = pickLatest(await prisma.bookingRequest.findMany({
-            where: { sellerId: sellerProfileId },
-            orderBy: { createdAt: 'desc' },
-            take: 10
-        }));
-    }
-
-    if (!latestRequest && sellerName) {
-        latestRequest = pickLatest(await prisma.bookingRequest.findMany({
-            where: { sellerName },
-            orderBy: { createdAt: 'desc' },
-            take: 10
-        }));
-    }
+    latestRequest = pickLatest(await prisma.bookingRequest.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+    }));
 
     let latestBooking = null;
     if (latestRequest?.id) {
@@ -2306,30 +2289,12 @@ router.get('/booking-status', isAuthenticated, async (req, res) => {
     });
 });
 
-// คำขอจองล่าสุดของผู้ขาย — BookingRequest.sellerId ของแถวเก่ายังเป็น null เลยจับคู่จากชื่อผู้ขายสำรองไว้
+// คำขอจองล่าสุดของผู้ขาย
 async function findLatestSellerBookingRequest(userId) {
-    const userRecord = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { sellerProfile: true }
+    return prisma.bookingRequest.findFirst({
+        where: { userId },
+        orderBy: { createdAt: 'desc' }
     });
-
-    const sellerProfileId = userRecord?.sellerProfile?.id || null;
-    const sellerName = String(userRecord?.name || '').trim();
-
-    let latestRequest = null;
-    if (sellerProfileId) {
-        latestRequest = await prisma.bookingRequest.findFirst({
-            where: { sellerId: sellerProfileId },
-            orderBy: { createdAt: 'desc' }
-        });
-    }
-    if (!latestRequest && sellerName) {
-        latestRequest = await prisma.bookingRequest.findFirst({
-            where: { sellerName },
-            orderBy: { createdAt: 'desc' }
-        });
-    }
-    return latestRequest;
 }
 
 // --- 5. ผู้ขายอัปโหลดสลิปยืนยันการชำระเงิน หลังแอดมินจัดล็อกให้แล้ว ---

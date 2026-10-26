@@ -206,55 +206,25 @@ exports.getMarketInspectionPage = async (req, res) => {
                     zone: true,
                     createdAt: true,
                     status: true,
-                    seller: {
-                        select: {
-                            shopName: true,
-                            productDetail: true,
-                            productType: { select: { name: true } }
-                        }
-                    }
+                    user: { select: { shop: { select: { shopName: true, productType: true, productDetail: true } } } }
                 },
                 orderBy: { createdAt: 'desc' }
             });
-
-            const missingShopInfoNames = [...new Set(
-                activeRequests.filter((request) => !request.seller?.productType?.name).map((request) => request.sellerName).filter(Boolean)
-            )];
-            const shopInfoByName = {};
-            if (missingShopInfoNames.length) {
-                const sellerUsers = await prisma.user.findMany({
-                    where: { role: 'SELLER', name: { in: missingShopInfoNames } },
-                    select: {
-                        name: true,
-                        shop: {
-                            select: {
-                                productType: true,
-                                productDetail: true
-                            }
-                        }
-                    }
-                });
-                sellerUsers.forEach((user) => {
-                    if (user.shop) {
-                        shopInfoByName[user.name] = user.shop;
-                    }
-                });
-            }
 
             activeRequests.forEach((request) => {
                 const stallCodes = parseStallCodes(request.assignedStallCode);
                 if (!stallCodes.length) return;
 
-                const fallbackShop = shopInfoByName[request.sellerName] || {};
-                const productDetail = request.seller?.productDetail || fallbackShop.productDetail || request.description || '-';
-                const productType = request.seller?.productType?.name || fallbackShop.productType || '';
+                const shop = request.user?.shop || {};
+                const productDetail = shop.productDetail || request.description || '-';
+                const productType = shop.productType || '';
 
                 stallCodes.forEach((stallCode) => {
                     if (bookingByStallCode[stallCode]) return;
                     bookingByStallCode[stallCode] = {
                         sellerName: request.sellerName || '-',
                         sellerPhone: request.phone || '-',
-                        shopName: request.seller?.shopName || request.productName || '-',
+                        shopName: shop.shopName || request.productName || '-',
                         productDetail,
                         productType,
                         bookingStatus: request.status || '-',

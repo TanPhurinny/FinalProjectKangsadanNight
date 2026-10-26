@@ -78,39 +78,29 @@ async function loadHeldStalls() {
         select: {
             assignedStallCode: true,
             sellerName: true,
+            userId: true,
             productName: true,
             description: true,
             createdAt: true,
-            seller: { select: { shopName: true, productDetail: true, productType: { select: { name: true } } } }
+            user: { select: { shop: { select: { shopName: true, productType: true, productDetail: true } } } }
         },
         orderBy: { createdAt: 'desc' }
     });
-
-    const missingNames = [...new Set(
-        requests.filter((r) => !r.seller?.productType?.name).map((r) => r.sellerName).filter(Boolean)
-    )];
-    const shopByName = {};
-    if (missingNames.length) {
-        const users = await prisma.user.findMany({
-            where: { role: 'SELLER', name: { in: missingNames } },
-            select: { name: true, shop: { select: { shopName: true, productType: true, productDetail: true } } }
-        });
-        users.forEach((user) => { if (user.shop) shopByName[user.name] = user.shop; });
-    }
 
     const bookedStalls = await prisma.stall.findMany({ where: { status: 'BOOKED' }, select: { stallCode: true } });
     const bookedSet = new Set(bookedStalls.map((stall) => String(stall.stallCode).toUpperCase()));
 
     const byCode = new Map();
     requests.forEach((request) => {
-        const fallbackShop = shopByName[request.sellerName] || {};
+        const shop = request.user?.shop || {};
         const entry = {
             seller: {
+                id: request.userId || null,
                 name: request.sellerName || '-',
                 shop: {
-                    shopName: request.seller?.shopName || fallbackShop.shopName || request.productName || '',
-                    productType: request.seller?.productType?.name || fallbackShop.productType || '',
-                    productDetail: request.seller?.productDetail || fallbackShop.productDetail || request.description || ''
+                    shopName: shop.shopName || request.productName || '',
+                    productType: shop.productType || '',
+                    productDetail: shop.productDetail || request.description || ''
                 }
             }
         };

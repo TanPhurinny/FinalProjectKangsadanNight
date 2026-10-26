@@ -178,24 +178,10 @@ async function buildAdminBookingStallPageData(requestId) {
     const assignedStallCodes = parsedAssignedCodes.length ? parsedAssignedCodes : extensionStallCodes;
 
     // จำกัดตัวเลือกโซนบนหน้านี้ให้ตรงกับประเภทสินค้าที่ผู้ขายลงทะเบียนไว้ (กันแอดมินจัดผิดโซน เช่น ร้านอาหารไปได้โซนแฟชั่น)
-    // BookingRequest ไม่มี userId ผูกไว้ตรงๆ (sellerId ชี้โมเดล Seller ซึ่งระบบสมัครจริงไม่ได้ใช้ ปล่อยเป็น null เสมอ)
-    // ข้อมูลประเภทสินค้าจริงอยู่ที่ ShopDetail.productType ของ User จึงต้องเทียบจากเบอร์โทรที่บันทึกไว้ตอนส่งคำขอแทน
-    // เบอร์โทรอาจซ้ำกันได้ระหว่างบัญชี (เช่น ข้อมูลทดสอบ/แอดมินใช้เบอร์เดียวกับผู้ขาย) และบางคำขอเก่าเบอร์
-    // ที่บันทึกไว้ก็ตกเลข 0 นำหน้าไปจนไม่ตรงเป๊ะกับ User.phoneNumber เลย จึงหาแบบ OR ทั้งเบอร์และชื่อผู้ส่งคำขอ
-    // (sellerName) ไว้ก่อน แล้วค่อยเลือกตัวที่ชื่อตรงเป๊ะเป็นอันดับแรก กันจับผิดคน/พลาดคนที่ควรจะเจอ
-    const candidateUsers = await prisma.user.findMany({
-        where: {
-            OR: [
-                bookingRequest.phone ? { phoneNumber: bookingRequest.phone } : null,
-                bookingRequest.sellerName ? { name: bookingRequest.sellerName } : null
-            ].filter(Boolean)
-        },
-        include: { shop: true }
-    });
-    const applicantUser = candidateUsers.find((u) => u.name === bookingRequest.sellerName)
-        || candidateUsers.find((u) => u.phoneNumber === bookingRequest.phone)
-        || candidateUsers[0]
-        || null;
+    // ข้อมูลประเภทสินค้าจริงอยู่ที่ ShopDetail.productType ของเจ้าของคำขอ (BookingRequest.userId)
+    const applicantUser = bookingRequest.userId
+        ? await prisma.user.findUnique({ where: { id: bookingRequest.userId }, include: { shop: true } })
+        : null;
     // ShopDetail ยังไม่ถูกสร้างจนกว่าแอดมินจะยืนยันสลิปสำเร็จ (ดูคอมเมนต์ที่ confirmSlipPayment) แต่หน้านี้
     // ใช้ตอน "จัดล็อก" ซึ่งเกิดก่อนจ่ายเงินเสมอ — ถ้ายังไม่มี ShopDetail ต้องย้อนไปดูใบสมัคร (SellerApplication)
     // ล่าสุดของผู้ใช้แทน ไม่งั้นประเภทสินค้าจะว่างเปล่าทุกคำขอที่ยังไม่เคยจ่ายเงินมาก่อน
@@ -410,18 +396,14 @@ exports.getRequestHistory = async (req, res) => {
         const request = requestId ? await prisma.bookingRequest.findUnique({ where: { id: requestId } }) : null;
         if (!request) return res.status(404).json({ ok: false });
 
-        const linkedBooking = await prisma.booking.findFirst({
-            where: { storeDetailSnapshot: { startsWith: buildBookingRequestTag(request.id) } },
-            select: { userId: true }
-        });
-        const seller = linkedBooking?.userId
+        const seller = request.userId
             ? await prisma.user.findUnique({
-                where: { id: linkedBooking.userId },
+                where: { id: request.userId },
                 select: { id: true, name: true, createdAt: true, isBlacklisted: true, blacklistReason: true, shop: { select: { shopName: true } } }
             })
             : null;
 
-        // คำขอทั้งหมดของร้านนี้: จับคู่จาก Booking.userId (แม่นกว่า) + ชื่อผู้ขาย (คำขอเก่าที่ไม่มี Booking)
+        // คำขอทั้งหมดของร้านนี้ (BookingRequest.userId) — Booking ใช้แค่ดึงช่วงวันเช่าของแต่ละคำขอ
         const userBookings = seller
             ? await prisma.booking.findMany({ where: { userId: seller.id, storeDetailSnapshot: { startsWith: BOOKING_REQUEST_TAG_PREFIX } }, select: { storeDetailSnapshot: true, rentalStartDate: true, rentalEndDate: true } })
             : [];
@@ -430,11 +412,13 @@ exports.getRequestHistory = async (req, res) => {
             const match = /^\[BOOKING_REQUEST_ID:(\d+)\]/.exec(String(booking.storeDetailSnapshot || ''));
             if (match && !bookingByReq.has(Number(match[1]))) bookingByReq.set(Number(match[1]), booking);
         });
-        const requests = await prisma.bookingRequest.findMany({
-            where: { OR: [{ id: { in: Array.from(bookingByReq.keys()) } }, { sellerName: request.sellerName }] },
-            orderBy: { createdAt: 'desc' },
-            select: { id: true, status: true, description: true, lockAssignedAt: true, assignedStallCode: true, createdAt: true }
-        });
+        const requests = request.userId
+            ? await prisma.bookingRequest.findMany({
+                where: { userId: request.userId },
+                orderBy: { createdAt: 'desc' },
+                select: { id: true, status: true, description: true, lockAssignedAt: true, assignedStallCode: true, createdAt: true }
+            })
+            : [];
         const others = requests.filter((item) => item.id !== request.id);
         const counts = { total: others.length, paid: 0, rejected: 0, cancelled: 0, extensions: 0 };
         const recentRejections = [];
@@ -556,19 +540,15 @@ exports.getApprovalsPage = async (req, res) => {
             return roundBasis >= selectedRoundWindow.cycleStart && roundBasis <= selectedRoundWindow.cycleEnd;
         });
 
-        const sellerNames = Array.from(
-            new Set(
-                bookingRequests
-                    .map((request) => String(request.sellerName || '').trim())
-                    .filter(Boolean)
-            )
+        const sellerUserIds = Array.from(
+            new Set(bookingRequests.map((request) => request.userId).filter(Boolean))
         );
 
-        const sellerProfiles = sellerNames.length
+        const sellerProfiles = sellerUserIds.length
             ? await prisma.user.findMany({
-                where: { name: { in: sellerNames } },
+                where: { id: { in: sellerUserIds } },
                 select: {
-                    name: true,
+                    id: true,
                     shop: {
                         select: {
                             productImage: true,
@@ -581,12 +561,8 @@ exports.getApprovalsPage = async (req, res) => {
 
         const sellerImageMap = new Map();
         sellerProfiles.forEach((profile) => {
-            const sellerName = String(profile.name || '').trim();
-            if (!sellerName || sellerImageMap.has(sellerName)) {
-                return;
-            }
             sellerImageMap.set(
-                sellerName,
+                profile.id,
                 profile.shop?.productImage || profile.shop?.shopCoverImage || null
             );
         });
@@ -665,7 +641,7 @@ exports.getApprovalsPage = async (req, res) => {
                 paymentConfirmedAt: request.paymentConfirmedAt || null,
                 slipVerified: typeof request.slipVerified === 'boolean' ? request.slipVerified : null,
                 slipVerifyReason: request.slipVerifyReason || null,
-                productImage: request.productImage || sellerImageMap.get(String(request.sellerName || '').trim()) || null,
+                productImage: request.productImage || sellerImageMap.get(request.userId) || null,
                 isExtension: Boolean(extendOfRequestId),
                 extendOfRequestId,
                 cornerZoneNote,

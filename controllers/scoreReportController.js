@@ -329,14 +329,14 @@ exports.getSellerScoresPage = async (req, res) => {
         heldStalls.forEach((entry, stallCode) => {
             if (!entry.isHeld) return;
             const name = sellerDisplayName(entry.seller);
-            if (!sellers.has(name)) sellers.set(name, { name, accountName: entry.seller.name, stallCodes: [] });
+            if (!sellers.has(name)) sellers.set(name, { name, accountId: entry.seller.id, stallCodes: [] });
             sellers.get(name).stallCodes.push(stallCode);
         });
 
-        const accountNames = Array.from(new Set(Array.from(sellers.values()).map((seller) => seller.accountName).filter(Boolean)));
+        const accountIds = Array.from(new Set(Array.from(sellers.values()).map((seller) => seller.accountId).filter(Boolean)));
         const [accounts, blacklistedUsers] = await Promise.all([
-            accountNames.length
-                ? prisma.user.findMany({ where: { role: 'SELLER', name: { in: accountNames } }, select: { id: true, name: true, isBlacklisted: true } })
+            accountIds.length
+                ? prisma.user.findMany({ where: { role: 'SELLER', id: { in: accountIds } }, select: { id: true, isBlacklisted: true } })
                 : [],
             prisma.user.findMany({
                 where: { isBlacklisted: true },
@@ -344,16 +344,15 @@ exports.getSellerScoresPage = async (req, res) => {
                 orderBy: { blacklistedAt: 'desc' }
             })
         ]);
-        const accountByName = new Map();
-        accounts.forEach((account) => { if (!accountByName.has(account.name)) accountByName.set(account.name, account); });
+        const accountById = new Map(accounts.map((account) => [account.id, account]));
 
         // ร้านที่ถูก Blacklist แล้วถือว่าปิดบัญชี ไม่ต้องตรวจตลาด → ไม่แสดงในตาราง (แอดมินดูได้ในส่วนแยกด้านล่าง)
-        const activeSellers = Array.from(sellers.values()).filter((seller) => !accountByName.get(seller.accountName)?.isBlacklisted);
+        const activeSellers = Array.from(sellers.values()).filter((seller) => !accountById.get(seller.accountId)?.isBlacklisted);
         const statusByStall = await loadStallDayStatuses(Array.from(new Set(activeSellers.flatMap((seller) => seller.stallCodes))));
 
         const statusOrder = { blacklist: 0, watch: 1, ok: 2, nodata: 3 };
         const rows = activeSellers.map((seller) => ({
-            userId: accountByName.get(seller.accountName)?.id || null,
+            userId: accountById.get(seller.accountId)?.id || null,
             sellerName: seller.name,
             stallCodes: seller.stallCodes.sort(),
             ...summarizeSeller(mergeSellerDays(seller.stallCodes, statusByStall), roundNumber),

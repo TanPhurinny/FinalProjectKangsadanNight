@@ -449,32 +449,9 @@ exports.getSlotsPage = async (req, res) => {
                 assignedStallCode: true,
                 createdAt: true,
                 productImage: true,
-                seller: {
-                    select: {
-                        shopName: true,
-                        productDetail: true,
-                        productImage: true,
-                        productType: { select: { name: true } }
-                    }
-                }
+                user: { select: { shop: { select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true } } } }
             }
         });
-
-        // Seller (sellerId) มักไม่ถูกผูกไว้กับคำขอเก่า จึง fallback ไปหาข้อมูลร้าน (ประเภทสินค้า/
-        // รายละเอียด/รูปร้าน) จาก User+ShopDetail ด้วยชื่อผู้ขาย เหมือนที่ /admin/booking-stall ทำอยู่แล้ว
-        const missingShopInfoNames = [...new Set(
-            approvedRequests.filter((r) => !r.seller?.productType?.name).map((r) => r.sellerName).filter(Boolean)
-        )];
-        const shopInfoByName = {};
-        if (missingShopInfoNames.length) {
-            const sellerUsers = await prisma.user.findMany({
-                where: { role: 'SELLER', name: { in: missingShopInfoNames } },
-                select: { name: true, shop: { select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true } } }
-            });
-            sellerUsers.forEach((u) => {
-                if (u.shop) shopInfoByName[u.name] = u.shop;
-            });
-        }
 
         const bookingByStallCode = {};
         approvedRequests.forEach((request) => {
@@ -486,19 +463,18 @@ exports.getSlotsPage = async (req, res) => {
                 .filter(Boolean);
             if (!stallCodes.length) return;
 
-            const fallbackShop = shopInfoByName[request.sellerName] || {};
-            const product = request.seller?.productType?.name
-                || fallbackShop.productType
+            const shopInfo = request.user?.shop || {};
+            const product = shopInfo.productType
                 || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
-            const productDetail = request.seller?.productDetail || fallbackShop.productDetail || request.description || '-';
+            const productDetail = shopInfo.productDetail || request.description || '-';
             // รูปย่อร้าน: โลโก้ (ช่องแยก) ก่อน — ร้านที่ยังไม่มีโลโก้ใช้ลำดับเดิม
-            const shopImage = fallbackShop.logoImage || request.productImage || request.seller?.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
+            const shopImage = shopInfo.logoImage || request.productImage || shopInfo.productImage || shopInfo.shopCoverImage || null;
 
             stallCodes.forEach((stallCode) => {
                 // ค้นหาร้านได้เฉพาะล็อกที่มีคนอยู่จริงในวันที่กำลังดู
                 if (!occupiedCodes.has(stallCode)) return;
                 bookingByStallCode[stallCode] = {
-                    shop: request.seller?.shopName || request.productName || '-',
+                    shop: request.productName || '-',
                     product,
                     productDetail,
                     image: shopImage,
@@ -710,29 +686,19 @@ exports.getMarketMapPage = async (req, res) => {
                 sellerName: true,
                 zone: true,
                 assignedStallCode: true,
-                sellerId: true,
-                productImage: true,
-                seller: {
-                    select: {
-                        shopName: true,
-                        productDetail: true,
-                        productImage: true,
-                        productType: { select: { name: true } }
-                    }
-                }
+                userId: true,
+                productImage: true
             }
         });
 
-        // shopTags (คำค้นหาเจาะจง เช่น "ไก่ปิ้งมาเลย์") เก็บอยู่ที่ ShopDetail เท่านั้น ไม่ได้อยู่ใน
-        // Seller model เลย ต้องดึงจาก User+ShopDetail ให้ครบทุกร้าน ไม่ใช่แค่ร้านที่ fallback productType
-        const allSellerNames = [...new Set(approvedRequests.map((r) => r.sellerName).filter(Boolean))];
-        const shopInfoByName = {};
-        if (allSellerNames.length) {
+        // ข้อมูลร้าน (ประเภท/รายละเอียด/รูป/shopTags ฯลฯ) อยู่ที่ ShopDetail ของเจ้าของคำขอ
+        const allSellerUserIds = [...new Set(approvedRequests.map((r) => r.userId).filter(Boolean))];
+        const shopInfoByUserId = {};
+        if (allSellerUserIds.length) {
             const sellerUsers = await prisma.user.findMany({
-                where: { role: 'SELLER', name: { in: allSellerNames } },
+                where: { role: 'SELLER', id: { in: allSellerUserIds } },
                 select: {
                     id: true,
-                    name: true,
                     shop: {
                         select: {
                             productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true, shopTags: true, shopSummary: true,
@@ -745,12 +711,12 @@ exports.getMarketMapPage = async (req, res) => {
                 }
             });
             sellerUsers.forEach((u) => {
-                if (u.shop) shopInfoByName[u.name] = { ...u.shop, userId: u.id };
+                if (u.shop) shopInfoByUserId[u.id] = { ...u.shop, userId: u.id };
             });
         }
 
         // ร้านที่ผู้ขายกด "ปิดร้านวันนี้" (ทุกร้านเปิดเป็นค่าเริ่มต้น) — ลูกค้าเห็นร้านนั้นจางลงพร้อมป้ายปิด
-        const shopUserIdList = Object.values(shopInfoByName).map((shop) => shop.userId);
+        const shopUserIdList = Object.values(shopInfoByUserId).map((shop) => shop.userId);
         const [closedAtByUserId, promoByUserId] = await Promise.all([
             getClosedShopsToday(shopUserIdList),
             // โปรวันนี้ที่ผู้ขายตั้งจากหน้าหลักผู้ขาย
@@ -758,7 +724,7 @@ exports.getMarketMapPage = async (req, res) => {
         ]);
 
         // โพสต์คอมมูนิตี้ล่าสุดของแต่ละร้าน โชว์ในการ์ดร้าน (ตัดข้อความสั้นๆ พอให้รู้ว่าร้านมีอะไรใหม่)
-        const shopUserIds = Object.values(shopInfoByName).map((shop) => shop.userId);
+        const shopUserIds = Object.values(shopInfoByUserId).map((shop) => shop.userId);
         const latestPostByUserId = new Map();
         if (shopUserIds.length) {
             const posts = await prisma.communityPost.findMany({
@@ -777,16 +743,16 @@ exports.getMarketMapPage = async (req, res) => {
 
         // ป้าย "ร้านใหม่" — ร้านที่คำขอจองแรกสุด (ที่ได้ล็อก) เพิ่งเกิดภายใน NEW_SHOP_DAYS วัน
         // นับจากคำขอแรกของร้าน ไม่ใช่วันเริ่มสัญญา เพราะร้านเดิมที่ต่อสัญญาทุกรอบจะได้วันเริ่มใหม่ตลอด
-        const newShopNames = new Set();
-        if (allSellerNames.length) {
+        const newShopUserIds = new Set();
+        if (allSellerUserIds.length) {
             const firstRequests = await prisma.bookingRequest.groupBy({
-                by: ['sellerName'],
-                where: { sellerName: { in: allSellerNames }, status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] } },
+                by: ['userId'],
+                where: { userId: { in: allSellerUserIds }, status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] } },
                 _min: { createdAt: true }
             });
             const newSince = Date.now() - NEW_SHOP_DAYS * 24 * 60 * 60 * 1000;
             firstRequests.forEach((row) => {
-                if (row._min.createdAt && new Date(row._min.createdAt).getTime() >= newSince) newShopNames.add(row.sellerName);
+                if (row._min.createdAt && new Date(row._min.createdAt).getTime() >= newSince) newShopUserIds.add(row.userId);
             });
         }
 
@@ -800,18 +766,17 @@ exports.getMarketMapPage = async (req, res) => {
                 .filter(Boolean);
             if (!stallCodes.length) return;
 
-            const fallbackShop = shopInfoByName[request.sellerName] || {};
-            const product = request.seller?.productType?.name
-                || fallbackShop.productType
+            const fallbackShop = shopInfoByUserId[request.userId] || {};
+            const product = fallbackShop.productType
                 || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
-            const productDetail = request.seller?.productDetail || fallbackShop.productDetail || request.description || '-';
+            const productDetail = fallbackShop.productDetail || request.description || '-';
             // รูปย่อร้าน: โลโก้ (ช่องแยก) ก่อน — ร้านที่ยังไม่มีโลโก้ใช้ลำดับเดิม
-            const shopImage = fallbackShop.logoImage || request.productImage || request.seller?.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
+            const shopImage = fallbackShop.logoImage || request.productImage || fallbackShop.productImage || fallbackShop.shopCoverImage || null;
             const tags = fallbackShop.shopTags || '';
 
             stallCodes.forEach((stallCode) => {
                 bookingByStallCode[stallCode] = {
-                    shop: request.seller?.shopName || request.productName || '-',
+                    shop: request.productName || '-',
                     product,
                     productDetail,
                     tags,
@@ -822,7 +787,7 @@ exports.getMarketMapPage = async (req, res) => {
                     cover: fallbackShop.shopCoverImage || null,
                     menuImages: (fallbackShop.menuImages || []).map((img) => img.imageUrl),
                     photos: (fallbackShop.productImages || []).map((img) => img.imageUrl),
-                    isNew: newShopNames.has(request.sellerName),
+                    isNew: newShopUserIds.has(request.userId),
                     subtype: fallbackShop.productSubtype || '',
                     closedAt: closedAtByUserId.get(fallbackShop.userId) || null,
                     promo: promoByUserId.get(fallbackShop.userId) || null,
@@ -834,14 +799,9 @@ exports.getMarketMapPage = async (req, res) => {
         const viewer = { role, allowedZones: [], myStalls: [], isGuest: !req.user };
 
         if (role === 'SELLER') {
-            const [userRecord, sellerRecord] = await Promise.all([
-                prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true } }),
-                prisma.seller.findUnique({ where: { userId: req.user.id }, select: { id: true } })
-            ]);
+            const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true } });
             viewer.allowedZones = zoneAccess.allowedZonesFor(userRecord?.shop?.productType || null).map((z) => String(z).toUpperCase());
-            // คำขอจองส่วนใหญ่ไม่ได้ผูก sellerId (เป็น null) จึงเทียบชื่อผู้ขายด้วย แบบเดียวกับที่ใช้ดึง ShopDetail ด้านบน
-            const myRequests = approvedRequests.filter((r) => (sellerRecord && r.sellerId === sellerRecord.id)
-                || (userRecord?.name && r.sellerName === userRecord.name));
+            const myRequests = approvedRequests.filter((r) => r.userId === req.user.id);
             viewer.myStalls = [...new Set(myRequests.flatMap((r) => String(r.assignedStallCode || '')
                 .split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)))];
             viewer.stallHealth = await buildMyStallHealth(req.user.id, viewer.myStalls);
