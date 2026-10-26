@@ -701,7 +701,7 @@ exports.getApprovalsPage = async (req, res) => {
         const nextRoundNumber = selectedRoundNumber + 1;
         const isCurrentRound = selectedRoundNumber === currentRoundMeta.roundNumber;
         // แก้ไขได้ทั้งรอบปัจจุบันและรอบอนาคต (ผู้ขายส่งคำขอจองล่วงหน้าข้ามรอบได้) — ที่แก้ไม่ได้มีแค่รอบที่ผ่านไปแล้ว
-        // ใช้ isRoundEditable ตัวเดียวกับที่ confirmApproval/confirmBookingStall เช็คฝั่ง backend กันไม่ให้ front/back ไม่ตรงกัน
+        // ใช้ isRoundEditable ตัวเดียวกับที่ confirmBookingStall เช็คฝั่ง backend กันไม่ให้ front/back ไม่ตรงกัน
         const isEditable = isRoundEditable(selectedRoundNumber);
         const roundSummary = {
             selectedRoundNumber,
@@ -770,56 +770,6 @@ exports.getApprovalsPage = async (req, res) => {
             expectedAmount: null,
             success: null
         });
-    }
-};
-
-exports.confirmApproval = async (req, res) => {
-    const { requestId, status, reason } = req.body;
-    try {
-        const normalizedStatus = String(status || '').toUpperCase();
-        if (!['PENDING', 'APPROVED', 'REJECTED'].includes(normalizedStatus)) {
-            return res.redirect(approvalsUrl(req, 'error=invalid_status'));
-        }
-
-        const requestRecord = await prisma.bookingRequest.findUnique({
-            where: { id: parseInt(requestId) }
-        });
-
-        if (!requestRecord) {
-            return res.redirect(approvalsUrl(req, 'error=request_not_found'));
-        }
-
-        // รอบที่ผ่านไปแล้วยังปฏิเสธได้ (ปิดคำขอค้าง) แต่อนุมัติไม่ได้ เพราะวันเช่าผ่านไปแล้ว
-        if (normalizedStatus !== 'REJECTED' && !(await isRequestEditable(requestRecord))) {
-            return res.redirect(approvalsUrl(req, 'error=history_round_locked'));
-        }
-
-        // ปุ่มนี้ใช้แค่ตอนคำขอยังไม่ได้จัดล็อก (PENDING/APPROVED) — ถ้าจัดล็อกไปแล้ว (IN_PROGRESS/SUCCESS)
-        // ต้องปฏิเสธผ่าน rejectBookingStall เท่านั้น เพราะจุดนั้นปล่อยล็อกที่จัดไว้คืนด้วย ตรงนี้ทำแค่
-        // เปลี่ยน status เฉยๆ ไม่แตะ Stall เลย ถ้าปล่อยให้เรียกได้จะทิ้งล็อกค้างสถานะ BOOKED แบบไม่มีเจ้าของ
-        const currentStatus = String(requestRecord.status || '').toUpperCase();
-        if (!['PENDING', 'APPROVED'].includes(currentStatus)) {
-            return res.redirect(approvalsUrl(req, 'error=invalid_state_transition'));
-        }
-
-        const trimmedReason = String(reason || '').trim();
-        const updateData = { status: normalizedStatus };
-        if (normalizedStatus === 'REJECTED') {
-            updateData.description = withRejectReason(requestRecord.description, trimmedReason);
-        }
-        updateData.description = withActionLog(
-            updateData.description || requestRecord.description,
-            req.user?.name,
-            normalizedStatus === 'REJECTED' ? `ปฏิเสธคำขอ${trimmedReason ? ` (${trimmedReason})` : ''}` : 'อนุมัติคำขอ'
-        );
-
-        await prisma.bookingRequest.update({
-            where: { id: parseInt(requestId) },
-            data: updateData
-        });
-        res.redirect(approvalsUrl(req, `success=${normalizedStatus === 'REJECTED' ? 'request_rejected' : 'status_updated'}`));
-    } catch (err) {
-        res.redirect(approvalsUrl(req, 'error=update_failed'));
     }
 };
 
@@ -1396,7 +1346,7 @@ async function cancelRequestCore(requestRecord, reason, actorName, actionLabel) 
         })
         .map((stall) => stall.stallCode);
 
-    // เหตุผล (ไม่บังคับ) ฝังเป็น tag เดียวกับ confirmApproval ให้ผู้ขาย/หน้ารายการเห็น
+    // เหตุผล (ไม่บังคับ) ฝังเป็น tag (withRejectReason) ให้ผู้ขาย/หน้ารายการเห็น
     const trimmedReason = String(reason || '').trim();
 
     await prisma.bookingRequest.update({

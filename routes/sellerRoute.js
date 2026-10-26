@@ -149,29 +149,13 @@ function getRentalDays(startDate, endDate) {
     return Math.max(1, diffDays + 1);
 }
 
-async function ensureBookingRoundForDate(dateValue) {
+// รอบคำนวณจากสูตรใน utils/bookingRound.js ล้วนๆ — เดิม upsert ลงตาราง BookingRound ทุกครั้งที่เปิดหน้า
+// แต่ไม่มีที่ไหนอ่านตารางนั้นกลับเลย จึงเลิกเขียน
+function getBookingRoundInfoForDate(dateValue) {
     const meta = getBookingRoundMetaForDate(dateValue);
     const reminderDate = addDays(meta.cycleEnd, -5);
     const openAt = addDays(meta.cycleStart, 1);
-
-    const record = await prisma.bookingRound.upsert({
-        where: { roundNumber: meta.roundNumber },
-        update: {
-            cycleStartDate: meta.cycleStart,
-            cycleEndDate: meta.cycleEnd,
-            reminderDate,
-            openAt
-        },
-        create: {
-            roundNumber: meta.roundNumber,
-            cycleStartDate: meta.cycleStart,
-            cycleEndDate: meta.cycleEnd,
-            reminderDate: reminderDate,
-            openAt: openAt
-        }
-    });
-
-    return { ...meta, reminderDate, openAt, record };
+    return { ...meta, reminderDate, openAt };
 }
 
 function safeInt(value, fallback = 0) {
@@ -1422,8 +1406,8 @@ async function renderBookingStallPage(req, res, { status = 200, zoneCode = '', e
     const productType = record?.shop?.productType || req.sellerApplication?.productType || null;
     const allowedZones = zoneAccess.allowedZonesFor(productType).map((z) => String(z).toUpperCase());
     const now = new Date();
-    const bookingRoundInfo = await ensureBookingRoundForDate(now);
-    const nextRoundInfo = await ensureBookingRoundForDate(addDays(bookingRoundInfo.cycleEnd, 1));
+    const bookingRoundInfo = getBookingRoundInfoForDate(now);
+    const nextRoundInfo = getBookingRoundInfoForDate(addDays(bookingRoundInfo.cycleEnd, 1));
 
     let gateError = null;
     let zone = String(zoneCode || '').toUpperCase();

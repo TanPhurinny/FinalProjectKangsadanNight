@@ -23,38 +23,6 @@ function navigateToBookingRequest(requestId) {
     window.location.href = `/admin/booking-stall?requestId=${encodeURIComponent(String(requestId || ''))}`;
 }
 
-function submitApproval(requestId, status, reason) {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/admin/approvals/confirm';
-
-    const requestField = document.createElement('input');
-    requestField.type = 'hidden';
-    requestField.name = 'requestId';
-    requestField.value = String(requestId);
-
-    const statusField = document.createElement('input');
-    statusField.type = 'hidden';
-    statusField.name = 'status';
-    statusField.value = status;
-
-    form.appendChild(requestField);
-    form.appendChild(statusField);
-
-    if (reason) {
-        const reasonField = document.createElement('input');
-        reasonField.type = 'hidden';
-        reasonField.name = 'reason';
-        reasonField.value = reason;
-        form.appendChild(reasonField);
-    }
-
-    appendRoundField(form);
-
-    document.body.appendChild(form);
-    form.submit();
-}
-
 // กล่องยืนยัน/แจ้งเตือนทั้งหมดในหน้านี้ใช้ window.showConfirmDialog()/showAlertDialog()
 // กลางจาก public/js/common/dialogs.js (โหลดไว้ก่อนไฟล์นี้ใน views/admin/approvals.ejs)
 function submitConfirmPayment(requestId) {
@@ -227,7 +195,8 @@ function submitRejectRequest(detail) {
         tone: 'danger',
         confirmText: 'ปฏิเสธคำขอ',
         inputPlaceholder: 'เหตุผลที่ปฏิเสธ (ไม่บังคับ)',
-        onConfirm: (reason) => submitApproval(detail.id, 'REJECTED', String(reason || '').trim())
+        // ใช้ endpoint เดียวกับยกเลิกการจัดล็อก — ปฏิเสธได้ทุกสถานะ คืนล็อกที่ถืออยู่ (ถ้ามี) และปิด Booking ที่ผูกไว้ด้วย
+        onConfirm: (reason) => postForm('/admin/booking-stall/reject', { requestId: detail.id, reason: String(reason || '').trim() })
     });
 }
 
@@ -631,7 +600,6 @@ function closeModalOnOverlay(event) {
 window.openDetail = openDetail;
 window.closePopup = closePopup;
 window.closeModalOnOverlay = closeModalOnOverlay;
-window.submitApproval = submitApproval;
 window.submitForcePayment = submitForcePayment;
 
 document.addEventListener('keydown', (event) => {

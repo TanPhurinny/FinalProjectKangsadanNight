@@ -107,7 +107,6 @@ router.post('/product-subtypes/:id/toggle', isAdminOnly, productSubtypeCtrl.togg
 
 // --- 7. Approvals & Requests ---
 router.get('/approvals', approvalCtrl.getApprovalsPage);
-router.post('/approvals/confirm', approvalCtrl.confirmApproval);
 router.post('/approvals/confirm-payment', approvalCtrl.confirmPayment);
 router.post('/approvals/reject-slip', approvalCtrl.rejectPaymentSlip);
 router.post('/approvals/payment-deadline', approvalCtrl.updatePaymentDeadline);
