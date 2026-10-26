@@ -252,6 +252,26 @@
     return `<span class="nt-ico nt-ico--${tone}" aria-hidden="true"><i class="bi ${icon}"></i></span>`;
   }
 
+  // ต่อล็อกจากแจ้งเตือนได้เลย — ต่อจนจบรอบด้วยราคาเดิม กดแล้วไปหน้าชำระเงิน (ล็อกเดิมไม่ต้องรอแอดมินจัดใหม่)
+  // ช่อง tabToken ถูกเติมเองตอน submit (public/js/common/tabSession.js)
+  const baht = (n) => `${Number(n || 0).toLocaleString('th-TH')} บาท`;
+  function renewHtml(item) {
+    const r = item.renew;
+    if (!r) return '';
+    return `<form class="nt-renew" method="POST" action="/booking-stall/extend">
+      <input type="hidden" name="newEndDate" value="${esc(r.newEndDate)}">
+      <div class="nt-renew__info">
+        <span class="nt-renew__code">${esc(r.stallCode)}</span>
+        <span>ขายต่อถึง <b>${esc(r.newEndText)}</b> · ${esc(r.days)} วัน · ${esc(baht(r.dailyTotal))}/วัน</span>
+      </div>
+      <div class="nt-renew__actions">
+        <button type="submit" class="nt-cta nt-renew__btn" data-go="${esc(item.key)}"><i class="bi bi-arrow-repeat"></i>ต่อล็อก · ${esc(baht(r.total))}</button>
+        <a class="nt-renew__alt" href="/booking-stall/extend" data-go="${esc(item.key)}">เลือกวันเอง</a>
+      </div>
+      <small class="nt-renew__note">ได้ล็อกเดิมทันที ไม่ต้องรอแอดมินจัดล็อก — กดแล้วไปหน้าชำระเงิน แนบสลิปภายในกำหนด</small>
+    </form>`;
+  }
+
   function todoHtml(item) {
     const cd = countdown(item.deadline);
     const link = safeLink(item.link);
@@ -263,8 +283,9 @@
       </div>
       <div class="nt-todo-item__right">
         ${cd ? `<span class="nt-countdown ${cd.cls}" data-deadline="${esc(item.deadline)}">${cd.text}</span>` : ''}
-        ${link ? `<a class="nt-cta" href="${esc(link)}" data-go="${esc(item.key)}"><i class="bi ${esc(item.linkIcon || 'bi-arrow-right')}"></i>${esc(item.linkLabel || 'ไปที่หน้านี้')}</a>` : ''}
+        ${link && !item.renew ? `<a class="nt-cta" href="${esc(link)}" data-go="${esc(item.key)}"><i class="bi ${esc(item.linkIcon || 'bi-arrow-right')}"></i>${esc(item.linkLabel || 'ไปที่หน้านี้')}</a>` : ''}
       </div>
+      ${renewHtml(item)}
     </div>`;
   }
 
@@ -303,7 +324,8 @@
         </div>
         <div class="nt-row__meta">${meta}</div>
         <div class="nt-row__actions">
-          ${link ? `<a class="nt-cta" href="${esc(link)}" data-go="${esc(item.key)}"><i class="bi ${esc(item.linkIcon || 'bi-arrow-right')}"></i>${esc(item.linkLabel || 'ไปที่หน้านี้')}</a>` : ''}
+          ${renewHtml(item)}
+          ${link && !item.renew ? `<a class="nt-cta" href="${esc(link)}" data-go="${esc(item.key)}"><i class="bi ${esc(item.linkIcon || 'bi-arrow-right')}"></i>${esc(item.linkLabel || 'ไปที่หน้านี้')}</a>` : ''}
           <button type="button" class="nt-linkbtn" data-toggle-read="${esc(item.key)}">
             <i class="bi ${item.isRead ? 'bi-envelope' : 'bi-envelope-open'}"></i>${item.isRead ? 'ทำเป็นยังไม่อ่าน' : 'ทำเป็นอ่านแล้ว'}
           </button>
@@ -329,21 +351,21 @@
       <p>เมื่อสถานะการจอง แจ้งซ่อม เอกสาร หรือรีวิวร้านมีความเคลื่อนไหว จะขึ้นที่นี่</p></div>`;
   }
 
-  // เลขบนกระดิ่งใน navbarSeller ให้ตรงกับหน้านี้ทันที
+  // เลขบนกระดิ่งใน navbarSeller ให้ตรงกับหน้านี้ทันที (มีสองกระดิ่ง: บนแถบจอกว้าง + ข้างปุ่มเมนูบนมือถือ)
   function syncBell(count) {
-    const bell = document.querySelector('.nav-notification');
-    if (!bell) return;
-    let badge = bell.querySelector('.nav-notification-badge');
-    if (!count) {
-      if (badge) badge.remove();
-      return;
-    }
-    if (!badge) {
-      badge = document.createElement('span');
-      badge.className = 'nav-notification-badge';
-      bell.appendChild(badge);
-    }
-    badge.textContent = String(count);
+    document.querySelectorAll('.nav-notification, .nav-v2__bell').forEach((bell) => {
+      let badge = bell.querySelector('.nav-notification-badge');
+      if (!count) {
+        if (badge) badge.remove();
+        return;
+      }
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'nav-notification-badge';
+        bell.appendChild(badge);
+      }
+      badge.textContent = count > 99 ? '99+' : String(count);
+    });
   }
 
   function syncUrl() {

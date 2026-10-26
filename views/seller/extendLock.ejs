@@ -40,7 +40,8 @@
             'extend_window_closed': 'เลยเวลา 20:00 น. ของวันขายสุดท้ายแล้ว ล็อกนี้หมดสิทธิ์การต่อ',
             'extend_failed': 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
             'blacklisted': 'ร้านค้าของคุณถูกระงับสิทธิ์การต่อล็อก (Blacklist) กรุณาติดต่อผู้ดูแลตลาด',
-            'all_days_are_holiday': 'ช่วงที่ขอต่อเป็นวันหยุดทั้งหมด ไม่สามารถต่อล็อกได้ กรุณาเลือกวันสิ้นสุดใหม่'
+            'all_days_are_holiday': 'ช่วงที่ขอต่อเป็นวันหยุดทั้งหมด ไม่สามารถต่อล็อกได้ กรุณาเลือกวันสิ้นสุดใหม่',
+            'stall_no_longer_yours': 'ล็อกนี้ไม่ได้อยู่ในสัญญาของคุณแล้ว (อาจถูกปล่อยหรือย้าย) ต่ออัตโนมัติไม่ได้ กรุณาติดต่อผู้ดูแลตลาด หรือจองรอบใหม่'
         }[error] || null;
         %>
         <% if (errorMsg) { %>
@@ -69,7 +70,7 @@
       </div>
       <% } else { %>
       <div class="ext-status ext-status-open">
-        <strong>ส่งคำขอต่อได้ ถึง 20:00 น. วันที่ <%= fmtD(renewal.currentEnd) %></strong>
+        <strong>ต่อได้ถึง 20:00 น. วันที่ <%= fmtD(renewal.currentEnd) %></strong>
         เลยเวลานี้ล็อกจะถูกเปิดให้ร้านอื่นจอง
       </div>
       <% } %>
@@ -87,16 +88,25 @@
       </section>
 
       <section class="ext-step ext-step-plain">
-        <h2 class="ext-title"><span class="ext-num">3</span>ส่งคำขอ แล้วรอแอดมินอนุมัติ</h2>
+        <h2 class="ext-title"><span class="ext-num">3</span>กดต่อล็อก แล้วชำระเงิน</h2>
+        <div class="ext-price">
+          <span>ค่าต่อล็อกต่อวัน (ราคาเดิม รวมไฟ/เครื่องใช้ไฟฟ้า)</span>
+          <strong><%= Number(dailyTotal || 0).toLocaleString('th-TH') %> บาท</strong>
+        </div>
+        <div class="ext-price ext-price-total" id="extendTotalRow" hidden>
+          <span>ประมาณ <b id="extendDays">0</b> วัน (วันหยุดตลาดไม่คิดเงิน)</span>
+          <strong id="extendTotal">0 บาท</strong>
+        </div>
         <ul class="ext-notes">
-          <li>ล็อกเดิมของคุณ ไม่ย้ายตลอดช่วงที่จองอยู่</li>
-          <li>ถ้าจองข้ามรอบ อาจได้ล็อกใหม่ ระบบเป็นคนจัดให้</li>
+          <li>ได้ล็อกเดิม <strong><%= request.assignedStallCode %></strong> ต่อทันที ไม่ต้องรอแอดมินจัดล็อกใหม่</li>
+          <li>กดแล้วไปหน้าชำระเงิน สแกน QR พร้อมเพย์แล้วแนบสลิป แอดมินยืนยันสลิปตามปกติ</li>
+          <li>ไม่ชำระภายในกำหนด ล็อกกลับไปหมดสัญญาตามวันเดิม</li>
         </ul>
       </section>
 
       <div class="bottom-buttons">
         <button type="button" class="btn-cancel-main" onclick="history.back()">ยกเลิก</button>
-        <button type="submit" class="btn-confirm" <%= renewal.isOpen ? '' : 'disabled' %>>ส่งคำขอต่อล็อก</button>
+        <button type="submit" class="btn-confirm" <%= renewal.isOpen ? '' : 'disabled' %>>ต่อล็อกและไปชำระเงิน</button>
       </div>
     </form>
   </main>
@@ -124,9 +134,29 @@
       newEndDateInput.min = canRenewShort ? toDateInputValue(extendStart) : roundEnd;
       newEndDateInput.max = roundEnd;
 
+      // ยอดประมาณ = ราคาต่อวัน x จำนวนวัน (ยังไม่หักวันหยุด ยอดจริงคิดที่ server)
+      var dailyTotal = <%- JSON.stringify(Number(dailyTotal || 0)) %>;
+      var totalRow = document.getElementById('extendTotalRow');
+      var updateTotal = function () {
+        if (!newEndDateInput.value) { totalRow.hidden = true; return; }
+        var days = Math.round((new Date(newEndDateInput.value) - new Date(toDateInputValue(extendStart))) / 86400000) + 1;
+        if (!(days > 0)) { totalRow.hidden = true; return; }
+        document.getElementById('extendDays').textContent = days;
+        document.getElementById('extendTotal').textContent = (dailyTotal * days).toLocaleString('th-TH') + ' บาท';
+        totalRow.hidden = false;
+      };
+      newEndDateInput.addEventListener('change', updateTotal);
+
       extendToRoundEndBtn.addEventListener('click', function () {
         newEndDateInput.value = roundEnd;
+        updateTotal();
       });
+
+      // มาจากปุ่ม "ต่อล็อก" ในแจ้งเตือน — เลือกต่อจนจบรอบไว้ให้เลย กดยืนยันได้ทันที
+      if (!newEndDateInput.disabled) {
+        newEndDateInput.value = roundEnd;
+        updateTotal();
+      }
     })();
   </script>
 </body>

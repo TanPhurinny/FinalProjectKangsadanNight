@@ -1,0 +1,148 @@
+/* ส่วนที่ใช้ร่วมกันของ navbar ทุก role (navbar.ejs / navbarSeller.ejs / navbarCustomer.ejs + partials/navAccount.ejs) — ทับบน navbar.css
+   จอกว้าง: เมนูหลัก + "เพิ่มเติม" + กระดิ่ง + ปุ่มบัญชี (dropdown) อยู่แถวเดียวไม่ต้องเลื่อน
+   มือถือ: กระดิ่งอยู่ข้างปุ่มเมนู ส่วนในเมนู hamburger เรียงทุกเมนูต่อกัน แล้วปุ่มบัญชีอยู่ล่างสุด */
+
+.nav-v2 .nav-v2__mobile-bar { display: none; }
+.nav-v2 .nav-v2__mobile-only { display: none; }
+
+@media (min-width: 992.02px) {
+    .nav-v2 .nav-links {
+        align-items: center;
+        overflow: visible;
+    }
+
+    .nav-v2 .nav-links__primary .nav-item {
+        padding: 0 12px;
+        font-size: 0.8rem;
+        gap: 7px;
+    }
+
+    .nav-v2 .nav-v2__more > summary { height: 100%; }
+
+    .nav-v2 .nav-notification--icon-only {
+        padding: 0 20px;
+        font-size: 1rem;
+    }
+    /* badge ลอยมุมขวาบนของไอคอน ไม่ทับรูปกระดิ่ง */
+    .nav-v2 .nav-notification--icon-only .nav-notification-badge {
+        right: 4px;
+        transform: translateY(-19px);
+    }
+
+    /* ปุ่มบัญชี — กรอบบางแบบเดียวกับ user-badge เดิม ชื่อยาวตัดด้วย … ไม่ตกบรรทัด */
+    .nav-v2__account { margin-left: 12px; }
+    .nav-v2__account-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        max-width: 200px;
+        padding: 8px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 3px;
+        color: #fff;
+        font-size: 0.8rem;
+        font-weight: 500;
+        white-space: nowrap;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .nav-v2__account-btn:hover,
+    .nav-v2__account[open] > .nav-v2__account-btn,
+    .nav-v2__account-btn.active {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.45);
+    }
+    .nav-v2__account-btn > i { font-size: 1rem; flex-shrink: 0; }
+    .nav-v2__account-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+    /* ยังไม่ล็อกอิน: ปุ่มเข้าสู่ระบบแทนปุ่มบัญชี */
+    .nav-v2__login {
+        margin-left: 12px;
+        padding: 8px 14px;
+        border-radius: 3px;
+        background: #2C93A8;
+        color: #fff;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .nav-v2__login:hover { background: #237b8d; color: #fff; }
+
+    .nav-v2 .nav-dropdown__panel { min-width: 200px; }
+    .nav-v2__account .nav-dropdown__panel a.nav-v2__logout {
+        margin-top: 4px;
+        border-top: 1px solid var(--line, #d7e3e6);
+        border-radius: 0;
+        color: #b03a2e;
+    }
+    .nav-v2__account .nav-dropdown__panel a.nav-v2__logout i { color: inherit; }
+    .nav-v2__account .nav-dropdown__panel a.nav-v2__logout:hover { background: #fbeeec; color: #b03a2e; }
+}
+
+/* จอกว้างแต่ไม่มาก (เช่น แล็ปท็อป 1024px): ซ่อนไอคอนหน้าเมนู ย่อระยะ ให้ยังอยู่แถวเดียว (กระดิ่งเป็นไอคอนล้วน ไม่ซ่อน) */
+@media (min-width: 992.02px) and (max-width: 1239.98px) {
+    .nav-v2 .nav-container { gap: 12px; }
+    .nav-v2 .nav-links__primary .nav-item { padding: 0 9px; }
+    .nav-v2 .nav-links__primary .nav-item:not(.nav-notification) > i:first-child { display: none; }
+    .nav-v2 .nav-notification--icon-only { padding: 0 16px; }
+    .nav-v2__account-btn { max-width: 150px; }
+    .nav-v2__account { margin-left: 8px; }
+}
+
+@media (max-width: 992px) {
+    .nav-v2 .nav-v2__desktop-only,
+    .nav-v2 .nav-v2__more { display: none; }
+    .nav-v2 .nav-v2__mobile-only { display: flex; }
+
+    /* เมนู hamburger: ตัวใหญ่ขึ้นให้อ่าน/แตะง่ายบนมือถือ */
+    .nav-v2 .nav-links .nav-item { font-size: 0.95rem; gap: 12px; padding: 14px 20px; }
+    .nav-v2 .nav-links .nav-item i { width: 18px; text-align: center; }
+    .nav-v2 .nav-links .nav-item .nav-badge { margin-left: auto; }
+
+    .nav-v2 .nav-v2__mobile-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+        position: relative;
+        z-index: 1002;
+    }
+
+    .nav-v2__bell {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 3px;
+        color: #fff;
+        font-size: 1.15rem;
+        text-decoration: none;
+    }
+    .nav-v2__bell:hover,
+    .nav-v2__bell.active { background: rgba(255, 255, 255, 0.08); color: #fff; }
+    .nav-v2__bell .nav-notification-badge,
+    .nav-v2__toggle-wrap .nav-notification-badge {
+        top: -7px;
+        right: -7px;
+        transform: none;
+    }
+
+    /* แอดมิน: ตัวเลขงานค้างรวมบนปุ่มเมนู ให้รู้ว่ามีงานโดยไม่ต้องเปิดเมนู */
+    .nav-v2__toggle-wrap { position: relative; }
+    .nav-v2__toggle-wrap .nav-notification-badge { pointer-events: none; z-index: 1003; }
+    .nav-v2__toggle-wrap .nav-notification-badge--warn { background: #c98a2e; }
+
+    .nav-v2 .nav-actions .nav-v2__login-mobile {
+        width: 100%;
+        padding: 12px;
+        background: #2C93A8;
+        color: #fff;
+        text-align: center;
+        text-decoration: none;
+        font-weight: 600;
+        border-radius: 3px;
+    }
+}

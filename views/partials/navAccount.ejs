@@ -1,0 +1,42 @@
+<%#
+    ปุ่มบัญชีของ navbar ทุก role (สไตล์ใน public/stylesheets/partials/navMenu.css)
+    รับ: navUser (null = ยังไม่ล็อกอิน), navPath, navSwitch ({ href, label } หรือ null = ไม่มีปุ่มสลับมุมมอง)
+    จอกว้าง = dropdown เดียว (โปรไฟล์ / สลับมุมมอง / ออกจากระบบ), มือถือ = ปุ่มเรียงล่างสุดของเมนู hamburger
+%>
+<% const accountName = navUser ? (navUser.name || navUser.username || 'ผู้ใช้งาน') : null; %>
+<% const profileActive = navPath.includes('/profile'); %>
+<% if (!navUser) { %>
+<a href="/login" class="nav-v2__login nav-v2__desktop-only"><i class="fas fa-right-to-bracket"></i> เข้าสู่ระบบ</a>
+<div class="nav-actions nav-v2__mobile-only">
+    <a href="/login" class="nav-v2__login-mobile"><i class="fas fa-right-to-bracket me-1"></i> เข้าสู่ระบบ</a>
+</div>
+<% } else { %>
+<details class="nav-dropdown nav-v2__account nav-v2__desktop-only">
+    <summary class="nav-v2__account-btn <%= profileActive ? 'active' : '' %>" title="<%= accountName %>">
+        <i class="fas fa-user-circle"></i>
+        <span class="nav-v2__account-name"><%= accountName %></span>
+    </summary>
+    <div class="nav-dropdown__panel">
+        <a href="/profile" class="<%= profileActive ? 'active' : '' %>"><i class="fas fa-user"></i>โปรไฟล์ของฉัน</a>
+        <% if (navSwitch) { %>
+        <a href="<%= navSwitch.href %>"><i class="fas fa-right-left"></i><%= navSwitch.label %></a>
+        <% } %>
+        <a href="/logout" class="nav-v2__logout"><i class="fas fa-sign-out-alt"></i>ออกจากระบบ</a>
+    </div>
+</details>
+
+<div class="nav-actions nav-v2__mobile-only">
+    <a href="/profile" class="user-badge user-badge-link <%= profileActive ? 'active' : '' %>">
+        <i class="fas fa-user-circle"></i>
+        <%= accountName %>
+    </a>
+    <% if (navSwitch) { %>
+    <a href="<%= navSwitch.href %>" class="switch-view-btn">
+        <i class="fas fa-right-left"></i> <%= navSwitch.label %>
+    </a>
+    <% } %>
+    <a href="/logout" class="logout-link">
+        <i class="fas fa-sign-out-alt me-1"></i>ออกจากระบบ
+    </a>
+</div>
+<% } %>
