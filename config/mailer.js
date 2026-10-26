@@ -180,6 +180,26 @@ async function sendEventBoothStatusEmail(toEmail, { subject, lines = [], trackUr
     });
 }
 
+// แจ้งร้านค้าเมื่อคำขอสัญญาเช่ามีความคืบหน้า (ออกสัญญาแล้ว/ยกเลิก) — controllers/leaseContractController.js
+async function sendLeaseContractEmail(toEmail, { subject, lines = [], link }) {
+    const transporter = getTransporter();
+
+    if (!transporter) {
+        console.warn(`Lease contract email not sent (mailer not configured). ${toEmail}: ${subject} — ${link}`);
+        return;
+    }
+
+    await transporter.sendMail({
+        from: `"Kangsadan Night Market" <${process.env.GMAIL_USER}>`,
+        to: toEmail,
+        subject,
+        html: `
+            ${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}
+            <p>ดูรายละเอียดได้ที่: <a href="${escapeHtml(link)}">${escapeHtml(link)}</a></p>
+        `
+    });
+}
+
 module.exports = {
     sendPasswordResetEmail,
     sendStallAssignedEmail,
@@ -187,5 +207,6 @@ module.exports = {
     sendSellerApplicationApprovedEmail,
     sendSellerApplicationRejectedEmail,
     sendStallExpiringSoonEmail,
-    sendEventBoothStatusEmail
+    sendEventBoothStatusEmail,
+    sendLeaseContractEmail
 };

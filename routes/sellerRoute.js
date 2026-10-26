@@ -36,6 +36,7 @@ const { getBillableDays, getHolidaysInRange } = require('../utils/bookingHoliday
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId } = require('../utils/bookingRequestTag');
 const { buildQuotationData, COMPANY_INFO } = require('../controllers/quotationController');
 const rentalStatement = require('../utils/rentalStatement');
+const leaseContractCtrl = require('../controllers/leaseContractController');
 const {
     APPLIANCE_KINDS,
     APPLIANCE_PRESETS,
@@ -831,11 +832,18 @@ router.get('/booking-history', isAuthenticated, async (req, res) => {
 // --- รายงานการเช่าและชำระเงินของร้าน (หลายรอบ ยอดสะสม) — อ่านอย่างเดียว ดู utils/rentalStatement.js ---
 async function renderRentalStatement(req, res, extra = {}) {
     const range = rentalStatement.parseStatementRange(req.query);
-    const statement = await rentalStatement.buildSellerStatement(req.user.id, range);
+    const [statement, leaseRequests] = await Promise.all([
+        rentalStatement.buildSellerStatement(req.user.id, range),
+        leaseContractCtrl.getLeaseRequestsForUser(req.user.id)
+    ]);
     if (!statement) return res.redirect('/seller');
     return res.render('seller/rentalStatement', {
         user: req.user,
         statement,
+        leaseRequests,
+        leaseDefaults: { start: leaseContractCtrl.toMonthKey(range.from), end: leaseContractCtrl.toMonthKey(range.to) },
+        leaseSuccess: req.query.lease === 'requested',
+        leaseError: req.query.leaseError || null,
         company: COMPANY_INFO,
         queryString: rentalStatement.rangeQueryString(range),
         printedAt: new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }),
@@ -851,6 +859,20 @@ router.get('/rental-statement', isSellerOnly, async (req, res) => {
         return res.redirect('/booking-history');
     }
 });
+
+// ขอสัญญาเช่า — แอดมินเขียนสัญญาเองแล้วแนบไฟล์กลับ (controllers/leaseContractController.js)
+router.post('/lease-contracts', isSellerOnly, async (req, res) => {
+    try {
+        const error = await leaseContractCtrl.createLeaseRequest(req.user.id, req.body);
+        if (error) return res.redirect(`/rental-statement?leaseError=${error}#lease`);
+        return res.redirect('/rental-statement?lease=requested#lease');
+    } catch (error) {
+        console.error('lease contract request error', error);
+        return res.redirect('/rental-statement?leaseError=action_failed#lease');
+    }
+});
+
+router.get('/lease-contracts/:id/file', isSellerOnly, leaseContractCtrl.getSellerFile);
 
 router.get('/rental-statement.csv', isSellerOnly, async (req, res) => {
     try {
@@ -2340,6 +2362,11 @@ async function loadSellerBookingStatus(userId) {
         orderBy: { createdAt: 'desc' },
         take: 10
     });
+    const leaseContractRequests = await prisma.leaseContractRequest.findMany({
+        where: { userId, status: { in: ['ISSUED', 'CANCELLED'] } },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+    });
 
     return {
         userRecord,
@@ -2351,6 +2378,7 @@ async function loadSellerBookingStatus(userId) {
             ...communityNotifications,
             ...buildRepairNotifications(repairReports),
             ...buildTaxInvoiceNotifications(taxInvoiceRequests),
+            ...leaseContractCtrl.buildLeaseContractNotifications(leaseContractRequests, formatDateThai, formatTimeThai),
             ...rejectionEntries,
             ...buildBookingNotifications(notificationBooking, awaitingPaymentVerification, extendInfo)
         ]

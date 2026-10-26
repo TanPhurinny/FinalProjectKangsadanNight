@@ -140,22 +140,27 @@ app.use(async (req, res, next) => {
 // (ไม่งั้นกดปิดงานแล้วตัวเลขบนเมนูยังค้างค่าเดิมอีกเกือบนาที)
 const approvalCtrl = require('./controllers/approvalController');
 const { countEventBoothTodo } = require('./utils/eventBooth');
+const { countPendingLeaseContracts } = require('./controllers/leaseContractController');
 let approvalTodoCache = null;
 app.use(async (req, res, next) => {
   try {
     if (req.user?.role !== 'ADMIN') return next();
-    if (req.method === 'POST' && /^\/admin\/(approvals|booking-stall|event-booths)/.test(req.path)) {
+    if (req.method === 'POST' && /^\/admin\/(approvals|booking-stall|event-booths|lease-contracts)/.test(req.path)) {
       approvalTodoCache = null;
       return next();
     }
     if (req.method !== 'GET' || !String(req.headers.accept || '').includes('text/html')) return next();
     if (!approvalTodoCache || Date.now() - approvalTodoCache.at > 60 * 1000) {
-      const [approvalTodo, eventBoothTodo] = await Promise.all([approvalCtrl.countApprovalTodo(), countEventBoothTodo()]);
-      approvalTodoCache = { at: Date.now(), value: approvalTodo, eventBoothTodo };
+      const [approvalTodo, eventBoothTodo, leaseContractTodo] = await Promise.all([
+        approvalCtrl.countApprovalTodo(), countEventBoothTodo(), countPendingLeaseContracts()
+      ]);
+      approvalTodoCache = { at: Date.now(), value: approvalTodo, eventBoothTodo, leaseContractTodo };
     }
     res.locals.approvalTodo = approvalTodoCache.value;
     // คำขอบูธกิจกรรมที่รอแอดมิน (ใหม่ + สลิปรอยืนยัน) — badge แยกบนเมนู "บูธกิจกรรม"
     res.locals.eventBoothTodo = approvalTodoCache.eventBoothTodo;
+    // คำขอสัญญาเช่าที่รอแอดมิน — badge ในเมนู "เพิ่มเติม"
+    res.locals.leaseContractTodo = approvalTodoCache.leaseContractTodo;
   } catch (error) {
     logger.error({ error: error.message }, 'count approval todo failed');
   }

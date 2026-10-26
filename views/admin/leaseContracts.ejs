@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>คำขอสัญญาเช่า — Admin</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+    <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+    <link rel="stylesheet" href="/stylesheets/rentalStatement.css?v=20261026">
+</head>
+<body class="rs-body">
+    <script src="/js/common/tabSession.js"></script>
+    <%- include('../partials/navbar') %>
+    <%
+        const tabs = [
+            { key: 'PENDING', label: 'รอดำเนินการ' },
+            { key: 'ISSUED', label: 'ออกสัญญาแล้ว' },
+            { key: 'CANCELLED', label: 'ยกเลิก' }
+        ];
+        const successMessages = { cancelled: 'ยกเลิกคำขอแล้ว ร้านค้าได้รับแจ้งเตือนพร้อมเหตุผล' };
+        const errorMessages = { not_found: 'ไม่พบคำขอ', action_failed: 'ดำเนินการไม่สำเร็จ กรุณาลองใหม่' };
+        const pill = { PENDING: 'rs-pill--pending', ISSUED: 'rs-pill--paid', CANCELLED: 'rs-pill--danger' };
+    %>
+
+    <main class="rs-page">
+        <header class="rs-head">
+            <div>
+                <p class="rs-kicker">สัญญาเช่า</p>
+                <h1 class="rs-title">คำขอสัญญาเช่าจากร้านค้า</h1>
+                <p class="rs-lead">ร้านค้าขอสัญญาจากหน้ารายงานการเช่าของตัวเอง เปิดคำขอเพื่อดูข้อมูลผู้เช่า ล็อก และยอดที่ชำระในช่วงที่ขอ
+                    เขียนสัญญาเองนอกระบบ แล้วแนบไฟล์ (PDF/รูป) กลับให้ร้านดาวน์โหลด</p>
+            </div>
+            <div class="rs-head-actions">
+                <a class="rs-btn" href="/admin/rental-statements"><i class="fa-solid fa-file-invoice-dollar"></i> รายงานการชำระค่าเช่า</a>
+            </div>
+        </header>
+
+        <% if (success && successMessages[success]) { %><div class="rs-notice rs-notice--success" role="status"><%= successMessages[success] %></div><% } %>
+        <% if (error) { %><div class="rs-notice rs-notice--danger" role="alert"><%= errorMessages[error] || 'เกิดข้อผิดพลาด' %></div><% } %>
+
+        <nav class="rs-tabs" aria-label="สถานะคำขอ" style="display:flex;border-bottom:2px solid var(--rs-navy);margin-bottom:0">
+            <% tabs.forEach((t) => { const active = t.key === tab; %>
+            <a href="/admin/lease-contracts?tab=<%= t.key %>" <%- active ? 'aria-current="page"' : '' %>
+               style="padding:10px 16px;text-decoration:none;font-weight:600;font-size:14px;border:1px solid <%= active ? 'var(--rs-navy)' : 'transparent' %>;border-bottom:none;background:<%= active ? 'var(--rs-navy)' : 'transparent' %>;color:<%= active ? '#fff' : 'var(--rs-sub)' %>">
+                <%= t.label %> <span style="opacity:.75">(<%= counts[t.key] %>)</span>
+            </a>
+            <% }) %>
+        </nav>
+
+        <% if (!rows.length) { %>
+        <div class="rs-empty">ไม่มีคำขอในสถานะนี้</div>
+        <% } else { %>
+        <div class="rs-table-wrap">
+            <table class="rs-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>ผู้เช่า / ร้าน</th>
+                        <th>ช่วงสัญญาที่ขอ</th>
+                        <th>หมายเหตุจากร้าน</th>
+                        <th>ส่งคำขอเมื่อ</th>
+                        <th>สถานะ</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% rows.forEach((r) => { %>
+                    <tr>
+                        <td class="rs-muted"><%= r.id %></td>
+                        <td><%= r.user?.name || '-' %><div class="rs-muted"><%= r.user?.shop?.shopName || '-' %> · <%= r.user?.phoneNumber || '-' %></div></td>
+                        <td><%= r.periodText %></td>
+                        <td style="white-space:normal;max-width:280px"><%= r.note || '-' %></td>
+                        <td><%= r.createdAtText %></td>
+                        <td><span class="rs-pill <%= pill[r.status] %>"><%= r.statusLabel %></span><% if (r.issuedAtText) { %><div class="rs-muted"><%= r.issuedAtText %> · <%= r.issuedByName || '-' %></div><% } %></td>
+                        <td><a class="rs-btn rs-btn--sm <%= r.status === 'PENDING' ? 'rs-btn--primary' : '' %>" href="/admin/lease-contracts/<%= r.id %>"><%= r.status === 'PENDING' ? 'เตรียมสัญญา' : 'ดูรายละเอียด' %></a></td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+        <% } %>
+    </main>
+</body>
+</html>

@@ -19,6 +19,7 @@ const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
 const bookingHolidayCtrl = require('../controllers/bookingHolidayController');
 const eventBoothCtrl = require('../controllers/eventBoothController');
 const rentalStatementCtrl = require('../controllers/rentalStatementController');
+const leaseContractCtrl = require('../controllers/leaseContractController');
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
 const storage = createImageStorage({ folder: 'announcements', prefix: 'ann' });
@@ -138,6 +139,13 @@ router.post('/requests/update-status', requestCtrl.updateStatus);
 router.get('/rental-statements', isAdminOnly, rentalStatementCtrl.getOverviewPage);
 router.get('/rental-statements/user/:id', isAdminOnly, rentalStatementCtrl.getSellerPage);
 router.get('/rental-statements/stall/:code', isAdminOnly, rentalStatementCtrl.getStallPage);
+
+// คำขอสัญญาเช่าจากร้านค้า — แอดมินเขียนสัญญาเองนอกระบบแล้วแนบไฟล์กลับ (controllers/leaseContractController.js)
+router.get('/lease-contracts', isAdminOnly, leaseContractCtrl.getAdminListPage);
+router.get('/lease-contracts/:id', isAdminOnly, leaseContractCtrl.getAdminDetailPage);
+router.get('/lease-contracts/:id/file', isAdminOnly, leaseContractCtrl.getAdminFile);
+router.post('/lease-contracts/:id/issue', isAdminOnly, leaseContractCtrl.issue);
+router.post('/lease-contracts/:id/cancel', isAdminOnly, leaseContractCtrl.cancel);
 
 // --- 7b. คำขอใบกำกับภาษี ---
 router.get('/tax-invoice-requests', async (req, res) => {

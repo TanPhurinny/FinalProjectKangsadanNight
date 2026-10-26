@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>เตรียมสัญญาเช่า #<%= request.id %> — Admin</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+    <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+    <link rel="stylesheet" href="/stylesheets/rentalStatement.css?v=20261026">
+</head>
+<body class="rs-body">
+    <script src="/js/common/tabSession.js"></script>
+    <%- include('../partials/navbar') %>
+    <%
+        const s = statement.seller;
+        const t = statement.totals;
+        const baht = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const successMessages = { issued: 'แนบสัญญาแล้ว ร้านค้าดาวน์โหลดได้และได้รับแจ้งเตือน', replaced: 'แนบไฟล์สัญญาใหม่แทนไฟล์เดิมแล้ว' };
+        const errorMessages = {
+            missing_file: 'กรุณาเลือกไฟล์สัญญา',
+            invalid_file_type: 'รับเฉพาะไฟล์ PDF, JPG, PNG หรือ WEBP',
+            file_too_large: 'ไฟล์ใหญ่เกิน 10 MB',
+            missing_reason: 'กรุณากรอกเหตุผลที่ยกเลิก',
+            already_cancelled: 'คำขอนี้ถูกยกเลิกไปแล้ว',
+            action_failed: 'ดำเนินการไม่สำเร็จ กรุณาลองใหม่'
+        };
+        const pill = { PENDING: 'rs-pill--pending', ISSUED: 'rs-pill--paid', CANCELLED: 'rs-pill--danger' };
+        // ข้อความสรุปไว้คัดลอกไปใส่สัญญาที่เขียนเอง
+        const stallLines = statement.byStall.map((b) => `  - ล็อก ${b.stallCode} ช่วง ${b.periodText} (${b.rounds} รอบ ${b.days} วัน) ยอด ${baht(b.amount)} บาท`).join('\n');
+        const summaryText = [
+            `ผู้เช่า: ${s.sellerName}`,
+            `เลขบัตรประชาชน: ${s.idCardNumber}`,
+            `ที่อยู่: ${s.address}`,
+            `โทร: ${s.phone}`,
+            `ชื่อร้าน: ${s.shopName} (${s.productType})`,
+            `ช่วงสัญญาที่ขอ: ${request.periodText}`,
+            `ล็อกที่เช่าและชำระแล้วในช่วงนี้ (${t.stallCodes.length} ล็อก, ${t.rounds} รอบ):`,
+            stallLines || '  - ยังไม่มีล็อกที่ชำระแล้วในช่วงนี้',
+            `ยอดชำระแล้วรวม: ${baht(t.paid)} บาท (ค่าเช่าแผง ${baht(t.rentTotal)} / ค่าไฟ ${baht(t.lightTotal)} / เครื่องใช้ไฟฟ้า ${baht(t.applianceTotal)})`,
+            `ยอดค้างชำระ: ${baht(t.outstanding)} บาท`
+        ].join('\n');
+    %>
+
+    <main class="rs-page">
+        <header class="rs-head">
+            <div>
+                <p class="rs-kicker"><a href="/admin/lease-contracts?tab=<%= request.status %>" style="color:inherit">คำขอสัญญาเช่า</a> / #<%= request.id %></p>
+                <h1 class="rs-title"><%= s.shopName %> · <%= request.periodText %></h1>
+                <p class="rs-lead">
+                    <span class="rs-pill <%= pill[request.status] %>"><%= request.statusLabel %></span>
+                    ส่งคำขอเมื่อ <%= request.createdAtText %><% if (request.issuedAtText) { %> · แนบสัญญาเมื่อ <%= request.issuedAtText %> โดย <%= request.issuedByName || '-' %><% } %>
+                </p>
+            </div>
+            <div class="rs-head-actions">
+                <a class="rs-btn" href="/admin/rental-statements/user/<%= s.id %>?<%= request.rangeQuery %>"><i class="fa-solid fa-file-invoice-dollar"></i> รายงานเต็มของร้าน</a>
+            </div>
+        </header>
+
+        <% if (success && successMessages[success]) { %><div class="rs-notice rs-notice--success" role="status"><%= successMessages[success] %></div><% } %>
+        <% if (error) { %><div class="rs-notice rs-notice--danger" role="alert"><%= errorMessages[error] || 'เกิดข้อผิดพลาด' %></div><% } %>
+        <% if (request.note) { %><div class="rs-notice" style="border-color:var(--rs-line);color:var(--rs-ink)"><b>หมายเหตุจากร้าน:</b> <%= request.note %></div><% } %>
+
+        <section class="rs-section">
+            <div class="rs-section-head"><h2 class="rs-section-title">ข้อมูลผู้เช่า</h2><span class="rs-section-meta">จากใบสมัครร้านล่าสุด · อ่านอย่างเดียว</span></div>
+            <dl class="rs-facts" style="border-top:none">
+                <div class="rs-fact"><dt>ชื่อผู้เช่า</dt><dd><%= s.sellerName %></dd></div>
+                <div class="rs-fact"><dt>เลขบัตรประชาชน</dt><dd><%= s.idCardNumber %></dd></div>
+                <div class="rs-fact"><dt>เบอร์โทร</dt><dd><%= s.phone %></dd></div>
+                <div class="rs-fact"><dt>อีเมล</dt><dd><%= s.email %></dd></div>
+                <div class="rs-fact" style="grid-column:span 2"><dt>ที่อยู่</dt><dd><%= s.address %></dd></div>
+                <div class="rs-fact"><dt>ชื่อร้าน / ประเภท</dt><dd><%= s.shopName %> · <%= s.productType %></dd></div>
+                <div class="rs-fact"><dt>สมัครสมาชิกเมื่อ</dt><dd><%= s.memberSinceText %></dd></div>
+            </dl>
+        </section>
+
+        <section class="rs-section">
+            <div class="rs-section-head">
+                <h2 class="rs-section-title">ข้อความสรุปสำหรับเขียนสัญญา</h2>
+                <button type="button" class="rs-btn rs-btn--sm" id="copySummary"><i class="fa-regular fa-copy"></i> คัดลอก</button>
+            </div>
+            <textarea id="summaryText" readonly rows="<%= summaryText.split('\n').length + 1 %>"
+                style="width:100%;font:13px/1.7 var(--rs-font);padding:12px 14px;border:1px solid var(--rs-line);border-top:none;resize:vertical;color:var(--rs-ink);background:var(--rs-soft)"><%= summaryText %></textarea>
+        </section>
+
+        <%- include('../partials/rentalStatementBody', { statement, docPrefix: '/admin' }) %>
+
+        <section class="rs-section" id="attach">
+            <div class="rs-section-head">
+                <h2 class="rs-section-title"><%= request.status === 'ISSUED' ? 'ไฟล์สัญญา' : 'แนบสัญญาที่เขียนแล้ว' %></h2>
+                <% if (request.contractFileUrl) { %>
+                <a class="rs-btn rs-btn--sm" href="/admin/lease-contracts/<%= request.id %>/file" target="_blank" rel="noopener"><i class="fa-solid <%= request.fileIsPdf ? 'fa-file-pdf' : 'fa-file-image' %>"></i> เปิดไฟล์ที่แนบไว้</a>
+                <% } %>
+            </div>
+            <% if (request.status === 'CANCELLED') { %>
+            <div class="rs-empty">คำขอนี้ถูกยกเลิกแล้ว — เหตุผล: <%= request.adminNote || '-' %></div>
+            <% } else { %>
+            <form class="rs-form" method="post" action="/admin/lease-contracts/<%= request.id %>/issue" enctype="multipart/form-data">
+                <label class="rs-field">ไฟล์สัญญา (PDF/JPG/PNG ไม่เกิน 10 MB)
+                    <input type="file" name="contractFile" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" <%= request.contractFileUrl ? '' : 'required' %>>
+                </label>
+                <label class="rs-field rs-field--wide">ข้อความถึงร้าน (ไม่บังคับ)
+                    <textarea name="adminNote" maxlength="500" placeholder="เช่น กรุณามาเซ็นสัญญาตัวจริงที่ออฟฟิศภายในวันที่ ..."><%= request.status === 'ISSUED' ? (request.adminNote || '') : '' %></textarea>
+                </label>
+                <div class="rs-form-actions">
+                    <button type="submit" class="rs-btn rs-btn--primary"><i class="fa-solid fa-paperclip"></i> <%= request.status === 'ISSUED' ? 'บันทึก / แนบไฟล์ใหม่แทน' : 'แนบสัญญาและแจ้งร้าน' %></button>
+                    <p class="rs-hint">ร้านจะดาวน์โหลดได้ที่หน้ารายงานการเช่าของตัวเอง และได้รับแจ้งเตือนในกระดิ่ง + อีเมล</p>
+                </div>
+            </form>
+
+            <form class="rs-form" method="post" action="/admin/lease-contracts/<%= request.id %>/cancel" style="margin-top:12px;border-top:1px solid var(--rs-line)"
+                  onsubmit="return confirm('ยืนยันยกเลิกคำขอสัญญาเช่านี้? ร้านจะได้รับแจ้งพร้อมเหตุผล')">
+                <label class="rs-field rs-field--wide">ยกเลิกคำขอ — เหตุผล (ร้านจะเห็นข้อความนี้)
+                    <input type="text" name="reason" maxlength="500" required placeholder="เช่น ช่วงที่ขอยังไม่มีประวัติเช่าที่ชำระแล้ว">
+                </label>
+                <div class="rs-form-actions">
+                    <button type="submit" class="rs-btn rs-btn--danger"><i class="fa-solid fa-ban"></i> ยกเลิกคำขอ</button>
+                </div>
+            </form>
+            <% } %>
+        </section>
+    </main>
+    <script>
+        document.getElementById('copySummary').addEventListener('click', function () {
+            var area = document.getElementById('summaryText');
+            var btn = this;
+            var done = function () { btn.innerHTML = '<i class="fa-solid fa-check"></i> คัดลอกแล้ว'; setTimeout(function () { btn.innerHTML = '<i class="fa-regular fa-copy"></i> คัดลอก'; }, 1600); };
+            if (navigator.clipboard) navigator.clipboard.writeText(area.value).then(done, function () { area.select(); document.execCommand('copy'); done(); });
+            else { area.select(); document.execCommand('copy'); done(); }
+        });
+    </script>
+</body>
+</html>

@@ -62,6 +62,7 @@ const isStaff = user && user.role === 'STAFF';
             <%
                 const moreLinks = [
                     { href: '/admin/rental-statements', icon: 'fa-file-invoice-dollar', label: 'รายงานการชำระค่าเช่า', match: '/rental-statements' },
+                    { href: '/admin/lease-contracts', icon: 'fa-file-signature', label: 'คำขอสัญญาเช่า', match: '/lease-contracts', badge: typeof leaseContractTodo !== 'undefined' ? leaseContractTodo : 0 },
                     { href: '/admin/tax-invoice-requests', icon: 'fa-file-invoice', label: 'คำขอใบกำกับภาษี', match: 'tax-invoice-requests' },
                     { href: '/admin/announcements', icon: 'fa-bullhorn', label: 'จัดการประกาศ', match: 'announcements' },
                     { href: '/admin/community-banners', icon: 'fa-images', label: 'แบนเนอร์คอมมูนิตี้', match: '/community-banners' },
@@ -70,15 +71,18 @@ const isStaff = user && user.role === 'STAFF';
                     { href: '/admin/product-subtypes', icon: 'fa-tags', label: 'รายการสินค้าที่ขาย', match: '/product-subtypes' }
                 ];
                 const isMoreActive = moreLinks.some(function(link) { return currentPath.includes(link.match); });
+                const moreBadge = moreLinks.reduce(function(sum, link) { return sum + (link.badge || 0); }, 0);
             %>
             <details class="nav-dropdown">
                 <summary class="nav-item <%= isMoreActive ? 'active' : '' %>">
                     <i class="fas fa-ellipsis-h"></i> เพิ่มเติม
+                    <% if (moreBadge) { %><span class="nav-badge" title="คำขอสัญญาเช่ารอดำเนินการ <%= moreBadge %> รายการ"><%= moreBadge > 99 ? '99+' : moreBadge %></span><% } %>
                 </summary>
                 <div class="nav-dropdown__panel">
                     <% moreLinks.forEach(function(link) { %>
                     <a href="<%= link.href %>" class="<%= currentPath.includes(link.match) ? 'active' : '' %>">
                         <i class="fas <%= link.icon %>"></i> <%= link.label %>
+                        <% if (link.badge) { %><span class="nav-badge"><%= link.badge > 99 ? '99+' : link.badge %></span><% } %>
                     </a>
                     <% }) %>
                 </div>

@@ -163,7 +163,7 @@ body.rs-body {
 .rs-table tfoot td { font-weight: 700; border-top: 1px solid var(--rs-line); border-bottom: none; background: var(--rs-soft); }
 .rs-table a { color: var(--rs-primary-dark); text-decoration: none; font-weight: 600; }
 .rs-table a:hover { text-decoration: underline; }
-.rs-muted { color: var(--rs-sub); font-size: 12px; }
+.rs-muted { color: var(--rs-sub); font-size: 12px; font-weight: 400; }
 .rs-code { font-weight: 600; letter-spacing: 0.02em; }
 
 .rs-pill {
@@ -261,6 +261,7 @@ body.rs-body {
     .rs-stat__value { font-size: 16px; }
     .rs-table { font-size: 10px; }
     .rs-table th, .rs-table td { padding: 4px 6px; }
+    .rs-muted { font-size: 9px; }
     .rs-table-wrap { overflow: visible; }
     .rs-section { break-inside: auto; margin-bottom: 16px; }
     .rs-table tr { break-inside: avoid; }
