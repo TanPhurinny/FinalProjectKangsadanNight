@@ -388,6 +388,26 @@ kbd {
 .nt-cta--ghost { background: #fff; color: var(--primary-dark); }
 .nt-cta--ghost:hover { background: var(--primary-tint); color: var(--primary-dark); }
 
+/* ── ต่อล็อกจากแจ้งเตือน ── */
+.nt-renew {
+    grid-column: 2 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--primary);
+    background: var(--primary-tint);
+}
+.nt-renew__info { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 0.9rem; color: var(--ink-soft, #444); }
+.nt-renew__info b { color: var(--ink, #111); font-weight: 600; }
+.nt-renew__code { padding: 2px 8px; background: var(--primary); color: #fff; font-weight: 700; letter-spacing: .02em; }
+.nt-renew__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+.nt-renew__btn { cursor: pointer; font: inherit; font-weight: 600; }
+.nt-renew__alt { font-size: 0.85rem; color: var(--primary-dark); text-decoration: underline; }
+.nt-renew__note { font-size: 0.8rem; color: var(--ink-soft, #555); line-height: 1.5; }
+.nt-row__actions .nt-renew { grid-column: auto; }
+
 /* ── รายการตามวัน ── */
 .nt-group { margin-top: 24px; }
 .nt-group__head {

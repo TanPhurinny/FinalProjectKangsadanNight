@@ -30,6 +30,12 @@
 .ext-round-btn:disabled { opacity: .5; cursor: not-allowed; }
 .ext-hint { margin: 0; font-size: 14px; color: var(--amber); line-height: 1.6; }
 
+.ext-price { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 16px; border: 1px solid var(--line); font-size: 15px; color: var(--ink-soft); }
+.ext-price strong { font-size: 18px; color: var(--ink); white-space: nowrap; }
+.ext-price-total { border-color: var(--primary); background: var(--primary-wash); }
+.ext-price-total strong { color: var(--primary-dark); font-size: 20px; }
+.ext-price[hidden] { display: none; }
+
 .ext-notes { margin: 0; padding-left: 22px; color: var(--ink-soft); line-height: 1.9; font-size: 15px; }
 
 @media (max-width: 560px) {
