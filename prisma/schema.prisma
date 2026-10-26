@@ -853,8 +853,9 @@ model EventBoothRequest {
   @@index([assignedStallCode])
 }
 
-// คำขอสัญญาเช่าจากร้านค้า (กดขอในหน้า /rental-statement) — แอดมินดูข้อมูลผู้เช่า/ยอดชำระในช่วงที่ขอ
-// แล้วเขียนสัญญาเองนอกระบบ จากนั้นแนบไฟล์ (PDF/รูป) กลับให้ร้านดาวน์โหลด ระบบไม่ได้สร้างสัญญาให้
+// คำขอสัญญาเช่าจากร้านค้า (/documents/lease-contract) — ร้านเลือกช่วงวัน ระบบสร้างสัญญาจากประวัติการจองที่ชำระแล้ว
+// ในช่วงนั้น (utils/leaseContract.js) แอดมินตรวจร่างแล้วกดอนุมัติ = ออกเลขที่สัญญา ร้านเปิด/พิมพ์ได้
+// เนื้อหาสัญญาไม่เก็บซ้ำ สร้างสดทุกครั้ง แต่นับเฉพาะคำขอที่ชำระก่อนเวลาอนุมัติ (issuedAt) เนื้อหาจึงไม่เปลี่ยนหลังออกแล้ว
 model LeaseContractRequest {
   id              Int      @id @default(autoincrement())
   userId          Int
@@ -862,8 +863,8 @@ model LeaseContractRequest {
   periodEnd       DateTime
   note            String?  @db.Text
   status          LeaseContractStatus @default(PENDING)
-  contractFileUrl String?
-  // ข้อความจากแอดมินถึงร้าน (เช่น นัดเซ็นตัวจริง) หรือเหตุผลที่ยกเลิก
+  documentNumber  String?  @unique
+  // ข้อความจากแอดมินถึงร้าน (เช่น นัดเซ็นตัวจริง) หรือเหตุผลที่ไม่อนุมัติ
   adminNote       String?  @db.Text
   issuedAt        DateTime?
   issuedByName    String?
