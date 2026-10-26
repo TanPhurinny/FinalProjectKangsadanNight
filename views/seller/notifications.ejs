@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>การแจ้งเตือน - กังสดาลไนท์</title>
+  <link rel="icon" type="image/png" href="/img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios" />
+  <link rel="stylesheet" href="/stylesheets/seller/notifications.css?v=20261026" />
+</head>
+<%
+  // แจ้งเตือนทุกชิ้นมาจาก loadSellerBookingStatus (routes/sellerRoute.js) + สถานะอ่านแล้วจาก utils/notificationReads.js
+  // หน้านี้วาดด้วย public/js/seller/notifications.js — ฝังข้อมูลเป็น JSON (กัน </script> ด้วย <)
+  const notiPageData = JSON.stringify({
+    notifications: typeof notifications !== 'undefined' && Array.isArray(notifications) ? notifications : []
+  }).replace(/</g, '\\u003c');
+%>
+<body>
+  <script src="/js/common/tabSession.js"></script>
+  <% if (user && user.role === 'SELLER' && !viewAsCustomer) { %>
+  <%- include('../partials/navbarSeller') %>
+  <% } else { %>
+  <%- include('../partials/navbarCustomer') %>
+  <% } %>
+
+  <main class="nt-shell">
+    <header class="nt-head">
+      <div class="nt-head__title">
+        <span class="nt-eyebrow">กล่องแจ้งเตือน</span>
+        <h1>การแจ้งเตือน</h1>
+      </div>
+      <dl class="nt-stats" aria-label="สรุปแจ้งเตือน">
+        <div class="nt-stat nt-stat--accent">
+          <dt>ยังไม่อ่าน</dt>
+          <dd id="ntStatUnread">0</dd>
+        </div>
+        <div class="nt-stat">
+          <dt>ต้องทำ</dt>
+          <dd id="ntStatAction">0</dd>
+        </div>
+        <div class="nt-stat">
+          <dt>ทั้งหมด</dt>
+          <dd id="ntStatAll">0</dd>
+        </div>
+      </dl>
+    </header>
+
+    <div class="nt-layout">
+      <aside class="nt-side">
+        <nav class="nt-cats" id="ntCats" aria-label="หมวดแจ้งเตือน"></nav>
+
+        <section class="nt-progress" id="ntProgress" hidden>
+          <h2 class="nt-label">คำขอจองล่าสุด</h2>
+          <ol class="nt-steps" id="ntSteps"></ol>
+        </section>
+
+        <button type="button" class="nt-keys-btn" id="ntKeysBtn">
+          <i class="bi bi-keyboard"></i> คีย์ลัด <kbd>?</kbd>
+        </button>
+      </aside>
+
+      <section class="nt-main">
+        <div class="nt-toolbar">
+          <label class="nt-search">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="search" id="ntSearch" placeholder="ค้นหาแจ้งเตือน เช่น ล็อก B304, ซ่อม, สลิป" autocomplete="off" aria-label="ค้นหาแจ้งเตือน" />
+            <kbd class="nt-search__kbd">/</kbd>
+          </label>
+          <div class="nt-seg" role="tablist" aria-label="สถานะการอ่าน">
+            <button type="button" role="tab" data-read="all" aria-selected="true">ทั้งหมด</button>
+            <button type="button" role="tab" data-read="unread" aria-selected="false">ยังไม่อ่าน</button>
+          </div>
+          <button type="button" class="nt-btn" id="ntMarkAll">
+            <i class="bi bi-check2-all"></i><span>อ่านแล้วทั้งหมด</span>
+          </button>
+        </div>
+
+        <button type="button" class="nt-fresh" id="ntFresh" hidden>
+          <i class="bi bi-arrow-up"></i> <span id="ntFreshText">มีแจ้งเตือนใหม่</span>
+        </button>
+
+        <section class="nt-todo" id="ntTodo" hidden aria-labelledby="ntTodoTitle">
+          <h2 class="nt-label" id="ntTodoTitle"><i class="bi bi-lightning-charge-fill"></i> ต้องทำ</h2>
+          <div id="ntTodoList"></div>
+        </section>
+
+        <div id="ntList" class="nt-list" aria-live="polite"></div>
+
+        <p class="nt-hint-swipe"><i class="bi bi-arrow-left-right"></i> ปัดรายการไปทางซ้ายหรือขวาเพื่อสลับอ่านแล้ว/ยังไม่อ่าน</p>
+      </section>
+    </div>
+  </main>
+
+  <div class="nt-toast" id="ntToast" role="status" aria-live="polite" hidden>
+    <span id="ntToastText"></span>
+    <button type="button" id="ntToastUndo" hidden>เลิกทำ</button>
+  </div>
+
+  <dialog class="nt-dialog" id="ntKeys" aria-labelledby="ntKeysTitle">
+    <div class="nt-dialog__head">
+      <h2 id="ntKeysTitle">คีย์ลัด</h2>
+      <button type="button" class="nt-icon-btn" data-close aria-label="ปิด"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <dl class="nt-keys">
+      <div><dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>เลื่อนลง / ขึ้นทีละรายการ</dd></div>
+      <div><dt><kbd>Enter</kbd></dt><dd>เปิด/ปิดรายละเอียด</dd></div>
+      <div><dt><kbd>o</kbd></dt><dd>ไปที่หน้าที่เกี่ยวข้อง</dd></div>
+      <div><dt><kbd>e</kbd></dt><dd>สลับอ่านแล้ว / ยังไม่อ่าน</dd></div>
+      <div><dt><kbd>u</kbd></dt><dd>ดูเฉพาะที่ยังไม่อ่าน</dd></div>
+      <div><dt><kbd>/</kbd></dt><dd>ค้นหา</dd></div>
+      <div><dt><kbd>Shift</kbd> <kbd>A</kbd></dt><dd>อ่านแล้วทั้งหมด</dd></div>
+    </dl>
+  </dialog>
+
+  <script type="application/json" id="ntData"><%- notiPageData %></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/seller/notifications.js?v=20261026"></script>
+</body>
+</html>

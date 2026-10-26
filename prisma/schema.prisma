@@ -881,3 +881,14 @@ model ShopReview {
   @@index([shopUserId, isHidden, createdAt])
   @@index([userId])
 }
+
+// แจ้งเตือนที่ผู้ใช้อ่านแล้ว — ตัวแจ้งเตือนคำนวณสดจากข้อมูลจริงทุกครั้ง (ไม่มีตารางเก็บตัวแจ้งเตือน) จึงเก็บแค่ key ที่อ่านแล้ว
+// key = "<id แจ้งเตือน>@<เวลาของเหตุการณ์>" ถ้าเรื่องเดิมมีความเคลื่อนไหวใหม่ (เวลาเปลี่ยน) จะกลับมาเป็นยังไม่อ่านเอง (ดู utils/notificationReads.js)
+model NotificationRead {
+  id     Int      @id @default(autoincrement())
+  userId Int
+  key    String   @db.VarChar(191)
+  readAt DateTime @default(now())
+
+  @@unique([userId, key])
+}

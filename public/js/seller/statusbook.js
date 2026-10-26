@@ -77,7 +77,7 @@
       }
     }
 
-    return window.BOOKING_PAGE_DATA || window.NOTIFICATION_PAGE_DATA || { booking: null, notifications: [] };
+    return window.BOOKING_PAGE_DATA || { booking: null, notifications: [] };
   }
 
   function renderStepper(booking) {
@@ -288,212 +288,11 @@
     `).join('');
   }
 
-  function renderNotificationPage(notifications, booking) {
-    const list = document.getElementById('notificationList');
-    if (!list) return;
-
-    const notificationData = Array.isArray(notifications) ? notifications : [];
-    const unreadCount = notificationData.filter((item) => !item.isRead).length;
-    const readCount = notificationData.length - unreadCount;
-
-    const badgeAll = document.getElementById('badgeAll');
-    const badgeUnread = document.getElementById('badgeUnread');
-    const badgeRead = document.getElementById('badgeRead');
-    const globalBadge = document.getElementById('globalNavBadge');
-    if (badgeAll) badgeAll.textContent = String(notificationData.length);
-    if (badgeUnread) badgeUnread.textContent = String(unreadCount);
-    if (badgeRead) badgeRead.textContent = String(readCount);
-    if (globalBadge) globalBadge.textContent = String(unreadCount);
-
-    if (!notificationData.length) {
-      list.innerHTML = `
-        <div class="col-12">
-          <div class="empty-state empty-state--card">
-            <div class="empty-state__icon"><i class="bi bi-bell-slash"></i></div>
-            <h3>ยังไม่มีการแจ้งเตือน</h3>
-            <p>เมื่อมีการเปลี่ยนสถานะการจอง ระบบจะแสดงรายการที่นี่</p>
-            <a href="/booking-status" class="btn btn-custom-primary btn-custom px-4">ไปหน้าสถานะการจอง</a>
-          </div>
-        </div>
-      `;
-      return;
-    }
-
-    list.innerHTML = notificationData.map((item) => {
-      const iconMap = {
-        'pending-review': ['bi-search', 'border-type-pending-review', 'text-warning'],
-        'pending-payment': ['bi-wallet2', 'border-type-pending-payment', 'text-warning'],
-        'success-payment': ['bi-check-circle-fill', 'border-type-success', 'text-success-custom'],
-        'success-receipt': ['bi-file-earmark-text', 'border-type-success', 'text-success-custom'],
-        'cancelled': ['bi-x-circle-fill', 'border-type-cancelled', 'text-danger'],
-        'repair-in_progress': ['bi-tools', 'border-type-pending-payment', 'text-warning'],
-        'repair-success': ['bi-tools', 'border-type-success', 'text-success-custom'],
-        'repair-rejected': ['bi-tools', 'border-type-cancelled', 'text-danger'],
-        'tax-invoice-issued': ['bi-file-earmark-text', 'border-type-success', 'text-success-custom'],
-        'tax-invoice-cancelled': ['bi-file-earmark-text', 'border-type-cancelled', 'text-danger'],
-        'community-comment': ['bi-chat-dots-fill', 'border-type-success', 'text-success-custom'],
-        'community-like': ['bi-heart-fill', 'border-type-success', 'text-danger'],
-        'shop-review': ['bi-star-fill', 'border-type-success', 'text-warning']
-      };
-      const [iconClass, borderClass, iconColor] = iconMap[item.type] || ['bi-bell', 'border-type-pending-review', 'text-warning'];
-
-      return `
-        <div class="col-12">
-          <div class="card card-custom noti-card-item mb-3 ${item.isRead ? 'read' : 'unread'} ${borderClass} hover-lift slide-up">
-            <div class="card-body d-flex p-3 justify-content-between align-items-start flex-wrap gap-2">
-              <div class="d-flex gap-3 align-items-start flex-grow-1">
-                <div class="icon-shape bg-light ${iconColor}">
-                  <i class="bi ${iconClass} fs-4"></i>
-                </div>
-                <div>
-                  <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                    <h6 class="fw-bold m-0 text-dark-custom">${item.title}</h6>
-                    ${item.isNew ? '<span class="badge bg-danger-custom text-white font-monospace px-2 py-1" style="font-size:0.65rem;">NEW</span>' : ''}
-                  </div>
-                  <p class="text-muted small mb-2">${item.desc}</p>
-                  <span class="text-muted" style="font-size:0.75rem;"><i class="bi bi-clock me-1"></i>${item.date} | ${item.time}</span>
-                </div>
-              </div>
-              <div class="d-flex gap-2 ms-auto align-self-center">
-                ${item.link ? `<a href="${item.link}" class="btn btn-sm btn-custom-primary text-white px-3 text-nowrap"><i class="bi ${item.linkIcon || 'bi-receipt'} me-1"></i>${item.linkLabel || (item.type === 'tax-invoice-issued' ? 'ดูใบกำกับภาษี' : 'ดูใบเสนอราคา')}</a>` : ''}
-                <button class="btn btn-sm btn-light border hover-lift px-3 text-nowrap" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    window.__notificationData = notificationData;
-    window.__bookingForNotification = booking || null;
-  }
-
-  function openNotiModal(id) {
-    const notifications = window.__notificationData || [];
-    const item = notifications.find((entry) => String(entry.id) === String(id));
-    if (!item) return;
-
-    const modalTitle = document.getElementById('modalNotiTitle');
-    const modalBody = document.getElementById('modalNotiBody');
-    if (modalTitle) modalTitle.textContent = item.title;
-    if (modalBody) {
-      modalBody.innerHTML = `
-        <div class="text-center mb-4">
-          <i class="bi bi-info-circle text-primary-custom fs-1"></i>
-          <h5 class="fw-bold mt-2">รายละเอียดการแจ้งเตือน</h5>
-        </div>
-        <div class="details-box">
-          <div class="details-row"><span>ประเภท</span><strong>${item.type}</strong></div>
-          <div class="details-row"><span>ข้อความ</span><strong>${item.desc}</strong></div>
-          <div class="details-row"><span>วันที่</span><strong>${item.date} ${item.time}</strong></div>
-        </div>
-      `;
-    }
-
-    if (window.bootstrap && document.getElementById('notiModal')) {
-      const modal = new bootstrap.Modal(document.getElementById('notiModal'));
-      modal.show();
-    }
-  }
-
   function initBookingStatusPage() {
     const data = getPageData();
     renderStepper(data.booking || null);
     renderBookingCard(data.booking || null);
     renderTimeline(data.booking || null);
-  }
-
-  function initNotificationsPage() {
-    const data = getPageData();
-    renderNotificationPage(data.notifications || [], data.booking || null);
-  }
-
-  function filterNotifications(type) {
-    const data = window.__notificationData || [];
-    const list = document.getElementById('notificationList');
-    if (!list) return;
-
-    const filtered = data.filter((item) => {
-      if (type === 'all') return true;
-      if (type === 'unread') return !item.isRead;
-      if (type === 'read') return item.isRead;
-      return true;
-    });
-
-    if (!filtered.length) {
-      list.innerHTML = `
-        <div class="col-12">
-          <div class="empty-state empty-state--card">
-            <div class="empty-state__icon"><i class="bi bi-inbox"></i></div>
-            <h3>ไม่มีข้อมูลในหมวดหมู่นี้</h3>
-            <p>ลองเลือกหมวดอื่นหรือกลับไปดูสถานะการจอง</p>
-          </div>
-        </div>
-      `;
-      return;
-    }
-
-    list.innerHTML = filtered.map((item) => {
-      const iconMap = {
-        'pending-review': ['bi-search', 'border-type-pending-review', 'text-warning'],
-        'pending-payment': ['bi-wallet2', 'border-type-pending-payment', 'text-warning'],
-        'success-payment': ['bi-check-circle-fill', 'border-type-success', 'text-success-custom'],
-        'success-receipt': ['bi-file-earmark-text', 'border-type-success', 'text-success-custom'],
-        'cancelled': ['bi-x-circle-fill', 'border-type-cancelled', 'text-danger'],
-        'repair-in_progress': ['bi-tools', 'border-type-pending-payment', 'text-warning'],
-        'repair-success': ['bi-tools', 'border-type-success', 'text-success-custom'],
-        'repair-rejected': ['bi-tools', 'border-type-cancelled', 'text-danger'],
-        'tax-invoice-issued': ['bi-file-earmark-text', 'border-type-success', 'text-success-custom'],
-        'tax-invoice-cancelled': ['bi-file-earmark-text', 'border-type-cancelled', 'text-danger'],
-        'community-comment': ['bi-chat-dots-fill', 'border-type-success', 'text-success-custom'],
-        'community-like': ['bi-heart-fill', 'border-type-success', 'text-danger'],
-        'shop-review': ['bi-star-fill', 'border-type-success', 'text-warning']
-      };
-      const [iconClass, borderClass, iconColor] = iconMap[item.type] || ['bi-bell', 'border-type-pending-review', 'text-warning'];
-      return `
-        <div class="col-12">
-          <div class="card card-custom noti-card-item mb-3 ${item.isRead ? 'read' : 'unread'} ${borderClass} hover-lift slide-up">
-            <div class="card-body d-flex p-3 justify-content-between align-items-start flex-wrap gap-2">
-              <div class="d-flex gap-3 align-items-start flex-grow-1">
-                <div class="icon-shape bg-light ${iconColor}"><i class="bi ${iconClass} fs-4"></i></div>
-                <div>
-                  <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                    <h6 class="fw-bold m-0 text-dark-custom">${item.title}</h6>
-                    ${item.isNew ? '<span class="badge bg-danger-custom text-white font-monospace px-2 py-1" style="font-size:0.65rem;">NEW</span>' : ''}
-                  </div>
-                  <p class="text-muted small mb-2">${item.desc}</p>
-                  <span class="text-muted" style="font-size:0.75rem;"><i class="bi bi-clock me-1"></i>${item.date} | ${item.time}</span>
-                </div>
-              </div>
-              <div class="d-flex gap-2 ms-auto align-self-center">
-                ${item.link ? `<a href="${item.link}" class="btn btn-sm btn-custom-primary text-white px-3 text-nowrap"><i class="bi ${item.linkIcon || 'bi-receipt'} me-1"></i>${item.linkLabel || (item.type === 'tax-invoice-issued' ? 'ดูใบกำกับภาษี' : 'ดูใบเสนอราคา')}</a>` : ''}
-                <button class="btn btn-sm btn-light border hover-lift px-3 text-nowrap" onclick="openNotiModal('${item.id}')">ดูรายละเอียด</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function markAllAsRead() {
-    const data = window.__notificationData || [];
-    data.forEach((item) => {
-      item.isRead = true;
-      item.isNew = false;
-    });
-    renderNotificationPage(data, window.__bookingForNotification || null);
-    if (window.bootstrap) {
-      const toastEl = document.getElementById('liveToast');
-      if (toastEl) {
-        const toast = new bootstrap.Toast(toastEl, { delay: 2500 });
-        const titleEl = document.getElementById('toastTitle');
-        const messageEl = document.getElementById('toastMessage');
-        if (titleEl) titleEl.textContent = 'ระบบอัปเดตสำเร็จ';
-        if (messageEl) messageEl.textContent = 'ปรับสถานะการแจ้งเตือนเป็นอ่านแล้วทั้งหมด';
-        toast.show();
-      }
-    }
   }
 
   function switchScenario(step) {
@@ -511,9 +310,6 @@
   document.addEventListener('DOMContentLoaded', () => {
     if (document.body.dataset.page === 'booking-status') {
       initBookingStatusPage();
-    }
-    if (document.body.dataset.page === 'notifications') {
-      initNotificationsPage();
     }
   });
 
@@ -538,10 +334,6 @@
     });
   });
 
-  window.openNotiModal = openNotiModal;
-  window.markAllAsRead = markAllAsRead;
-  window.filterNotifications = filterNotifications;
   window.switchScenario = switchScenario;
-  window.initNotificationsPage = initNotificationsPage;
   window.initBookingStatusPage = initBookingStatusPage;
 })();

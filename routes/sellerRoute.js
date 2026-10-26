@@ -49,6 +49,7 @@ const {
 } = require('../utils/bookingAppliances');
 const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
 const { buildCommunityNotifications } = require('../utils/communityNotifications');
+const { applyReadState, markRead, markUnread } = require('../utils/notificationReads');
 const { EVENT_ZONE_CODE } = require('../utils/eventBooth');
 
 // รูปแจ้งซ่อม (เก็บที่ Cloudinary หรือดิสก์ตาม utils/imageStorage.js)
@@ -293,6 +294,21 @@ function formatTimeThai(dateValue) {
     }
 }
 
+// เวลาของเหตุการณ์ในแจ้งเตือน (ฟิลด์ at/deadline) — หน้า /notifications ใช้เรียงลำดับ จัดกลุ่มตามวัน และนับถอยหลัง
+function toIso(dateValue) {
+    if (!dateValue) return null;
+    const date = new Date(dateValue);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+// เส้นตายต่อล็อก = 20:00 น. ของวันขายวันสุดท้าย (เหมือน utils/stallRenewal.js)
+function atEightPm(dateValue) {
+    if (!dateValue) return null;
+    const date = new Date(dateValue);
+    date.setHours(20, 0, 0, 0);
+    return date;
+}
+
 function formatMoney(value) {
     return `${Number(value || 0).toLocaleString('th-TH')} บาท`;
 }
@@ -333,9 +349,15 @@ function buildSlipRejectedReminderEntry(latestBooking, status) {
         desc: `${reason.replace('[แอดมินปฏิเสธสลิป]', '').trim()} — กรุณาอัปโหลดสลิปโอนเงินใหม่ที่หน้าสถานะการจอง (ล็อกที่จัดไว้ยังเป็นของคุณเหมือนเดิม)`,
         date: formatDateThai(new Date()),
         time: formatTimeThai(new Date()),
+        // ไม่มีเวลาที่แอดมินปฏิเสธสลิปเก็บไว้ — ไม่ใส่ at ให้ key อ่านแล้วคงที่ (ไม่งั้นเวลาเปลี่ยนทุกครั้งที่โหลดแล้วกลับเป็นยังไม่อ่าน)
+        at: null,
         status: 'IN_PROGRESS',
         isRead: false,
-        isNew: true
+        isNew: true,
+        action: 'อัปโหลดสลิปใหม่',
+        link: '/booking-status',
+        linkLabel: 'อัปโหลดสลิป',
+        linkIcon: 'bi-upload'
     }];
 }
 
@@ -383,9 +405,12 @@ function buildExtendLockReminderEntry(extendInfo) {
             : `${stallLabel} ขายวันสุดท้ายของรอบวันที่ ${formatDateThai(renewal.currentEnd)} ต่อข้ามรอบไม่ได้ หากต้องการขายต่อให้จองรอบใหม่ ล็อกจะถูกเปิดให้คนอื่นหลัง ${cutoffText}`,
         date: formatDateThai(renewal.currentEnd),
         time: '20:00',
+        at: toIso(renewal.opensAt),
+        deadline: toIso(atEightPm(renewal.currentEnd)),
         status: 'IN_PROGRESS',
         isRead: false,
         isNew: true,
+        action: canExtend ? 'ต่อล็อกก่อน 20:00 น.' : 'จองรอบใหม่',
         link: canExtend ? '/booking-stall/extend' : '/select-zone',
         linkLabel: canExtend ? 'ต่อล็อก' : 'จองรอบใหม่',
         linkIcon: 'bi-arrow-repeat'
@@ -504,7 +529,10 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
                 desc: 'คุณยังไม่เคยทำรายการจองผ่านระบบ',
                 date: '-',
                 time: '-',
-                status: 'PENDING'
+                at: null,
+                status: 'PENDING',
+                // ไม่ใช่เหตุการณ์ที่เกิดขึ้นจริง — หน้า /notifications แสดงเป็นแถบความคืบหน้าแทน ไม่นับเป็นยังไม่อ่าน
+                upcoming: true
             }
         ];
     }
@@ -527,6 +555,7 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
             desc: buildWednesdayReminderMessage(),
             date: formatDateThai(latestBooking.createdAt || new Date()),
             time: formatTimeThai(latestBooking.createdAt || new Date()),
+            at: toIso(latestBooking.createdAt),
             status,
             isRead: false,
             isNew: true
@@ -541,6 +570,7 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
             desc: buildThursdayReminderMessage(),
             date: formatDateThai(latestBooking.createdAt || new Date()),
             time: formatTimeThai(latestBooking.createdAt || new Date()),
+            at: toIso(latestBooking.createdAt),
             status,
             isRead: false,
             isNew: true
@@ -559,9 +589,13 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
                 desc: latestBooking.rejection?.desc || `คำขอจอง${zoneLabel} ถูกปฏิเสธ กรุณาติดต่อแอดมินหรือส่งคำขอจองใหม่อีกครั้ง`,
                 date: formatDateThai(latestBooking.createdAt),
                 time: formatTimeThai(latestBooking.createdAt),
+                at: toIso(latestBooking.createdAt),
                 status: 'REJECTED',
                 isRead: false,
-                isNew: true
+                isNew: true,
+                link: '/select-zone',
+                linkLabel: 'จองใหม่',
+                linkIcon: 'bi-shop'
             }
         ];
     }
@@ -574,6 +608,8 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
             desc: `ระบบได้รับรายการจอง${zoneLabel} แล้ว`,
             date: formatDateThai(latestBooking.createdAt),
             time: formatTimeThai(latestBooking.createdAt),
+            at: toIso(latestBooking.createdAt),
+            step: 1,
             status: 'PENDING'
         },
         {
@@ -589,7 +625,16 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
                     : `สถานะล่าสุด: ${statusText}`),
             date: formatDateThai(latestBooking.createdAt),
             time: formatTimeThai(latestBooking.createdAt),
-            status: 'IN_PROGRESS'
+            at: toIso(latestBooking.createdAt),
+            step: 2,
+            status: 'IN_PROGRESS',
+            ...(status === 'IN_PROGRESS' && !awaitingPaymentVerification ? {
+                action: 'ชำระเงินและอัปโหลดสลิป',
+                deadline: toIso(latestBooking.paymentDueAt),
+                link: '/booking-status',
+                linkLabel: 'ไปชำระเงิน',
+                linkIcon: 'bi-wallet2'
+            } : {})
         },
         {
             id: 3,
@@ -598,6 +643,8 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
             desc: `ยืนยันการชำระเงินเรียบร้อย ${lockMention} เป็นของร้านคุณอย่างเป็นทางการ`,
             date: formatDateThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             time: formatTimeThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
+            at: toIso(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
+            step: 3,
             status: 'SUCCESS'
         },
         // การ์ดแจ้งว่าใบเสร็จ/ใบกำกับภาษีพร้อมแล้ว — โผล่เฉพาะตอนจ่ายเงินสำเร็จจริง (มีใบเสร็จให้ดูที่ /quotations/:id แล้ว)
@@ -610,8 +657,11 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
             desc: 'ใบเสนอราคาของคุณพร้อมให้ดูและดาวน์โหลดแล้ว',
             date: formatDateThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             time: formatTimeThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
+            at: toIso(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             status: 'SUCCESS',
-            link: `/quotations/${receiptRequestId}`
+            link: `/quotations/${receiptRequestId}`,
+            linkLabel: 'ดูใบเสนอราคา',
+            linkIcon: 'bi-receipt'
         }] : [])
     ];
 
@@ -619,7 +669,10 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
     return [...extendReminderEntry, ...slipRejectedEntry, ...thursdayReminderEntry, ...reminderEntry, ...timeline].map((item, index) => ({
         ...item,
         isRead: typeof item.isRead === 'boolean' ? item.isRead : index < stage,
-        isNew: typeof item.isNew === 'boolean' ? item.isNew : index + 1 === stage
+        isNew: typeof item.isNew === 'boolean' ? item.isNew : index + 1 === stage,
+        // ขั้นที่ยังไปไม่ถึง (เช่น "เสร็จสิ้นการจอง" ตอนยังรอตรวจ) ไม่ใช่แจ้งเตือนจริง — หน้า /notifications โชว์เป็นแถบความคืบหน้า
+        // และไม่นับในเลขกระดิ่ง
+        ...(item.step && item.step > stage ? { upcoming: true } : {})
     }));
 }
 
@@ -640,10 +693,13 @@ function buildTaxInvoiceNotifications(taxInvoiceRequests) {
                     : `คำขอใบกำกับภาษีในนาม "${taxpayerName}" ถูกปฏิเสธ${request.rejectReason ? ` เหตุผล: ${request.rejectReason}` : ''}`,
                 date: formatDateThai(request.issuedAt || request.requestedAt),
                 time: formatTimeThai(request.issuedAt || request.requestedAt),
+                at: toIso(request.issuedAt || request.requestedAt),
                 status: isIssued ? 'SUCCESS' : 'REJECTED',
                 isRead: false,
                 isNew: true,
-                ...(isIssued ? { link: `/tax-invoices/${request.id}` } : {})
+                ...(isIssued
+                    ? { link: `/tax-invoices/${request.id}`, linkLabel: 'ดูใบกำกับภาษี', linkIcon: 'bi-file-earmark-text' }
+                    : { link: '/tax-invoice-requests', linkLabel: 'ขอใหม่', linkIcon: 'bi-file-earmark-plus' })
             };
         });
 }
@@ -671,6 +727,7 @@ function buildRepairNotifications(reports) {
                 desc: `คำร้องแจ้งซ่อม "${report.location} — ${report.category}" ${meta.verb}${reasonSuffix}`,
                 date: formatDateThai(report.updatedAt),
                 time: formatTimeThai(report.updatedAt),
+                at: toIso(report.updatedAt),
                 status: report.status,
                 isRead: false,
                 isNew: true
@@ -702,9 +759,11 @@ function buildEventBoothNotifications(requests) {
                 desc: `งาน "${escape(request.eventTitle)}"${detail}`,
                 date: formatDateThai(request.updatedAt),
                 time: formatTimeThai(request.updatedAt),
+                at: toIso(request.updatedAt),
                 status: request.status,
                 isRead: false,
                 isNew: true,
+                ...(request.status === 'IN_PROGRESS' && !request.paymentSlipImage ? { action: 'ชำระเงินค่าบูธ' } : {}),
                 link: `/event-booth/track/${request.trackingToken}`,
                 linkLabel: request.status === 'IN_PROGRESS' && !request.paymentSlipImage ? 'ชำระเงิน' : 'ดูคำขอบูธ',
                 linkIcon: 'bi-calendar-event'
@@ -2064,10 +2123,15 @@ async function loadAdminRenewalNotices(userId) {
                     : `ล็อก ${notice.stallCode} ขายวันสุดท้ายวันที่ ${formatDateThai(stall.bookingEndDate)} หากจะขายต่อต้องต่อก่อน 20:00 น. ของวันนั้น เลยเวลาแล้วล็อกจะถูกเปิดให้คนอื่นจอง`,
                 date: formatDateThai(notice.createdAt),
                 time: formatTimeThai(notice.createdAt),
+                at: toIso(notice.createdAt),
                 status: 'IN_PROGRESS',
                 isRead: false,
                 isNew: true,
-                ...(closed ? {} : { link: '/booking-stall/extend', linkLabel: 'ต่อล็อก', linkIcon: 'bi-arrow-repeat' })
+                ...(closed ? {} : {
+                    action: 'ต่อล็อกก่อน 20:00 น.',
+                    deadline: toIso(atEightPm(stall.bookingEndDate)),
+                    link: '/booking-stall/extend', linkLabel: 'ต่อล็อก', linkIcon: 'bi-arrow-repeat'
+                })
             });
         });
         return entries;
@@ -2132,6 +2196,7 @@ async function loadSellerBookingStatus(userId) {
         && !latestRequest.paymentConfirmedAt
     );
 
+    let paymentDueAt = null;
     let bookingView = buildBookingView(latestBooking);
 
     if (!bookingView && latestRequest) {
@@ -2223,6 +2288,7 @@ async function loadSellerBookingStatus(userId) {
             const rentalStartDate = latestBooking?.rentalStartDate || null;
             const deadlineDate = getPaymentDeadline(latestRequest, rentalStartDate);
             if (deadlineDate) {
+                paymentDueAt = deadlineDate;
                 const cutoff = rentalStartDate ? getSameDayPaymentCutoff(rentalStartDate) : null;
                 bookingView.paymentDeadlineSameDay = Boolean(cutoff && cutoff.getTime() === deadlineDate.getTime());
                 bookingView.paymentDeadline = `${formatDateThai(deadlineDate)} เวลา ${formatTimeThai(deadlineDate)} น.`;
@@ -2245,6 +2311,7 @@ async function loadSellerBookingStatus(userId) {
             zoneCode: latestRequest.zone || latestBooking?.zoneCode || '',
             createdAt: latestRequest.createdAt || latestBooking?.createdAt,
             paymentConfirmedAt: latestRequest.paymentConfirmedAt || null,
+            paymentDueAt,
             paymentSlipImage: latestRequest.paymentSlipImage || null,
             slipVerifyReason: latestRequest.slipVerifyReason || null,
             rejectReason: extractRejectReason(latestRequest.description),
@@ -2274,6 +2341,7 @@ async function loadSellerBookingStatus(userId) {
                 desc: rejection.desc,
                 date: formatDateThai(rejectedAtOf(request)),
                 time: formatTimeThai(rejectedAtOf(request)),
+                at: toIso(rejectedAtOf(request)),
                 status: 'REJECTED',
                 isRead: false,
                 isNew: true
@@ -2303,20 +2371,23 @@ async function loadSellerBookingStatus(userId) {
         take: 10
     });
 
+    // เติมหมวด/key แล้วรวมสถานะอ่านแล้วจาก DB (utils/notificationReads.js) — ใช้ชุดเดียวกันทั้งหน้า /notifications และเลขบนกระดิ่ง
+    const notifications = await applyReadState(userId, [
+        ...buildEventBoothNotifications(eventBoothRequests),
+        ...renewalNotices,
+        ...communityNotifications,
+        ...reviewNotifications,
+        ...buildRepairNotifications(repairReports),
+        ...buildTaxInvoiceNotifications(taxInvoiceRequests),
+        ...rejectionEntries,
+        ...buildBookingNotifications(notificationBooking, awaitingPaymentVerification, extendInfo)
+    ]);
+
     return {
         userRecord,
         bookingView,
         eventBoothRequests,
-        notifications: [
-            ...buildEventBoothNotifications(eventBoothRequests),
-            ...renewalNotices,
-            ...communityNotifications,
-            ...reviewNotifications,
-            ...buildRepairNotifications(repairReports),
-            ...buildTaxInvoiceNotifications(taxInvoiceRequests),
-            ...rejectionEntries,
-            ...buildBookingNotifications(notificationBooking, awaitingPaymentVerification, extendInfo)
-        ]
+        notifications
     };
 }
 
@@ -2431,14 +2502,49 @@ router.post('/booking-payment/remove-slip', isSellerOrApplicant, async (req, res
     }
 });
 
+// หน้าแจ้งเตือน (views/seller/notifications.ejs + public/js/seller/notifications.js)
 router.get('/notifications', isAuthenticated, async (req, res) => {
     const { userRecord, bookingView, notifications } = await loadSellerBookingStatus(req.user.id);
 
-    return res.render('partials/notification', {
+    return res.render('seller/notifications', {
         user: userRecord || req.user,
         booking: bookingView,
         notifications
     });
+});
+
+// ชุดแจ้งเตือนล่าสุดแบบ JSON — หน้าแจ้งเตือนดึงซ้ำทุก 60 วินาทีเพื่อขึ้นแถบ "มีแจ้งเตือนใหม่"
+router.get('/notifications/feed', isAuthenticated, async (req, res) => {
+    try {
+        const { notifications } = await loadSellerBookingStatus(req.user.id);
+        return res.json({ notifications });
+    } catch (error) {
+        console.error('notifications feed error', error);
+        return res.status(500).json({ error: 'load_failed' });
+    }
+});
+
+// ทำเป็นอ่านแล้ว / ยังไม่อ่าน — body: { keys: [...] } (key มาจาก applyReadState) แล้วล้าง cache กระดิ่งให้เลขอัปเดตทันที
+router.post('/notifications/read', isAuthenticated, async (req, res) => {
+    try {
+        await markRead(req.user.id, req.body.keys);
+        req.app.locals.clearSellerNotificationCache?.(req.user.id);
+        return res.json({ ok: true });
+    } catch (error) {
+        console.error('notifications read error', error);
+        return res.status(500).json({ error: 'save_failed' });
+    }
+});
+
+router.post('/notifications/unread', isAuthenticated, async (req, res) => {
+    try {
+        await markUnread(req.user.id, req.body.keys);
+        req.app.locals.clearSellerNotificationCache?.(req.user.id);
+        return res.json({ ok: true });
+    } catch (error) {
+        console.error('notifications unread error', error);
+        return res.status(500).json({ error: 'save_failed' });
+    }
 });
 
 router.get('/quotations/:requestId', isAuthenticated, async (req, res) => {
