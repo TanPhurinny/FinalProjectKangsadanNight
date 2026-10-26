@@ -108,7 +108,6 @@ app.use((req, res, next) => {
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const staffRoutes = require('./routes/staffRoutes');
-const marketRoutes = require('./routes/marketRoutes');
 const communityRoutes = require('./routes/communityRoutes');
 const sellerRoute = require('./routes/sellerRoute');
 const announceCtrl = require('./controllers/announcementController');
@@ -198,7 +197,6 @@ app.get('/', async (req, res) => {
 app.use('/', authRoutes); // Login, Register, Logout
 app.use('/admin', adminRoutes); // Dashboard, Users, Requests
 app.use('/staff', staffRoutes); // Staff pages
-app.use('/market', marketRoutes); // Slots, Products
 app.use('/', communityRoutes); // Community Feed APIs + Pages
 app.use('/', sellerRoute); // เลือกโซน, แจ้งซ่อม, จองแผง
 

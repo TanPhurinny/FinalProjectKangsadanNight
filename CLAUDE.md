@@ -24,7 +24,6 @@ Server-rendered Express + EJS app ("Kangsadan Night Market" management system) b
 
 - `/` → `routes/authRoutes.js` (login, register, logout, profile)
 - `/admin` → `routes/adminRoutes.js` (dashboard, announcements, users, approvals, requests, bookings) — gated by `isStaffOrAdmin` (and `isAdminOnly` for user management specifically)
-- `/market` → `routes/marketRoutes.js` (slot map, booking)
 - `/` → `routes/sellerRoute.js` (zone selection, repair reports, stall booking, and the market map `/market-map` + its extras `/market-map/{qr,sign,print,track}` handled by `controllers/marketMapController.js`)
 
 **`/market-map` is public (no login)** so customers can scan a stall's QR sign. Internal data (vacancy, contract end dates, inspection results, lot prices, open repairs) is stripped server-side by role in `getMarketMapPage` — never just hidden with CSS. Its client is split into `public/js/marketMap.js` (map, layers, cards) and `public/js/marketNav.js` (step-by-step navigation, loaded after and reusing marketMap.js globals).
