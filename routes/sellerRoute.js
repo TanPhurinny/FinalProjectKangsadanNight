@@ -855,11 +855,8 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
         include: { shop: { include: SHOP_GALLERY_INCLUDE } }
     });
 
-    // ขอใบกำกับภาษี — รวมมาไว้ในหน้าร้านค้าของฉันแทนที่จะแยกเป็นหน้าเมนูของตัวเอง (ดู taxInvoiceController.js)
-    const [eligibleQuotations, taxInvoiceProfiles, taxInvoiceRequests, viewStats, reviewPanel] = await Promise.all([
-        taxInvoiceCtrl.getEligibleQuotationsForUser(req.user.id),
-        taxInvoiceCtrl.getTaxInvoiceProfilesForUser(req.user.id),
-        taxInvoiceCtrl.buildTaxInvoiceListRows({ requestedByUserId: req.user.id }),
+    // ขอใบกำกับภาษีแยกเป็นหน้าของตัวเองแล้ว (GET /tax-invoice-requests) หน้านี้เหลือแค่ทางลัดไปที่นั่น
+    const [viewStats, reviewPanel] = await Promise.all([
         getShopViewStats(req.user.id),
         // รีวิวร้านจากสมาชิก — ผู้ขายตอบ/รายงานรีวิวได้ (public/js/seller/shopReviews.js)
         getSellerReviewPanel(req.user.id)
@@ -873,9 +870,6 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
         maxMenuImages: MAX_SHOP_MENU_IMAGES,
         viewStats,
         reviewPanel,
-        eligibleQuotations,
-        taxInvoiceProfiles,
-        taxInvoiceRequests,
         error: req.query.error || null,
         success: req.query.success || null
     });
@@ -2459,10 +2453,27 @@ router.get('/quotations/:requestId', isAuthenticated, async (req, res) => {
     }
 });
 
-// ย้ายฟีเจอร์ขอใบกำกับภาษีไปรวมกับหน้า "ร้านค้าของฉัน" แล้ว (ดู GET /shop-profile) — คง route นี้ไว้
-// เป็นแค่ทางเชื่อมสำหรับลิงก์/บุ๊กมาร์กเก่าที่อาจยังชี้มาที่นี่
-router.get('/tax-invoice-requests', isAuthenticated, (req, res) => {
-    res.redirect('/shop-profile');
+// ขอใบกำกับภาษี — หน้าของตัวเอง (เมนู "ใบกำกับภาษี") แยกจากหน้า "ร้านค้าของฉัน" (ดู taxInvoiceController.js)
+// เลือกใบเสนอราคาที่ชำระแล้ว + โปรไฟล์ผู้เสียภาษี แล้วดูสถานะคำขอที่เคยส่ง
+router.get('/tax-invoice-requests', isAuthenticated, async (req, res) => {
+    try {
+        const [eligibleQuotations, taxInvoiceProfiles, taxInvoiceRequests] = await Promise.all([
+            taxInvoiceCtrl.getEligibleQuotationsForUser(req.user.id),
+            taxInvoiceCtrl.getTaxInvoiceProfilesForUser(req.user.id),
+            taxInvoiceCtrl.buildTaxInvoiceListRows({ requestedByUserId: req.user.id })
+        ]);
+        return res.render('seller/taxInvoiceRequests', {
+            user: req.user,
+            eligibleQuotations,
+            taxInvoiceProfiles,
+            taxInvoiceRequests,
+            error: req.query.error || null,
+            success: req.query.success || null
+        });
+    } catch (error) {
+        console.error('Tax invoice requests page error:', error);
+        return res.status(500).send('โหลดหน้าขอใบกำกับภาษีไม่สำเร็จ');
+    }
 });
 
 router.post('/tax-invoice-requests', isAuthenticated, async (req, res) => {
@@ -2484,15 +2495,15 @@ router.post('/tax-invoice-requests', isAuthenticated, async (req, res) => {
         }
     });
 
-    if (result.error) return res.redirect(`/shop-profile?error=${result.error}`);
-    res.redirect('/shop-profile?success=tax_invoice_requested');
+    if (result.error) return res.redirect(`/tax-invoice-requests?error=${result.error}`);
+    res.redirect('/tax-invoice-requests?success=tax_invoice_requested');
 });
 
 router.get('/tax-invoices/:id', isAuthenticated, async (req, res) => {
     try {
         const taxInvoice = await taxInvoiceCtrl.buildTaxInvoiceData(req.params.id);
         if (!taxInvoice || taxInvoice.ownerUserId !== req.user.id) {
-            return res.redirect('/shop-profile?error=tax_invoice_not_found');
+            return res.redirect('/tax-invoice-requests?error=tax_invoice_not_found');
         }
         return res.render('seller/taxInvoice', { taxInvoice, error: null });
     } catch (err) {

@@ -435,3 +435,21 @@
 .sr-btn-ghost { background: #fff; color: var(--navy); }
 .sr-btn-ghost:hover { background: #f6f8f8; }
 .sr-btn-report { border-color: var(--line); color: var(--ink-soft); }
+
+/* ── ทางลัดไปหน้าขอใบกำกับภาษี (แยกออกจากหน้านี้แล้ว) ── */
+.tax-invoice-link {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 18px 0 40px;
+    padding: 14px 18px;
+    border: 1px solid var(--navy);
+    background: #fff;
+    color: var(--navy);
+    text-decoration: none;
+}
+.tax-invoice-link:hover { background: #f6f8f8; color: var(--navy); }
+.tax-invoice-link > i:first-child { font-size: 1.3rem; color: var(--primary); }
+.tax-invoice-link span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.tax-invoice-link b { font-size: 0.95rem; }
+.tax-invoice-link small { color: var(--ink-soft); font-size: 0.8rem; }

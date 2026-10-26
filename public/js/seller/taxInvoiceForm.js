@@ -1,4 +1,4 @@
-/* ฟอร์มขอใบกำกับภาษี (หน้า "ร้านค้าของฉัน") — จัดรูปแบบตัวเลขตามช่อง ตรวจข้อมูลก่อนส่ง
+/* ฟอร์มขอใบกำกับภาษี (หน้า /tax-invoice-requests) — จัดรูปแบบตัวเลขตามช่อง ตรวจข้อมูลก่อนส่ง
    กติกาเดียวกับฝั่ง server ใน utils/taxProfileValidation.js (server ตรวจซ้ำเสมอ) */
 (function () {
     const form = document.getElementById('taxInvoiceForm');
