@@ -21,6 +21,7 @@ model User {
   announcements Announcement[]
   bookings      Booking[]
   bookingRequests BookingRequest[]
+  eventBoothRequests EventBoothRequest[]
   requests      MaintenanceReport[] @relation("MaintenanceReportReporter")
   shop          ShopDetail?
   sellerProfile Seller?
@@ -809,4 +810,44 @@ model ShopPromo {
 
   @@unique([userId, businessDate])
   @@index([businessDate])
+}
+
+// คำขอจัดบูธกิจกรรม (โซน G) — ส่งได้โดยไม่ต้อง login และไม่ต้องสมัครร้าน (บริษัท/หน่วยงานภายนอก)
+// แยกจาก BookingRequest/Booking เพราะ Booking.userId บังคับต้องมีผู้ใช้ และหน้าจองแผงถือว่ามีร้านเสมอ
+// สถานะ: PENDING (รอแอดมิน) → IN_PROGRESS (อนุมัติ+จัดบูธแล้ว รอชำระ) → SUCCESS (ยืนยันสลิปแล้ว) / REJECTED
+// ผู้ขอติดตามสถานะ/แนบสลิปผ่านลิงก์ /event-booth/track/:trackingToken (ไม่ต้อง login)
+// ผังตลาดอ่านตารางนี้ตรงๆ (utils/stallDayStatus.js) ไม่เขียนทับ Stall.status
+model EventBoothRequest {
+  id                 Int       @id @default(autoincrement())
+  trackingToken      String    @unique @db.VarChar(64)
+  companyName        String
+  contactName        String
+  phone              String
+  email              String?
+  eventTitle         String
+  description        String?   @db.Text
+  startDate          DateTime
+  endDate            DateTime
+  days               Int       @default(1)
+  preferredStallCode String?
+  assignedStallCode  String?
+  pricePerDay        Float     @default(0)
+  totalAmount        Float     @default(0)
+  status             Status    @default(PENDING)
+  rejectReason       String?   @db.Text
+  paymentDueAt       DateTime?
+  paymentSlipImage   String?
+  slipVerified       Boolean?
+  slipVerifyReason   String?   @db.Text
+  slipVerifiedAmount Float?
+  paymentConfirmedAt DateTime?
+  decidedByName      String?
+  userId             Int?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  user               User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId], map: "EventBoothRequest_userId_fkey")
+  @@index([status])
+  @@index([assignedStallCode])
 }

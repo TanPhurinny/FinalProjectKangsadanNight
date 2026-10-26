@@ -128,6 +128,21 @@ const ZONE_DEFINITIONS = [
     basePrice: 219,
     displayOrder: 8,
     rows: [{ rowCode: 'T1', start: 102, end: 131 }]
+  },
+  {
+    // โซนกิจกรรม: G101 ใต้ F1/F2, G201 ใต้ F5/F6 ติดโซน B (ดู prisma/fixes/2026-10-26-add-event-zone-g.js)
+    code: 'G',
+    name: 'โซนกิจกรรม',
+    description: 'Event Booth',
+    productCategory: 'EVENT_BOOTH',
+    productTypes: ['EVENT_BOOTH'],
+    size: '3x3',
+    basePrice: 490,
+    displayOrder: 9,
+    rows: [
+      { rowCode: 'G1', start: 101, end: 101 },
+      { rowCode: 'G2', start: 201, end: 201 }
+    ]
   }
 ];
 
