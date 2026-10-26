@@ -13,6 +13,7 @@ const { verifySlip } = require('../utils/slipVerification');
 const { BOOKING_REQUEST_TAG_PREFIX, buildBookingRequestTag } = require('../utils/bookingRequestTag');
 const { sendStallExpiringSoonEmail } = require('../config/mailer');
 const { describeBookingAppliances } = require('../utils/bookingAppliances');
+const { isEventBoothCode } = require('../utils/eventBooth');
 
 function normalizeZone(zone) {
     return String(zone || '').trim().toUpperCase();
@@ -131,7 +132,7 @@ function stripInternalTags(descriptionText) {
 const PRODUCT_TYPE_LABEL = {
     FASHION: 'แฟชั่น',
     FOOD: 'อาหาร',
-    EVENT_BOOTH: 'กิจกรรม/บูธพิเศษ'
+    EVENT_BOOTH: 'บูธกิจกรรม'
 };
 
 async function buildAdminBookingStallPageData(requestId) {
@@ -1115,6 +1116,10 @@ exports.confirmBookingStall = async (req, res) => {
         }
         if (new Set(selectedStalls).size !== selectedStalls.length) {
             return res.redirect(approvalsUrl(req, 'error=duplicate_stall_selected'));
+        }
+        // บูธกิจกรรม (โซน G) จัดผ่านหน้า /admin/event-booths เท่านั้น ไม่จัดให้คำขอจองแผงของร้านค้า
+        if (selectedStalls.some(isEventBoothCode)) {
+            return res.redirect(approvalsUrl(req, 'error=event_booth_not_assignable'));
         }
 
         const requestRecord = await prisma.bookingRequest.findUnique({

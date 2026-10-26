@@ -108,7 +108,9 @@
     function renderZoneBadges() {
         const s = computeStats();
         document.querySelectorAll('.zone-block').forEach((block) => {
-            const zone = block.id.replace('zone-', '');
+            // โซนที่มีหลายกล่อง (โซน G) แสดงป้ายตัวเลขแค่กล่องเดียว — กล่องเล็กติด data-badges="off"
+            if (block.dataset.badges === 'off') return;
+            const zone = zoneOfBlock(block);
             const z = s.zones[zone];
             let box = block.querySelector('.zone-badges');
             if (!box) {

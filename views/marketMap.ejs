@@ -14,7 +14,7 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
             rel="stylesheet" />
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
-        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261023-noshadow">
+        <link rel="stylesheet" href="/stylesheets/marketMap.css?v=20261026-event">
         <link rel="stylesheet" href="/stylesheets/common/searchSuggest.css?v=20261002">
     </head>
     <body>
@@ -37,7 +37,7 @@
             acc[zone.code] = zone;
             return acc;
         }, {});
-        const otherZones = zonesList.filter((zone) => !['A', 'B', 'C', 'D', 'E', 'F', 'X'].includes(zone.code));
+        const otherZones = zonesList.filter((zone) => !['A', 'B', 'C', 'D', 'E', 'F', 'G', 'X'].includes(zone.code));
         %>
 
         <div id="stallTooltip" class="stall-tooltip">
@@ -181,6 +181,19 @@
                                         C</div><div
                                         class="z-sub"><%= zoneByCode.C ? zoneByCode.C.description : '-' %></div></div>
                             </div>
+                            <% if (zoneByCode.G) { %>
+                            <!-- โซน G บูธกิจกรรม 2 จุดตามผังจริง: G1 ใต้แถว F1/F2, G2 ใต้แถว F5/F6 ติดแถว B1/B2 (เหนือห้องน้ำ/ออฟฟิศ) -->
+                            <div class="zone-block zone-block-event" id="zone-G1" data-zone="G"
+                                onclick="openZone('G')" title="โซน G บูธกิจกรรม จุดที่ 1 (G101)">
+                                <div class="zone-label"><div class="z-title">G1</div><div
+                                        class="z-sub">กิจกรรม</div></div>
+                            </div>
+                            <div class="zone-block zone-block-event" id="zone-G2" data-zone="G"
+                                onclick="openZone('G')" title="โซน G บูธกิจกรรม จุดที่ 2 (G201)">
+                                <div class="zone-label"><div class="z-title">G2</div><div
+                                        class="z-sub">บูธกิจกรรม</div></div>
+                            </div>
+                            <% } %>
                             <div class="facility-btns">
                                 <button class="btn-facility btn-facility-trash"><i
                                         class="fa-solid fa-dumpster fa-xs"></i>
@@ -406,7 +419,7 @@
         <script type="application/json" id="inspectionLayerJson"><%- JSON.stringify(locals.inspectionLayer || null).replace(/</g, '\\u003c') %></script>
         <script src="/js/common/dialogs.js"></script>
         <script src="/js/common/searchSuggest.js?v=20261002"></script>
-        <script src="/js/marketMap.js?v=20261023-photos"></script>
-        <script src="/js/marketNav.js?v=20261002"></script>
+        <script src="/js/marketMap.js?v=20261026-event"></script>
+        <script src="/js/marketNav.js?v=20261026-event"></script>
     </body>
 </html>

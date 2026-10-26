@@ -273,13 +273,14 @@ button { font-family: inherit; }
   position: relative;
   display: grid;
   grid-template-columns: var(--zone-a-w) var(--main-road-w) var(--zone-f-w) var(--zone-b-w);
-  grid-template-rows: 45px minmax(360px, 1fr) auto;
+  grid-template-rows: 45px minmax(360px, 1fr) auto auto;
   column-gap: clamp(16px, 2.4vw, 40px);
   row-gap: 14px;
   grid-template-areas:
     "e      dx     dx     ."
     "a      road   f      b"
-    "c      .      btn    .";
+    "c      .      g      g"
+    ".      .      btn    .";
   height: 100%;
   min-height: 560px;
 }
@@ -914,4 +915,36 @@ button { font-family: inherit; }
   .rs-step:nth-child(2) { border-right: 0; }
   .rs-step:nth-child(n + 3) { border-top-width: 4px; }
   .rs-current { padding: 8px 12px; }
+}
+
+/* โซน G บูธกิจกรรม: แถวใต้ F/B — G1 ใต้ครึ่งซ้ายของ F (แถว F1/F2), G2 ใต้ F5/F6 ต่อไปถึงโซน B */
+.zone-legend__swatch--g { background: repeating-linear-gradient(135deg, #D6DBFF 0 4px, #C4CBFB 4px 8px); border: 1px dashed #3532a8; }
+.event-zone-row {
+  grid-area: g;
+  display: grid;
+  grid-template-columns: 1fr 2.2fr;
+  gap: 12px;
+  margin-left: clamp(8px, 3vw, 48px);
+}
+.event-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 6px;
+  text-align: center;
+  text-decoration: none;
+  background: repeating-linear-gradient(135deg, #D6DBFF 0 8px, #C4CBFB 8px 16px);
+  color: #3532a8;
+  border: 1.5px dashed #3532a8;
+  border-radius: var(--radius);
+  transition: filter var(--transition);
+}
+.event-zone:hover { filter: brightness(0.96); color: #3532a8; }
+.event-zone:focus-visible { outline: 2px solid #3532a8; outline-offset: 2px; }
+.event-zone__name { font-family: var(--mono); font-weight: 700; font-size: 1rem; }
+.event-zone__category { font-size: 0.75rem; font-weight: 600; }
+@media (max-width: 768px) {
+  .event-zone-row { margin-left: 0; grid-template-columns: 1fr 1fr; }
 }

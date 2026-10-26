@@ -10,7 +10,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
-  <link rel="stylesheet" href="/stylesheets/seller/selectZone.css?v=20261002-round">
+  <link rel="stylesheet" href="/stylesheets/seller/selectZone.css?v=20261026-event">
 </head>
 
 <body>
@@ -102,6 +102,7 @@
         <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--a"></span><span class="zone-legend__text">โซน A<small>แฟชั่น/อาหารพิเศษ</small></span></span>
         <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--b"></span><span class="zone-legend__text">โซน B / D / F / X<small>อาหาร</small></span></span>
         <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--c"></span><span class="zone-legend__text">โซน C / E<small>แฟชั่น</small></span></span>
+        <span class="zone-legend__item"><span class="zone-legend__swatch zone-legend__swatch--g"></span><span class="zone-legend__text">โซน G<small>บูธกิจกรรม</small></span></span>
       </div>
     </header>
 
@@ -168,6 +169,19 @@
         <div class="zone zone--c <%= (typeof allowedZones !== 'undefined' && Array.isArray(allowedZones) && !allowedZones.includes('c')) ? 'is-disabled' : '' %>" data-zone="c" role="button" tabindex="0" aria-label="โซน C - แฟชั่น">
           <span class="zone__name">โซน C</span>
           <span class="zone__category">แฟชั่น</span>
+        </div>
+
+        <!-- โซน G บูธกิจกรรม (ไม่ใช่การจองแผงขายของ) — กดแล้วไปฟอร์มขอจัดบูธกิจกรรม กรอกข้อมูลร้านให้อัตโนมัติ
+             ใช้ class event-zone ไม่ใช่ zone เพราะ market-map.js ผูก .zone เข้ากับป๊อปอัปจองแผง -->
+        <div class="event-zone-row" aria-label="โซน G บูธกิจกรรม">
+          <a class="event-zone event-zone--g1" href="/event-booth?booth=G101" aria-label="โซน G จุดที่ 1 บูธกิจกรรม ใต้แถว F1/F2">
+            <span class="event-zone__name">G1</span>
+            <span class="event-zone__category">บูธกิจกรรม</span>
+          </a>
+          <a class="event-zone event-zone--g2" href="/event-booth?booth=G201" aria-label="โซน G จุดที่ 2 บูธกิจกรรม ใต้แถว F5/F6 ติดโซน B">
+            <span class="event-zone__name">G2</span>
+            <span class="event-zone__category">บูธกิจกรรม · ขอจัดบูธ</span>
+          </a>
         </div>
 
         <div class="bottom-buttons">

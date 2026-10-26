@@ -190,6 +190,11 @@ function renderGrid(zoneKey) {
                 const placeholderCell = document.createElement('div');
                 placeholderCell.className = stall.small ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
                 placeholderCell.textContent = 'x';
+                if (stall.eventLink) {
+                    placeholderCell.classList.add('event-link');
+                    placeholderCell.textContent = 'กิจกรรม';
+                    placeholderCell.title = `พื้นที่บูธกิจกรรม ${stall.eventLink} (โซน G)`;
+                }
                 colDiv.appendChild(placeholderCell);
                 return;
             }

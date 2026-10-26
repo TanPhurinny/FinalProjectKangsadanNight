@@ -1,4 +1,9 @@
 /* Slots page interactions */
+// กล่องโซนบนผังภาพรวม: ปกติ id="zone-A" — โซนที่มีหลายกล่อง (โซน G บูธกิจกรรม 2 จุด) ระบุโซนด้วย data-zone
+function zoneOfBlock(el) {
+    return el.dataset.zone || el.id.replace('zone-', '');
+}
+
 function readJsonScript(id) {
     const el = document.getElementById(id);
     if (!el) return {};
@@ -252,7 +257,7 @@ function openZone(z) {
     hideInfo();
 
     document.querySelectorAll('.zone-block').forEach((el) => {
-        if (el.id === `zone-${z}`) {
+        if (zoneOfBlock(el) === z) {
             el.classList.add('zone-active');
             el.classList.remove('dimmed');
         } else {
@@ -430,6 +435,16 @@ function renderGrid(z) {
                 const placeholderCell = document.createElement('div');
                 placeholderCell.className = isPaired(stall) ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
                 placeholderCell.textContent = 'x';
+                // พื้นที่บูธกิจกรรมในผังโซน F (ไม่ใช่ล็อกของโซน F) — กดแล้วไปโซน G
+                if (stall.eventLink) {
+                    placeholderCell.classList.add('event-link');
+                    placeholderCell.textContent = 'กิจกรรม';
+                    placeholderCell.title = `พื้นที่บูธกิจกรรม ${stall.eventLink} — กดเพื่อดูโซนกิจกรรม`;
+                    placeholderCell.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        openZone('G');
+                    });
+                }
                 (isPaired(stall) ? getSmallWrap(stall.groupId) : col).appendChild(placeholderCell);
                 return;
             }
@@ -644,7 +659,7 @@ function refreshFilterResults() {
     });
 
     document.querySelectorAll('.zone-block').forEach((el) => {
-        const z = el.id.replace('zone-', '');
+        const z = zoneOfBlock(el);
         if (mz.has(z)) el.classList.add('search-match');
         else el.classList.remove('search-match');
     });

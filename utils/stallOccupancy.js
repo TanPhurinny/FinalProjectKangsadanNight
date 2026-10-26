@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 const PRODUCT_TYPE_LABEL = {
     FASHION: 'แฟชั่น',
     FOOD: 'อาหาร',
-    EVENT_BOOTH: 'กิจกรรม/บูธพิเศษ'
+    EVENT_BOOTH: 'บูธกิจกรรม'
 };
 
 const BOOKING_STATUS_LABEL = { IN_PROGRESS: 'รอชำระเงิน', SUCCESS: 'ชำระเงินแล้ว', APPROVED: 'อนุมัติแล้ว' };
@@ -29,6 +29,7 @@ function toThaiDate(value) {
 // ต้อง require lazy (ไม่ใส่ไว้บนสุดของไฟล์) เพราะ getBookingRoundMetaForDate มาจาก utils/bookingRound.js
 // ซึ่งไม่ได้ require กลับมาที่ไฟล์นี้ ไม่มีปัญหา circular แต่ใส่ตรงนี้เพื่อให้เห็นชัดว่าใช้แค่ฟังก์ชันเดียว
 const { getBookingRoundMetaForDate } = require('./bookingRound');
+const eventBooth = require('./eventBooth');
 
 // เติม stall.occupant ให้ทุกล็อกที่ "จองแล้ว" (ไม่ใช่ AVAILABLE/PLACEHOLDER) ในทุกโซนของ zonesData ที่ส่งเข้ามา
 // (แก้ไข object ตรงๆ ในตัว ไม่ return ค่าใหม่ — เรียกแล้วใช้ zonesData ตัวเดิมต่อได้เลย)
@@ -49,7 +50,7 @@ async function attachOccupantDetails(zonesData, options = {}) {
         });
     });
 
-    if (!bookedStalls.length) return;
+    if (!bookedStalls.length) return {};
 
     const occupantInfoByCode = {};
 
@@ -174,6 +175,8 @@ async function attachOccupantDetails(zonesData, options = {}) {
             : '/admin/approvals';
     });
 
+    await attachEventBoothOccupants(zonesData, occupantInfoByCode, options.eventRequestIdByCode || null);
+
     zonesData.forEach((zone) => {
         zone.columns.forEach((column) => {
             column.stalls.forEach((stall) => {
@@ -183,6 +186,57 @@ async function attachOccupantDetails(zonesData, options = {}) {
     });
 
     return occupantInfoByCode;
+}
+
+// บูธกิจกรรม (โซน G) ไม่มี Slot/Booking — ผู้ใช้บูธมาจาก EventBoothRequest (ใช้ใบที่ครอบวันที่กำลังดูถ้าส่ง id มา
+// ไม่งั้นใช้ใบที่ครอบวันนี้) แล้วแปลงเป็นรูปแบบ occupant เดียวกับล็อกปกติ ให้การ์ดล็อกฝั่งแอดมินแสดงได้เลย
+async function attachEventBoothOccupants(zonesData, occupantInfoByCode, eventRequestIdByCode) {
+    const codes = [];
+    zonesData.forEach((zone) => zone.columns.forEach((column) => column.stalls.forEach((stall) => {
+        if (stall.isEventBooth && stall.status === 'BOOKED') codes.push(stall.code);
+    })));
+    if (!codes.length) return;
+
+    let requestByCode = {};
+    if (eventRequestIdByCode) {
+        const ids = codes.map((code) => eventRequestIdByCode[code]).filter(Boolean);
+        const rows = ids.length ? await prisma.eventBoothRequest.findMany({ where: { id: { in: ids } } }) : [];
+        rows.forEach((row) => { requestByCode[String(row.assignedStallCode).toUpperCase()] = row; });
+    } else {
+        const today = await eventBooth.getEventBoothStatusForDate(new Date());
+        Object.entries(today).forEach(([code, entry]) => { requestByCode[code] = entry.request; });
+    }
+
+    codes.forEach((code) => {
+        const request = requestByCode[code];
+        if (!request) return;
+        const paid = request.status === 'SUCCESS';
+        occupantInfoByCode[code] = {
+            userId: request.userId || null,
+            eventRequestId: request.id,
+            isEventBooth: true,
+            bookingStatus: request.status,
+            shopName: request.eventTitle,
+            productType: 'EVENT_BOOTH',
+            productTypeText: 'บูธกิจกรรม',
+            productSubtype: request.companyName,
+            productImage: null,
+            renterName: `${request.contactName} (${request.companyName})`,
+            phone: request.phone,
+            rentalStartDate: request.startDate,
+            rentalEndDate: request.endDate,
+            rentalPeriodText: `${toThaiDate(request.startDate)} - ${toThaiDate(request.endDate)}`,
+            dailyStallPrice: request.pricePerDay,
+            paymentStatusText: eventBooth.STATUS_LABEL[request.status] || request.status,
+            isUnpaid: !paid,
+            daysUntilExpiry: Math.ceil((new Date(request.endDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000)),
+            stallCountForShop: 1,
+            isNewCustomer: false,
+            statusBadge: paid ? 'paid' : 'unpaid',
+            approvalsUrl: `/admin/event-booths?focus=${request.id}`,
+            requestId: null
+        };
+    });
 }
 
 module.exports = { attachOccupantDetails, PRODUCT_TYPE_LABEL };

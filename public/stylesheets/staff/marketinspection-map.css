@@ -133,10 +133,15 @@
    คลิกสลับดูโซนเท่านั้น ไม่ต้องยึดสัดส่วนจริงเป๊ะเหมือนผังจัดล็อคของแอดมิน จึงปรับเพื่อ usability ได้ */
 .insp-ov-zone-A { top: 28%; left: 13.5%; width: 23%; height: 52%; }
 .insp-ov-zone-E { top: 8%; left: 19.5%; width: 17%; height: 18%; }
-.insp-ov-zone-F { top: 28%; left: 50.5%; width: 17%; height: 58%; }
+.insp-ov-zone-F { top: 28%; left: 50.5%; width: 17%; height: 50%; }
 .insp-ov-zone-D { top: 8%; left: 50.5%; width: 17%; height: 18%; }
 .insp-ov-zone-X { top: 8%; left: 71.5%; width: 15%; height: 18%; }
-.insp-ov-zone-B { top: 28%; left: 71.5%; width: 15%; height: 58%; }
+.insp-ov-zone-B { top: 28%; left: 71.5%; width: 15%; height: 50%; }
+/* โซน G บูธกิจกรรม: แถบใต้ F/B (F/B หดจาก 58% เหลือ 50%) — G1 ใต้ F1/F2, G2 ใต้ F5/F6 ต่อถึง B */
+.insp-ov-zone-G { background: repeating-linear-gradient(135deg, #D6DBFF 0 6px, #C4CBFB 6px 12px); color: #3532a8; border: 1px dashed #3532a8; }
+.insp-ov-zone-G .insp-ov-zone-title { font-size: 10px; white-space: nowrap; }
+.insp-ov-zone-G1 { top: 81%; left: 50.5%; width: 7.5%; height: 14%; }
+.insp-ov-zone-G2 { top: 81%; left: 60%; width: 17%; height: 14%; }
 .insp-ov-zone-C { top: 82%; left: 13.5%; width: 23%; height: 16%; }
 
 /* ทางเดินหลัก: กรอบประคั่นระหว่าง A กับ F */
@@ -488,4 +493,14 @@
     .insp-ov-zone-C .insp-ov-zone-title {
         font-size: 9px;
     }
+}
+
+/* พื้นที่บูธกิจกรรมในผังโซน F — ไม่ใช่ล็อก บูธจริงอยู่ในโซน G */
+.insp-stall-cell.placeholder.event-link {
+    background: repeating-linear-gradient(135deg, #D6DBFF 0 6px, #C4CBFB 6px 12px);
+    color: #3532a8;
+    border: 1px dashed #3532a8;
+    font-size: 9px;
+    font-weight: 700;
+    opacity: 1;
 }

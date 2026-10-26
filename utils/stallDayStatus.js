@@ -6,6 +6,7 @@ const prisma = require('../config/prismaClient');
 const { toStartOfDay, addDays } = require('./bookingRound');
 const { businessDateOf } = require('./shopOpenStatus');
 const { isDateHoliday } = require('./bookingHolidays');
+const { getEventBoothStatusForDate } = require('./eventBooth');
 
 const ACTIVE_BOOKING_STATUSES = ['APPROVED', 'IN_PROGRESS', 'SUCCESS'];
 // มีหลาย Booking ทับวันเดียวกันในล็อกเดียว (เช่น คำขอเก่าค้าง IN_PROGRESS) ให้เชื่อตัวที่จ่ายเงินแล้วก่อน
@@ -66,7 +67,7 @@ async function buildStallStatusForDate(date) {
     const day = toStartOfDay(date);
     const dayEnd = new Date(addDays(day, 1).getTime() - 1);
 
-    const [stalls, bookings, isHoliday] = await Promise.all([
+    const [stalls, bookings, isHoliday, eventBooths] = await Promise.all([
         prisma.stall.findMany({ select: { stallCode: true, status: true, bookingStartDate: true, bookingEndDate: true } }),
         prisma.booking.findMany({
             where: {
@@ -76,7 +77,9 @@ async function buildStallStatusForDate(date) {
             },
             select: { id: true, status: true, rentalStartDate: true, rentalEndDate: true, slot: { select: { slotNumber: true } } }
         }),
-        isDateHoliday(day)
+        isDateHoliday(day),
+        // บูธกิจกรรม (โซน G) ไม่มี Booking — สถานะมาจาก EventBoothRequest ที่ครอบวันนี้ (utils/eventBooth.js)
+        getEventBoothStatusForDate(day)
     ]);
 
     const bookingByCode = {};
@@ -97,6 +100,17 @@ async function buildStallStatusForDate(date) {
 
         if (stall.status === 'MAINTENANCE') {
             byCode[code] = { state: 'maintenance' };
+            return;
+        }
+
+        const eventBooth = eventBooths[code];
+        if (eventBooth) {
+            byCode[code] = {
+                state: eventBooth.state,
+                eventRequestId: eventBooth.request.id,
+                isLastDay: eventBooth.isLastDay,
+                startsToday: eventBooth.startsToday
+            };
             return;
         }
 

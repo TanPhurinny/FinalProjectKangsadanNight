@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
     <link rel="stylesheet" href="/stylesheets/admin/theme.css">
     <link rel="stylesheet" href="/stylesheets/responsive.css">
-    <link rel="stylesheet" href="/stylesheets/admin/bookingStall.css?v=20261023-dot">
+    <link rel="stylesheet" href="/stylesheets/admin/bookingStall.css?v=20261026-event">
   </head>
   <body>
 
@@ -161,6 +161,8 @@
                 <small>(อาหาร)</small></button>
               <button class="btn-zone" data-zone="X">โซน X
                 <small>(อาหาร)</small></button>
+              <button class="btn-zone" data-zone="G">โซน G
+                <small>(บูธกิจกรรม — ดูอย่างเดียว)</small></button>
             </div>
 
             <div class="zone-info-bar" id="zoneInfoBar">
@@ -183,6 +185,11 @@
                 <span class="ov-zone-title">โซน B</span><span class="ov-zone-sub">อาหาร/แฟชั่น</span></div>
               <div class="ov-zone-block ov-zone-C" data-zone="C" title="โซน C — แฟชั่น">
                 <span class="ov-zone-title">โซน C</span></div>
+              <!-- โซน G บูธกิจกรรม 2 จุด: G1 ใต้ F1/F2, G2 ใต้ F5/F6 ติดโซน B (จัดบูธที่หน้า /admin/event-booths) -->
+              <div class="ov-zone-block ov-zone-G ov-zone-G1" data-zone="G" title="โซน G — บูธกิจกรรม จุดที่ 1 (G101)">
+                <span class="ov-zone-title">G1</span></div>
+              <div class="ov-zone-block ov-zone-G ov-zone-G2" data-zone="G" title="โซน G — บูธกิจกรรม จุดที่ 2 (G201)">
+                <span class="ov-zone-title">G2</span><span class="ov-zone-sub">บูธกิจกรรม</span></div>
             </div>
 
             <div class="legend-box">
@@ -714,6 +721,12 @@
           const placeholderCell = document.createElement('div');
           placeholderCell.className = isPairedStall(stall) ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
           placeholderCell.textContent = 'x';
+          // พื้นที่บูธกิจกรรมในผังโซน F (ไม่ใช่ล็อก) — บูธจริงอยู่ในโซน G
+          if (stall.eventLink) {
+            placeholderCell.classList.add('event-link');
+            placeholderCell.textContent = 'กิจกรรม';
+            placeholderCell.title = `พื้นที่บูธกิจกรรม ${stall.eventLink} (โซน G)`;
+          }
           (isPairedStall(stall) ? getSmallWrap(stall.groupId) : colDiv).appendChild(placeholderCell);
           return;
         }

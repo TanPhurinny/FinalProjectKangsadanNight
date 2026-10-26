@@ -27,7 +27,8 @@ const CAN_SEE_VACANCY = IS_ADMIN || IS_STAFF;
 const CATEGORIES = [
     { key: 'FOOD', label: 'อาหาร', color: '#e67e22', match: /^(food|อาหาร)$/i },
     { key: 'FASHION', label: 'แฟชั่น', color: '#8e44ad', match: /^(fashion|แฟชั่น)$/i },
-    { key: 'EVENT_BOOTH', label: 'บูธกิจกรรม', color: '#16a085', match: /^(event[ _]?booth|บูธกิจกรรม)$/i }
+    // สีเดียวกับกล่องโซน G บนผังภาพรวม (--zone-G-cl) ต่างจากอาหาร/แฟชั่น/อื่นๆ
+    { key: 'EVENT_BOOTH', label: 'บูธกิจกรรม', color: '#3532a8', match: /^(event[ _]?booth|บูธกิจกรรม)$/i }
 ];
 const OTHER_CATEGORY = { key: 'OTHER', label: 'อื่นๆ', color: '#607d8b' };
 
@@ -71,6 +72,11 @@ if (new URLSearchParams(window.location.search).get('demo') === '1') {
             });
         });
     });
+}
+
+// กล่องโซนบนผังภาพรวม: ปกติ id="zone-A" — โซนที่มีหลายกล่อง (โซน G บูธกิจกรรม 2 จุด) ระบุโซนด้วย data-zone
+function zoneOfBlock(el) {
+    return el.dataset.zone || el.id.replace('zone-', '');
 }
 
 function zoneOf(code) {
@@ -863,7 +869,14 @@ function renderRoleActions(id, zone, isVacant) {
     const actions = [];
     const stall = findStall(id);
 
-    if (MY_STALLS.has(id)) {
+    if (stall && stall.isEventBooth) {
+        // บูธกิจกรรม: ช่วงวันของงาน (ถ้ามีงานวันนี้) + ปุ่มขอจัดบูธ (ไม่ต้อง login)
+        const ev = stall.event;
+        if (ev) notes.push(`<div>งานวันนี้: <b>${escapeHtml(ev.title)}</b> โดย ${escapeHtml(ev.company)}<br>${formatThaiDate(ev.startDate)} – ${formatThaiDate(ev.endDate)}</div>`);
+        else notes.push('<div>บูธกิจกรรม <b>ว่างวันนี้</b> — บริษัท/หน่วยงานขอจัดบูธได้โดยไม่ต้องสมัครร้าน</div>');
+        actions.push([`/event-booth?booth=${encodeURIComponent(id)}`, 'ขอจัดบูธกิจกรรม']);
+        if (IS_ADMIN || IS_STAFF) actions.push(['/admin/event-booths', 'จัดการคำขอบูธกิจกรรม']);
+    } else if (MY_STALLS.has(id)) {
         notes.push('<b>ล็อกของคุณ</b>');
         notes.push(myStallHealthHtml(id, stall));
         actions.push(['/booking-stall/extend', 'ต่อล็อก']);
@@ -1227,7 +1240,7 @@ function openZone(z) {
     hideInfo();
 
     document.querySelectorAll('.zone-block').forEach((el) => {
-        if (el.id === `zone-${z}`) {
+        if (zoneOfBlock(el) === z) {
             el.classList.add('zone-active');
             el.classList.remove('dimmed');
         } else {
@@ -1397,6 +1410,7 @@ function renderGrid(z) {
                 const placeholderCell = document.createElement('div');
                 placeholderCell.className = isPaired(stall) ? 'stall-cell stall-cell-small placeholder' : 'stall-cell placeholder';
                 placeholderCell.textContent = 'x';
+                if (stall.eventLink) markEventLinkCell(placeholderCell, stall.eventLink);
                 (isPaired(stall) ? getSmallWrap(stall.groupId) : col).appendChild(placeholderCell);
                 return;
             }
@@ -1430,6 +1444,13 @@ function renderGrid(z) {
                 cell.classList.add('maintenance');
             } else if (CAN_SEE_VACANCY) {
                 cell.classList.add('vacant-clickable');
+                cell.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showVacantInfo(id, z);
+                });
+            } else if (stall.isEventBooth) {
+                // บูธกิจกรรมว่าง: ทุกคนเห็นได้ (ไม่ใช่ข้อมูลภายในเหมือนล็อกขายของว่าง) กดแล้วมีปุ่มขอจัดบูธ
+                cell.classList.add('event-vacant');
                 cell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     showVacantInfo(id, z);
@@ -1799,8 +1820,20 @@ function searchByTag(tag) {
     doSearch(tag);
 }
 
+// ช่องว่างในผังโซน F ที่เป็นพื้นที่บูธกิจกรรม — กดแล้วไปที่บูธนั้นในโซน G
+function markEventLinkCell(cell, code) {
+    cell.classList.add('event-link');
+    cell.textContent = 'กิจกรรม';
+    cell.title = `พื้นที่บูธกิจกรรม ${code} — กดเพื่อดูโซนกิจกรรม`;
+    cell.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openStallDeepLink(code, false);
+    });
+}
+
 function showVacantInfo(id, zone) {
-    document.getElementById('ic-head').textContent = `แผง ${id} — ว่าง`;
+    const isEventBooth = Boolean((findStall(id) || {}).isEventBooth);
+    document.getElementById('ic-head').textContent = isEventBooth ? `บูธกิจกรรม ${id} — ว่าง` : `แผง ${id} — ว่าง`;
     document.getElementById('icHero').classList.add('d-none');
     document.getElementById('icIdentity').classList.add('d-none');
     document.querySelector('#infoCard .ic-grid').classList.add('d-none');
@@ -2097,7 +2130,7 @@ function refreshFilterResults() {
     });
 
     document.querySelectorAll('.zone-block').forEach((el) => {
-        const z = el.id.replace('zone-', '');
+        const z = zoneOfBlock(el);
         if (mz.has(z)) el.classList.add('search-match');
         else el.classList.remove('search-match');
     });

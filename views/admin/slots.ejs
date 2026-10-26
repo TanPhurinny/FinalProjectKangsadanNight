@@ -18,7 +18,7 @@
             rel="stylesheet" />
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
-        <link rel="stylesheet" href="/stylesheets/admin/slots.css?v=20261023-dot-noshadow">
+        <link rel="stylesheet" href="/stylesheets/admin/slots.css?v=20261026-event">
         <link rel="stylesheet" href="/stylesheets/admin/slots-extras.css?v=20261023-day">
         <link rel="stylesheet" href="/stylesheets/common/searchSuggest.css?v=20261002">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
@@ -33,7 +33,7 @@
             acc[zone.code] = zone;
             return acc;
         }, {});
-        const otherZones = zonesList.filter((zone) => !['A', 'B', 'C', 'D', 'E', 'F', 'X'].includes(zone.code));
+        const otherZones = zonesList.filter((zone) => !['A', 'B', 'C', 'D', 'E', 'F', 'G', 'X'].includes(zone.code));
         const viewDate = locals.viewDate || { isToday: true };
         %>
 
@@ -220,6 +220,19 @@
                                         C</div><div
                                         class="z-sub"><%= zoneByCode.C ? zoneByCode.C.description : '-' %></div></div>
                             </div>
+                            <% if (zoneByCode.G) { %>
+                            <!-- โซน G บูธกิจกรรม 2 จุดตามผังจริง: G1 ใต้แถว F1/F2, G2 ใต้แถว F5/F6 ติดแถว B1/B2 (เหนือห้องน้ำ/ออฟฟิศ) -->
+                            <div class="zone-block zone-block-event" id="zone-G1" data-zone="G" data-badges="off"
+                                onclick="openZone('G')" title="โซน G บูธกิจกรรม จุดที่ 1 (G101)">
+                                <div class="zone-label"><div class="z-title">G1</div><div
+                                        class="z-sub">กิจกรรม</div></div>
+                            </div>
+                            <div class="zone-block zone-block-event" id="zone-G2" data-zone="G"
+                                onclick="openZone('G')" title="โซน G บูธกิจกรรม จุดที่ 2 (G201)">
+                                <div class="zone-label"><div class="z-title">G2</div><div
+                                        class="z-sub">บูธกิจกรรม</div></div>
+                            </div>
+                            <% } %>
                             <div class="facility-btns">
                                 <button class="btn-facility btn-facility-trash"><i
                                         class="fa-solid fa-dumpster fa-xs"></i>
@@ -400,8 +413,8 @@
             src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
         <script src="/js/common/dialogs.js"></script>
         <script src="/js/common/searchSuggest.js?v=20261002"></script>
-        <script src="/js/admin/slots.js?v=20261023-day"></script>
-        <script src="/js/admin/slots-extras.js?v=20261023-day"></script>
+        <script src="/js/admin/slots.js?v=20261026-event"></script>
+        <script src="/js/admin/slots-extras.js?v=20261026-event"></script>
         <script>
             // แจ้งผลลัพธ์ปุ่ม "ปล่อยล็อก"/"แจ้งเตือนร้านค้า" (ดู releaseStall()/notifyExpiring() ใน slots.js)
             // หลัง redirect กลับมาที่หน้านี้ แล้วล้าง query ทิ้ง

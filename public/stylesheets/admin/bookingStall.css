@@ -289,11 +289,16 @@
        แคบสุดและสูงเต็มแถว ไม่มีอะไรอยู่เหนือมัน) แปลงเป็น % ของผังนี้ ให้ B ออกมาเป็นกล่องแนวตั้งจริง ไม่ใช่แนวนอน */
     .ov-zone-A { top: 20%; left: 2%; width: 38%; height: 70%; background: #E5D9F2; color: #441752; }
     .ov-zone-E { top: 8%; left: 2%; width: 38%; height: 10%; background: #FFB5DA; color: #c0006e; }
-    .ov-zone-F { top: 20%; left: 44%; width: 30%; height: 70%; background: #FDBF60; color: #a84800; }
+    .ov-zone-F { top: 20%; left: 44%; width: 30%; height: 64%; background: #FDBF60; color: #a84800; }
     .ov-zone-D { top: 8%; left: 42%; width: 15%; height: 10%; background: #C8FFE0; color: #0a7a5a; }
     .ov-zone-X { top: 8%; left: 58%; width: 16%; height: 10%; background: #FDBF60; color: #a84800; }
-    .ov-zone-B { top: 20%; left: 76%; width: 22%; height: 70%; background: #FDBF60; color: #a84800; }
+    .ov-zone-B { top: 20%; left: 76%; width: 22%; height: 64%; background: #FDBF60; color: #a84800; }
     .ov-zone-C { top: 92%; left: 2%; width: 38%; height: 8%; background: #FFB5DA; color: #c0006e; }
+    /* โซน G บูธกิจกรรม: แถบใต้ F/B (F/B หดจาก 70% เหลือ 64% ให้มีที่) — G1 ใต้ครึ่งซ้ายของ F, G2 ใต้ครึ่งขวาของ F ต่อถึง B */
+    .ov-zone-G { background: repeating-linear-gradient(135deg, #D6DBFF 0 8px, #C4CBFB 8px 16px); color: #3532a8; border: 1.5px dashed #3532a8; padding: 2px; }
+    .ov-zone-G1 { top: 86%; left: 44%; width: 13%; height: 8%; }
+    .ov-zone-G2 { top: 86%; left: 59%; width: 30%; height: 8%; }
+    .ov-zone-G .ov-zone-title { font-size: 11px; }
     .ov-zone-E, .ov-zone-D, .ov-zone-X, .ov-zone-C { padding: 2px; }
     .ov-zone-E .ov-zone-title, .ov-zone-D .ov-zone-title, .ov-zone-X .ov-zone-title, .ov-zone-C .ov-zone-title {
       font-size: 11px;
@@ -896,3 +901,13 @@
     @media (max-width: 500px) {
       .applicant-body { grid-template-columns: 1fr; }
     }
+
+/* พื้นที่บูธกิจกรรมในผังโซน F (ใต้ช่อง x ของ F1/F2 และใต้ F536/F636) — ไม่ใช่ล็อก บูธจริงอยู่ในโซน G */
+.stall-cell.placeholder.event-link {
+  background: repeating-linear-gradient(135deg, #D6DBFF 0 6px, #C4CBFB 6px 12px);
+  color: #3532a8;
+  border: 1px dashed #3532a8;
+  font-size: 9px;
+  font-weight: 700;
+  opacity: 1;
+}

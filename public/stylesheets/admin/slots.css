@@ -28,6 +28,9 @@
     --zone-C-cl: #c0006e;
     --zone-X-bg: #FDBF60;
     --zone-X-cl: #a84800;
+    --zone-G-bg: #D6DBFF;
+    --zone-G-bg2: #C4CBFB;
+    --zone-G-cl: #3532a8;
 }
 
 .slots-page,
@@ -1595,4 +1598,45 @@
     }
     .zone-card { flex-shrink: 0; min-width: 120px; }
     .zc-desc { display: none; }
+}
+
+/* ---------- โซน G บูธกิจกรรม (2 จุดตามผังจริง) ----------
+   F/B หดลงจาก 66% เหลือ 62% เพื่อให้มีแถบว่างใต้ F/B สำหรับกล่อง G1/G2 (ไม่ทับโซนเดิม/ทางเดินหลัก)
+   G1 = ใต้คอลัมน์ F1/F2 (ครึ่งซ้ายของ F), G2 = ใต้ F5/F6 ต่อไปถึงแถว B1/B2 (เหนือห้องน้ำ/ออฟฟิศ)
+   ปุ่มขยะ/ห้องน้ำ/ออฟฟิศชิดขอบล่างสุดใต้แถบนี้ */
+#zone-F { height: 62%; }
+#zone-B { height: 62%; }
+.zone-block-event {
+    background: repeating-linear-gradient(135deg, var(--zone-G-bg) 0 8px, var(--zone-G-bg2) 8px 16px);
+    color: var(--zone-G-cl);
+    border: 1.5px dashed var(--zone-G-cl);
+}
+#zone-G1 { top: 83.5%; left: 50.5%; width: 7.5%; height: 7.5%; }
+#zone-G2 { top: 83.5%; left: 60%; width: 17%; height: 7.5%; }
+.zone-block-event .zone-label { padding: 2px; }
+.zone-block-event .z-title { font-size: 13px; line-height: 1.1; }
+.zone-block-event .z-sub { font-size: 9px; margin-top: 1px; white-space: nowrap; }
+.facility-btns { bottom: 1%; }
+.pill-G { background: var(--zone-G-bg); color: var(--zone-G-cl); }
+.dot-G { background: var(--zone-G-cl); }
+/* ช่องว่างในผังโซน F ที่เป็นพื้นที่บูธกิจกรรม (ใต้ x ของ F1/F2 และใต้ F536/F636) กดแล้วไปโซน G */
+.stall-cell.placeholder.event-link {
+    background: repeating-linear-gradient(135deg, var(--zone-G-bg) 0 6px, var(--zone-G-bg2) 6px 12px);
+    color: var(--zone-G-cl);
+    border: 1px dashed var(--zone-G-cl);
+    font-size: 9px;
+    font-weight: 700;
+    cursor: pointer;
+    opacity: 1;
+}
+/* บูธกิจกรรมที่ยังว่าง: ทุก role เห็นได้ (ต่างจากล็อกขายของปกติ) เพื่อกดขอจัดบูธ */
+.stall-cell.event-vacant {
+    border: 1.5px dashed var(--zone-G-cl);
+    color: var(--zone-G-cl);
+    background: #fff;
+    cursor: pointer;
+}
+@media (max-width: 600px) {
+    .zone-block-event .z-title { font-size: 11px; }
+    .zone-block-event .z-sub { display: none; }
 }

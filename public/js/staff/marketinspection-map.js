@@ -178,6 +178,12 @@
                     const placeholderCell = document.createElement('div');
                     placeholderCell.className = isPairedStall(stall) ? 'insp-stall-cell insp-stall-cell-small placeholder' : 'insp-stall-cell placeholder';
                     placeholderCell.textContent = 'x';
+                    // พื้นที่บูธกิจกรรมในผังโซน F (ไม่ใช่ล็อก) — บูธจริงอยู่ในโซน G
+                    if (stall.eventLink) {
+                        placeholderCell.classList.add('event-link');
+                        placeholderCell.textContent = 'กิจกรรม';
+                        placeholderCell.title = `พื้นที่บูธกิจกรรม ${stall.eventLink} (โซน G)`;
+                    }
                     (isPairedStall(stall) ? getSmallWrap(stall.groupId) : colDiv).appendChild(placeholderCell);
                     return;
                 }

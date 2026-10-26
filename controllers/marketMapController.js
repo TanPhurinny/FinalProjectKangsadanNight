@@ -78,6 +78,11 @@ exports.getPrintableMap = async (req, res) => {
             const rows = [];
             zone.columns.forEach((column) => column.stalls.forEach((stall) => {
                 if (stall.status !== 'BOOKED') return;
+                // บูธกิจกรรมที่มีงานวันนี้ (ไม่มีเจ้าของล็อกแบบร้านค้า) แสดงชื่องาน + ผู้จัด
+                if (stall.event) {
+                    rows.push({ code: stall.code, shopName: stall.event.title, tags: `บูธกิจกรรม · ${stall.event.company}` });
+                    return;
+                }
                 const owner = owners.get(String(stall.code).toUpperCase());
                 if (!owner) return;
                 const shop = shopByUserId.get(owner.userId) || {};

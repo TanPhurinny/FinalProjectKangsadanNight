@@ -10,28 +10,31 @@ const { getClosedShopsToday, getOpenStatus, businessDateOf } = require('../utils
 const { getPromosToday } = require('../utils/shopPromo');
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundTimeline, BOOKING_ROUND_LENGTH_DAYS } = require('../utils/bookingRound');
 const adminDashboard = require('../utils/adminDashboard');
+const eventBooth = require('../utils/eventBooth');
 
 const ZONE_CATEGORY_META = {
     FASHION: { icon: 'fa-shirt', description: 'โซนแฟชั่น' },
     FOOD: { icon: 'fa-utensils', description: 'โซนอาหาร' },
-    EVENT_BOOTH: { icon: 'fa-store', description: 'โซนกิจกรรม/บูธพิเศษ' }
+    EVENT_BOOTH: { icon: 'fa-people-group', description: 'โซนบูธกิจกรรม' }
 };
 
 const DASHBOARD_DAY_MS = 24 * 60 * 60 * 1000;
 
 // เหตุการณ์ล่าสุดจากหลายตาราง รวมเป็นฟีดเดียวเรียงตามเวลา
 async function buildActivityFeed() {
-    const [requests, repairs, applications, users] = await Promise.all([
+    const [requests, repairs, applications, users, eventBooths] = await Promise.all([
         prisma.bookingRequest.findMany({ orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, sellerName: true, zone: true, status: true, createdAt: true } }),
         prisma.maintenanceReport.findMany({ orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, location: true, category: true, status: true, createdAt: true } }),
         prisma.sellerApplication.findMany({ orderBy: { createdAt: 'desc' }, take: 6, select: { id: true, shopName: true, status: true, createdAt: true } }),
-        prisma.user.findMany({ where: { role: { in: ['SELLER', 'CUSTOMER'] } }, orderBy: { createdAt: 'desc' }, take: 6, select: { id: true, name: true, role: true, createdAt: true } })
+        prisma.user.findMany({ where: { role: { in: ['SELLER', 'CUSTOMER'] } }, orderBy: { createdAt: 'desc' }, take: 6, select: { id: true, name: true, role: true, createdAt: true } }),
+        prisma.eventBoothRequest.findMany({ orderBy: { createdAt: 'desc' }, take: 6, select: { id: true, companyName: true, eventTitle: true, status: true, createdAt: true } })
     ]);
 
     const items = [
         ...requests.map((row) => ({ kind: 'request', icon: 'fa-file-signature', href: '/admin/approvals', title: `${row.sellerName} ส่งคำขอจองล็อก`, meta: `โซน ${row.zone}`, status: row.status, at: row.createdAt })),
         ...repairs.map((row) => ({ kind: 'repair', icon: 'fa-screwdriver-wrench', href: '/admin/requests', title: `แจ้งซ่อม: ${row.category}`, meta: row.location, status: row.status, at: row.createdAt })),
         ...applications.map((row) => ({ kind: 'application', icon: 'fa-id-card', href: '/admin/seller-applications', title: `ใบสมัครร้าน ${row.shopName}`, meta: 'สมัครเป็นผู้ขาย', status: row.status, at: row.createdAt })),
+        ...eventBooths.map((row) => ({ kind: 'request', icon: 'fa-people-group', href: `/admin/event-booths?focus=${row.id}`, title: `${row.companyName} ขอจัดบูธกิจกรรม`, meta: row.eventTitle, status: row.status, at: row.createdAt })),
         ...users.map((row) => ({ kind: 'user', icon: 'fa-user-plus', href: '/admin/users', title: `${row.name} สมัครสมาชิก`, meta: row.role === 'SELLER' ? 'ผู้ขาย' : 'ลูกค้า', status: null, at: row.createdAt }))
     ];
     // ไม่ตัดรวม ให้ตัวกรองรายประเภทในหน้ามีรายการเสมอ (กล่องฟีดเลื่อนดูได้)
@@ -230,7 +233,7 @@ function toThaiDateShort(value) {
 const ZONE_CATEGORY_LABEL = {
     FASHION: 'แฟชั่น',
     FOOD: 'อาหาร',
-    EVENT_BOOTH: 'กิจกรรม/บูธพิเศษ'
+    EVENT_BOOTH: 'บูธกิจกรรม'
 };
 
 // จำนวนวันก่อนหมดสัญญาที่ถือว่า "ใกล้หมดอายุ" (ใช้ไฮไลต์แผงที่จองแล้วบนผังให้แอดมินตามงานต่อสัญญา)
@@ -263,7 +266,7 @@ function computeExpiryState(status, bookingEndDate) {
 // ใช้ร่วมกันทั้งหน้า /admin/slots (ดูผังอย่างเดียว) และ /admin/booking-stall (จัดแผงให้คำขอจอง)
 // เพื่อไม่ให้ผังทั้งสองหน้าเพี้ยนไปคนละแบบ
 async function buildZonesData() {
-    const zoneRecords = await prisma.zone.findMany({
+    const [zoneRecords, eventBoothsToday] = await Promise.all([prisma.zone.findMany({
         orderBy: { displayOrder: 'asc' },
         include: {
             rows: {
@@ -273,18 +276,23 @@ async function buildZonesData() {
                 }
             }
         }
-    });
+    }), eventBooth.getEventBoothStatusForDate(new Date())]);
 
     let zonesData = zoneRecords.map((zone) => ({
         code: zone.code,
         description: ZONE_CATEGORY_LABEL[zone.productCategory] || 'พื้นที่เอนกประสงค์',
         columns: zone.rows.map((row) => ({
             rowCode: row.rowCode,
+            label: row.label || null,
             stalls: row.stalls.map((stall) => {
                 const pricing = getLotPricing(stall.stallCode);
+                // บูธกิจกรรม: ว่าง/ไม่ว่างวันนี้มาจากคำขอจัดบูธที่ครอบวันนี้ ไม่ใช่ Stall.status (ซ่อมบำรุงยังใช้ของ Stall)
+                const activeEvent = stall.status !== 'MAINTENANCE' ? eventBoothsToday[String(stall.stallCode).toUpperCase()] : null;
                 return {
                     code: stall.stallCode,
-                    status: stall.status,
+                    status: activeEvent ? 'BOOKED' : stall.status,
+                    ...(zone.productCategory === 'EVENT_BOOTH' ? { isEventBooth: true } : {}),
+                    ...(activeEvent ? { event: eventBooth.toPublicEventInfo(activeEvent.request) } : {}),
                     expiryState: computeExpiryState(stall.status, stall.bookingEndDate),
                     bookingEndDate: stall.bookingEndDate,
                     lotType: pricing.type,
@@ -366,17 +374,30 @@ async function buildZonesData() {
         });
     });
 
-    // โซน F คอลัมน์ F1/F2 ในผังจริงมีแค่ 17 แผง แต่มีช่องว่าง (x) ต่อท้ายให้สูงเท่าคอลัมน์ F3/F4 (34)
-    // (F5/F6 สูงกว่านั้นอีก 36 แผง แต่เป็นความสูงจริง ไม่ใช่ช่องว่าง จึงไม่ใช้เป็นเกณฑ์)
+    // โซน F คอลัมน์ F1/F2 ในผังจริงมีแค่ 17 แผง ใต้ F117/F217 เป็นช่องว่าง (x) 13 แถว แล้วต่อด้วยพื้นที่บูธกิจกรรม G101
+    // ให้สูงเท่าคอลัมน์ F3/F4 (34) — ใต้ F536/F636 เป็นพื้นที่บูธกิจกรรม G201 (ติดแถว B123/B223 เหนือห้องน้ำ/ออฟฟิศ)
+    // ช่องบูธกิจกรรมเป็น PLACEHOLDER ที่มี eventLink (ไม่ใช่ล็อกของโซน F ทุกที่ที่นับล็อกข้าม PLACEHOLDER อยู่แล้ว)
+    // ตัวผังแต่ละหน้าวาดเป็นป้าย "กิจกรรม" กดแล้วไปโซน G — บูธจริงอยู่ในโซน G
     const zoneFEntry = zonesData.find((zone) => zone.code === 'F');
     if (zoneFEntry) {
+        const F_EMPTY_ROWS_BELOW_F1 = 13;
+        const hasZoneG = zonesData.some((zone) => zone.code === eventBooth.EVENT_ZONE_CODE);
         const referenceColumn = zoneFEntry.columns.find((column) => column.rowCode === 'F3');
         const referenceLength = referenceColumn ? referenceColumn.stalls.length : 0;
         zoneFEntry.columns.forEach((column) => {
-            if (column.rowCode !== 'F1' && column.rowCode !== 'F2') return;
-            const missing = referenceLength - column.stalls.length;
-            for (let i = 0; i < missing; i += 1) {
-                column.stalls.push({ code: `${column.rowCode}-placeholder-${i}`, status: 'PLACEHOLDER' });
+            if (column.rowCode === 'F1' || column.rowCode === 'F2') {
+                const missing = referenceLength - column.stalls.length;
+                for (let i = 0; i < missing; i += 1) {
+                    const isEventArea = hasZoneG && i >= F_EMPTY_ROWS_BELOW_F1;
+                    column.stalls.push({
+                        code: `${column.rowCode}-placeholder-${i}`,
+                        status: 'PLACEHOLDER',
+                        ...(isEventArea ? { eventLink: 'G101' } : {})
+                    });
+                }
+            }
+            if (hasZoneG && (column.rowCode === 'F5' || column.rowCode === 'F6')) {
+                column.stalls.push({ code: `${column.rowCode}-placeholder-event`, status: 'PLACEHOLDER', eventLink: 'G201' });
             }
         });
     }
@@ -392,6 +413,7 @@ exports.buildZonesData = buildZonesData;
 // ดูวันอื่น: ไม่ใช้ expiryState (นับจากวันนี้) แต่ใช้ป้าย "วันสุดท้าย" ของวันนั้นแทน และติดธงล็อกที่ "ว่างเพิ่มจากวันนี้"
 function applyDayStatus(zonesData, dayStatus, todayStatus, isToday) {
     const bookingIdByCode = {};
+    const eventRequestIdByCode = {};
     const occupiedCodes = new Set();
     const summary = { free: 0, freedFromToday: 0 };
     zonesData.forEach((zone) => {
@@ -411,6 +433,9 @@ function applyDayStatus(zonesData, dayStatus, todayStatus, isToday) {
                 if (day.startsToday) stall.startsToday = true;
                 if (day.mismatch) stall.dataMismatch = true;
                 if (day.bookingId) bookingIdByCode[stall.code] = day.bookingId;
+                if (day.eventRequestId) eventRequestIdByCode[stall.code] = day.eventRequestId;
+                // บูธกิจกรรมของวันที่ดู (buildZonesData ติดงานของ "วันนี้" ไว้) — ดูวันอื่นเอาของวันนี้ออก ข้อมูลจริงอยู่ใน occupant
+                if (!isToday) delete stall.event;
                 if (!isToday) stall.expiryState = null;
 
                 if (stall.status === 'AVAILABLE') {
@@ -424,7 +449,7 @@ function applyDayStatus(zonesData, dayStatus, todayStatus, isToday) {
             });
         });
     });
-    return { bookingIdByCode, occupiedCodes, summary };
+    return { bookingIdByCode, eventRequestIdByCode, occupiedCodes, summary };
 }
 
 exports.getSlotsPage = async (req, res) => {
@@ -432,11 +457,11 @@ exports.getSlotsPage = async (req, res) => {
         const view = resolveViewDate(req.query.date);
         const [zonesData, dayStatus] = await Promise.all([buildZonesData(), buildStallStatusForDate(view.date)]);
         const todayStatus = view.isToday ? dayStatus : await buildStallStatusForDate(new Date(`${view.todayKey}T00:00:00`));
-        const { bookingIdByCode, occupiedCodes, summary } = applyDayStatus(zonesData, dayStatus, todayStatus, view.isToday);
+        const { bookingIdByCode, eventRequestIdByCode, occupiedCodes, summary } = applyDayStatus(zonesData, dayStatus, todayStatus, view.isToday);
 
         // ติด stall.occupant (ชื่อร้าน/รูป/ระยะเวลาเช่า/สถานะจ่ายเงิน/ลูกค้าใหม่ ฯลฯ) ให้ทุกล็อกที่จองแล้ว ณ วันที่ดู
         // ใช้ util เดียวกับหน้า /admin/booking-stall (utils/stallOccupancy.js) ให้ข้อมูลตรงกันทั้งสองหน้า
-        await stallOccupancy.attachOccupantDetails(zonesData, { bookingIdByCode });
+        await stallOccupancy.attachOccupantDetails(zonesData, { bookingIdByCode, eventRequestIdByCode });
 
         const approvedRequests = await prisma.bookingRequest.findMany({
             where: { status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] }, assignedStallCode: { not: null } },
@@ -795,6 +820,29 @@ exports.getMarketMapPage = async (req, res) => {
                 };
             });
         });
+
+        // บูธกิจกรรมที่มีงานวันนี้ (buildZonesData ติด stall.event ไว้) — การ์ดบนผังโชว์ชื่องาน/ผู้จัด แทนข้อมูลร้าน
+        zonesData.forEach((zone) => zone.columns.forEach((column) => column.stalls.forEach((stall) => {
+            if (!stall.event) return;
+            bookingByStallCode[String(stall.code).toUpperCase()] = {
+                shop: stall.event.title,
+                product: 'บูธกิจกรรม',
+                productDetail: stall.event.description || '-',
+                tags: '',
+                summary: `จัดโดย ${stall.event.company} · ${toThaiDateShort(stall.event.startDate)} – ${toThaiDateShort(stall.event.endDate)}`,
+                image: null,
+                logo: null,
+                cover: null,
+                menuImages: [],
+                photos: [],
+                isNew: false,
+                subtype: stall.event.company,
+                closedAt: null,
+                promo: null,
+                post: null,
+                isEvent: true
+            };
+        })));
 
         const viewer = { role, allowedZones: [], myStalls: [], isGuest: !req.user };
 
