@@ -184,20 +184,45 @@ async function getSellerReviewPanel(shopUserId) {
     };
 }
 
-// แจ้งเตือนกระดิ่งผู้ขาย "มีรีวิวใหม่ที่ยังไม่ได้ตอบ" (รวมเข้า loadSellerBookingStatus เหมือน utils/communityNotifications.js)
-// ไม่มีตารางแจ้งเตือน/สถานะอ่านแล้ว — คำนวณสดจากรีวิว NOTIFY_DAYS วันล่าสุดที่ร้านยังไม่ตอบ ตอบแล้ว (หรือเกินกำหนด) แจ้งเตือนหายเอง
+// แจ้งเตือนผู้ขายเรื่องรีวิว (รวมเข้า loadSellerBookingStatus เหมือน utils/communityNotifications.js) — คำนวณสดจากรีวิว NOTIFY_DAYS วันล่าสุด
+// 1) รีวิวแต่ละอันเป็นแจ้งเตือนของตัวเองในหมวด "ร้านและชุมชน" (ตอบแล้วถือว่าอ่านแล้ว) — นับในเลขกระดิ่ง
+// 2) งาน "ตอบรีวิว" 1 ชิ้นรวมรีวิวที่ยังไม่ตอบ อยู่ในแถบต้องทำ — ตั้งเป็นอ่านแล้วไว้ ไม่ให้นับซ้ำกับข้อ 1 ตอบครบแล้วหายเอง
 const NOTIFY_DAYS = 14;
+const MAX_REVIEW_ITEMS = 30;
 const escapeNotificationHtml = (value) => String(value ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 async function buildReviewNotifications(shopUserId) {
     const since = new Date(Date.now() - NOTIFY_DAYS * 24 * 60 * 60 * 1000);
-    const reviews = await prisma.shopReview.findMany({
-        where: { shopUserId, isHidden: false, sellerReply: null, createdAt: { gte: since } },
+    const recent = await prisma.shopReview.findMany({
+        where: { shopUserId, isHidden: false, OR: [{ createdAt: { gte: since } }, { updatedAt: { gte: since } }] },
         orderBy: { createdAt: 'desc' },
+        take: MAX_REVIEW_ITEMS,
         include: { user: REVIEW_USER_SELECT }
     });
-    if (!reviews.length) return [];
+    // รีวิวที่ถูกแก้ไขจะล้างคำตอบเดิม (ดู saveReview) — ใช้เวลาแก้ล่าสุดเป็นเวลาของแจ้งเตือน key จึงเปลี่ยนและกลับเป็นยังไม่อ่าน
+    const items = recent.map((r) => {
+        const at = new Date(r.updatedAt > r.createdAt ? r.updatedAt : r.createdAt);
+        const replied = Boolean(r.sellerReply);
+        return {
+            id: `shop-review-item-${r.id}`,
+            type: 'shop-review-item',
+            title: `${displayName(r.user?.name)} รีวิว ${r.rating} ดาว${replied ? ' · ตอบแล้ว' : ''}`,
+            desc: escapeNotificationHtml(r.comment ? String(r.comment).replace(/\s+/g, ' ').trim() : 'ให้คะแนนอย่างเดียว ไม่ได้เขียนความเห็น'),
+            date: at.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
+            time: at.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+            sortAt: at.getTime(),
+            status: 'SUCCESS',
+            isRead: replied,
+            isNew: !replied,
+            link: '/shop-profile#shop-reviews',
+            linkIcon: 'bi-star',
+            linkLabel: replied ? 'ดูรีวิว' : 'ตอบรีวิว'
+        };
+    });
+
+    const reviews = recent.filter((r) => !r.sellerReply && r.createdAt >= since);
+    if (!reviews.length) return items;
     const latest = reviews[0];
     const latestAt = new Date(latest.updatedAt > latest.createdAt ? latest.updatedAt : latest.createdAt);
     const preview = latest.comment
@@ -213,12 +238,12 @@ async function buildReviewNotifications(shopUserId) {
         time: latestAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
         sortAt: latestAt.getTime(),
         status: 'SUCCESS',
-        isRead: false,
-        isNew: true,
+        isRead: true,
+        isNew: false,
         link: '/shop-profile#shop-reviews',
         linkIcon: 'bi-star',
         linkLabel: 'ดูและตอบรีวิว'
-    }];
+    }, ...items];
 }
 
 // --- แอดมิน ---

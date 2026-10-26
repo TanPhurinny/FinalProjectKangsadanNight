@@ -28,7 +28,8 @@
     'tax-invoice-cancelled': ['bi-file-earmark-x', 'bad'],
     'community-comment': ['bi-chat-dots-fill', 'info'],
     'community-like': ['bi-heart-fill', 'bad'],
-    'shop-review': ['bi-star-fill', 'warn']
+    'shop-review': ['bi-star-fill', 'warn'],
+    'shop-review-item': ['bi-star-fill', 'warn']
   };
 
   const STEP_LABELS = { 1: 'ส่งคำขอจองแล้ว', 2: 'จัดล็อก / ชำระเงิน', 3: 'จองสำเร็จ' };
