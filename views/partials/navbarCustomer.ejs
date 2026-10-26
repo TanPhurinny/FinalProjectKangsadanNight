@@ -2,56 +2,72 @@
     // ตรวจสอบหน้าปัจจุบันจาก URL path เพื่อไฮไลต์เมนูที่ใช้งานอยู่
     // หน้าแรกของลูกค้าทั่วไปคือฟีดคอมมูนิตี้ (ตั้งแต่ล็อกอินเข้ามาจะมาที่นี่เลย)
     const currentPath = locals.path || '';
-    const isStaffOrAdmin = user && (user.role === 'ADMIN' || user.role === 'STAFF');
+    const navUser = (typeof user !== 'undefined' && user) ? user : null;
+    const isStaffOrAdmin = navUser && (navUser.role === 'ADMIN' || navUser.role === 'STAFF');
     const homePath = isStaffOrAdmin ? '/admin/dashboard' : '/community';
     const isCommunityPath = currentPath.includes('community') || currentPath.includes('comunity');
-%>
+    const notificationList = (typeof notifications !== 'undefined' && Array.isArray(notifications)) ? notifications : [];
+    // กติกาเดียวกับ isReal ในหน้าแจ้งเตือน (public/js/seller/notifications.js) และ navbarSeller.ejs
+    const unreadNotifications = notificationList.filter(function(item) {
+        return !item.isRead && !item.upcoming && (!item.step || item.action || item.step === 3);
+    }).length;
+    const notificationsActive = currentPath.includes('notifications');
 
-<nav class="management-nav">
+    // ยังไม่ล็อกอิน: เหลือเฉพาะเมนูที่ไม่ต้องใช้บัญชี
+    const links = [
+        { href: '/community', icon: 'fa-home', label: 'หน้าหลัก', active: isCommunityPath },
+        { href: '/market-map', icon: 'fa-map', label: 'ผังตลาด', active: currentPath.includes('market-map') },
+        { href: '/announcements', icon: 'fa-bullhorn', label: 'ประกาศ', active: currentPath.includes('announcements') },
+        { href: '/shop-application', icon: 'fa-store', label: 'สมัครเปิดร้านค้า', active: currentPath.includes('shop-application'), needsLogin: true },
+        { href: '/booking-status', icon: 'fa-clipboard-list', label: 'สถานะการจอง', active: currentPath.includes('booking-status'), needsLogin: true }
+    ].filter(function (link) { return navUser || !link.needsLogin; });
+%>
+<link rel="stylesheet" href="/stylesheets/partials/navMenu.css?v=20261026">
+
+<nav class="management-nav nav-v2">
     <div class="nav-container">
         <a href="<%= homePath %>" class="nav-brand <%= isCommunityPath ? 'active' : '' %>">
             <img src="/img/favicon.png" alt="Kang Night Logo" class="nav-logo">
         </a>
 
-        <button class="nav-toggle" id="navToggle">
-            <i class="fas fa-bars"></i>
-        </button>
+        <%# มือถือ: กระดิ่งอยู่ข้างปุ่มเมนู กดได้ทันทีไม่ต้องเปิดเมนู %>
+        <div class="nav-v2__mobile-bar">
+            <% if (navUser) { %>
+            <a href="/notifications" class="nav-v2__bell <%= notificationsActive ? 'active' : '' %>" title="แจ้งเตือน" aria-label="แจ้งเตือน<%= unreadNotifications > 0 ? ` (${unreadNotifications} ยังไม่อ่าน)` : '' %>">
+                <i class="fas fa-bell"></i>
+                <% if (unreadNotifications > 0) { %>
+                    <span class="nav-notification-badge"><%= unreadNotifications > 99 ? '99+' : unreadNotifications %></span>
+                <% } %>
+            </a>
+            <% } %>
+            <button class="nav-toggle" id="navToggle" type="button" aria-label="เปิดเมนู">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
 
         <div class="nav-links" id="navMenu">
-            <a href="/community" class="nav-item <%= isCommunityPath ? 'active' : '' %>">
-                <i class="fas fa-home"></i> หน้าหลัก
-            </a>
-            <a href="/market-map" class="nav-item <%= currentPath.includes('market-map') ? 'active' : '' %>">
-                <i class="fas fa-map"></i> ผังตลาด
-            </a>
-            <a href="/announcements" class="nav-item <%= currentPath.includes('announcements') ? 'active' : '' %>">
-                <i class="fas fa-bullhorn"></i> ประกาศ
-            </a>
-            <a href="/shop-application" class="nav-item <%= currentPath.includes('shop-application') ? 'active' : '' %>">
-                <i class="fas fa-store"></i> สมัครเปิดร้านค้า
-            </a>
-            <a href="/booking-status" class="nav-item <%= currentPath.includes('booking-status') ? 'active' : '' %>">
-                <i class="fas fa-clipboard-list"></i> สถานะการจอง
-            </a>
-            <a href="/notifications" class="nav-item <%= currentPath.includes('notifications') ? 'active' : '' %>">
-                <i class="fas fa-bell"></i> แจ้งเตือน
-            </a>
-
-            <div class="nav-actions d-flex align-items-center">
-                <a href="/profile"
-                    class="user-badge user-badge-link shadow-sm <%= currentPath.includes('/profile') ? 'active' : '' %>">
-                    <i class="fas fa-user-circle"></i>
-                    <%= user ? user.name : 'ผู้ใช้งาน' %>
+            <div class="nav-links__primary">
+                <% links.forEach(function (link) { %>
+                <a href="<%= link.href %>" class="nav-item <%= link.active ? 'active' : '' %>">
+                    <i class="fas <%= link.icon %>"></i> <%= link.label %>
                 </a>
-                <% if (locals.viewAsCustomer) { %>
-                <a href="/switch-view/seller" class="switch-view-btn" title="กลับไปเป็นพ่อค้าแม่ค้า">
-                    <i class="fas fa-right-left"></i> สลับเป็นผู้ขาย
+                <% }) %>
+
+                <% if (navUser) { %>
+                <a href="/notifications" class="nav-item nav-notification nav-notification--icon-only nav-v2__desktop-only <%= notificationsActive ? 'active' : '' %>" title="แจ้งเตือน" aria-label="แจ้งเตือน">
+                    <i class="fas fa-bell"></i>
+                    <% if (unreadNotifications > 0) { %>
+                        <span class="nav-notification-badge"><%= unreadNotifications > 99 ? '99+' : unreadNotifications %></span>
+                    <% } %>
                 </a>
                 <% } %>
-                <a href="/logout" class="logout-link">
-                    <i class="fas fa-sign-out-alt me-1"></i>ออกจากระบบ
-                </a>
             </div>
+
+            <%- include('navAccount', {
+                navUser: navUser,
+                navPath: currentPath,
+                navSwitch: locals.viewAsCustomer ? { href: '/switch-view/seller', label: 'สลับเป็นมุมมองผู้ขาย' } : null
+            }) %>
         </div>
     </div>
 </nav>
