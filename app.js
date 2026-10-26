@@ -110,6 +110,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const staffRoutes = require('./routes/staffRoutes');
 const communityRoutes = require('./routes/communityRoutes');
 const sellerRoute = require('./routes/sellerRoute');
+const eventBoothRoutes = require('./routes/eventBoothRoutes');
 const announceCtrl = require('./controllers/announcementController');
 
 // แจ้งเตือนของผู้ขาย (badge กระดิ่งใน navbarSeller) ให้ขึ้นทุกหน้า ไม่ใช่แค่ /booking-status และ /notifications
@@ -138,19 +139,23 @@ app.use(async (req, res, next) => {
 // ตัวเลขงานค้างบนเมนู "รายการอนุมัติ" ของแอดมิน — cache 60 วินาที และล้างทันทีเมื่อแอดมินกดดำเนินการคำขอ
 // (ไม่งั้นกดปิดงานแล้วตัวเลขบนเมนูยังค้างค่าเดิมอีกเกือบนาที)
 const approvalCtrl = require('./controllers/approvalController');
+const { countEventBoothTodo } = require('./utils/eventBooth');
 let approvalTodoCache = null;
 app.use(async (req, res, next) => {
   try {
     if (req.user?.role !== 'ADMIN') return next();
-    if (req.method === 'POST' && /^\/admin\/(approvals|booking-stall)/.test(req.path)) {
+    if (req.method === 'POST' && /^\/admin\/(approvals|booking-stall|event-booths)/.test(req.path)) {
       approvalTodoCache = null;
       return next();
     }
     if (req.method !== 'GET' || !String(req.headers.accept || '').includes('text/html')) return next();
     if (!approvalTodoCache || Date.now() - approvalTodoCache.at > 60 * 1000) {
-      approvalTodoCache = { at: Date.now(), value: await approvalCtrl.countApprovalTodo() };
+      const [approvalTodo, eventBoothTodo] = await Promise.all([approvalCtrl.countApprovalTodo(), countEventBoothTodo()]);
+      approvalTodoCache = { at: Date.now(), value: approvalTodo, eventBoothTodo };
     }
     res.locals.approvalTodo = approvalTodoCache.value;
+    // คำขอบูธกิจกรรมที่รอแอดมิน (ใหม่ + สลิปรอยืนยัน) — badge แยกบนเมนู "บูธกิจกรรม"
+    res.locals.eventBoothTodo = approvalTodoCache.eventBoothTodo;
   } catch (error) {
     logger.error({ error: error.message }, 'count approval todo failed');
   }
@@ -199,6 +204,7 @@ app.use('/admin', adminRoutes); // Dashboard, Users, Requests
 app.use('/staff', staffRoutes); // Staff pages
 app.use('/', communityRoutes); // Community Feed APIs + Pages
 app.use('/', sellerRoute); // เลือกโซน, แจ้งซ่อม, จองแผง
+app.use('/', eventBoothRoutes); // ขอจัดบูธกิจกรรม (โซน G) ไม่ต้อง login
 
 // --- 6. Error Handling 404 (ต้องอยู่ท้ายสุดเสมอ) ---
 app.use((req, res) => {

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <%# ลิงก์ติดตามเป็นความลับของผู้ขอ — ไม่ให้ search engine เก็บ %>
+    <meta name="robots" content="noindex, nofollow" />
+    <title>ติดตามคำขอบูธกิจกรรม — ตลาดกังสดาลไนท์</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+    <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
+</head>
+<body class="eb-body">
+    <script src="/js/common/tabSession.js"></script>
+    <%- include('_topbar') %>
+
+    <main class="eb-page">
+        <% if (!request) { %>
+        <header class="eb-head">
+            <div>
+                <p class="eb-kicker">โซน G · บูธกิจกรรม</p>
+                <h1 class="eb-title">ไม่พบคำขอนี้</h1>
+                <p class="eb-lead">ลิงก์ติดตามอาจไม่ครบหรือพิมพ์ผิด กรุณาเปิดจากอีเมลหรือลิงก์ที่บันทึกไว้ตอนส่งคำขอ</p>
+            </div>
+        </header>
+        <a class="eb-btn" href="/event-booth">ส่งคำขอจัดบูธใหม่</a>
+        <% } else { %>
+        <%
+            const errorMessages = {
+                missing_slip: 'กรุณาเลือกรูปสลิปก่อนกดส่ง',
+                not_awaiting_payment: 'คำขอนี้ไม่ได้อยู่ในขั้นรอชำระเงิน หรือส่งสลิปไปแล้ว',
+                upload_failed: 'อัปโหลดสลิปไม่สำเร็จ กรุณาลองใหม่',
+                slip_too_large: 'ไฟล์สลิปใหญ่เกิน 5MB กรุณาแคปหน้าจอสลิปแล้วส่งใหม่',
+                slip_invalid_type: 'รองรับเฉพาะรูป JPG, PNG, GIF หรือ WEBP',
+                no_slip_to_remove: 'ไม่มีสลิปที่ลบได้ (แอดมินอาจยืนยันการชำระเงินไปแล้ว)',
+                remove_slip_failed: 'ลบสลิปไม่สำเร็จ กรุณาลองใหม่'
+            };
+            const successMessages = {
+                submitted: 'ส่งคำขอเรียบร้อยแล้ว — บันทึกลิงก์หน้านี้ไว้เพื่อติดตามสถานะและแนบสลิปหลังอนุมัติ',
+                slip_uploaded: 'ส่งสลิปแล้ว รอแอดมินตรวจสอบและยืนยันการชำระเงิน',
+                slip_removed: 'ลบสลิปเดิมแล้ว แนบสลิปใหม่ได้ด้านล่าง'
+            };
+            const s = request.status;
+            const hasSlip = Boolean(request.paymentSlipImage);
+            const stepState = (index) => {
+                if (s === 'REJECTED') return index === 1 ? 'is-rejected' : (index === 0 ? 'is-done' : '');
+                const current = s === 'PENDING' ? 1 : s === 'IN_PROGRESS' ? (hasSlip ? 3 : 2) : 4;
+                if (index < current) return 'is-done';
+                if (index === current) return s === 'SUCCESS' ? 'is-done' : 'is-current';
+                return '';
+            };
+        %>
+        <header class="eb-head">
+            <div>
+                <p class="eb-kicker">คำขอบูธกิจกรรม #<%= request.id %></p>
+                <h1 class="eb-title"><%= request.eventTitle %></h1>
+                <p class="eb-lead"><%= request.companyName %> · <%= dates.start %> – <%= dates.end %></p>
+            </div>
+            <span class="eb-zone-tag"><i class="fa-solid fa-circle-info"></i> <%= statusLabel %></span>
+        </header>
+
+        <% if (success && successMessages[success]) { %>
+        <div class="eb-notice eb-notice--success" role="status"><%= successMessages[success] %></div>
+        <% } %>
+        <% if (error) { %>
+        <div class="eb-notice eb-notice--danger" role="alert"><%= errorMessages[error] || 'เกิดข้อผิดพลาด กรุณาลองใหม่' %></div>
+        <% } %>
+
+        <ol class="eb-status" aria-label="ขั้นตอนคำขอ" style="list-style:none;padding:0">
+            <li class="eb-status-step <%= stepState(0) %>"><b>01</b>ส่งคำขอ</li>
+            <li class="eb-status-step <%= stepState(1) %>"><b>02</b><%= s === 'REJECTED' ? 'ไม่อนุมัติ' : 'แอดมินพิจารณา' %></li>
+            <li class="eb-status-step <%= stepState(2) %>"><b>03</b>ชำระเงิน / แนบสลิป</li>
+            <li class="eb-status-step <%= stepState(3) %>"><b>04</b>ยืนยันการชำระ</li>
+        </ol>
+
+        <div class="eb-layout">
+            <div>
+                <% if (s === 'REJECTED') { %>
+                <div class="eb-notice eb-notice--danger">คำขอนี้ไม่ได้รับการอนุมัติ<% if (request.rejectReason) { %> — เหตุผล: <%= request.rejectReason %><% } %></div>
+                <% } %>
+
+                <% if (s === 'IN_PROGRESS' && !hasSlip) { %>
+                <section class="eb-section" aria-labelledby="payTitle">
+                    <div class="eb-section-head">
+                        <span class="eb-step">03</span>
+                        <div>
+                            <h2 class="eb-section-title" id="payTitle">ชำระเงินและแนบสลิป</h2>
+                            <p class="eb-section-hint">สแกนพร้อมเพย์ (<%= promptPayId %>) ยอดตามด้านล่าง แล้วแนบรูปสลิป</p>
+                        </div>
+                    </div>
+                    <% if (isPastDue) { %>
+                    <div class="eb-notice eb-notice--warning">เลยกำหนดชำระ (<%= dates.due %>) แล้ว — แอดมินอาจยกเลิกคำขอนี้ ถ้ายังต้องการบูธกรุณาชำระและติดต่อแอดมินโดยเร็ว</div>
+                    <% } %>
+                    <% if (request.slipVerifyReason) { %>
+                    <div class="eb-notice eb-notice--warning"><%= request.slipVerifyReason %></div>
+                    <% } %>
+                    <div class="eb-pay">
+                        <img src="<%= promptPayQr %>" alt="QR พร้อมเพย์สำหรับชำระค่าบูธ <%= request.totalAmount %> บาท">
+                        <div>
+                            <div class="eb-help">ยอดชำระ</div>
+                            <div class="eb-pay-amount"><%= request.totalAmount.toLocaleString('th-TH') %> บาท</div>
+                            <div class="eb-help">กำหนดชำระภายใน <b><%= dates.due %></b></div>
+                            <form class="eb-upload" method="POST" action="/event-booth/track/<%= request.trackingToken %>/slip" enctype="multipart/form-data">
+                                <input type="file" name="paymentSlip" accept="image/jpeg,image/png,image/gif,image/webp" required aria-label="รูปสลิปโอนเงิน">
+                                <button type="submit" class="eb-btn"><i class="fa-solid fa-upload"></i> ส่งสลิป</button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+                <% } else if (s === 'IN_PROGRESS' && hasSlip) { %>
+                <section class="eb-section" aria-labelledby="slipTitle">
+                    <div class="eb-section-head">
+                        <span class="eb-step">04</span>
+                        <div>
+                            <h2 class="eb-section-title" id="slipTitle">ส่งสลิปแล้ว — รอแอดมินยืนยัน</h2>
+                            <p class="eb-section-hint"><% if (request.slipVerified === true) { %>ระบบตรวจสลิปอัตโนมัติแล้ว ยอดตรง<% } else if (request.slipVerifyReason) { %><%= request.slipVerifyReason %><% } else { %>แอดมินจะตรวจสลิปด้วยตนเอง<% } %></p>
+                        </div>
+                    </div>
+                    <img class="eb-slip-img" src="<%= request.paymentSlipImage %>" alt="สลิปที่ส่งแล้ว">
+                    <form method="POST" action="/event-booth/track/<%= request.trackingToken %>/remove-slip" style="margin-top:12px">
+                        <button type="submit" class="eb-btn eb-btn--danger eb-btn--sm"><i class="fa-solid fa-rotate"></i> ส่งผิดใบ — ลบแล้วแนบใหม่</button>
+                    </form>
+                </section>
+                <% } else if (s === 'SUCCESS') { %>
+                <div class="eb-notice eb-notice--success">ยืนยันการชำระเงินแล้ว บูธ <b><%= request.assignedStallCode %></b> พร้อมใช้งานวันที่ <%= dates.start %> – <%= dates.end %></div>
+                <% } else if (s === 'PENDING') { %>
+                <div class="eb-notice">แอดมินกำลังพิจารณาคำขอ เมื่ออนุมัติแล้วหน้านี้จะแสดงยอดชำระและช่องแนบสลิป<% if (request.email) { %> และจะแจ้งไปที่ <%= request.email %><% } %></div>
+                <% } %>
+
+                <h2 class="eb-section-title" style="margin:20px 0 12px">รายละเอียดคำขอ</h2>
+                <dl class="eb-detail">
+                    <dt>บริษัท / หน่วยงาน</dt><dd><%= request.companyName %></dd>
+                    <dt>ผู้ติดต่อ</dt><dd><%= request.contactName %> · <%= request.phone %></dd>
+                    <dt>อีเมล</dt><dd><%= request.email || '-' %></dd>
+                    <dt>ช่วงวันงาน</dt><dd><%= dates.start %> – <%= dates.end %> (คิดเงิน <%= request.days %> วัน)</dd>
+                    <dt>จุดที่ขอ</dt><dd><%= preferredBooth ? `${preferredBooth.code} — ${preferredBooth.label}` : 'ไม่ระบุ' %></dd>
+                    <dt>บูธที่ได้</dt><dd><%= booth ? `${booth.code} — ${booth.label}` : 'รอแอดมินจัดบูธ' %></dd>
+                    <dt>ยอดรวม</dt><dd><%= request.totalAmount.toLocaleString('th-TH') %> บาท (<%= request.pricePerDay.toLocaleString('th-TH') %> บาท/วัน)</dd>
+                    <dt>รายละเอียด</dt><dd style="white-space:pre-line"><%= request.description || '-' %></dd>
+                    <dt>ส่งคำขอเมื่อ</dt><dd><%= dates.created %></dd>
+                </dl>
+            </div>
+
+            <aside class="eb-aside" aria-label="ลิงก์ติดตาม">
+                <div class="eb-aside-block">
+                    <p class="eb-aside-title">ลิงก์ติดตามคำขอนี้</p>
+                    <div class="eb-copy">
+                        <input class="eb-input" id="trackUrl" value="<%= trackUrl %>" readonly aria-label="ลิงก์ติดตาม">
+                        <button type="button" class="eb-btn eb-btn--ghost eb-btn--sm" id="copyTrack" aria-label="คัดลอกลิงก์"><i class="fa-regular fa-copy"></i></button>
+                    </div>
+                    <p class="eb-help" style="margin:8px 0 0">ใครมีลิงก์นี้ดูคำขอและแนบสลิปได้ — เก็บไว้เป็นความลับ</p>
+                </div>
+                <% if (booth) { %>
+                <div class="eb-aside-block">
+                    <p class="eb-aside-title">ตำแหน่งบูธ <%= booth.code %></p>
+                    <div class="eb-minimap" aria-hidden="true">
+                        <div class="eb-mm-f">โซน F</div>
+                        <div class="eb-mm-b">โซน B</div>
+                        <div class="eb-mm-g eb-mm-g1 <%= booth.code === 'G101' ? 'is-picked' : '' %>">G1</div>
+                        <div class="eb-mm-g eb-mm-g2 <%= booth.code === 'G201' ? 'is-picked' : '' %>">G2</div>
+                    </div>
+                    <a class="eb-btn eb-btn--ghost eb-btn--sm" style="margin-top:10px" href="/market-map?stall=<%= booth.code %>">ดูบนผังตลาด</a>
+                </div>
+                <% } %>
+            </aside>
+        </div>
+        <% } %>
+    </main>
+
+    <script>
+        (function () {
+            const btn = document.getElementById('copyTrack');
+            if (!btn) return;
+            btn.addEventListener('click', async () => {
+                const input = document.getElementById('trackUrl');
+                try { await navigator.clipboard.writeText(input.value); } catch (e) { input.select(); document.execCommand('copy'); }
+                btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 1500);
+            });
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+<%# แถบบนของหน้าบูธกิจกรรม: ยังไม่ login = แถบเบาๆ แบบผังตลาด, login แล้วใช้ navbar ตาม role %>
+<% if (!user) { %>
+<header class="eb-guest-bar">
+    <a href="/"><img src="/img/favicon.png" alt="กังสดาลไนท์"><span>ตลาดกังสดาลไนท์</span></a>
+    <a href="/login" class="eb-guest-login"><i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ</a>
+</header>
+<% } else if (user.role === 'ADMIN' || user.role === 'STAFF') { %>
+<%- include('../partials/navbar') %>
+<% } else if (user.role === 'SELLER') { %>
+<%- include('../partials/navbarSeller') %>
+<% } else { %>
+<%- include('../partials/navbarCustomer') %>
+<% } %>

@@ -155,11 +155,37 @@ async function sendStallExpiringSoonEmail(toEmail, stallCode, daysLeft) {
     });
 }
 
+// แจ้งผู้ขอจัดบูธกิจกรรมทุกครั้งที่สถานะเปลี่ยน (รับคำขอ/อนุมัติ/ไม่อนุมัติ/ยืนยันชำระ) — ผู้ขออาจไม่มีบัญชี
+// จึงแนบลิงก์ติดตามสถานะ (/event-booth/track/:token) ไว้ทุกฉบับ ไม่มี Gmail = log ลิงก์ลง console แทน
+function escapeHtml(text) {
+    return String(text ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+async function sendEventBoothStatusEmail(toEmail, { subject, lines = [], trackUrl }) {
+    const transporter = getTransporter();
+
+    if (!transporter) {
+        console.warn(`Event booth email not sent (mailer not configured). ${toEmail}: ${subject} — ${trackUrl}`);
+        return;
+    }
+
+    await transporter.sendMail({
+        from: `"Kangsadan Night Market" <${process.env.GMAIL_USER}>`,
+        to: toEmail,
+        subject,
+        html: `
+            ${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}
+            <p>ติดตามสถานะ/แนบสลิปโอนเงินได้ที่: <a href="${escapeHtml(trackUrl)}">${escapeHtml(trackUrl)}</a></p>
+        `
+    });
+}
+
 module.exports = {
     sendPasswordResetEmail,
     sendStallAssignedEmail,
     sendPaymentConfirmedEmail,
     sendSellerApplicationApprovedEmail,
     sendSellerApplicationRejectedEmail,
-    sendStallExpiringSoonEmail
+    sendStallExpiringSoonEmail,
+    sendEventBoothStatusEmail
 };

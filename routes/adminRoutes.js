@@ -17,6 +17,7 @@ const { buildQuotationData } = require('../controllers/quotationController');
 const bannerCtrl = require('../controllers/communityBannerController');
 const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
 const bookingHolidayCtrl = require('../controllers/bookingHolidayController');
+const eventBoothCtrl = require('../controllers/eventBoothController');
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
 const storage = createImageStorage({ folder: 'announcements', prefix: 'ann' });
@@ -104,6 +105,13 @@ router.post('/booking-holidays/:id/delete', isAdminOnly, bookingHolidayCtrl.dele
 router.get('/product-subtypes', isAdminOnly, productSubtypeCtrl.getProductSubtypesPage);
 router.post('/product-subtypes', isAdminOnly, productSubtypeCtrl.addProductSubtype);
 router.post('/product-subtypes/:id/toggle', isAdminOnly, productSubtypeCtrl.toggleProductSubtype);
+
+// --- 6.5 คำขอจัดบูธกิจกรรม (โซน G) — ขั้นตอนแยกจากการจองแผง ดู controllers/eventBoothController.js ---
+router.get('/event-booths', eventBoothCtrl.getAdminPage);
+router.post('/event-booths/approve', eventBoothCtrl.approve);
+router.post('/event-booths/reject', eventBoothCtrl.reject);
+router.post('/event-booths/confirm-payment', eventBoothCtrl.confirmPayment);
+router.post('/event-booths/reject-slip', eventBoothCtrl.rejectSlip);
 
 // --- 7. Approvals & Requests ---
 router.get('/approvals', approvalCtrl.getApprovalsPage);

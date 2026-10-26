@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ขอจัดบูธกิจกรรม — ตลาดกังสดาลไนท์</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+    <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
+</head>
+<body class="eb-body">
+    <script src="/js/common/tabSession.js"></script>
+    <%- include('_topbar') %>
+
+    <main class="eb-page">
+        <header class="eb-head">
+            <div>
+                <p class="eb-kicker">โซน G · บูธกิจกรรม</p>
+                <h1 class="eb-title">ขอจัดบูธกิจกรรมในตลาด</h1>
+                <p class="eb-lead">สำหรับบริษัท หน่วยงาน หรือผู้จัดกิจกรรม ไม่ต้องสมัครเป็นร้านค้า กรอกข้อมูลงานแล้วรอแอดมินพิจารณา
+                    เมื่ออนุมัติจะได้ลิงก์สำหรับชำระเงินและแนบสลิป เหมือนการจองแผงของร้านค้า</p>
+            </div>
+            <a class="eb-zone-tag" href="/market-map?stall=G101"><i class="fa-solid fa-map-location-dot"></i> ดูตำแหน่งบนผัง</a>
+        </header>
+
+        <% if (error) { %>
+        <div class="eb-notice eb-notice--danger" role="alert"><%= error %></div>
+        <% } %>
+
+        <div class="eb-layout">
+            <form method="POST" action="/event-booth" class="eb-form" id="eventBoothForm" novalidate>
+                <section class="eb-section">
+                    <div class="eb-section-head">
+                        <span class="eb-step">01</span>
+                        <div>
+                            <h2 class="eb-section-title">ผู้ขอจัดบูธ</h2>
+                            <p class="eb-section-hint">แอดมินจะติดต่อกลับตามข้อมูลนี้<% if (user) { %> — กรอกจากบัญชีของคุณไว้ให้แล้ว แก้ได้<% } %></p>
+                        </div>
+                    </div>
+                    <div class="eb-fields">
+                        <div class="eb-field eb-field--full">
+                            <label for="companyName">ชื่อบริษัท / หน่วยงาน <span class="eb-must">*</span></label>
+                            <input class="eb-input" id="companyName" name="companyName" maxlength="150" required autocomplete="organization" value="<%= values.companyName || '' %>">
+                        </div>
+                        <div class="eb-field">
+                            <label for="contactName">ชื่อผู้ติดต่อ <span class="eb-must">*</span></label>
+                            <input class="eb-input" id="contactName" name="contactName" maxlength="100" required autocomplete="name" value="<%= values.contactName || '' %>">
+                        </div>
+                        <div class="eb-field">
+                            <label for="phone">เบอร์โทร <span class="eb-must">*</span></label>
+                            <input class="eb-input" id="phone" name="phone" type="tel" inputmode="tel" maxlength="12" required autocomplete="tel" placeholder="0812345678" value="<%= values.phone || '' %>">
+                        </div>
+                        <div class="eb-field eb-field--full">
+                            <label for="email">อีเมล <span class="eb-opt">(แนะนำ)</span></label>
+                            <input class="eb-input" id="email" name="email" type="email" maxlength="150" autocomplete="email" value="<%= values.email || '' %>">
+                            <span class="eb-help">ใช้ส่งผลการพิจารณาและลิงก์ติดตามคำขอ — ถ้าไม่กรอก ต้องเก็บลิงก์ติดตามที่ได้หลังส่งคำขอไว้เอง</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="eb-section">
+                    <div class="eb-section-head">
+                        <span class="eb-step">02</span>
+                        <div>
+                            <h2 class="eb-section-title">กิจกรรม</h2>
+                            <p class="eb-section-hint">จัดได้ครั้งละไม่เกิน <%= maxEventDays %> วัน วันหยุดตลาดที่ประกาศไว้ไม่คิดเงิน</p>
+                        </div>
+                    </div>
+                    <div class="eb-fields">
+                        <div class="eb-field eb-field--full">
+                            <label for="eventTitle">ชื่องาน / กิจกรรม <span class="eb-must">*</span></label>
+                            <input class="eb-input" id="eventTitle" name="eventTitle" maxlength="150" required placeholder="เช่น บูธแนะนำสินค้า, กิจกรรมแจกของรางวัล" value="<%= values.eventTitle || '' %>">
+                        </div>
+                        <div class="eb-field">
+                            <label for="dateStart">วันเริ่มงาน <span class="eb-must">*</span></label>
+                            <input class="eb-input" id="dateStart" name="dateStart" type="date" required min="<%= minDate %>" max="<%= maxDate %>" value="<%= values.dateStart || '' %>">
+                        </div>
+                        <div class="eb-field">
+                            <label for="dateEnd">วันสิ้นสุดงาน <span class="eb-must">*</span></label>
+                            <input class="eb-input" id="dateEnd" name="dateEnd" type="date" required min="<%= minDate %>" max="<%= maxDate %>" value="<%= values.dateEnd || '' %>">
+                        </div>
+                        <div class="eb-field eb-field--full">
+                            <label for="description">รายละเอียดกิจกรรม <span class="eb-opt">(ไม่บังคับ)</span></label>
+                            <textarea class="eb-input" id="description" name="description" maxlength="2000" placeholder="ทำอะไรในบูธ ใช้ไฟฟ้า/อุปกรณ์อะไรบ้าง จำนวนเจ้าหน้าที่"><%= values.description || '' %></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="eb-section">
+                    <div class="eb-section-head">
+                        <span class="eb-step">03</span>
+                        <div>
+                            <h2 class="eb-section-title">จุดที่ต้องการ</h2>
+                            <p class="eb-section-hint">แอดมินเป็นคนจัดบูธจริงตอนอนุมัติ ตามช่วงวันที่ว่าง</p>
+                        </div>
+                    </div>
+                    <div class="eb-fields">
+                        <div class="eb-booth-options" role="radiogroup" aria-label="จุดบูธที่ต้องการ">
+                            <label class="eb-booth-option">
+                                <input type="radio" name="preferredBooth" value="" <%= !values.preferredBooth ? 'checked' : '' %>>
+                                <span class="eb-booth-body">
+                                    <span class="eb-booth-code">ไม่ระบุ</span>
+                                    <span class="eb-booth-label">ให้แอดมินเลือกจุดที่ว่างให้</span>
+                                </span>
+                            </label>
+                            <% booths.forEach((booth) => { %>
+                            <label class="eb-booth-option">
+                                <input type="radio" name="preferredBooth" value="<%= booth.code %>" <%= values.preferredBooth === booth.code ? 'checked' : '' %>>
+                                <span class="eb-booth-body">
+                                    <span class="eb-booth-code"><%= booth.code %></span>
+                                    <span class="eb-booth-label"><%= booth.label %></span>
+                                    <% if (booth.maintenance) { %>
+                                    <span class="eb-booth-meta eb-booth-meta--warn">ปิดซ่อมบำรุงอยู่ตอนนี้</span>
+                                    <% } else if (booth.bookedRanges.length) { %>
+                                    <span class="eb-booth-meta">มีงานแล้ว: <%= booth.bookedRanges.join(', ') %></span>
+                                    <% } else { %>
+                                    <span class="eb-booth-meta">ยังไม่มีงานที่จองไว้</span>
+                                    <% } %>
+                                </span>
+                            </label>
+                            <% }) %>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="eb-actions">
+                    <button type="submit" class="eb-btn"><i class="fa-solid fa-paper-plane"></i> ส่งคำขอจัดบูธ</button>
+                    <span class="eb-actions-note">ยังไม่ต้องชำระเงินตอนนี้ — ชำระหลังแอดมินอนุมัติ</span>
+                </div>
+            </form>
+
+            <aside class="eb-aside" aria-label="สรุปค่าบูธ">
+                <div class="eb-aside-block">
+                    <p class="eb-aside-title">ค่าบูธกิจกรรม</p>
+                    <div class="eb-price"><strong><%= pricePerDay.toLocaleString('th-TH') %></strong><span>บาท / บูธ / วัน</span></div>
+                </div>
+                <div class="eb-aside-block">
+                    <p class="eb-aside-title">ประมาณการ</p>
+                    <div class="eb-sum-row"><span>จำนวนวัน</span><span id="sumDays">—</span></div>
+                    <div class="eb-sum-row eb-sum-total"><span>รวม</span><span id="sumTotal">—</span></div>
+                    <p class="eb-help" style="margin:8px 0 0">ยอดจริงหักวันหยุดตลาดที่ประกาศไว้ออกแล้ว แสดงในหน้าติดตามหลังส่งคำขอ</p>
+                </div>
+                <div class="eb-aside-block">
+                    <p class="eb-aside-title">ตำแหน่งบูธ</p>
+                    <div class="eb-minimap" aria-hidden="true">
+                        <div class="eb-mm-f">โซน F</div>
+                        <div class="eb-mm-b">โซน B</div>
+                        <div class="eb-mm-g eb-mm-g1" data-booth="G101">G1</div>
+                        <div class="eb-mm-g eb-mm-g2" data-booth="G201">G2</div>
+                    </div>
+                </div>
+                <div class="eb-aside-block">
+                    <p class="eb-aside-title">ขั้นตอน</p>
+                    <ol class="eb-steps-list">
+                        <li>ส่งคำขอ — ได้ลิงก์ติดตามสถานะทันที</li>
+                        <li>แอดมินพิจารณาและจัดบูธให้</li>
+                        <li>ชำระเงินผ่านพร้อมเพย์ แล้วแนบสลิปในลิงก์ติดตาม</li>
+                        <li>แอดมินยืนยันการชำระ บูธพร้อมใช้งาน</li>
+                    </ol>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <script>
+        // ประมาณการค่าบูธตามช่วงวันที่เลือก (ยังไม่หักวันหยุด — ยอดจริงคำนวณที่ server) + ไฮไลต์จุดที่เลือกบนผังย่อ
+        (function () {
+            const PRICE = <%- JSON.stringify(pricePerDay) %>;
+            const startEl = document.getElementById('dateStart');
+            const endEl = document.getElementById('dateEnd');
+            const daysEl = document.getElementById('sumDays');
+            const totalEl = document.getElementById('sumTotal');
+            function update() {
+                if (startEl.value) endEl.min = startEl.value;
+                const s = startEl.value ? new Date(startEl.value + 'T00:00:00') : null;
+                const e = endEl.value ? new Date(endEl.value + 'T00:00:00') : null;
+                if (!s || !e || e < s) { daysEl.textContent = '—'; totalEl.textContent = '—'; return; }
+                const days = Math.round((e - s) / 86400000) + 1;
+                daysEl.textContent = days + ' วัน';
+                totalEl.textContent = (days * PRICE).toLocaleString('th-TH') + ' บาท';
+            }
+            function pick() {
+                const chosen = (document.querySelector('input[name="preferredBooth"]:checked') || {}).value || '';
+                document.querySelectorAll('.eb-mm-g').forEach((el) => el.classList.toggle('is-picked', el.dataset.booth === chosen));
+            }
+            startEl.addEventListener('change', () => { if (!endEl.value || endEl.value < startEl.value) endEl.value = startEl.value; update(); });
+            endEl.addEventListener('change', update);
+            document.querySelectorAll('input[name="preferredBooth"]').forEach((el) => el.addEventListener('change', pick));
+            update();
+            pick();
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>คำขอบูธกิจกรรม — Admin</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+    <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+    <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
+</head>
+<body class="eb-body">
+    <script src="/js/common/tabSession.js"></script>
+    <%- include('../partials/navbar') %>
+    <%
+        const successMessages = {
+            approved: 'อนุมัติและจัดบูธแล้ว ผู้ขอจะเห็นยอดชำระในลิงก์ติดตาม',
+            rejected: 'บันทึกไม่อนุมัติแล้ว บูธช่วงวันนั้นกลับมาว่าง',
+            payment_confirmed: 'ยืนยันการชำระเงินแล้ว',
+            slip_rejected: 'ตีกลับสลิปแล้ว ผู้ขอแนบใหม่ได้'
+        };
+        const errorMessages = {
+            not_found: 'ไม่พบคำขอ',
+            not_pending: 'คำขอนี้ไม่ได้อยู่ในขั้นรออนุมัติแล้ว',
+            invalid_booth: 'กรุณาเลือกบูธ G101 หรือ G201',
+            booth_maintenance: 'บูธนี้ปิดซ่อมบำรุงอยู่ เลือกบูธอื่นหรือเปลี่ยนสถานะบูธก่อน',
+            booth_overlap: 'บูธนี้มีงานอื่นที่อนุมัติแล้วในช่วงวันเดียวกัน เลือกอีกบูธ',
+            missing_reason: 'กรุณากรอกเหตุผลที่ไม่อนุมัติ',
+            cannot_reject: 'คำขอนี้ปิดไปแล้ว ไม่อนุมัติไม่ได้',
+            no_slip: 'คำขอนี้ไม่มีสลิปรอตรวจ',
+            action_failed: 'บันทึกไม่สำเร็จ กรุณาลองใหม่'
+        };
+        const pillClass = { PENDING: 'eb-pill--pending', IN_PROGRESS: 'eb-pill--progress', SUCCESS: 'eb-pill--success', REJECTED: 'eb-pill--danger' };
+        const visible = rows.filter((r) => r.tab === activeTab);
+    %>
+
+    <main class="eb-page">
+        <header class="eb-head">
+            <div>
+                <p class="eb-kicker">โซน G · บูธกิจกรรม</p>
+                <h1 class="eb-title">คำขอจัดบูธกิจกรรม</h1>
+                <p class="eb-lead">คำขอจากบริษัท/หน่วยงาน (ส่งได้โดยไม่ต้องมีบัญชี) อนุมัติ = จัดบูธ แล้วผู้ขอชำระผ่านลิงก์ติดตาม
+                    ยืนยันสลิปแล้วบูธขึ้นเป็น "จองแล้ว" บนผังตามช่วงวันงาน</p>
+            </div>
+            <a class="eb-zone-tag" href="/admin/slots"><i class="fa-solid fa-map"></i> ผังจัดแผง</a>
+        </header>
+
+        <% if (success && successMessages[success]) { %>
+        <div class="eb-notice eb-notice--success" role="status"><%= successMessages[success] %></div>
+        <% } %>
+        <% if (error) { %>
+        <div class="eb-notice eb-notice--danger" role="alert"><%= errorMessages[error] || 'เกิดข้อผิดพลาด' %></div>
+        <% } %>
+
+        <div class="eb-booth-strip" aria-label="สถานะบูธ">
+            <% booths.forEach((booth) => { %>
+            <div><b style="color:var(--eb-zone)"><%= booth.code %></b> · <%= booth.label %><% if (booth.maintenance) { %> · <span style="color:var(--eb-warning)">ปิดซ่อมบำรุง</span><% } %></div>
+            <% }) %>
+        </div>
+
+        <nav class="eb-tabs" aria-label="สถานะคำขอ">
+            <% tabs.forEach((tab) => { %>
+            <a class="eb-tab <%= tab.key === activeTab ? 'is-active' : '' %>" href="/admin/event-booths?tab=<%= tab.key %>" <%= tab.key === activeTab ? 'aria-current="page"' : '' %>>
+                <span><%= tab.label %></span><b><%= tab.count %></b>
+            </a>
+            <% }) %>
+        </nav>
+
+        <% if (!visible.length) { %>
+        <div class="eb-empty">ไม่มีคำขอในสถานะนี้</div>
+        <% } %>
+
+        <% visible.forEach((r) => { %>
+        <article class="eb-req <%= r.id === focusId ? 'is-focus' : '' %>" id="req-<%= r.id %>">
+            <div class="eb-req-head">
+                <div>
+                    <h2 class="eb-req-title"><%= r.eventTitle %></h2>
+                    <div class="eb-req-sub">#<%= r.id %> · <%= r.companyName %> · ส่งเมื่อ <%= r.createdText %><%= r.isGuest ? ' · ไม่มีบัญชี' : ' · ผู้ใช้ในระบบ' %></div>
+                </div>
+                <div>
+                    <span class="eb-pill <%= pillClass[r.status] || '' %>"><%= r.statusLabel %></span>
+                    <% if (r.isPastDue) { %><span class="eb-pill eb-pill--danger">เลยกำหนดชำระ</span><% } %>
+                </div>
+            </div>
+            <div class="eb-req-body">
+                <div class="eb-req-cell"><small>ผู้ติดต่อ</small><span><%= r.contactName %></span></div>
+                <div class="eb-req-cell"><small>เบอร์ / อีเมล</small><span><a href="tel:<%= r.phone %>"><%= r.phone %></a><% if (r.email) { %><br><a href="mailto:<%= r.email %>"><%= r.email %></a><% } %></span></div>
+                <div class="eb-req-cell"><small>ช่วงวันงาน</small><span><%= r.startText %> – <%= r.endText %> (<%= r.days %> วัน)</span></div>
+                <div class="eb-req-cell"><small>บูธ / ยอด</small><span><%= r.assignedStallCode || (r.preferredStallCode ? `ขอ ${r.preferredStallCode}` : 'ไม่ระบุจุด') %> · <%= r.totalAmount.toLocaleString('th-TH') %> บาท</span></div>
+            </div>
+            <% if (r.description) { %><div class="eb-req-desc"><%= r.description %></div><% } %>
+            <% if (r.status === 'IN_PROGRESS') { %>
+            <div class="eb-req-desc">กำหนดชำระ <%= r.dueText %><% if (r.decidedByName) { %> · อนุมัติโดย <%= r.decidedByName %><% } %></div>
+            <% } %>
+            <% if (r.status === 'REJECTED' && r.rejectReason) { %>
+            <div class="eb-req-desc" style="color:var(--eb-danger)">เหตุผล: <%= r.rejectReason %><% if (r.decidedByName) { %> (<%= r.decidedByName %>)<% } %></div>
+            <% } %>
+            <% if (r.paymentSlipImage) { %>
+            <div class="eb-req-slip">
+                <a href="<%= r.paymentSlipImage %>" target="_blank" rel="noopener"><img src="<%= r.paymentSlipImage %>" alt="สลิปคำขอ #<%= r.id %>"></a>
+                <div>
+                    <% if (r.slipVerified === true) { %><b style="color:var(--eb-success)">ระบบตรวจสลิปแล้ว ยอดตรง</b><% } else if (r.slipVerifyReason) { %><b style="color:var(--eb-warning)"><%= r.slipVerifyReason %></b><% } else { %>ยังไม่ได้ตรวจอัตโนมัติ — ตรวจด้วยตนเอง<% } %>
+                    <% if (r.slipVerifiedAmount != null) { %><div>ยอดในสลิป <%= r.slipVerifiedAmount.toLocaleString('th-TH') %> บาท</div><% } %>
+                </div>
+            </div>
+            <% } %>
+
+            <% if (r.status === 'PENDING' || r.status === 'IN_PROGRESS') { %>
+            <div class="eb-req-actions">
+                <% if (r.status === 'PENDING') { %>
+                <form method="POST" action="/admin/event-booths/approve">
+                    <input type="hidden" name="requestId" value="<%= r.id %>">
+                    <label class="eb-help" for="booth-<%= r.id %>">จัดบูธ</label>
+                    <select name="stallCode" id="booth-<%= r.id %>" required>
+                        <% booths.forEach((booth) => { %>
+                        <option value="<%= booth.code %>" <%= (r.preferredStallCode || 'G101') === booth.code ? 'selected' : '' %> <%= booth.maintenance ? 'disabled' : '' %>><%= booth.code %><%= booth.maintenance ? ' (ซ่อม)' : '' %></option>
+                        <% }) %>
+                    </select>
+                    <button type="submit" class="eb-btn eb-btn--sm"><i class="fa-solid fa-check"></i> อนุมัติ</button>
+                </form>
+                <% } %>
+                <% if (r.paymentSlipImage) { %>
+                <form method="POST" action="/admin/event-booths/confirm-payment" data-confirm="ยืนยันการชำระเงินของคำขอ #<%= r.id %>?">
+                    <input type="hidden" name="requestId" value="<%= r.id %>">
+                    <button type="submit" class="eb-btn eb-btn--sm"><i class="fa-solid fa-circle-check"></i> ยืนยันชำระเงิน</button>
+                </form>
+                <form method="POST" action="/admin/event-booths/reject-slip">
+                    <input type="hidden" name="requestId" value="<%= r.id %>">
+                    <input type="text" name="reason" maxlength="300" placeholder="เหตุผลที่ตีกลับสลิป" aria-label="เหตุผลที่ตีกลับสลิป">
+                    <button type="submit" class="eb-btn eb-btn--ghost eb-btn--sm">ตีกลับสลิป</button>
+                </form>
+                <% } %>
+                <form method="POST" action="/admin/event-booths/reject" data-confirm="ไม่อนุมัติคำขอ #<%= r.id %>?">
+                    <input type="hidden" name="requestId" value="<%= r.id %>">
+                    <input type="text" name="reason" maxlength="500" required placeholder="เหตุผลที่ไม่อนุมัติ" aria-label="เหตุผลที่ไม่อนุมัติ">
+                    <button type="submit" class="eb-btn eb-btn--danger eb-btn--sm">ไม่อนุมัติ</button>
+                </form>
+            </div>
+            <% } %>
+        </article>
+        <% }) %>
+    </main>
+
+    <script>
+        // ยืนยันก่อนกดปุ่มที่ย้อนไม่ได้ + เลื่อนไปที่คำขอที่ลิงก์มา (?focus=)
+        document.querySelectorAll('form[data-confirm]').forEach((form) => {
+            form.addEventListener('submit', (e) => { if (!window.confirm(form.dataset.confirm)) e.preventDefault(); });
+        });
+        const focused = document.querySelector('.eb-req.is-focus');
+        if (focused) focused.scrollIntoView({ block: 'center' });
+    </script>
+</body>
+</html>

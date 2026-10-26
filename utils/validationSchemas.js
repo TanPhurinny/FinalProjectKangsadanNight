@@ -175,6 +175,23 @@ const cleanlinessInspectionInputSchema = z.object({
     note: z.string().trim().max(1000).optional()
 });
 
+// ฟอร์มขอจัดบูธกิจกรรม (/event-booth) — ส่งได้โดยไม่ต้อง login จึงจำกัดความยาวทุกช่อง
+const trimmedText = (min, max, message) => z.preprocess((value) => String(value ?? '').trim(), z.string().min(min, message).max(max, message));
+const eventBoothRequestSchema = z.object({
+    companyName: trimmedText(2, 150, 'กรุณากรอกชื่อบริษัท/หน่วยงาน (2–150 ตัวอักษร)'),
+    contactName: trimmedText(2, 100, 'กรุณากรอกชื่อผู้ติดต่อ (2–100 ตัวอักษร)'),
+    phone: z.preprocess((value) => String(value ?? '').replace(/[\s-]/g, ''), z.string().regex(/^0\d{8,9}$/, 'เบอร์โทรต้องเป็นตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0')),
+    email: z.preprocess((value) => {
+        const text = String(value ?? '').trim();
+        return text === '' ? undefined : text;
+    }, z.string().email('รูปแบบอีเมลไม่ถูกต้อง').max(150).optional()),
+    eventTitle: trimmedText(2, 150, 'กรุณากรอกชื่องาน/กิจกรรม (2–150 ตัวอักษร)'),
+    description: z.preprocess((value) => String(value ?? '').trim(), z.string().max(2000, 'รายละเอียดยาวเกิน 2,000 ตัวอักษร')),
+    dateStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'กรุณาเลือกวันเริ่มงาน'),
+    dateEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'กรุณาเลือกวันสิ้นสุดงาน'),
+    preferredBooth: z.preprocess((value) => String(value ?? '').trim().toUpperCase(), z.enum(['', 'G101', 'G201']))
+});
+
 module.exports = {
     USER_ROLE_VALUES,
     REPAIR_STATUS_VALUES,
@@ -185,6 +202,7 @@ module.exports = {
     repairStatusUpdateSchema,
     announcementSchema,
     bookingStallInputSchema,
+    eventBoothRequestSchema,
     sellerApplicationSchema,
     shopProfileSchema,
     electricExcessInputSchema,

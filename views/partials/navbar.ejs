@@ -44,6 +44,13 @@ const isStaff = user && user.role === 'STAFF';
                 <span class="nav-badge<%= approvalTodo.urgent ? ' nav-badge--urgent' : '' %>" title="ต้องจัดการ <%= approvalTodo.total %> รายการ<%= approvalTodo.urgent ? ` (ด่วน ${approvalTodo.urgent})` : '' %>"><%= approvalTodo.total > 99 ? '99+' : approvalTodo.total %></span>
                 <% } %>
             </a>
+            <a href="/admin/event-booths"
+                class="nav-item <%= currentPath.includes('/admin/event-booths') ? 'active' : '' %>">
+                <i class="fas fa-people-group"></i> บูธกิจกรรม
+                <% if (typeof eventBoothTodo !== 'undefined' && eventBoothTodo && eventBoothTodo.total) { %>
+                <span class="nav-badge<%= eventBoothTodo.slips ? ' nav-badge--urgent' : '' %>" title="คำขอใหม่ <%= eventBoothTodo.pending %> · สลิปรอยืนยัน <%= eventBoothTodo.slips %>"><%= eventBoothTodo.total > 99 ? '99+' : eventBoothTodo.total %></span>
+                <% } %>
+            </a>
             <a href="/community"
                 class="nav-item <%= currentPath.includes('/community') || currentPath.includes('/comunity') ? 'active' : '' %>">
                 <i class="fas fa-comments"></i> คอมมูนิตี้

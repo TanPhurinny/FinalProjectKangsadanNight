@@ -48,6 +48,7 @@ const {
 } = require('../utils/bookingAppliances');
 const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
 const { buildCommunityNotifications } = require('../utils/communityNotifications');
+const { EVENT_ZONE_CODE } = require('../utils/eventBooth');
 
 // รูปแจ้งซ่อม (เก็บที่ Cloudinary หรือดิสก์ตาม utils/imageStorage.js)
 const storage = createImageStorage({ folder: 'repairs' });
@@ -676,6 +677,39 @@ function buildRepairNotifications(reports) {
         });
 }
 
+
+// การ์ดแจ้งเตือนคำขอบูธกิจกรรมของผู้ใช้ที่ login ตอนส่ง (EventBoothRequest.userId) — แจ้งเมื่อแอดมินตัดสินแล้ว
+// desc ถูกใส่เป็น HTML ใน statusbook.js จึงต้อง escape ชื่องานที่ผู้ใช้พิมพ์เอง
+function buildEventBoothNotifications(requests) {
+    const META = {
+        IN_PROGRESS: { type: 'pending-payment', title: 'อนุมัติบูธกิจกรรมแล้ว รอชำระเงิน' },
+        SUCCESS: { type: 'success-payment', title: 'ยืนยันการชำระเงินบูธกิจกรรมแล้ว' },
+        REJECTED: { type: 'cancelled', title: 'คำขอบูธกิจกรรมไม่ได้รับการอนุมัติ' }
+    };
+    const escape = (text) => String(text ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    return (requests || [])
+        .filter((request) => META[request.status])
+        .map((request) => {
+            const meta = META[request.status];
+            const detail = request.status === 'REJECTED' && request.rejectReason
+                ? ` เหตุผล: ${escape(request.rejectReason)}`
+                : request.assignedStallCode ? ` บูธ ${escape(request.assignedStallCode)}` : '';
+            return {
+                id: `event-booth-${request.id}-${request.status}`,
+                type: meta.type,
+                title: meta.title,
+                desc: `งาน "${escape(request.eventTitle)}"${detail}`,
+                date: formatDateThai(request.updatedAt),
+                time: formatTimeThai(request.updatedAt),
+                status: request.status,
+                isRead: false,
+                isNew: true,
+                link: `/event-booth/track/${request.trackingToken}`,
+                linkLabel: request.status === 'IN_PROGRESS' && !request.paymentSlipImage ? 'ชำระเงิน' : 'ดูคำขอบูธ',
+                linkIcon: 'bi-calendar-event'
+            };
+        });
+}
 
 function getBookingStatusClass(status) {
     switch (status) {
@@ -1535,12 +1569,17 @@ async function renderBookingStallPage(req, res, { status = 200, zoneCode = '', e
     });
 }
 
+// โซนกิจกรรม (บูธกิจกรรม) ไม่ได้จองผ่านฟอร์มจองแผง — ส่งไปฟอร์มขอจัดบูธกิจกรรม (controllers/eventBoothController.js)
+const isEventZoneCode = (zone) => String(zone || '').trim().toUpperCase() === EVENT_ZONE_CODE;
+
 router.get("/booking-stall", isAuthenticated, isSellerOrApplicant, async (req, res) => {
+    if (isEventZoneCode(req.query.zone)) return res.redirect('/event-booth');
     return renderBookingStallPage(req, res, { zoneCode: req.query.zone, cornerParam: req.query.corner });
 });
 
 router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
     const zoneCode = String(req.body.zone || '').trim().toUpperCase();
+    if (isEventZoneCode(zoneCode)) return res.redirect('/event-booth');
     const formValues = pickBookingFormValues(req.body);
     let userRecord = null;
     const rejectBooking = (message, status = 400) => renderBookingStallPage(req, res, { status, zoneCode, error: message, userRecord, formValues });
@@ -2258,11 +2297,18 @@ async function loadSellerBookingStatus(userId) {
 
     const renewalNotices = await loadAdminRenewalNotices(userId);
     const communityNotifications = await buildCommunityNotifications(userId);
+    const eventBoothRequests = await prisma.eventBoothRequest.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+    });
 
     return {
         userRecord,
         bookingView,
+        eventBoothRequests,
         notifications: [
+            ...buildEventBoothNotifications(eventBoothRequests),
             ...renewalNotices,
             ...communityNotifications,
             ...buildRepairNotifications(repairReports),
@@ -2275,13 +2321,14 @@ async function loadSellerBookingStatus(userId) {
 
 // --- 4. หน้าสถานะการจอง ---
 router.get('/booking-status', isAuthenticated, async (req, res) => {
-    const { userRecord, bookingView, notifications } = await loadSellerBookingStatus(req.user.id);
+    const { userRecord, bookingView, notifications, eventBoothRequests } = await loadSellerBookingStatus(req.user.id);
     const activeLockForExtension = userRecord ? await findActiveLockForExtension(userRecord) : null;
 
     return res.render('seller/booking_status', {
         user: userRecord || req.user,
         booking: bookingView,
         notifications,
+        eventBoothRequests,
         canExtendLock: Boolean(activeLockForExtension && !activeLockForExtension.pendingExtension),
         error: req.query.error || null,
         success: req.query.success || null,

@@ -64,7 +64,18 @@ const shopViewLimiter = rateLimit({
     message: { success: false, message: 'มีการเรียกใช้งานถี่เกินไป' }
 });
 
+// ฟอร์มขอจัดบูธกิจกรรมส่งได้โดยไม่ต้อง login — กันสแปมคำขอ/อัปโหลดสลิปรัวๆ
+const eventBoothLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: skipInNonProduction,
+    message: 'ส่งคำขอบ่อยเกินไป กรุณาลองใหม่อีกครั้งในภายหลัง'
+});
+
 module.exports = {
+    eventBoothLimiter,
     shopViewLimiter,
     authLimiter,
     forgotPasswordLimiter,
