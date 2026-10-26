@@ -22,6 +22,7 @@ model User {
   bookings      Booking[]
   bookingRequests BookingRequest[]
   eventBoothRequests EventBoothRequest[]
+  leaseContractRequests LeaseContractRequest[]
   requests      MaintenanceReport[] @relation("MaintenanceReportReporter")
   shop          ShopDetail?
   sellerProfile Seller?
@@ -850,4 +851,30 @@ model EventBoothRequest {
   @@index([userId], map: "EventBoothRequest_userId_fkey")
   @@index([status])
   @@index([assignedStallCode])
+}
+
+// คำขอสัญญาเช่าจากร้านค้า (กดขอในหน้า /rental-statement) — แอดมินดูข้อมูลผู้เช่า/ยอดชำระในช่วงที่ขอ
+// แล้วเขียนสัญญาเองนอกระบบ จากนั้นแนบไฟล์ (PDF/รูป) กลับให้ร้านดาวน์โหลด ระบบไม่ได้สร้างสัญญาให้
+model LeaseContractRequest {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  periodStart     DateTime
+  periodEnd       DateTime
+  note            String?  @db.Text
+  status          LeaseContractStatus @default(PENDING)
+  contractFileUrl String?
+  // ข้อความจากแอดมินถึงร้าน (เช่น นัดเซ็นตัวจริง) หรือเหตุผลที่ยกเลิก
+  adminNote       String?  @db.Text
+  issuedAt        DateTime?
+  issuedByName    String?
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "LeaseContractRequest_userId_fkey")
+}
+
+enum LeaseContractStatus {
+  PENDING
+  ISSUED
+  CANCELLED
 }
