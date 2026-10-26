@@ -51,6 +51,12 @@
       </dl>
     </header>
 
+    <!-- งานที่ต้องทำอยู่บนสุดเสมอ (ไม่ขึ้นกับหมวด/ตัวกรองอ่าน) — บนมือถือจะได้เห็นก่อนอย่างอื่น -->
+    <section class="nt-todo" id="ntTodo" hidden aria-labelledby="ntTodoTitle">
+      <h2 class="nt-label" id="ntTodoTitle"><i class="bi bi-lightning-charge-fill"></i> ต้องทำ</h2>
+      <div id="ntTodoList"></div>
+    </section>
+
     <div class="nt-layout">
       <aside class="nt-side">
         <nav class="nt-cats" id="ntCats" aria-label="หมวดแจ้งเตือน"></nav>
@@ -58,6 +64,7 @@
         <section class="nt-progress" id="ntProgress" hidden>
           <h2 class="nt-label">คำขอจองล่าสุด</h2>
           <ol class="nt-steps" id="ntSteps"></ol>
+          <p class="nt-progress__line" id="ntProgressLine"></p>
         </section>
 
         <button type="button" class="nt-keys-btn" id="ntKeysBtn">
@@ -85,14 +92,8 @@
           <i class="bi bi-arrow-up"></i> <span id="ntFreshText">มีแจ้งเตือนใหม่</span>
         </button>
 
-        <section class="nt-todo" id="ntTodo" hidden aria-labelledby="ntTodoTitle">
-          <h2 class="nt-label" id="ntTodoTitle"><i class="bi bi-lightning-charge-fill"></i> ต้องทำ</h2>
-          <div id="ntTodoList"></div>
-        </section>
-
         <div id="ntList" class="nt-list" aria-live="polite"></div>
 
-        <p class="nt-hint-swipe"><i class="bi bi-arrow-left-right"></i> ปัดรายการไปทางซ้ายหรือขวาเพื่อสลับอ่านแล้ว/ยังไม่อ่าน</p>
       </section>
     </div>
   </main>

@@ -137,11 +137,12 @@
   }
 
   // ---------- คัดกรอง ----------
-  const isReal = (item) => !item.upcoming;
+  // ขั้นการจอง (step) ที่ไม่มีงานให้ทำแสดงในแถบความคืบหน้าแล้ว ไม่ต้องซ้ำในรายการ — กติกาเดียวกับเลขกระดิ่งใน navbarSeller.ejs
+  const isReal = (item) => !item.upcoming && (!item.step || Boolean(item.action));
   function matchesSearch(item) {
     const q = state.q.trim().toLowerCase();
     if (!q) return true;
-    return [item.title, item.desc, item.action, CATEGORY_LABEL[item.category]]
+    return [item.title, item.desc, item.action, item.summary, CATEGORY_LABEL[item.category]]
       .some((v) => plain(v).toLowerCase().includes(q));
   }
   function inView(item) {
@@ -176,14 +177,16 @@
     renderCategories(real);
     renderProgress();
 
+    // ต้องทำ: โชว์ทุกงานเสมอ ไม่ขึ้นกับหมวด/ตัวกรองอ่าน (กรองแค่คำค้นหา) — งานยังค้างอยู่แม้จะอ่านแล้ว
+    const todo = real.filter((i) => i.action && matchesSearch(i)).sort(byDeadline);
     const visible = state.items.filter(inView);
-    const todo = visible.filter((i) => i.action).sort(byDeadline);
     const rest = visible.filter((i) => !i.action).sort(byTimeDesc);
     els.markAll.disabled = !visible.some((i) => !i.isRead);
 
     els.todo.hidden = !todo.length;
     els.todoList.innerHTML = todo.map(todoHtml).join('');
-    els.list.innerHTML = rest.length ? groupsHtml(rest) : (todo.length ? '' : emptyHtml());
+    const filtersOn = state.cat !== 'all' || state.read !== 'all';
+    els.list.innerHTML = rest.length ? groupsHtml(rest) : (todo.length && !filtersOn ? '' : emptyHtml());
 
     document.querySelectorAll('.nt-seg [data-read]').forEach((btn) => {
       btn.setAttribute('aria-selected', String(btn.dataset.read === state.read));
@@ -219,11 +222,16 @@
       return;
     }
     els.progress.hidden = false;
+    const line = document.getElementById('ntProgressLine');
     if (!steps.length) {
       els.steps.innerHTML = `<li class="nt-step"><span class="nt-step__dot"></span><span>ยังไม่มีคำขอจอง<small>${esc(plain(noBooking.desc))}</small></span></li>`;
+      line.innerHTML = '<b>ยังไม่มีคำขอจอง</b>';
       return;
     }
     const current = Math.max(...steps.filter((s) => !s.upcoming).map((s) => s.step), 0);
+    const currentItem = steps.find((s) => s.step === current);
+    line.innerHTML = `<span class="nt-progress__bar" aria-hidden="true">${[1, 2, 3].map((n) => `<i class="${n <= current ? 'on' : ''}"></i>`).join('')}</span>
+      <b>${STEP_LABELS[current] || 'ส่งคำขอจองแล้ว'}</b><span>ขั้น ${current}/3${currentItem && currentItem.at ? ` · ${esc(relative(currentItem.at))}` : ''}</span>`;
     els.steps.innerHTML = [1, 2, 3].map((n) => {
       const item = steps.find((s) => s.step === n);
       const done = n < current || (n === current && n === 3);
@@ -245,8 +253,8 @@
     return `<div class="nt-todo-item" data-key="${esc(item.key)}">
       ${iconHtml(item)}
       <div>
-        <div class="nt-todo-item__title">${!item.isRead ? '<span class="nt-dot" title="ยังไม่อ่าน"></span> ' : ''}${highlight(plain(item.action))}</div>
-        <div class="nt-todo-item__sub">${highlight(plain(item.title))} — ${highlight(plain(item.desc))}</div>
+        <div class="nt-todo-item__title">${highlight(plain(item.action))}</div>
+        <div class="nt-todo-item__sub" title="${esc(plain(item.desc))}">${highlight(plain(item.summary || item.desc))}</div>
       </div>
       <div class="nt-todo-item__right">
         ${cd ? `<span class="nt-countdown ${cd.cls}" data-deadline="${esc(item.deadline)}">${cd.text}</span>` : ''}
@@ -285,9 +293,8 @@
       <div class="nt-row__body" tabindex="0" role="button" aria-expanded="${open}">
         ${iconHtml(item)}
         <div>
-          <div class="nt-row__title">${!item.isRead ? '<span class="nt-dot" title="ยังไม่อ่าน"></span>' : ''}<span>${highlight(plain(item.title))}</span></div>
+          <div class="nt-row__title">${highlight(plain(item.title))}${!item.isRead ? '<span class="visually-hidden"> (ยังไม่อ่าน)</span>' : ''}</div>
           <p class="nt-row__desc">${highlight(plain(item.desc))}</p>
-          ${state.cat === 'all' ? `<span class="nt-tag">${esc(CATEGORY_LABEL[item.category] || '')}</span>` : ''}
         </div>
         <div class="nt-row__meta">${meta}</div>
         <div class="nt-row__actions">
@@ -635,4 +642,14 @@
   }, 30 * 1000);
 
   render();
+
+  // บอกว่าปัดแถวได้ — ครั้งแรกครั้งเดียวบนจอสัมผัส (จำไว้ใน localStorage)
+  try {
+    if (matchMedia('(pointer: coarse)').matches && els.list.querySelector('.nt-row') && !localStorage.getItem('ntSwipeHint')) {
+      localStorage.setItem('ntSwipeHint', '1');
+      setTimeout(() => showToast('ปัดรายการไปทางซ้ายหรือขวา เพื่อสลับอ่านแล้ว/ยังไม่อ่าน'), 800);
+    }
+  } catch (error) {
+    // localStorage ใช้ไม่ได้ (โหมดส่วนตัว) — ข้ามไป
+  }
 })();

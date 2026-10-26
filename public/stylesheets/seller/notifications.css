@@ -199,6 +199,12 @@ body {
     color: var(--ink-soft);
     font-size: 0.75rem;
 }
+/* บรรทัดเดียวสรุปขั้นการจอง — ใช้บนมือถือแทนรายการขั้นแนวตั้ง */
+.nt-progress__line { display: none; }
+.nt-progress__bar { display: inline-flex; gap: 3px; }
+.nt-progress__bar i { width: 18px; height: 4px; background: var(--line); }
+.nt-progress__bar i.on { background: var(--primary); }
+
 .nt-progress__cta {
     display: inline-flex;
     align-items: center;
@@ -460,12 +466,6 @@ kbd {
     line-height: 1.4;
 }
 .nt-row.is-unread .nt-row__title { font-weight: 700; color: var(--navy); }
-.nt-dot {
-    flex: 0 0 auto;
-    width: 7px;
-    height: 7px;
-    background: var(--primary);
-}
 .nt-row__desc {
     margin: 3px 0 0;
     font-size: 0.84rem;
@@ -484,15 +484,6 @@ kbd {
     white-space: nowrap;
 }
 .nt-row__meta b { display: block; font-weight: 500; color: var(--ink); }
-.nt-tag {
-    display: inline-block;
-    margin-top: 6px;
-    padding: 1px 6px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--ink-soft);
-    border: 1px solid var(--line);
-}
 .nt-row__actions {
     grid-column: 2 / -1;
     display: none;
@@ -529,8 +520,6 @@ kbd {
 .nt-empty i { font-size: 2rem; color: var(--line-strong); }
 .nt-empty h2 { margin: 10px 0 4px; font-size: 1.05rem; font-weight: 700; color: var(--navy); }
 .nt-empty p { margin: 0 0 14px; font-size: 0.88rem; }
-
-.nt-hint-swipe { display: none; }
 
 /* ── toast + undo ── */
 .nt-toast {
@@ -640,10 +629,19 @@ kbd {
         font-size: 0.85rem;
     }
     .nt-cat[aria-pressed="true"] { border-left: none; border-bottom-color: var(--primary); }
-    .nt-progress { padding: 12px 14px; border: 1px solid var(--line); }
-    .nt-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .nt-step { grid-template-columns: 1fr; padding-bottom: 0; font-size: 0.78rem; }
-    .nt-step::before { display: none; }
+    .nt-todo { margin-top: 14px; }
+    .nt-progress { padding: 10px 12px; border: 1px solid var(--line); }
+    .nt-progress .nt-label, .nt-steps { display: none; }
+    .nt-progress__line {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 10px;
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--ink-soft);
+    }
+    .nt-progress__line b { color: var(--navy); }
     .nt-keys-btn { display: none; }
 
     .nt-toolbar { grid-template-columns: 1fr auto; }
@@ -660,13 +658,6 @@ kbd {
     .nt-row__meta { grid-column: 2; grid-row: 2; text-align: left; }
     .nt-row__meta b { display: inline; margin-right: 6px; }
     .nt-row__actions { grid-column: 2; }
-    .nt-hint-swipe {
-        display: block;
-        margin: 16px 0 0;
-        font-size: 0.75rem;
-        color: var(--ink-soft);
-        text-align: center;
-    }
     .nt-toast { left: 16px; right: 16px; transform: none; bottom: 16px; justify-content: space-between; animation: none; }
 }
 

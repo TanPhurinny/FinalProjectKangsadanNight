@@ -355,6 +355,7 @@ function buildSlipRejectedReminderEntry(latestBooking, status) {
         isRead: false,
         isNew: true,
         action: 'อัปโหลดสลิปใหม่',
+        summary: `${reason.replace('[แอดมินปฏิเสธสลิป]', '').trim() || 'แอดมินปฏิเสธสลิป'} · ล็อกยังเป็นของคุณ`,
         link: '/booking-status',
         linkLabel: 'อัปโหลดสลิป',
         linkIcon: 'bi-upload'
@@ -411,6 +412,7 @@ function buildExtendLockReminderEntry(extendInfo) {
         isRead: false,
         isNew: true,
         action: canExtend ? 'ต่อล็อกก่อน 20:00 น.' : 'จองรอบใหม่',
+        summary: `${stallLabel} · ขายวันสุดท้าย ${formatDateThai(renewal.currentEnd)}`,
         link: canExtend ? '/booking-stall/extend' : '/select-zone',
         linkLabel: canExtend ? 'ต่อล็อก' : 'จองรอบใหม่',
         linkIcon: 'bi-arrow-repeat'
@@ -630,6 +632,7 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
             status: 'IN_PROGRESS',
             ...(status === 'IN_PROGRESS' && !awaitingPaymentVerification ? {
                 action: 'ชำระเงินและอัปโหลดสลิป',
+                summary: `คำขอจอง${zoneLabel}${latestBooking.paymentDueAt ? ` · ชำระก่อน ${formatDateThai(latestBooking.paymentDueAt)} ${formatTimeThai(latestBooking.paymentDueAt)} น.` : ''}`,
                 deadline: toIso(latestBooking.paymentDueAt),
                 link: '/booking-status',
                 linkLabel: 'ไปชำระเงิน',
@@ -2129,6 +2132,7 @@ async function loadAdminRenewalNotices(userId) {
                 isNew: true,
                 ...(closed ? {} : {
                     action: 'ต่อล็อกก่อน 20:00 น.',
+                    summary: `ล็อก ${notice.stallCode} · ผู้ดูแลตลาดแจ้งเตือน · ขายวันสุดท้าย ${formatDateThai(stall.bookingEndDate)}`,
                     deadline: toIso(atEightPm(stall.bookingEndDate)),
                     link: '/booking-stall/extend', linkLabel: 'ต่อล็อก', linkIcon: 'bi-arrow-repeat'
                 })
