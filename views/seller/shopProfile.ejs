@@ -13,7 +13,7 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/seller/repair.css">
-        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261026-tax">
+        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261026-reviewtabs">
     </head>
 
     <body>
@@ -140,14 +140,24 @@
                     <div class="vs-tiles">
                         <div class="vs-tile"><span>คะแนนเฉลี่ย</span><b><%= rp.count ? rp.avg.toFixed(1) : '–' %></b><span class="sr-stars" aria-hidden="true"><%- starRow(rp.avg) %></span></div>
                         <div class="vs-tile"><span>รีวิวทั้งหมด</span><b><%= rp.count %></b></div>
-                        <div class="vs-tile"><span>ยังไม่ได้ตอบ</span><b><%= rp.unanswered %></b><% if (rp.newThisWeek) { %><span>ใหม่ 7 วัน <%= rp.newThisWeek %></span><% } %></div>
+                        <div class="vs-tile"><span>ยังไม่ได้ตอบ</span><b data-unanswered-count><%= rp.unanswered %></b><% if (rp.newThisWeek) { %><span>ใหม่ 7 วัน <%= rp.newThisWeek %></span><% } %></div>
                     </div>
                     <% if (!rp.reviews.length) { %>
                     <p class="vs-empty">ยังไม่มีรีวิว — สมาชิกรีวิวได้จากการ์ดร้านบนผังตลาด ป้าย QR หน้าร้านช่วยให้ลูกค้าเปิดร้านคุณแล้วรีวิวได้ทันที</p>
-                    <% } else { %>
-                    <ol class="sr-list">
+                    <% } else {
+                        // แท็บกรอง: ยังไม่ตอบ (นับแบบเดียวกับช่อง "ยังไม่ได้ตอบ" = มีความเห็น ยังไม่ตอบ ไม่ถูกซ่อน) / ตอบแล้ว / ทั้งหมด
+                        // เปิดมาที่ "ยังไม่ตอบ" ก่อนถ้ามี — รายการแสดงทีละ 10 กด "ดูเพิ่ม" (public/js/seller/shopReviews.js)
+                        const stateOf = function (rv) { return rv.isHidden ? 'hidden' : rv.reply ? 'replied' : rv.comment ? 'pending' : 'rating'; };
+                        const repliedCount = rp.reviews.filter(function (rv) { return !rv.isHidden && rv.reply; }).length;
+                    %>
+                    <div class="sr-tabs" role="tablist" aria-label="กรองรีวิว">
+                        <button type="button" role="tab" data-review-tab="pending" aria-selected="false">ยังไม่ตอบ <span data-tab-count="pending"><%= rp.unanswered %></span></button>
+                        <button type="button" role="tab" data-review-tab="replied" aria-selected="false">ตอบแล้ว <span data-tab-count="replied"><%= repliedCount %></span></button>
+                        <button type="button" role="tab" data-review-tab="all" aria-selected="false">ทั้งหมด <span data-tab-count="all"><%= rp.reviews.length %></span></button>
+                    </div>
+                    <ol class="sr-list" data-default-tab="<%= rp.unanswered ? 'pending' : 'all' %>">
                         <% rp.reviews.forEach(function (rv) { %>
-                        <li class="sr-item<%= rv.isHidden ? ' is-hidden' : '' %>" data-review-id="<%= rv.id %>">
+                        <li class="sr-item<%= rv.isHidden ? ' is-hidden' : '' %>" data-review-id="<%= rv.id %>" data-review-state="<%= stateOf(rv) %>" data-has-comment="<%= rv.comment ? '1' : '' %>">
                             <div class="sr-head">
                                 <span class="sr-stars" aria-label="<%= rv.rating %> ดาว"><%- starRow(rv.rating) %></span>
                                 <b><%= rv.author %></b>
@@ -178,6 +188,8 @@
                         </li>
                         <% }); %>
                     </ol>
+                    <p class="sr-empty d-none" data-review-empty></p>
+                    <button type="button" class="sr-more d-none" data-review-more></button>
                     <% } %>
                 </section>
                 <% } %>
@@ -342,6 +354,6 @@
 
         <script src="/js/seller/shopProfile.js?v=20261023-logo"></script>
         <script src="/js/common/dialogs.js"></script>
-        <script src="/js/seller/shopReviews.js?v=20261026"></script>
+        <script src="/js/seller/shopReviews.js?v=20261026-tabs"></script>
     </body>
 </html>

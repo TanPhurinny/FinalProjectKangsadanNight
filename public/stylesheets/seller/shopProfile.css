@@ -395,6 +395,38 @@
 .sr-stars { display: inline-flex; gap: 1px; color: #e2b83a; font-size: 0.72rem; }
 .sr-stars .fa-regular { color: #c9d3d6; }
 .vs-tile .sr-stars { margin-top: 2px; }
+/* แท็บกรองรีวิว — 3 ช่องเต็มความกว้าง คั่นเส้นแบบเดียวกับ .vs-tiles */
+.sr-tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); }
+.sr-tabs button {
+    padding: 9px 6px;
+    border: 0;
+    border-right: 1px solid var(--line);
+    border-bottom: 3px solid transparent;
+    background: #fff;
+    color: var(--ink-soft);
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.sr-tabs button:last-child { border-right: 0; }
+.sr-tabs button:hover { background: #f6f8f8; }
+.sr-tabs button[aria-selected="true"] { color: var(--navy); font-weight: 700; border-bottom-color: var(--primary); }
+.sr-tabs span { font-family: var(--mono); font-size: 0.78rem; margin-left: 2px; }
+.sr-empty { margin: 0; padding: 18px 14px; font-size: 0.85rem; color: var(--ink-soft); text-align: center; }
+.sr-more {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    border: 0;
+    border-top: 1px solid var(--line);
+    background: #f6f8f8;
+    color: var(--navy);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.sr-more:hover { background: #eef3f4; }
 .sr-list { list-style: none; margin: 0; padding: 0; }
 .sr-item { padding: 12px 14px; border-bottom: 1px dashed var(--line); }
 .sr-item:last-child { border-bottom: 0; }
