@@ -1470,6 +1470,9 @@ function renderGrid(z) {
         grid.appendChild(wrap);
     });
 
+    // โซน G: วางบูธบนผังที่มีล็อกโซน F/B ห้องน้ำ ออฟฟิศโดยรอบ ให้รู้ตำแหน่งจริง (public/js/eventZonePlan.js)
+    if (z === 'G' && window.mountEventZonePlan) window.mountEventZonePlan(grid);
+
     document.getElementById('drawerStats').innerHTML = drawerStatsHtml(total, booked, maintenance);
 }
 

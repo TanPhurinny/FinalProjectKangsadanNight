@@ -196,6 +196,8 @@
             blockDiv.appendChild(wrap);
             canvasEl.appendChild(blockDiv);
         });
+        // โซน G: วางบูธบนผังที่มีล็อกโดยรอบ (public/js/eventZonePlan.js)
+        if (zoneKey === 'G' && window.mountEventZonePlan) window.mountEventZonePlan(canvasEl);
     }
 
     // เลือกโซนแล้วเรนเดอร์กริดล็อคของโซนนั้นทันที โดยไม่ต้องกดกลับไปหน้าเลือกโซนก่อน

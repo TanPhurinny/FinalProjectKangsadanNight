@@ -1,0 +1,163 @@
+/* ผังย่อยโซน G (บูธกิจกรรม) พร้อมพื้นที่โดยรอบ — ใช้คู่กับ /js/eventZonePlan.js ทุกหน้าที่มีผังย่อย */
+.ezp {
+    --ezp-accent: #3532a8;
+    --ezp-accent-bg: #eceaff;
+    --ezp-accent-bg2: #dedaff;
+    --ezp-lot-bg: #f4f5f7;
+    --ezp-lot-line: #d3d7de;
+    --ezp-lot-text: #9aa1ac;
+    --ezp-aisle: #fbf7e9;
+    --ezp-col: 68px;
+    --ezp-gap-col: 30px;
+    --ezp-row: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: max-content;
+    margin: 0 auto;
+    padding: 4px 0 8px;
+    font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
+}
+
+.ezp-caption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 2px 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 12px;
+    color: #6b7280;
+    text-align: center;
+}
+.ezp-caption b { font-size: 14px; color: var(--ezp-accent); }
+
+.ezp-plan {
+    display: grid;
+    grid-template-columns:
+        var(--ezp-col) var(--ezp-col) var(--ezp-gap-col)
+        var(--ezp-col) var(--ezp-col) var(--ezp-gap-col)
+        var(--ezp-col) var(--ezp-col) var(--ezp-gap-col)
+        var(--ezp-col) var(--ezp-col);
+    grid-template-rows: 22px 16px repeat(9, var(--ezp-row));
+    position: relative;
+}
+
+/* ทางเดินระหว่างแถว: แถบสีอ่อนพร้อมเส้นประกลาง */
+.ezp-aisle {
+    background:
+        linear-gradient(to bottom, #d9cfa8 50%, transparent 50%) center / 1px 8px repeat-y,
+        var(--ezp-aisle);
+    margin: 0 4px;
+}
+
+.ezp-head {
+    align-self: end;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--ezp-lot-text);
+    padding-bottom: 2px;
+}
+
+.ezp-more {
+    text-align: center;
+    font-size: 12px;
+    line-height: 16px;
+    color: #c3c8d0;
+}
+
+.ezp-lot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ezp-lot-bg);
+    box-shadow: 0 0 0 .5px var(--ezp-lot-line);
+    color: var(--ezp-lot-text);
+    font-size: 10px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+}
+
+.ezp-lot--x {
+    color: #c3c8d0;
+    background: #fafafb;
+}
+
+.ezp-facility {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 6px 2px 0;
+    background: #e3f1fb;
+    border: 1px solid #b9dcf2;
+    color: #2a6f9e;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.ezp-note {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.15;
+    font-size: 10px;
+    color: var(--ezp-accent);
+    text-align: center;
+    white-space: nowrap;
+}
+.ezp-note b { font-size: 11px; font-weight: 700; }
+.ezp-note span { color: #6d6aa8; }
+
+/* ช่องบูธจริง (ย้ายมาจากกริดของหน้านั้น สถานะ/การคลิกเป็นของหน้าเดิม) — ขยายเป็นบูธใหญ่ตามพื้นที่จริง */
+.ezp .ezp-booth {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0;
+    min-height: 0;
+    margin: 0 !important;
+    z-index: 1;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    position: relative;
+}
+
+/* บูธว่าง: ลายทางสีโซนกิจกรรม (บูธที่จอง/ซ่อม/เลือกอยู่ใช้สีสถานะของหน้านั้นตามเดิม) */
+.ezp .ezp-booth:not(.booked):not(.maintenance):not(.selected):not([class*="status-"]) {
+    background: repeating-linear-gradient(135deg, var(--ezp-accent-bg) 0 8px, var(--ezp-accent-bg2) 8px 16px);
+    border: 2px solid var(--ezp-accent);
+    color: var(--ezp-accent);
+}
+
+.ezp .ezp-booth:hover {
+    box-shadow: 0 0 0 3px rgba(53, 50, 168, .18);
+}
+
+.ezp-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 16px;
+    font-size: 11px;
+    color: #6b7280;
+}
+.ezp-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.ezp-key { display: inline-block; width: 14px; height: 10px; }
+.ezp-key--booth { background: repeating-linear-gradient(135deg, var(--ezp-accent-bg) 0 3px, var(--ezp-accent-bg2) 3px 6px); border: 1.5px solid var(--ezp-accent); }
+.ezp-key--lot { background: var(--ezp-lot-bg); border: 1px solid var(--ezp-lot-line); }
+.ezp-key--aisle { background: var(--ezp-aisle); border: 1px dashed #d9cfa8; }
+
+@media (max-width: 600px) {
+    .ezp { --ezp-col: 40px; --ezp-gap-col: 16px; --ezp-row: 24px; }
+    .ezp-caption { font-size: 11px; }
+    .ezp-lot { font-size: 9px; }
+    .ezp-facility { font-size: 10px; gap: 4px; }
+    .ezp .ezp-booth { font-size: 13px; }
+    .ezp-note { font-size: 9px; }
+}
