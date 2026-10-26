@@ -24,7 +24,7 @@ const isStaff = user && user.role === 'STAFF';
                 <i class="fas fa-map-marked-alt"></i> ผังตลาด
             </a>
             <a href="/admin/requests"
-                class="nav-item <%= currentPath.includes('requests') ? 'active' : '' %>">
+                class="nav-item <%= currentPath.includes('/admin/requests') ? 'active' : '' %>">
                 <i class="fas fa-tools"></i> การแจ้งคำร้อง
             </a>
             <% if (isStaff) { %>
@@ -62,25 +62,27 @@ const isStaff = user && user.role === 'STAFF';
             <%
                 const moreLinks = [
                     { href: '/admin/rental-statements', icon: 'fa-file-invoice-dollar', label: 'รายงานการชำระค่าเช่า', match: '/rental-statements' },
-                    { href: '/admin/lease-contracts', icon: 'fa-file-signature', label: 'คำขอสัญญาเช่า', match: '/lease-contracts', badge: typeof leaseContractTodo !== 'undefined' ? leaseContractTodo : 0 },
-                    { href: '/admin/tax-invoice-requests', icon: 'fa-file-invoice', label: 'คำขอใบกำกับภาษี', match: 'tax-invoice-requests' },
+                    // ใบกำกับภาษี + สัญญาเช่า รวมเป็นเมนูเดียว เข้าแล้วเลือกได้ว่าจะจัดการอะไร (/admin/documents)
+                    { href: '/admin/documents', icon: 'fa-folder-open', label: 'คำขอเอกสาร (ใบกำกับภาษี / สัญญาเช่า)', match: ['/admin/documents', 'tax-invoice', '/lease-contracts'],
+                      badge: (typeof leaseContractTodo !== 'undefined' ? leaseContractTodo : 0) + (typeof taxInvoiceTodo !== 'undefined' ? taxInvoiceTodo : 0) },
                     { href: '/admin/announcements', icon: 'fa-bullhorn', label: 'จัดการประกาศ', match: 'announcements' },
                     { href: '/admin/community-banners', icon: 'fa-images', label: 'แบนเนอร์คอมมูนิตี้', match: '/community-banners' },
                     { href: '/admin/sellers/scores', icon: 'fa-calendar-check', label: 'การมาขายร้านค้า', match: '/sellers/scores' },
                     { href: '/admin/booking-holidays', icon: 'fa-calendar-xmark', label: 'วันหยุดรอบจอง', match: '/booking-holidays' },
                     { href: '/admin/product-subtypes', icon: 'fa-tags', label: 'รายการสินค้าที่ขาย', match: '/product-subtypes' }
                 ];
-                const isMoreActive = moreLinks.some(function(link) { return currentPath.includes(link.match); });
+                const linkActive = function(link) { return [].concat(link.match).some(function(m) { return currentPath.includes(m); }); };
+                const isMoreActive = moreLinks.some(linkActive);
                 const moreBadge = moreLinks.reduce(function(sum, link) { return sum + (link.badge || 0); }, 0);
             %>
             <details class="nav-dropdown">
                 <summary class="nav-item <%= isMoreActive ? 'active' : '' %>">
                     <i class="fas fa-ellipsis-h"></i> เพิ่มเติม
-                    <% if (moreBadge) { %><span class="nav-badge" title="คำขอสัญญาเช่ารอดำเนินการ <%= moreBadge %> รายการ"><%= moreBadge > 99 ? '99+' : moreBadge %></span><% } %>
+                    <% if (moreBadge) { %><span class="nav-badge" title="คำขอเอกสารรอดำเนินการ <%= moreBadge %> รายการ"><%= moreBadge > 99 ? '99+' : moreBadge %></span><% } %>
                 </summary>
                 <div class="nav-dropdown__panel">
                     <% moreLinks.forEach(function(link) { %>
-                    <a href="<%= link.href %>" class="<%= currentPath.includes(link.match) ? 'active' : '' %>">
+                    <a href="<%= link.href %>" class="<%= linkActive(link) ? 'active' : '' %>">
                         <i class="fas <%= link.icon %>"></i> <%= link.label %>
                         <% if (link.badge) { %><span class="nav-badge"><%= link.badge > 99 ? '99+' : link.badge %></span><% } %>
                     </a>

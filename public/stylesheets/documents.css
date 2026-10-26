@@ -1,0 +1,233 @@
+/* ========================================
+   ขอเอกสาร (ใบกำกับภาษี / สัญญาเช่า) + ตัวสัญญาเช่า — gridgeist
+   หน้าเลือก /documents · แถบสลับ 2 อย่างบนหน้าฟอร์มแต่ละหน้า · กระดาษสัญญา A4
+   ใช้ token ชุดเดียวกับ rentalStatement.css (โหลดคู่กัน) — ถ้าไม่ได้โหลดก็มีค่าสำรอง
+   ======================================== */
+
+/* ---------- แถบสลับ: ใบกำกับภาษี | สัญญาเช่า ---------- */
+.doc-switch {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr;
+    border: 1px solid var(--rs-navy, #12303a);
+    margin: 0 0 20px;
+    font-family: var(--rs-font, 'Inter', 'Prompt', sans-serif);
+}
+.doc-switch a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--rs-navy, #12303a);
+    text-decoration: none;
+    border-left: 1px solid var(--rs-navy, #12303a);
+    background: #fff;
+}
+.doc-switch a:first-child { border-left: none; padding: 12px 16px; color: var(--rs-sub, #5b7a84); font-weight: 500; }
+.doc-switch a:hover { background: var(--rs-soft, #f6f8f8); }
+.doc-switch a[aria-current="page"] { background: var(--rs-navy, #12303a); color: #fff; }
+.doc-switch .doc-switch__count {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+}
+
+/* ---------- หน้าเลือกเอกสาร ---------- */
+.doc-choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 1px solid var(--rs-line, #d7e3e6);
+    margin-bottom: 28px;
+}
+.doc-choice {
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 10px;
+    padding: 24px;
+    color: inherit;
+    text-decoration: none;
+}
+.doc-choice + .doc-choice { border-left: 1px solid var(--rs-line, #d7e3e6); }
+.doc-choice:hover { background: var(--rs-soft, #f6f8f8); }
+.doc-choice:hover .doc-choice__cta { background: var(--rs-primary-dark, #1f6f80); }
+.doc-choice__kicker {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--rs-primary-dark, #1f6f80);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.doc-choice__title { font-size: 22px; font-weight: 700; color: var(--rs-navy, #12303a); margin: 0; }
+.doc-choice__desc { font-size: 14px; color: var(--rs-sub, #5b7a84); line-height: 1.65; margin: 0; }
+.doc-choice__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 13px;
+    color: var(--rs-sub, #5b7a84);
+    padding-top: 10px;
+    border-top: 1px dashed var(--rs-line, #d7e3e6);
+}
+.doc-choice__meta b { color: var(--rs-navy, #12303a); }
+.doc-choice__cta {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    background: var(--rs-primary, #2C93A8);
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 3px;
+}
+
+/* ---------- ช่องเลือกช่วงวันของสัญญา ---------- */
+.lc-hint {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--rs-line, #d7e3e6);
+    border-top: none;
+    background: var(--rs-soft, #f6f8f8);
+    font-size: 13px;
+    color: var(--rs-sub, #5b7a84);
+}
+.lc-hint b { color: var(--rs-navy, #12303a); }
+.lc-steps {
+    margin: 0;
+    padding: 14px 16px 14px 34px;
+    border: 1px solid var(--rs-line, #d7e3e6);
+    border-top: none;
+    font-size: 13px;
+    color: var(--rs-sub, #5b7a84);
+    line-height: 1.8;
+}
+
+/* ---------- กระดาษสัญญาเช่า ---------- */
+.lc-paper-wrap { max-width: 860px; margin: 0 auto; }
+.lc-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.lc-doc {
+    position: relative;
+    background: #fff;
+    color: #111;
+    border: 1px solid var(--rs-line, #d7e3e6);
+    padding: 48px 56px;
+    font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
+    font-size: 14px;
+    line-height: 1.85;
+}
+.lc-draft-mark {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    padding: 4px 10px;
+    border: 2px solid #c0392b;
+    color: #c0392b;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    transform: rotate(4deg);
+}
+.lc-head {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
+    align-items: center;
+    padding-bottom: 14px;
+    border-bottom: 2px solid #111;
+}
+.lc-head img { width: 56px; height: 56px; object-fit: contain; }
+.lc-company { font-size: 12px; line-height: 1.6; }
+.lc-company strong { display: block; font-size: 15px; }
+.lc-title { text-align: center; margin: 22px 0 4px; font-size: 22px; font-weight: 700; }
+.lc-doc p.lc-subtitle { text-align: center; text-indent: 0; font-size: 13px; margin: 0 0 18px; }
+.lc-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; margin-bottom: 14px; }
+.lc-doc p { margin: 0 0 10px; text-indent: 2.5em; text-align: justify; }
+.lc-clauses { list-style: none; counter-reset: clause; padding: 0; margin: 12px 0 18px; }
+.lc-clauses li { counter-increment: clause; margin-bottom: 10px; text-align: justify; }
+.lc-clauses li::before { content: "ข้อ " counter(clause) " "; font-weight: 700; }
+.lc-clauses li b { font-weight: 700; }
+.lc-annex-title { font-size: 15px; font-weight: 700; margin: 22px 0 8px; }
+.lc-table { width: 100%; border-collapse: collapse; font-size: 12.5px; line-height: 1.5; }
+.lc-table th, .lc-table td { border: 1px solid #555; padding: 5px 7px; vertical-align: top; }
+.lc-table th { background: #f1f1f1; font-weight: 700; text-align: center; }
+.lc-table .num { text-align: right; white-space: nowrap; }
+.lc-table tfoot td { font-weight: 700; }
+.lc-sign {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px 48px;
+    margin-top: 48px;
+    text-align: center;
+    font-size: 13px;
+    line-height: 1.9;
+}
+.lc-sign__line { border-bottom: 1px dotted #111; height: 36px; margin: 0 12% 6px; }
+.lc-note { margin-top: 18px; padding: 8px 12px; border: 1px dashed #999; font-size: 12.5px; }
+
+/* ---------- ฝั่งแอดมิน: แผงอนุมัติด้านข้าง ---------- */
+.lc-review {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+    align-items: start;
+}
+.lc-review__side {
+    position: sticky;
+    top: 16px;
+    border: 1px solid var(--rs-line, #d7e3e6);
+}
+.lc-review__side section { padding: 16px; border-bottom: 1px solid var(--rs-line, #d7e3e6); }
+.lc-review__side section:last-child { border-bottom: none; }
+.lc-review__side h2 { font-size: 15px; font-weight: 700; margin: 0 0 10px; color: var(--rs-navy, #12303a); }
+.lc-review__side .rs-field { margin-bottom: 10px; }
+.lc-review__side textarea,
+.lc-review__side input[type="text"] { width: 100%; min-width: 0; }
+.lc-review__side .rs-btn { width: 100%; justify-content: center; }
+.lc-checks { list-style: none; padding: 0; margin: 0; font-size: 13px; line-height: 1.7; }
+.lc-checks li { display: flex; gap: 8px; }
+.lc-checks .ok { color: var(--rs-success, #1E8449); }
+.lc-checks .warn { color: var(--rs-warning, #a06c1f); }
+
+@media (max-width: 900px) {
+    .lc-review { grid-template-columns: minmax(0, 1fr); }
+    .lc-review__side { position: static; order: -1; }
+}
+
+@media (max-width: 720px) {
+    .doc-switch { grid-template-columns: 1fr 1fr; }
+    .doc-switch a:first-child { grid-column: 1 / -1; border-bottom: 1px solid var(--rs-navy, #12303a); justify-content: flex-start; }
+    .doc-switch a:nth-child(2) { border-left: none; }
+    .doc-choices { grid-template-columns: 1fr; }
+    .doc-choice + .doc-choice { border-left: none; border-top: 1px solid var(--rs-line, #d7e3e6); }
+    .lc-doc { padding: 24px 18px; font-size: 13.5px; }
+    .lc-table-wrap { overflow-x: auto; }
+    .lc-sign { grid-template-columns: 1fr; }
+}
+
+@media print {
+    @page { size: A4 portrait; margin: 16mm 14mm; }
+    body { background: #fff !important; }
+    nav, .management-nav, .doc-switch, .lc-toolbar, .lc-review__side, .rs-head, .rs-notice, .site-header { display: none !important; }
+    .rs-page, .lc-paper-wrap { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+    .lc-review { display: block; }
+    .lc-doc { border: none; padding: 0; font-size: 12.5px; }
+    .lc-table tr, .lc-clauses li, .lc-sign { break-inside: avoid; }
+}

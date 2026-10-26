@@ -10,18 +10,19 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
     <link rel="stylesheet" href="/stylesheets/admin/theme.css">
-    <link rel="stylesheet" href="/stylesheets/rentalStatement.css?v=20261026">
+    <link rel="stylesheet" href="/stylesheets/rentalStatement.css?v=20261026b">
+    <link rel="stylesheet" href="/stylesheets/documents.css?v=20261026b">
 </head>
 <body class="rs-body">
     <script src="/js/common/tabSession.js"></script>
     <%- include('../partials/navbar') %>
     <%
         const tabs = [
-            { key: 'PENDING', label: 'รอดำเนินการ' },
-            { key: 'ISSUED', label: 'ออกสัญญาแล้ว' },
-            { key: 'CANCELLED', label: 'ยกเลิก' }
+            { key: 'PENDING', label: 'รออนุมัติ' },
+            { key: 'ISSUED', label: 'อนุมัติแล้ว' },
+            { key: 'CANCELLED', label: 'ไม่อนุมัติ' }
         ];
-        const successMessages = { cancelled: 'ยกเลิกคำขอแล้ว ร้านค้าได้รับแจ้งเตือนพร้อมเหตุผล' };
+        const successMessages = { cancelled: 'บันทึกไม่อนุมัติแล้ว ร้านค้าได้รับแจ้งเตือนพร้อมเหตุผล' };
         const errorMessages = { not_found: 'ไม่พบคำขอ', action_failed: 'ดำเนินการไม่สำเร็จ กรุณาลองใหม่' };
         const pill = { PENDING: 'rs-pill--pending', ISSUED: 'rs-pill--paid', CANCELLED: 'rs-pill--danger' };
     %>
@@ -29,15 +30,13 @@
     <main class="rs-page">
         <header class="rs-head">
             <div>
-                <p class="rs-kicker">สัญญาเช่า</p>
+                <p class="rs-kicker">เอกสาร · สัญญาเช่า</p>
                 <h1 class="rs-title">คำขอสัญญาเช่าจากร้านค้า</h1>
-                <p class="rs-lead">ร้านค้าขอสัญญาจากหน้ารายงานการเช่าของตัวเอง เปิดคำขอเพื่อดูข้อมูลผู้เช่า ล็อก และยอดที่ชำระในช่วงที่ขอ
-                    เขียนสัญญาเองนอกระบบ แล้วแนบไฟล์ (PDF/รูป) กลับให้ร้านดาวน์โหลด</p>
-            </div>
-            <div class="rs-head-actions">
-                <a class="rs-btn" href="/admin/rental-statements"><i class="fa-solid fa-file-invoice-dollar"></i> รายงานการชำระค่าเช่า</a>
+                <p class="rs-lead">ระบบสร้างร่างสัญญาจากประวัติการจองที่ชำระแล้วในช่วงที่ร้านเลือก เปิดคำขอเพื่อตรวจร่าง แล้วกดอนุมัติ (ออกเลขที่สัญญา) หรือไม่อนุมัติพร้อมเหตุผล</p>
             </div>
         </header>
+
+        <%- include('../partials/documentSwitch', { active: 'lease', base: '/admin', counts: { tax: typeof taxInvoiceTodo !== 'undefined' ? taxInvoiceTodo : 0, lease: counts.PENDING } }) %>
 
         <% if (success && successMessages[success]) { %><div class="rs-notice rs-notice--success" role="status"><%= successMessages[success] %></div><% } %>
         <% if (error) { %><div class="rs-notice rs-notice--danger" role="alert"><%= errorMessages[error] || 'เกิดข้อผิดพลาด' %></div><% } %>
@@ -72,11 +71,11 @@
                     <tr>
                         <td class="rs-muted"><%= r.id %></td>
                         <td><%= r.user?.name || '-' %><div class="rs-muted"><%= r.user?.shop?.shopName || '-' %> · <%= r.user?.phoneNumber || '-' %></div></td>
-                        <td><%= r.periodText %></td>
+                        <td><%= r.periodText %><% if (r.documentNumber) { %><div class="rs-muted"><%= r.documentNumber %></div><% } %></td>
                         <td style="white-space:normal;max-width:280px"><%= r.note || '-' %></td>
                         <td><%= r.createdAtText %></td>
                         <td><span class="rs-pill <%= pill[r.status] %>"><%= r.statusLabel %></span><% if (r.issuedAtText) { %><div class="rs-muted"><%= r.issuedAtText %> · <%= r.issuedByName || '-' %></div><% } %></td>
-                        <td><a class="rs-btn rs-btn--sm <%= r.status === 'PENDING' ? 'rs-btn--primary' : '' %>" href="/admin/lease-contracts/<%= r.id %>"><%= r.status === 'PENDING' ? 'เตรียมสัญญา' : 'ดูรายละเอียด' %></a></td>
+                        <td><a class="rs-btn rs-btn--sm <%= r.status === 'PENDING' ? 'rs-btn--primary' : '' %>" href="/admin/lease-contracts/<%= r.id %>"><%= r.status === 'PENDING' ? 'ตรวจร่างและอนุมัติ' : 'ดูสัญญา' %></a></td>
                     </tr>
                     <% }) %>
                 </tbody>

@@ -4,6 +4,7 @@ const path = require('path');
 const multer = require('multer');
 const { createImageStorage } = require('../utils/imageStorage');
 const { isStaffOrAdmin, isAdminOnly } = require('../middlewares/auth');
+const prisma = require('../config/prismaClient');
 
 // --- 1. Import Controllers ---
 const userCtrl = require('../controllers/userController');
@@ -140,10 +141,31 @@ router.get('/rental-statements', isAdminOnly, rentalStatementCtrl.getOverviewPag
 router.get('/rental-statements/user/:id', isAdminOnly, rentalStatementCtrl.getSellerPage);
 router.get('/rental-statements/stall/:code', isAdminOnly, rentalStatementCtrl.getStallPage);
 
-// คำขอสัญญาเช่าจากร้านค้า — แอดมินเขียนสัญญาเองนอกระบบแล้วแนบไฟล์กลับ (controllers/leaseContractController.js)
+// คำขอเอกสารจากร้านค้า: หน้าเลือก (ใบกำกับภาษี / สัญญาเช่า) แต่ละอย่างอยู่หน้าของตัวเอง
+router.get('/documents', isAdminOnly, async (req, res) => {
+    try {
+        const [taxGroups, leaseGroups] = await Promise.all([
+            prisma.taxInvoiceRequest.groupBy({ by: ['status'], _count: { _all: true } }),
+            prisma.leaseContractRequest.groupBy({ by: ['status'], _count: { _all: true } })
+        ]);
+        const pick = (groups, status) => groups.find((g) => g.status === status)?._count._all || 0;
+        res.render('admin/documents', {
+            user: req.user,
+            counts: {
+                taxPending: pick(taxGroups, 'PENDING'),
+                taxIssued: pick(taxGroups, 'ISSUED'),
+                leasePending: pick(leaseGroups, 'PENDING'),
+                leaseIssued: pick(leaseGroups, 'ISSUED')
+            }
+        });
+    } catch (err) {
+        res.redirect('/admin/dashboard');
+    }
+});
+
+// คำขอสัญญาเช่า — ระบบสร้างร่างจากประวัติการจอง แอดมินตรวจแล้วอนุมัติ/ไม่อนุมัติ (controllers/leaseContractController.js)
 router.get('/lease-contracts', isAdminOnly, leaseContractCtrl.getAdminListPage);
 router.get('/lease-contracts/:id', isAdminOnly, leaseContractCtrl.getAdminDetailPage);
-router.get('/lease-contracts/:id/file', isAdminOnly, leaseContractCtrl.getAdminFile);
 router.post('/lease-contracts/:id/issue', isAdminOnly, leaseContractCtrl.issue);
 router.post('/lease-contracts/:id/cancel', isAdminOnly, leaseContractCtrl.cancel);
 

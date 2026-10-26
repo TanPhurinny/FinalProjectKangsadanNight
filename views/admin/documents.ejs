@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>คำขอเอกสาร — Admin</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+    <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+    <link rel="stylesheet" href="/stylesheets/rentalStatement.css?v=20261026b">
+    <link rel="stylesheet" href="/stylesheets/documents.css?v=20261026b">
+</head>
+<body class="rs-body">
+    <script src="/js/common/tabSession.js"></script>
+    <%- include('../partials/navbar') %>
+
+    <main class="rs-page" style="max-width:960px">
+        <header class="rs-head">
+            <div>
+                <p class="rs-kicker">เอกสาร</p>
+                <h1 class="rs-title">คำขอเอกสารจากร้านค้า</h1>
+                <p class="rs-lead">ร้านค้าขอเอกสารได้ 2 อย่าง แยกหน้ากันชัดเจน เลือกว่าจะจัดการอะไร</p>
+            </div>
+            <div class="rs-head-actions">
+                <a class="rs-btn" href="/admin/rental-statements"><i class="fa-solid fa-file-invoice-dollar"></i> รายงานการชำระค่าเช่า</a>
+            </div>
+        </header>
+
+        <div class="doc-choices">
+            <a class="doc-choice" href="/admin/tax-invoice-requests">
+                <span class="doc-choice__kicker"><i class="fa-solid fa-file-invoice"></i> ภาษี</span>
+                <h2 class="doc-choice__title">คำขอใบกำกับภาษี</h2>
+                <p class="doc-choice__desc">ตรวจ/แก้ข้อมูลผู้เสียภาษีที่ร้านกรอก แล้วออกใบกำกับภาษีจากใบเสนอราคาที่ชำระแล้ว</p>
+                <div class="doc-choice__meta">
+                    <span>รอดำเนินการ <b><%= counts.taxPending %></b></span>
+                    <span>ออกแล้ว <b><%= counts.taxIssued %></b></span>
+                </div>
+                <span class="doc-choice__cta">จัดการใบกำกับภาษี <i class="fa-solid fa-arrow-right"></i></span>
+            </a>
+            <a class="doc-choice" href="/admin/lease-contracts">
+                <span class="doc-choice__kicker"><i class="fa-solid fa-file-signature"></i> สัญญา</span>
+                <h2 class="doc-choice__title">คำขอสัญญาเช่า</h2>
+                <p class="doc-choice__desc">ระบบสร้างร่างสัญญาจากประวัติการจองที่ชำระแล้วในช่วงที่ร้านเลือก ตรวจร่างแล้วกดอนุมัติเพื่อออกเลขที่สัญญา หรือไม่อนุมัติพร้อมเหตุผล</p>
+                <div class="doc-choice__meta">
+                    <span>รออนุมัติ <b><%= counts.leasePending %></b></span>
+                    <span>อนุมัติแล้ว <b><%= counts.leaseIssued %></b></span>
+                </div>
+                <span class="doc-choice__cta">จัดการสัญญาเช่า <i class="fa-solid fa-arrow-right"></i></span>
+            </a>
+        </div>
+    </main>
+</body>
+</html>

@@ -59,14 +59,11 @@ class ImageStorage {
         const baseName = this._buildName(req, file);
 
         if (isCloudinaryEnabled()) {
-            // PDF (ไฟล์สัญญาเช่า) อัปเป็น raw — ถ้าอัปเป็น image Cloudinary จะไม่ยอมส่งไฟล์ PDF ให้เปิด (401)
-            // ตามค่าเริ่มต้นของบัญชี ไฟล์ raw ต้องมีนามสกุลใน public_id เองถึงจะเปิดเป็น .pdf ได้
-            const isPdf = file.mimetype === 'application/pdf';
             const upload = cloudinary.uploader.upload_stream(
                 {
                     folder: `${CLOUD_FOLDER_ROOT}/${this.folder}`,
-                    public_id: isPdf ? `${baseName}.pdf` : baseName,
-                    resource_type: isPdf ? 'raw' : 'image'
+                    public_id: baseName,
+                    resource_type: 'image'
                 },
                 (error, result) => {
                     if (error) return cb(error);
@@ -113,12 +110,6 @@ async function deleteImage(url) {
     try {
         if (isCloudinaryUrl(value)) {
             if (!isCloudinaryEnabled()) return;
-            // ไฟล์ raw (PDF) public_id รวมนามสกุลด้วย
-            const rawMatch = value.match(/\/raw\/upload\/(?:v\d+\/)?([^?]+)/i);
-            if (rawMatch) {
-                await cloudinary.uploader.destroy(decodeURIComponent(rawMatch[1]), { resource_type: 'raw', invalidate: true });
-                return;
-            }
             const publicId = extractPublicId(value);
             if (publicId) await cloudinary.uploader.destroy(publicId, { resource_type: 'image', invalidate: true });
             return;
@@ -152,24 +143,6 @@ async function readImageBuffer(url) {
     return fs.promises.readFile(absolutePath);
 }
 
-// อ่านไฟล์ที่เก็บไว้ (รวม PDF ที่อัปเป็น raw) เพื่อส่งต่อผ่าน route ของแอปที่เช็คสิทธิ์แล้ว — คืน null ถ้าไม่พบ
-// ไฟล์ raw บน Cloudinary ดึงผ่าน API download ที่เซ็นด้วย API secret เพราะบัญชีปิดการส่งไฟล์ PDF ผ่าน URL ตรง (401)
-async function readStoredFile(url) {
-    const value = String(url || '');
-    const rawMatch = value.match(/\/raw\/upload\/(?:v\d+\/)?([^?]+)/i);
-    if (rawMatch && isCloudinaryEnabled()) {
-        const downloadUrl = cloudinary.utils.private_download_url(decodeURIComponent(rawMatch[1]), '', { resource_type: 'raw', type: 'upload' });
-        const response = await fetch(downloadUrl);
-        if (!response.ok) return null;
-        return { buffer: Buffer.from(await response.arrayBuffer()), contentType: response.headers.get('content-type') || 'application/octet-stream' };
-    }
-    const buffer = await readImageBuffer(value);
-    if (!buffer) return null;
-    const ext = path.extname(value.split('?')[0]).toLowerCase();
-    const types = { '.pdf': 'application/pdf', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
-    return { buffer, contentType: types[ext] || 'application/octet-stream' };
-}
-
 // ค่าเก่าของรูปประกาศเก็บแค่ชื่อไฟล์ (ann-xxx.jpg) ส่วนค่าใหม่เป็น URL เต็ม — แปลงให้ view ใช้ได้ทั้งคู่
 function resolveImageUrl(value, legacyFolder) {
     const text = String(value || '');
@@ -185,6 +158,5 @@ module.exports = {
     createImageStorage,
     deleteImage,
     readImageBuffer,
-    readStoredFile,
     resolveImageUrl
 };

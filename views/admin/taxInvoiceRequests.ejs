@@ -13,6 +13,7 @@
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/admin/taxInvoiceRequests.css">
+        <link rel="stylesheet" href="/stylesheets/documents.css?v=20261026b">
     </head>
     <body class="tax-invoice-page">
         <%- include('../partials/navbar') %>
@@ -24,6 +25,7 @@
         </header>
 
         <div class="container">
+            <%- include('../partials/documentSwitch', { active: 'tax', base: '/admin', counts: { tax: (Array.isArray(requests) ? requests : []).filter((r) => r.status === 'PENDING').length, lease: typeof leaseContractTodo !== 'undefined' ? leaseContractTodo : 0 } }) %>
             <%
             const flashSuccess = {
                 'issued': 'ออกใบกำกับภาษีเรียบร้อยแล้ว',

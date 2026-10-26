@@ -19,11 +19,26 @@ const hidden = typeof extraHidden !== 'undefined' && extraHidden ? extraHidden :
     <a class="rs-btn" href="<%= action %><%= hidden.q ? '?q=' + encodeURIComponent(hidden.q) : '' %>">ตั้งแต่ ม.ค.–วันนี้</a>
     <span class="rs-range-label">ช่วงรายงาน: <strong><%= range.label %></strong></span>
 </form>
+<link rel="stylesheet" href="/stylesheets/common/datePicker.css?v=20261023-thai">
+<script src="/js/common/datePicker.js?v=20261023-thai"></script>
 <script>
+    // ปฏิทินช่วงวันที่ใช้ตัวเดียวกับหน้าจองล็อก (public/js/common/datePicker.js)
     // กรอกช่องรอบแล้วให้ช่วงวันที่ว่าง (รอบมีลำดับความสำคัญกว่าในฝั่ง server อยู่แล้ว แค่กันสับสน)
     (function () {
-        var form = document.currentScript.previousElementSibling;
+        var form = document.querySelector('form.rs-filter');
         var round = form.querySelector('[name="round"]');
+        var from = form.querySelector('[name="from"]');
+        var to = form.querySelector('[name="to"]');
+        if (window.createDatePicker) {
+            window.createDatePicker(from, {});
+            var toPicker = window.createDatePicker(to, { min: from.value || null });
+            from.addEventListener('change', function () {
+                toPicker.setOptions({ min: from.value || null });
+                if (to.value && from.value && to.value < from.value) to.value = from.value;
+                round.value = '';
+            });
+            to.addEventListener('change', function () { round.value = ''; });
+        }
         form.addEventListener('submit', function () {
             if (round.value) form.querySelectorAll('[type="date"]').forEach(function (el) { el.disabled = true; });
             else round.disabled = true;

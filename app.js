@@ -145,22 +145,24 @@ let approvalTodoCache = null;
 app.use(async (req, res, next) => {
   try {
     if (req.user?.role !== 'ADMIN') return next();
-    if (req.method === 'POST' && /^\/admin\/(approvals|booking-stall|event-booths|lease-contracts)/.test(req.path)) {
+    if (req.method === 'POST' && /^\/admin\/(approvals|booking-stall|event-booths|lease-contracts|tax-invoice-requests)/.test(req.path)) {
       approvalTodoCache = null;
       return next();
     }
     if (req.method !== 'GET' || !String(req.headers.accept || '').includes('text/html')) return next();
     if (!approvalTodoCache || Date.now() - approvalTodoCache.at > 60 * 1000) {
-      const [approvalTodo, eventBoothTodo, leaseContractTodo] = await Promise.all([
-        approvalCtrl.countApprovalTodo(), countEventBoothTodo(), countPendingLeaseContracts()
+      const [approvalTodo, eventBoothTodo, leaseContractTodo, taxInvoiceTodo] = await Promise.all([
+        approvalCtrl.countApprovalTodo(), countEventBoothTodo(), countPendingLeaseContracts(),
+        prisma.taxInvoiceRequest.count({ where: { status: 'PENDING' } })
       ]);
-      approvalTodoCache = { at: Date.now(), value: approvalTodo, eventBoothTodo, leaseContractTodo };
+      approvalTodoCache = { at: Date.now(), value: approvalTodo, eventBoothTodo, leaseContractTodo, taxInvoiceTodo };
     }
     res.locals.approvalTodo = approvalTodoCache.value;
     // คำขอบูธกิจกรรมที่รอแอดมิน (ใหม่ + สลิปรอยืนยัน) — badge แยกบนเมนู "บูธกิจกรรม"
     res.locals.eventBoothTodo = approvalTodoCache.eventBoothTodo;
-    // คำขอสัญญาเช่าที่รอแอดมิน — badge ในเมนู "เพิ่มเติม"
+    // คำขอสัญญาเช่า/ใบกำกับภาษีที่รอแอดมิน — badge ที่เมนู "คำขอเอกสาร" ในเมนูเพิ่มเติม
     res.locals.leaseContractTodo = approvalTodoCache.leaseContractTodo;
+    res.locals.taxInvoiceTodo = approvalTodoCache.taxInvoiceTodo;
   } catch (error) {
     logger.error({ error: error.message }, 'count approval todo failed');
   }

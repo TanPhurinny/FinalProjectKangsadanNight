@@ -43,6 +43,9 @@
             <a href="/booking-history" class="nav-item <%= currentPath.includes('booking-history') ? 'active' : '' %>">
                 <i class="fas fa-clock-rotate-left"></i> ประวัติการจอง
             </a>
+            <a href="/documents" class="nav-item <%= (currentPath.includes('/documents') || currentPath.includes('/lease-contracts') || currentPath.includes('/tax-invoices')) ? 'active' : '' %>">
+                <i class="fas fa-folder-open"></i> ขอเอกสาร
+            </a>
             <a href="/announcements" class="nav-item <%= currentPath.includes('announcements') ? 'active' : '' %>">
                 <i class="fas fa-bullhorn"></i> ประกาศ
             </a>

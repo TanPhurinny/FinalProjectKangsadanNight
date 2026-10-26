@@ -1,0 +1,20 @@
+<%
+// แถบสลับ "ขอใบกำกับภาษี | ขอสัญญาเช่า" — ใช้ทั้งฝั่งร้านค้าและแอดมิน แต่ละอย่างอยู่หน้าของตัวเอง ไม่ปนกัน
+// active: 'tax' | 'lease' · base: '' (ร้านค้า) หรือ '/admin' · counts (ไม่บังคับ): { tax, lease } ตัวเลขที่รอดำเนินการ
+const isAdminSide = typeof base !== 'undefined' && base === '/admin';
+const n = typeof counts !== 'undefined' && counts ? counts : {};
+const links = isAdminSide
+    ? { hub: '/admin/documents', tax: '/admin/tax-invoice-requests', lease: '/admin/lease-contracts' }
+    : { hub: '/documents', tax: '/documents/tax-invoice', lease: '/documents/lease-contract' };
+%>
+<nav class="doc-switch" aria-label="เลือกเอกสาร">
+    <a href="<%= links.hub %>"><i class="fa-solid fa-arrow-left"></i> <%= isAdminSide ? 'คำขอเอกสาร' : 'ขอเอกสาร' %></a>
+    <a href="<%= links.tax %>" <%- active === 'tax' ? 'aria-current="page"' : '' %>>
+        <i class="fa-solid fa-file-invoice"></i> <%= isAdminSide ? 'คำขอใบกำกับภาษี' : 'ขอใบกำกับภาษี' %>
+        <% if (n.tax) { %><span class="doc-switch__count"><%= n.tax %></span><% } %>
+    </a>
+    <a href="<%= links.lease %>" <%- active === 'lease' ? 'aria-current="page"' : '' %>>
+        <i class="fa-solid fa-file-signature"></i> <%= isAdminSide ? 'คำขอสัญญาเช่า' : 'ขอสัญญาเช่า' %>
+        <% if (n.lease) { %><span class="doc-switch__count"><%= n.lease %></span><% } %>
+    </a>
+</nav>

@@ -1,0 +1,111 @@
+<%
+// ตัวสัญญาเช่า — ร้านค้า (/lease-contracts/:id) และแอดมินตรวจร่าง (/admin/lease-contracts/:id) ใช้ชุดเดียวกัน
+// contract จาก utils/leaseContract.js buildLeaseContractData · ข้อสัญญาแก้ที่ utils/leaseContractTemplate.js
+const c = contract;
+const s = c.seller;
+const money = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+%>
+<article class="lc-doc" id="leaseContractDoc">
+    <% if (c.isDraft) { %><div class="lc-draft-mark"><%= c.status === 'CANCELLED' ? 'ไม่อนุมัติ' : 'ร่าง — รอแอดมินอนุมัติ' %></div><% } %>
+
+    <header class="lc-head">
+        <img src="<%= c.company.logo %>" alt="โลโก้">
+        <div class="lc-company">
+            <strong><%= c.company.nameTh %></strong>
+            <%= c.company.address %><br>
+            เลขประจำตัวผู้เสียภาษี <%= c.company.taxId %> · โทร <%= c.company.phone %>
+        </div>
+    </header>
+
+    <h1 class="lc-title">สัญญาเช่าพื้นที่แผงค้า</h1>
+    <p class="lc-subtitle">ตลาดกังสดาลไนท์</p>
+
+    <div class="lc-meta">
+        <span>เลขที่สัญญา <b><%= c.documentNumber %></b></span>
+        <span>ทำที่ <%= c.company.nameTh %> · วันที่ <b><%= c.issuedDateText %></b></span>
+    </div>
+
+    <p>สัญญานี้ทำขึ้นระหว่าง <b><%= c.company.nameTh %></b> สำนักงานตั้งอยู่เลขที่ <%= c.company.address %>
+        ซึ่งต่อไปในสัญญานี้เรียกว่า <b>"ผู้ให้เช่า"</b> ฝ่ายหนึ่ง กับ
+        <b><%= s.sellerName %></b> เลขประจำตัวประชาชน <%= s.idCardNumber %> อยู่บ้านเลขที่ <%= s.address %>
+        โทรศัพท์ <%= s.phone %> เจ้าของร้าน "<%= s.shopName %>" ซึ่งต่อไปในสัญญานี้เรียกว่า <b>"ผู้เช่า"</b> อีกฝ่ายหนึ่ง
+        คู่สัญญาทั้งสองฝ่ายตกลงทำสัญญากันดังมีข้อความต่อไปนี้</p>
+
+    <ol class="lc-clauses">
+        <% c.clauses.forEach((clause) => { %>
+        <li><b><%= clause.title %>.</b> <%= clause.text %></li>
+        <% }) %>
+    </ol>
+
+    <h2 class="lc-annex-title">ตารางแนบท้ายสัญญา — รายการเช่าที่ชำระเงินแล้ว (<%= c.periodText %>)</h2>
+    <div class="lc-table-wrap">
+        <table class="lc-table">
+            <thead>
+                <tr>
+                    <th>ลำดับ</th>
+                    <th>รอบ</th>
+                    <th>ล็อก</th>
+                    <th>วันที่เช่า</th>
+                    <th>วันคิดเงิน</th>
+                    <th>ค่าเช่าแผง</th>
+                    <th>ค่าไฟ/เครื่องใช้</th>
+                    <th>รวม (บาท)</th>
+                    <th>ใบเสร็จเลขที่</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (!c.rows.length) { %>
+                <tr><td colspan="9" style="text-align:center">ไม่มีรายการเช่าที่ชำระแล้วในช่วงนี้</td></tr>
+                <% } %>
+                <% c.rows.forEach((r, i) => { %>
+                <tr>
+                    <td class="num"><%= i + 1 %></td>
+                    <td class="num"><%= r.roundNumber || '-' %></td>
+                    <td><%= r.stallCodes.join(', ') %></td>
+                    <td><%= r.rentalStartText %> – <%= r.rentalEndText %></td>
+                    <td class="num"><%= r.billableDays %></td>
+                    <td class="num"><%= money(r.rentTotal) %></td>
+                    <td class="num"><%= money(r.lightTotal + r.applianceTotal) %></td>
+                    <td class="num"><%= money(r.grandTotal) %></td>
+                    <td><%= r.receiptNumber || '-' %></td>
+                </tr>
+                <% }) %>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4">รวม <%= c.rows.length %> รายการ · <%= c.byStall.length %> ล็อก · <%= c.totals.rounds %> รอบ</td>
+                    <td class="num"><%= c.rows.reduce((sum, r) => sum + r.billableDays, 0) %></td>
+                    <td class="num"><%= money(c.totals.rentTotal) %></td>
+                    <td class="num"><%= money(c.totals.lightTotal + c.totals.applianceTotal) %></td>
+                    <td class="num"><%= money(c.totals.paid) %></td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <% if (c.adminNote && c.status === 'ISSUED') { %><div class="lc-note">หมายเหตุจากผู้ให้เช่า: <%= c.adminNote %></div><% } %>
+
+    <div class="lc-sign">
+        <div>
+            ลงชื่อ<div class="lc-sign__line"></div>
+            (<%= c.status === 'ISSUED' ? c.issuedByName : '' %><%- c.status === 'ISSUED' ? '' : '&nbsp;'.repeat(40) %>)<br>
+            ผู้ให้เช่า · ผู้มีอำนาจลงนามแทน<%= c.company.nameTh.replace(/\s*\(.*\)$/, '') %>
+        </div>
+        <div>
+            ลงชื่อ<div class="lc-sign__line"></div>
+            (<%= s.sellerName %>)<br>
+            ผู้เช่า
+        </div>
+        <div>
+            ลงชื่อ<div class="lc-sign__line"></div>
+            (<%- '&nbsp;'.repeat(40) %>)<br>
+            พยาน
+        </div>
+        <div>
+            ลงชื่อ<div class="lc-sign__line"></div>
+            (<%- '&nbsp;'.repeat(40) %>)<br>
+            พยาน
+        </div>
+    </div>
+</article>

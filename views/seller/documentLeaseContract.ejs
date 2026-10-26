@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ขอสัญญาเช่า — Seller Center</title>
+  <link rel="icon" type="image/png" href="/img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+  <link rel="stylesheet" href="/stylesheets/common/datePicker.css?v=20261023-thai">
+  <link rel="stylesheet" href="/stylesheets/rentalStatement.css?v=20261026b">
+  <link rel="stylesheet" href="/stylesheets/documents.css?v=20261026b">
+</head>
+<body class="rs-body">
+<script src="/js/common/tabSession.js"></script>
+  <%- include('../partials/navbarSeller') %>
+  <%
+    const leaseErrors = {
+      invalid_period: 'กรุณาเลือกวันเริ่มต้นและวันสิ้นสุดให้ถูกต้อง (วันเริ่มต้องไม่หลังวันสิ้นสุด)',
+      period_too_long: 'ขอสัญญาได้ครั้งละไม่เกิน 2 ปี',
+      note_too_long: 'หมายเหตุยาวเกิน 500 ตัวอักษร',
+      no_paid_rentals: 'ช่วงที่เลือกยังไม่มีการเช่าที่ชำระเงินแล้ว จึงสร้างสัญญาไม่ได้ ลองเลือกช่วงที่มีการจองที่ชำระแล้ว',
+      duplicate_pending: 'มีคำขอสัญญาช่วงเดียวกันที่รอแอดมินอนุมัติอยู่แล้ว',
+      not_found: 'ไม่พบสัญญาที่ต้องการ หรือสัญญายังไม่ได้รับการอนุมัติ',
+      action_failed: 'ดำเนินการไม่สำเร็จ กรุณาลองใหม่'
+    };
+    const pill = { PENDING: 'rs-pill--pending', ISSUED: 'rs-pill--paid', CANCELLED: 'rs-pill--danger' };
+    const pending = leaseRequests.filter((r) => r.status === 'PENDING').length;
+  %>
+
+  <main class="rs-page" style="max-width:960px">
+    <header class="rs-head">
+      <div>
+        <p class="rs-kicker">Seller Center · เอกสาร</p>
+        <h1 class="rs-title">ขอสัญญาเช่า</h1>
+        <p class="rs-lead">เลือกช่วงวันที่ต้องการให้สัญญาครอบคลุม ระบบจะสร้างสัญญาจากล็อกและยอดที่ชำระแล้วในช่วงนั้นให้อัตโนมัติ
+          เมื่อแอดมินอนุมัติจะได้เลขที่สัญญา แล้วเปิดดูและพิมพ์ได้ที่หน้านี้</p>
+      </div>
+    </header>
+
+    <%- include('../partials/documentSwitch', { active: 'lease', base: '', counts: { lease: pending } }) %>
+
+    <% if (leaseSuccess) { %><div class="rs-notice rs-notice--success" role="status">ส่งคำขอสัญญาเช่าแล้ว รอแอดมินอนุมัติ — จะแจ้งเตือนในกระดิ่งและอีเมลเมื่ออนุมัติ</div><% } %>
+    <% if (leaseError) { %><div class="rs-notice rs-notice--danger" role="alert"><%= leaseErrors[leaseError] || 'ส่งคำขอไม่สำเร็จ' %></div><% } %>
+
+    <section class="rs-section">
+      <div class="rs-section-head">
+        <h2 class="rs-section-title">เลือกช่วงสัญญา</h2>
+        <span class="rs-section-meta">ปฏิทินแบบเดียวกับตอนจองล็อก</span>
+      </div>
+      <div class="lc-hint">
+        <% if (paidSpan) { %>
+        <span>ปีนี้คุณมีการเช่าที่ชำระแล้ว <b><%= paidSpan.count %> รายการ</b> ช่วง <b><%= paidSpan.text %></b></span>
+        <button type="button" class="rs-btn rs-btn--sm" data-fill="<%= paidSpan.startKey %>|<%= paidSpan.endKey %>">ใช้ช่วงนี้</button>
+        <% } else { %>
+        <span>ปีนี้ยังไม่มีการเช่าที่ชำระแล้ว — เลือกช่วงที่เคยเช่าและชำระเงินแล้วเท่านั้นจึงจะสร้างสัญญาได้</span>
+        <% } %>
+        <a href="/rental-statement" style="margin-left:auto">ดูรายงานการเช่าก่อน <i class="fa-solid fa-arrow-right"></i></a>
+      </div>
+      <form class="rs-form" method="post" action="/lease-contracts" id="leaseForm">
+        <label class="rs-field">วันที่เริ่มสัญญา
+          <input type="date" id="periodStart" name="periodStart" value="<%= defaults.start %>" required>
+        </label>
+        <label class="rs-field">วันที่สิ้นสุดสัญญา
+          <input type="date" id="periodEnd" name="periodEnd" value="<%= defaults.end %>" required>
+        </label>
+        <label class="rs-field rs-field--wide">หมายเหตุถึงแอดมิน (ไม่บังคับ)
+          <textarea name="note" maxlength="500" placeholder="เช่น ใช้ยื่นธนาคาร / ขอให้ระบุล็อกที่เช่าประจำ"></textarea>
+        </label>
+        <div class="rs-form-actions">
+          <button type="submit" class="rs-btn rs-btn--primary"><i class="fa-solid fa-file-signature"></i> ส่งคำขอสัญญาเช่า</button>
+          <p class="rs-hint">ขอได้ครั้งละไม่เกิน 2 ปี · ระบบนับเฉพาะการจองที่ชำระเงินแล้วในช่วงที่เลือก</p>
+        </div>
+      </form>
+      <ol class="lc-steps">
+        <li>ส่งคำขอ → ระบบสร้างร่างสัญญาจากประวัติการจอง</li>
+        <li>แอดมินตรวจร่างแล้วอนุมัติ (หรือไม่อนุมัติพร้อมเหตุผล)</li>
+        <li>อนุมัติแล้วกด "เปิดสัญญา" ด้านล่างเพื่อดู/พิมพ์ แล้วนำไปลงนามที่ออฟฟิศตลาด</li>
+      </ol>
+    </section>
+
+    <section class="rs-section">
+      <div class="rs-section-head">
+        <h2 class="rs-section-title">คำขอสัญญาเช่าของฉัน</h2>
+        <span class="rs-section-meta"><%= leaseRequests.length %> รายการ</span>
+      </div>
+      <% if (!leaseRequests.length) { %>
+      <div class="rs-empty">ยังไม่เคยขอสัญญาเช่า</div>
+      <% } else { %>
+      <div class="rs-table-wrap">
+        <table class="rs-table">
+          <thead>
+            <tr><th>ช่วงสัญญา</th><th>เลขที่สัญญา</th><th>ส่งคำขอเมื่อ</th><th>สถานะ</th><th>ข้อความจากแอดมิน</th><th></th></tr>
+          </thead>
+          <tbody>
+            <% leaseRequests.forEach((lr) => { %>
+            <tr>
+              <td><%= lr.periodText %><% if (lr.note) { %><div class="rs-muted" style="white-space:normal;max-width:260px"><%= lr.note %></div><% } %></td>
+              <td class="rs-code"><%= lr.documentNumber || '-' %></td>
+              <td><%= lr.createdAtText %></td>
+              <td><span class="rs-pill <%= pill[lr.status] %>"><%= lr.statusLabel %></span><% if (lr.issuedAtText) { %><div class="rs-muted"><%= lr.issuedAtText %></div><% } %></td>
+              <td style="white-space:normal;max-width:260px"><%= lr.adminNote || '-' %></td>
+              <td>
+                <% if (lr.status === 'ISSUED') { %>
+                <a class="rs-btn rs-btn--sm rs-btn--primary" href="/lease-contracts/<%= lr.id %>"><i class="fa-solid fa-file-contract"></i> เปิดสัญญา</a>
+                <% } else { %><span class="rs-muted">-</span><% } %>
+              </td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <% } %>
+    </section>
+  </main>
+
+  <script src="/js/common/datePicker.js?v=20261023-thai"></script>
+  <script>
+    // ปฏิทินกำหนดเองชุดเดียวกับหน้าจองล็อก (public/js/common/datePicker.js) — วันสิ้นสุดเลือกก่อนวันเริ่มไม่ได้
+    (function () {
+      var start = document.getElementById('periodStart');
+      var end = document.getElementById('periodEnd');
+      if (!window.createDatePicker) return;
+      var startPicker = window.createDatePicker(start, {});
+      var endPicker = window.createDatePicker(end, { min: start.value || null });
+      start.addEventListener('change', function () {
+        endPicker.setOptions({ min: start.value || null });
+        if (end.value && start.value && end.value < start.value) end.value = start.value;
+      });
+      document.querySelectorAll('[data-fill]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var parts = btn.getAttribute('data-fill').split('|');
+          start.value = parts[0];
+          end.value = parts[1];
+          endPicker.setOptions({ min: parts[0] });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

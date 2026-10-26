@@ -37,6 +37,7 @@ const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId 
 const { buildQuotationData, COMPANY_INFO } = require('../controllers/quotationController');
 const rentalStatement = require('../utils/rentalStatement');
 const leaseContractCtrl = require('../controllers/leaseContractController');
+const leaseContract = require('../utils/leaseContract');
 const {
     APPLIANCE_KINDS,
     APPLIANCE_PRESETS,
@@ -830,49 +831,102 @@ router.get('/booking-history', isAuthenticated, async (req, res) => {
 });
 
 // --- รายงานการเช่าและชำระเงินของร้าน (หลายรอบ ยอดสะสม) — อ่านอย่างเดียว ดู utils/rentalStatement.js ---
-async function renderRentalStatement(req, res, extra = {}) {
-    const range = rentalStatement.parseStatementRange(req.query);
-    const [statement, leaseRequests] = await Promise.all([
-        rentalStatement.buildSellerStatement(req.user.id, range),
-        leaseContractCtrl.getLeaseRequestsForUser(req.user.id)
-    ]);
-    if (!statement) return res.redirect('/seller');
-    return res.render('seller/rentalStatement', {
-        user: req.user,
-        statement,
-        leaseRequests,
-        leaseDefaults: { start: leaseContractCtrl.toMonthKey(range.from), end: leaseContractCtrl.toMonthKey(range.to) },
-        leaseSuccess: req.query.lease === 'requested',
-        leaseError: req.query.leaseError || null,
-        company: COMPANY_INFO,
-        queryString: rentalStatement.rangeQueryString(range),
-        printedAt: new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }),
-        ...extra
-    });
-}
-
 router.get('/rental-statement', isSellerOnly, async (req, res) => {
     try {
-        return await renderRentalStatement(req, res);
+        const range = rentalStatement.parseStatementRange(req.query);
+        const statement = await rentalStatement.buildSellerStatement(req.user.id, range);
+        if (!statement) return res.redirect('/seller');
+        return res.render('seller/rentalStatement', {
+            user: req.user,
+            statement,
+            company: COMPANY_INFO,
+            queryString: rentalStatement.rangeQueryString(range),
+            printedAt: new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })
+        });
     } catch (error) {
         console.error('rental statement error', error);
         return res.redirect('/booking-history');
     }
 });
 
-// ขอสัญญาเช่า — แอดมินเขียนสัญญาเองแล้วแนบไฟล์กลับ (controllers/leaseContractController.js)
-router.post('/lease-contracts', isSellerOnly, async (req, res) => {
+// --- ขอเอกสาร: ใบกำกับภาษี + สัญญาเช่า อยู่ที่เดียวกัน แต่แยกหน้า/แยกฟอร์ม กันสับสน ---
+// /documents = หน้าเลือกว่าจะขออะไร, /documents/tax-invoice และ /documents/lease-contract = ฟอร์มของแต่ละอย่าง
+router.get('/documents', isSellerOnly, async (req, res) => {
     try {
-        const error = await leaseContractCtrl.createLeaseRequest(req.user.id, req.body);
-        if (error) return res.redirect(`/rental-statement?leaseError=${error}#lease`);
-        return res.redirect('/rental-statement?lease=requested#lease');
+        const [taxInvoiceRequests, leaseRequests] = await Promise.all([
+            taxInvoiceCtrl.buildTaxInvoiceListRows({ requestedByUserId: req.user.id }),
+            leaseContractCtrl.getLeaseRequestsForUser(req.user.id)
+        ]);
+        return res.render('seller/documents', { user: req.user, taxInvoiceRequests, leaseRequests });
     } catch (error) {
-        console.error('lease contract request error', error);
-        return res.redirect('/rental-statement?leaseError=action_failed#lease');
+        console.error('documents hub error', error);
+        return res.redirect('/seller');
     }
 });
 
-router.get('/lease-contracts/:id/file', isSellerOnly, leaseContractCtrl.getSellerFile);
+router.get('/documents/tax-invoice', isSellerOnly, async (req, res) => {
+    try {
+        const [eligibleQuotations, taxInvoiceProfiles, taxInvoiceRequests] = await Promise.all([
+            taxInvoiceCtrl.getEligibleQuotationsForUser(req.user.id),
+            taxInvoiceCtrl.getTaxInvoiceProfilesForUser(req.user.id),
+            taxInvoiceCtrl.buildTaxInvoiceListRows({ requestedByUserId: req.user.id })
+        ]);
+        return res.render('seller/documentTaxInvoice', {
+            user: req.user,
+            eligibleQuotations,
+            taxInvoiceProfiles,
+            taxInvoiceRequests,
+            error: req.query.error || null,
+            success: req.query.success || null
+        });
+    } catch (error) {
+        console.error('tax invoice documents page error', error);
+        return res.redirect('/documents');
+    }
+});
+
+router.get('/documents/lease-contract', isSellerOnly, async (req, res) => {
+    try {
+        const [leaseRequests, paidSpan] = await Promise.all([
+            leaseContractCtrl.getLeaseRequestsForUser(req.user.id),
+            leaseContract.getPaidSpan(req.user.id)
+        ]);
+        const today = new Date();
+        return res.render('seller/documentLeaseContract', {
+            user: req.user,
+            leaseRequests,
+            paidSpan: paidSpan ? {
+                ...paidSpan,
+                startKey: rentalStatement.toDateKey(paidSpan.start),
+                endKey: rentalStatement.toDateKey(paidSpan.end),
+                text: `${rentalStatement.formatThaiDate(paidSpan.start)} – ${rentalStatement.formatThaiDate(paidSpan.end)}`
+            } : null,
+            defaults: {
+                start: paidSpan ? rentalStatement.toDateKey(paidSpan.start) : rentalStatement.toDateKey(new Date(today.getFullYear(), 0, 1)),
+                end: paidSpan ? rentalStatement.toDateKey(paidSpan.end) : rentalStatement.toDateKey(today)
+            },
+            leaseSuccess: req.query.lease === 'requested',
+            leaseError: req.query.leaseError || null
+        });
+    } catch (error) {
+        console.error('lease documents page error', error);
+        return res.redirect('/documents');
+    }
+});
+
+// ขอสัญญาเช่า — ระบบสร้างร่างจากประวัติการจอง แอดมินอนุมัติ (controllers/leaseContractController.js)
+router.post('/lease-contracts', isSellerOnly, async (req, res) => {
+    try {
+        const error = await leaseContractCtrl.createLeaseRequest(req.user.id, req.body);
+        if (error) return res.redirect(`/documents/lease-contract?leaseError=${error}`);
+        return res.redirect('/documents/lease-contract?lease=requested');
+    } catch (error) {
+        console.error('lease contract request error', error);
+        return res.redirect('/documents/lease-contract?leaseError=action_failed');
+    }
+});
+
+router.get('/lease-contracts/:id', isSellerOnly, leaseContractCtrl.getSellerDocument);
 
 router.get('/rental-statement.csv', isSellerOnly, async (req, res) => {
     try {
@@ -914,13 +968,8 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
         include: { shop: { include: SHOP_GALLERY_INCLUDE } }
     });
 
-    // ขอใบกำกับภาษี — รวมมาไว้ในหน้าร้านค้าของฉันแทนที่จะแยกเป็นหน้าเมนูของตัวเอง (ดู taxInvoiceController.js)
-    const [eligibleQuotations, taxInvoiceProfiles, taxInvoiceRequests, viewStats] = await Promise.all([
-        taxInvoiceCtrl.getEligibleQuotationsForUser(req.user.id),
-        taxInvoiceCtrl.getTaxInvoiceProfilesForUser(req.user.id),
-        taxInvoiceCtrl.buildTaxInvoiceListRows({ requestedByUserId: req.user.id }),
-        getShopViewStats(req.user.id)
-    ]);
+    // ขอใบกำกับภาษีย้ายไปอยู่หน้า /documents/tax-invoice (รวมกับขอสัญญาเช่าที่ /documents)
+    const viewStats = await getShopViewStats(req.user.id);
 
     res.render('seller/shopProfile', {
         user: req.user,
@@ -929,9 +978,6 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
         maxProductImages: MAX_SHOP_PRODUCT_IMAGES,
         maxMenuImages: MAX_SHOP_MENU_IMAGES,
         viewStats,
-        eligibleQuotations,
-        taxInvoiceProfiles,
-        taxInvoiceRequests,
         error: req.query.error || null,
         success: req.query.success || null
     });
@@ -2521,7 +2567,7 @@ router.get('/quotations/:requestId', isAuthenticated, async (req, res) => {
 // ย้ายฟีเจอร์ขอใบกำกับภาษีไปรวมกับหน้า "ร้านค้าของฉัน" แล้ว (ดู GET /shop-profile) — คง route นี้ไว้
 // เป็นแค่ทางเชื่อมสำหรับลิงก์/บุ๊กมาร์กเก่าที่อาจยังชี้มาที่นี่
 router.get('/tax-invoice-requests', isAuthenticated, (req, res) => {
-    res.redirect('/shop-profile');
+    res.redirect('/documents/tax-invoice');
 });
 
 router.post('/tax-invoice-requests', isAuthenticated, async (req, res) => {
@@ -2543,15 +2589,15 @@ router.post('/tax-invoice-requests', isAuthenticated, async (req, res) => {
         }
     });
 
-    if (result.error) return res.redirect(`/shop-profile?error=${result.error}`);
-    res.redirect('/shop-profile?success=tax_invoice_requested');
+    if (result.error) return res.redirect(`/documents/tax-invoice?error=${result.error}`);
+    res.redirect('/documents/tax-invoice?success=tax_invoice_requested');
 });
 
 router.get('/tax-invoices/:id', isAuthenticated, async (req, res) => {
     try {
         const taxInvoice = await taxInvoiceCtrl.buildTaxInvoiceData(req.params.id);
         if (!taxInvoice || taxInvoice.ownerUserId !== req.user.id) {
-            return res.redirect('/shop-profile?error=tax_invoice_not_found');
+            return res.redirect('/documents/tax-invoice?error=tax_invoice_not_found');
         }
         return res.render('seller/taxInvoice', { taxInvoice, error: null });
     } catch (err) {

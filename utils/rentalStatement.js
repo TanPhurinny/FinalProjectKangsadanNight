@@ -335,6 +335,8 @@ module.exports = {
     parseStatementRange,
     loadStatementRows,
     loadSellerInfo,
+    summarizeRows,
+    groupByStall,
     buildSellerStatement,
     buildMarketStatement,
     buildStallStatement,
