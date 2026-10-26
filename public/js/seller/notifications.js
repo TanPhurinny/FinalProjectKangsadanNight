@@ -49,7 +49,7 @@
   const state = {
     items: readInitialData(),
     cat: CATEGORIES.some((c) => c.id === params.get('c')) ? params.get('c') : 'all',
-    read: params.get('f') === 'unread' ? 'unread' : 'all',
+    read: ['unread', 'read'].includes(params.get('f')) ? params.get('f') : 'all',
     q: params.get('q') || '',
     openKey: null,
     focusKey: null,
@@ -137,8 +137,9 @@
   }
 
   // ---------- คัดกรอง ----------
-  // ขั้นการจอง (step) ที่ไม่มีงานให้ทำแสดงในแถบความคืบหน้าแล้ว ไม่ต้องซ้ำในรายการ — กติกาเดียวกับเลขกระดิ่งใน navbarSeller.ejs
-  const isReal = (item) => !item.upcoming && (!item.step || Boolean(item.action));
+  // ขั้นการจอง (step) ระหว่างทางแสดงในแถบความคืบหน้าแล้ว ไม่ต้องซ้ำในรายการ — ยกเว้นขั้นที่มีงานให้ทำ และขั้นจองสำเร็จ (ข่าวที่ผู้ขายควรเห็น)
+  // กติกาเดียวกับเลขกระดิ่งใน navbarSeller.ejs
+  const isReal = (item) => !item.upcoming && (!item.step || Boolean(item.action) || item.step === 3);
   function matchesSearch(item) {
     const q = state.q.trim().toLowerCase();
     if (!q) return true;
@@ -149,6 +150,7 @@
     if (!isReal(item)) return false;
     if (state.cat !== 'all' && item.category !== state.cat) return false;
     if (state.read === 'unread' && item.isRead) return false;
+    if (state.read === 'read' && !item.isRead) return false;
     return matchesSearch(item);
   }
   function byTimeDesc(a, b) {
@@ -316,6 +318,10 @@
       return `<div class="nt-empty"><i class="bi bi-check2-circle"></i><h2>อ่านครบหมดแล้ว</h2>
         <p>ไม่มีแจ้งเตือนที่ยังไม่ได้อ่าน${state.cat !== 'all' ? 'ในหมวดนี้' : ''}</p><button type="button" class="nt-btn" data-show-all>ดูทั้งหมด</button></div>`;
     }
+    if (state.read === 'read') {
+      return `<div class="nt-empty"><i class="bi bi-envelope-open"></i><h2>ยังไม่มีแจ้งเตือนที่อ่านแล้ว</h2>
+        <p>แจ้งเตือนที่กดเปิดดูหรือทำเป็นอ่านแล้วจะย้ายมาอยู่ที่นี่</p><button type="button" class="nt-btn" data-show-all>ดูทั้งหมด</button></div>`;
+    }
     return `<div class="nt-empty"><i class="bi bi-bell-slash"></i><h2>ยังไม่มีการแจ้งเตือน</h2>
       <p>เมื่อสถานะการจอง แจ้งซ่อม เอกสาร หรือรีวิวร้านมีความเคลื่อนไหว จะขึ้นที่นี่</p></div>`;
   }
@@ -340,7 +346,7 @@
   function syncUrl() {
     const p = new URLSearchParams();
     if (state.cat !== 'all') p.set('c', state.cat);
-    if (state.read === 'unread') p.set('f', 'unread');
+    if (state.read !== 'all') p.set('f', state.read);
     if (state.q.trim()) p.set('q', state.q.trim());
     const next = `${location.pathname}${p.toString() ? `?${p}` : ''}`;
     if (next !== `${location.pathname}${location.search}`) history.replaceState(null, '', next);

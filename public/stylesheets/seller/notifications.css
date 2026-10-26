@@ -642,6 +642,8 @@ kbd {
         color: var(--ink-soft);
     }
     .nt-progress__line b { color: var(--navy); }
+    .nt-progress { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+    .nt-progress .nt-progress__cta { margin-top: 0; }
     .nt-keys-btn { display: none; }
 
     .nt-toolbar { grid-template-columns: 1fr auto; }

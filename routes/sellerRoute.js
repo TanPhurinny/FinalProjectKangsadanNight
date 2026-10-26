@@ -648,7 +648,10 @@ function buildBookingNotifications(latestBooking, awaitingPaymentVerification, e
             time: formatTimeThai(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             at: toIso(latestBooking.paymentConfirmedAt || latestBooking.createdAt),
             step: 3,
-            status: 'SUCCESS'
+            status: 'SUCCESS',
+            link: '/booking-status',
+            linkLabel: 'ดูสถานะการจอง',
+            linkIcon: 'bi-shop'
         },
         // การ์ดแจ้งว่าใบเสร็จ/ใบกำกับภาษีพร้อมแล้ว — โผล่เฉพาะตอนจ่ายเงินสำเร็จจริง (มีใบเสร็จให้ดูที่ /quotations/:id แล้ว)
         // type: 'success-receipt' ตรงกับไอคอน bi-file-earmark-text ที่ map ไว้ใน public/js/seller/statusbook.js อยู่แล้ว
