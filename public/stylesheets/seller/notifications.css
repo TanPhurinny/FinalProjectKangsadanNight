@@ -601,7 +601,7 @@ kbd {
     .nt-stat { padding: 8px 12px; }
     .nt-stat dd { font-size: 1.3rem; }
 
-    .nt-layout { grid-template-columns: minmax(0, 1fr); }
+    .nt-layout { grid-template-columns: minmax(0, 1fr); min-height: 0; align-content: start; }
     .nt-side {
         padding: 14px 0 0;
         border-right: none;
