@@ -98,6 +98,8 @@
     .nav-v2 .nav-links .nav-item { font-size: 0.95rem; gap: 12px; padding: 14px 20px; }
     .nav-v2 .nav-links .nav-item i { width: 18px; text-align: center; }
     .nav-v2 .nav-links .nav-item .nav-badge { margin-left: auto; }
+    /* badge แยกประเภท (ภาษี / สัญญา) ชิดกันทางขวา ไม่ถูกดันห่างกัน */
+    .nav-v2 .nav-links .nav-item .nav-badge--labeled + .nav-badge--labeled { margin-left: -6px; }
 
     .nav-v2 .nav-v2__mobile-bar {
         display: flex;
@@ -146,3 +148,6 @@
         border-radius: 3px;
     }
 }
+
+/* badge ที่มีป้ายบอกประเภท เช่น "ภาษี 1" / "สัญญา 2" ในเมนูคำขอเอกสาร */
+.nav-badge--labeled { white-space: nowrap; }

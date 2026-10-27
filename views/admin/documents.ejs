@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
     <link rel="stylesheet" href="/stylesheets/admin/theme.css">
     <link rel="stylesheet" href="/stylesheets/rentalStatement.css?v=20261026b">
-    <link rel="stylesheet" href="/stylesheets/documents.css?v=20261026b">
+    <link rel="stylesheet" href="/stylesheets/documents.css?v=20261027">
 </head>
 <body class="rs-body">
     <script src="/js/common/tabSession.js"></script>
@@ -30,8 +30,9 @@
         </header>
 
         <div class="doc-choices">
-            <a class="doc-choice" href="/admin/tax-invoice-requests">
-                <span class="doc-choice__kicker"><i class="fa-solid fa-file-invoice"></i> ภาษี</span>
+            <a class="doc-choice<%= counts.taxPending ? ' doc-choice--has-pending' : '' %>" href="/admin/tax-invoice-requests">
+                <span class="doc-choice__kicker"><i class="fa-solid fa-file-invoice"></i> ภาษี
+                    <% if (counts.taxPending) { %><span class="doc-choice__pending">คำขอใบกำกับภาษีใหม่ <%= counts.taxPending %></span><% } %></span>
                 <h2 class="doc-choice__title">คำขอใบกำกับภาษี</h2>
                 <p class="doc-choice__desc">ตรวจ/แก้ข้อมูลผู้เสียภาษีที่ร้านกรอก แล้วออกใบกำกับภาษีจากใบเสนอราคาที่ชำระแล้ว</p>
                 <div class="doc-choice__meta">
@@ -40,8 +41,9 @@
                 </div>
                 <span class="doc-choice__cta">จัดการใบกำกับภาษี <i class="fa-solid fa-arrow-right"></i></span>
             </a>
-            <a class="doc-choice" href="/admin/lease-contracts">
-                <span class="doc-choice__kicker"><i class="fa-solid fa-file-signature"></i> สัญญา</span>
+            <a class="doc-choice<%= counts.leasePending ? ' doc-choice--has-pending' : '' %>" href="/admin/lease-contracts">
+                <span class="doc-choice__kicker"><i class="fa-solid fa-file-signature"></i> สัญญา
+                    <% if (counts.leasePending) { %><span class="doc-choice__pending">คำขอสัญญาเช่าใหม่ <%= counts.leasePending %></span><% } %></span>
                 <h2 class="doc-choice__title">คำขอสัญญาเช่า</h2>
                 <p class="doc-choice__desc">ระบบสร้างร่างสัญญาจากประวัติการจองที่ชำระแล้วในช่วงที่ร้านเลือก ตรวจร่างแล้วกดอนุมัติเพื่อออกเลขที่สัญญา หรือไม่อนุมัติพร้อมเหตุผล</p>
                 <div class="doc-choice__meta">

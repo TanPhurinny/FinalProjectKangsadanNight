@@ -10,7 +10,14 @@ const approvalUrgent = typeof approvalTodo !== 'undefined' && approvalTodo ? cou
 const boothCount = typeof eventBoothTodo !== 'undefined' && eventBoothTodo ? count(eventBoothTodo.total) : 0;
 const boothSlips = typeof eventBoothTodo !== 'undefined' && eventBoothTodo ? count(eventBoothTodo.slips) : 0;
 const reviewCount = typeof reportedReviews !== 'undefined' ? count(reportedReviews) : 0;
-const documentCount = (typeof leaseContractTodo !== 'undefined' ? count(leaseContractTodo) : 0) + (typeof taxInvoiceTodo !== 'undefined' ? count(taxInvoiceTodo) : 0);
+const leaseCount = typeof leaseContractTodo !== 'undefined' ? count(leaseContractTodo) : 0;
+const taxCount = typeof taxInvoiceTodo !== 'undefined' ? count(taxInvoiceTodo) : 0;
+const documentCount = leaseCount + taxCount;
+// badge แยกประเภท ให้รู้ว่าคำขอที่เข้ามาเป็นใบกำกับภาษีหรือสัญญาเช่า (แสดงเฉพาะที่มีค้าง)
+const documentBadges = [
+    { label: 'ภาษี', n: taxCount, title: `คำขอใบกำกับภาษีรอดำเนินการ ${taxCount}` },
+    { label: 'สัญญา', n: leaseCount, title: `คำขอสัญญาเช่ารออนุมัติ ${leaseCount}` }
+].filter(function (b) { return b.n > 0; });
 
 // เมนูหลักอยู่บนแถบเสมอ ส่วน moreLinks รวมใน "เพิ่มเติม" (จอกว้าง) — บนมือถือทุกเมนูเรียงต่อกันในเมนู hamburger
 // badge = ตัวเลขงานค้าง, urgent = มีงานด่วน (สีแดง)
@@ -35,7 +42,7 @@ const moreLinks = isStaff ? [] : [
     { href: '/community', icon: 'fa-comments', label: 'คอมมูนิตี้', match: '/community' },
     { href: '/admin/rental-statements', icon: 'fa-file-invoice-dollar', label: 'รายงานการชำระค่าเช่า', match: '/rental-statements' },
     // ใบกำกับภาษี + สัญญาเช่า รวมเป็นเมนูเดียว เข้าแล้วเลือกได้ว่าจะจัดการอะไร (/admin/documents)
-    { href: '/admin/documents', icon: 'fa-folder-open', label: 'คำขอเอกสาร (ใบกำกับภาษี / สัญญาเช่า)', match: ['/admin/documents', 'tax-invoice', '/lease-contracts'], badge: documentCount },
+    { href: '/admin/documents', icon: 'fa-folder-open', label: 'คำขอเอกสาร (ใบกำกับภาษี / สัญญาเช่า)', match: ['/admin/documents', 'tax-invoice', '/lease-contracts'], badge: documentCount, badges: documentBadges },
     { href: '/admin/announcements', icon: 'fa-bullhorn', label: 'จัดการประกาศ', match: 'announcements' },
     { href: '/admin/shop-reviews', icon: 'fa-star-half-stroke', label: 'รีวิวร้านค้า', match: '/shop-reviews', badge: reviewCount, title: `รีวิวที่ร้านรายงานรอตรวจ ${reviewCount}` },
     { href: '/admin/community-banners', icon: 'fa-images', label: 'แบนเนอร์คอมมูนิตี้', match: '/community-banners' },
@@ -55,7 +62,7 @@ const moreBadge = moreLinks.reduce(function (sum, link) { return sum + count(lin
 const todoTotal = isStaff ? reviewCount : approvalCount + boothCount + reviewCount + documentCount;
 const todoUrgent = !isStaff && (approvalUrgent > 0 || boothSlips > 0);
 %>
-<link rel="stylesheet" href="/stylesheets/partials/navMenu.css?v=20261026">
+<link rel="stylesheet" href="/stylesheets/partials/navMenu.css?v=20261027">
 
 <nav class="management-nav admin-nav nav-v2">
     <div class="nav-container">
@@ -90,13 +97,13 @@ const todoUrgent = !isStaff && (approvalUrgent > 0 || boothSlips > 0);
                 <details class="nav-dropdown nav-v2__more">
                     <summary class="nav-item <%= isMoreActive ? 'active' : '' %>">
                         <i class="fas fa-ellipsis-h"></i> เพิ่มเติม
-                        <% if (moreBadge) { %><span class="nav-badge" title="รอดำเนินการ <%= moreBadge %> รายการ (คำขอเอกสาร/รีวิวที่ถูกรายงาน)"><%= badgeText(moreBadge) %></span><% } %>
+                        <% if (moreBadge) { %><span class="nav-badge" title="รอดำเนินการ <%= moreBadge %> รายการ<%= taxCount ? ` · ใบกำกับภาษี ${taxCount}` : '' %><%= leaseCount ? ` · สัญญาเช่า ${leaseCount}` : '' %><%= reviewCount ? ` · รีวิวที่ถูกรายงาน ${reviewCount}` : '' %>"><%= badgeText(moreBadge) %></span><% } %>
                     </summary>
                     <div class="nav-dropdown__panel">
                         <% moreLinks.forEach(function (link) { %>
                         <a href="<%= link.href %>" class="<%= isLinkActive(link) ? 'active' : '' %>">
                             <i class="fas <%= link.icon %>"></i> <%= link.label %>
-                            <% if (link.badge) { %><span class="nav-badge"><%= badgeText(link.badge) %></span><% } %>
+                            <% if (link.badges) { link.badges.forEach(function (b) { %><span class="nav-badge nav-badge--labeled" title="<%= b.title %>"><%= b.label %> <%= badgeText(b.n) %></span><% }) } else if (link.badge) { %><span class="nav-badge"><%= badgeText(link.badge) %></span><% } %>
                         </a>
                         <% }) %>
                     </div>
@@ -106,7 +113,7 @@ const todoUrgent = !isStaff && (approvalUrgent > 0 || boothSlips > 0);
                 <% moreLinks.forEach(function (link) { %>
                 <a href="<%= link.href %>" class="nav-item nav-v2__mobile-only <%= isLinkActive(link) ? 'active' : '' %>">
                     <i class="fas <%= link.icon %>"></i> <%= link.label %>
-                    <% if (link.badge) { %><span class="nav-badge"><%= badgeText(link.badge) %></span><% } %>
+                    <% if (link.badges) { link.badges.forEach(function (b) { %><span class="nav-badge nav-badge--labeled" title="<%= b.title %>"><%= b.label %> <%= badgeText(b.n) %></span><% }) } else if (link.badge) { %><span class="nav-badge"><%= badgeText(link.badge) %></span><% } %>
                 </a>
                 <% }) %>
                 <% } %>

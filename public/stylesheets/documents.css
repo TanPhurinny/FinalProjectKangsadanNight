@@ -231,3 +231,16 @@
     .lc-doc { border: none; padding: 0; font-size: 12.5px; }
     .lc-table tr, .lc-clauses li, .lc-sign { break-inside: avoid; }
 }
+
+/* ป้ายคำขอใหม่ที่รอแอดมิน บนการ์ดหน้าเลือกเอกสาร — บอกชัดว่าค้างฝั่งไหน */
+.doc-choice__pending {
+    margin-left: auto;
+    padding: 2px 8px;
+    background: #c98a2e;
+    color: #fff;
+    font-size: 12px;
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: nowrap;
+}
+.doc-choice--has-pending { border-color: #c98a2e; box-shadow: inset 0 3px 0 #c98a2e; }
