@@ -1381,14 +1381,15 @@ router.get('/market-map/print', isStaffOrAdmin, marketMapCtrl.getPrintableMap);
 router.post('/market-map/track', shopViewLimiter, marketMapCtrl.trackShopView);
 
 // --- หน้าประกาศ (แยกประกาศสำคัญ / ข่าวสารทั่วไป) ---
-router.get('/announcements', isAuthenticated, async (req, res) => {
-    const roleToFetch = req.user.role === 'SELLER' ? 'SELLER' : 'CUSTOMER';
+// ไม่ต้องล็อกอิน: คนทั่วไปเห็นเฉพาะประกาศที่แอดมินตั้งกลุ่ม "ผู้เยี่ยมชม" (GUEST) เหมือนหน้าแรก
+router.get('/announcements', async (req, res) => {
+    const roleToFetch = !req.user ? 'GUEST' : (req.user.role === 'SELLER' ? 'SELLER' : 'CUSTOMER');
     const announcements = await getAnnouncementsForUser(roleToFetch);
     const importantAnnouncements = announcements.filter((a) => a.isImportant);
     const generalAnnouncements = announcements.filter((a) => !a.isImportant);
 
     res.render('announcements', {
-        user: req.user,
+        user: req.user || null,
         importantAnnouncements,
         generalAnnouncements
     });
