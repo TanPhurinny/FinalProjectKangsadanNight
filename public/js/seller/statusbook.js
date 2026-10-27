@@ -48,7 +48,16 @@
     }
   }
 
-  function statusMeta(status, awaitingPaymentVerification) {
+  function statusMeta(status, awaitingPaymentVerification, isExtension) {
+    // คำขอต่อล็อก (ร้านเดิมต่อล็อกเดิม) ข้ามขั้นตรวจร้าน/จัดล็อก เริ่มที่รอชำระเงินเลย
+    if (isExtension && status === 'IN_PROGRESS') {
+      return awaitingPaymentVerification
+        ? { text: 'ต่อล็อก · ส่งสลิปแล้ว รอแอดมินยืนยัน', badge: 'bg-warning text-dark', icon: 'bi-hourglass-split' }
+        : { text: 'ต่อล็อกเดิมแล้ว รอชำระเงิน', badge: 'bg-info text-dark', icon: 'bi-arrow-repeat' };
+    }
+    if (isExtension && status === 'SUCCESS') {
+      return { text: 'ต่อล็อกสำเร็จ', badge: 'bg-success text-white', icon: 'bi-patch-check-fill' };
+    }
     switch (status) {
       case 'APPROVED':
         return { text: 'ร้านผ่านตรวจสอบ รอจัดล็อก', badge: 'bg-primary text-white', icon: 'bi-shop-window' };
@@ -119,7 +128,7 @@
       if (!booking) {
         badgeContainer.innerHTML = '<span class="badge bg-secondary text-white px-3 py-2">ยังไม่มีรายการจอง</span>';
       } else {
-        const meta = statusMeta(booking.status, booking.awaitingPaymentVerification);
+        const meta = statusMeta(booking.status, booking.awaitingPaymentVerification, booking.isExtension);
         badgeContainer.innerHTML = `<span class="badge ${meta.badge} px-3 py-2"><i class="bi ${meta.icon} me-1"></i>${meta.text}</span>`;
       }
     }
@@ -138,10 +147,20 @@
       return;
     }
 
+    // ร้านที่มีล็อกอยู่แล้ว (หรือรายการนี้เป็นการต่อล็อก) ไม่ใช่การจองแผงใหม่ — ปุ่มหลักคือต่อล็อก จองเพิ่มเป็นปุ่มรอง
     const step = bookingStep(booking.status);
-    const bookingActionButton = step >= 2
-      ? `<a href="/select-zone" class="btn btn-custom-primary btn-custom w-100 py-3 shadow-sm text-center"><i class="bi bi-grid me-2"></i>จองแผงใหม่</a>`
-      : `<a href="/select-zone" class="btn btn-outline-primary btn-custom w-100 py-3 text-center"><i class="bi bi-plus-circle me-2"></i>จองเพิ่ม</a>`;
+    const pageData = getPageData();
+    const isExistingShop = Boolean(pageData.hasActiveLock || booking.isExtension);
+    let bookingActionButton;
+    if (isExistingShop) {
+      bookingActionButton = `
+        ${pageData.canExtendLock ? `<a href="/booking-stall/extend" class="btn btn-custom-primary btn-custom w-100 py-3 shadow-sm text-center"><i class="bi bi-arrow-repeat me-2"></i>ต่อล็อก</a>` : ''}
+        <a href="/select-zone" class="btn btn-outline-primary btn-custom w-100 py-3 text-center"><i class="bi bi-plus-circle me-2"></i>จองล็อกเพิ่ม</a>`;
+    } else {
+      bookingActionButton = step >= 2
+        ? `<a href="/select-zone" class="btn btn-custom-primary btn-custom w-100 py-3 shadow-sm text-center"><i class="bi bi-grid me-2"></i>จองแผงใหม่</a>`
+        : `<a href="/select-zone" class="btn btn-outline-primary btn-custom w-100 py-3 text-center"><i class="bi bi-plus-circle me-2"></i>จองเพิ่ม</a>`;
+    }
 
     let paymentSection = '';
     if (booking.status === 'IN_PROGRESS' && booking.awaitingPaymentVerification) {
@@ -210,7 +229,9 @@
           ${slipRejectedAlert}
           ${paymentDeadlineAlert}
           ${rainBox}
-          <p class="pay-box__note">แอดมินจัดล็อกให้คุณแล้ว กรุณาชำระเงินและแนบสลิปโอนเงินเพื่อยืนยัน แอดมินจะตรวจสอบสลิปก่อนยืนยันล็อกให้เป็นของคุณ (เลขล็อกจะแจ้งให้ทราบหลังยืนยันการชำระเงิน)</p>
+          <p class="pay-box__note">${booking.isExtension
+            ? `ต่อ${lockMention(booking.slotLabel)}เดิมให้แล้ว ไม่ต้องรอแอดมินจัดล็อก กรุณาชำระเงินและแนบสลิปโอนเงินภายในกำหนด แอดมินตรวจสลิปแล้วล็อกก็เป็นของคุณต่อ`
+            : 'แอดมินจัดล็อกให้คุณแล้ว กรุณาชำระเงินและแนบสลิปโอนเงินเพื่อยืนยัน แอดมินจะตรวจสอบสลิปก่อนยืนยันล็อกให้เป็นของคุณ (เลขล็อกจะแจ้งให้ทราบหลังยืนยันการชำระเงิน)'}</p>
           <div class="pay-qr">
             ${booking.promptPayQr ? `<img src="${booking.promptPayQr}" alt="PromptPay QR" />` : ''}
             <div class="pay-qr__row"><span>พร้อมเพย์</span><strong>${booking.promptPayId || '-'}</strong></div>
@@ -259,7 +280,7 @@
     scenarioContent.innerHTML = `
       <div class="quote-card">
         <div class="quote-card__head">
-          <span>ใบเสนอราคา</span>
+          <span>ใบเสนอราคา${booking.isExtension ? ' · ต่อล็อก' : ''}</span>
           <span>#BK-${String(booking.id).padStart(6, '0')}</span>
         </div>
         <div class="quote-card__round">${booking.roundNumber ? `รอบที่ ${booking.roundNumber}` : '-'} · ${booking.roundDateRangeText || '-'}</div>
@@ -304,7 +325,15 @@
     if (!container) return;
 
     const step = booking ? bookingStep(booking.status) : 0;
-    const items = [
+    const items = booking && booking.isExtension ? [
+      { title: 'ต่อล็อกเดิม', desc: `ร้านเดิมต่อ${lockMention(booking.slotLabel)} ไม่ต้องรอแอดมินตรวจร้านหรือจัดล็อกใหม่`, stage: 1 },
+      { title: 'ชำระเงิน', desc: booking.status === 'IN_PROGRESS'
+        ? (booking.awaitingPaymentVerification
+          ? 'ส่งสลิปโอนเงินแล้ว รอแอดมินตรวจสอบและยืนยัน'
+          : 'กรุณาชำระเงินและอัปโหลดสลิปโอนเงินภายในกำหนด ถ้าไม่ชำระ ล็อกจะกลับไปสิ้นสุดวันเดิม')
+        : 'ชำระค่าต่อล็อกและแนบสลิปโอนเงิน', stage: 2 },
+      { title: 'ต่อล็อกสำเร็จ', desc: 'ขยายสัญญาล็อกเดิมของคุณเรียบร้อยในระบบ', stage: 3 }
+    ] : [
       { title: 'รอการตรวจสอบร้านค้า', desc: 'ระบบได้รับคำขอจองและแอดมินกำลังตรวจสอบร้านค้า', stage: 1 },
       { title: 'ได้รับล็อก / ชำระเงิน', desc: booking && booking.status === 'IN_PROGRESS'
         ? (booking.awaitingPaymentVerification

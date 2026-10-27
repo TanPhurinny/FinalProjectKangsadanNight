@@ -2335,6 +2335,12 @@ async function loadSellerBookingStatus(userId) {
         // ป้องกันไม่ให้ลูกค้าเห็นตำแหน่งล็อกก่อนจ่ายเงินจริง
         bookingView.zoneLabel = latestRequest.paymentConfirmedAt ? (latestRequest.zone ? `โซน ${latestRequest.zone}` : bookingView.zoneLabel) : null;
         bookingView.slotLabel = latestRequest.paymentConfirmedAt ? (latestRequest.assignedStallCode || null) : null;
+        // คำขอต่อล็อก = ร้านเดิมต่อล็อกเดิม ไม่ใช่การจองแผงใหม่ — ผู้ขายรู้เลขล็อกอยู่แล้ว เลยแสดงได้ตั้งแต่ก่อนชำระเงิน
+        bookingView.isExtension = isExtendRequest(latestRequest);
+        if (bookingView.isExtension && latestRequest.assignedStallCode) {
+            bookingView.slotLabel = latestRequest.assignedStallCode;
+            bookingView.zoneLabel = latestRequest.zone ? `โซน ${latestRequest.zone}` : (bookingView.zoneLabel || '-');
+        }
         bookingView.paymentSlipImage = latestRequest.paymentSlipImage || null;
         bookingView.awaitingPaymentVerification = awaitingPaymentVerification;
         // ชื่อร้าน/ประเภทสินค้า สำหรับการ์ดใบเสนอราคา — เอาจากโปรไฟล์ร้าน ถ้าไม่มีใช้ชื่อจากคำขอจองแทน
@@ -2520,6 +2526,7 @@ router.get('/booking-status', isAuthenticated, async (req, res) => {
         eventBoothRequests,
         rainWallet,
         canExtendLock: Boolean(activeLockForExtension && !activeLockForExtension.pendingExtension),
+        hasActiveLock: Boolean(activeLockForExtension),
         error: req.query.error || null,
         success: req.query.success || null,
         slipCheck: ['no_qr', 'service'].includes(req.query.slipCheck) ? req.query.slipCheck : null
