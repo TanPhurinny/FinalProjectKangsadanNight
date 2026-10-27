@@ -106,6 +106,7 @@ async function buildSellerHome(userId, now = new Date()) {
         const released = stall.status && stall.status !== 'BOOKED';
         return {
             code,
+            requestId: request.id,
             zone: stall.row?.zone?.code || code.charAt(0),
             requestStatus: request.status,
             requestText: REQUEST_STATUS[request.status]?.text || request.status,
@@ -138,11 +139,16 @@ async function buildSellerHome(userId, now = new Date()) {
 
     // ---------- สิ่งที่ต้องทำ เรียงจากด่วนสุด ----------
     const todo = [];
-    // เตือนชำระเงินเฉพาะล็อกที่ยังไม่ถูกปล่อยและเส้นตายยังไม่ผ่าน
-    stalls.filter((s) => s.paymentDeadline && new Date(s.paymentDeadline) > now && s.phase !== 'released').forEach((s) => todo.push({
+    // เตือนชำระเงินเฉพาะล็อกที่ยังไม่ถูกปล่อยและเส้นตายยังไม่ผ่าน — 1 คำขอ = 1 บิล รวมทุกล็อกของคำขอเป็นงานเดียว
+    const unpaidByRequest = new Map();
+    stalls.filter((s) => s.paymentDeadline && new Date(s.paymentDeadline) > now && s.phase !== 'released').forEach((s) => {
+        if (!unpaidByRequest.has(s.requestId)) unpaidByRequest.set(s.requestId, { codes: [], deadline: s.paymentDeadline });
+        unpaidByRequest.get(s.requestId).codes.push(s.code);
+    });
+    unpaidByRequest.forEach(({ codes: unpaidCodes, deadline }) => todo.push({
         tone: 'bad', icon: 'bi-cash-coin',
-        title: `ชำระเงินล็อก ${s.code}`,
-        desc: `ภายใน ${fmtDate(s.paymentDeadline)} ${fmtTime(s.paymentDeadline)} น. ไม่งั้นล็อกอาจถูกปล่อยให้คนอื่น`,
+        title: `ชำระเงินล็อก ${unpaidCodes.join(', ')}`,
+        desc: `ภายใน ${fmtDate(deadline)} ${fmtTime(deadline)} น. ไม่งั้นล็อกอาจถูกปล่อยให้คนอื่น`,
         href: '/booking-status', cta: 'ชำระเงิน'
     }));
     stalls.filter((s) => s.phase === 'grace').forEach((s) => todo.push({
