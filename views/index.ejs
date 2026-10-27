@@ -15,7 +15,7 @@
             href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap"
             rel="stylesheet">
         <link rel="stylesheet"
-            href="/stylesheets/index/style.css?v=20260825-1">
+            href="/stylesheets/index/style.css?v=20261027-guest">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
     <body
@@ -31,8 +31,9 @@
                 </a>
                 <div
                     class="d-none d-lg-flex align-items-center gap-2 top-links">
-                    <a href="#visit" class="top-link">เริ่มใช้งาน</a>
-                    <a href="#about" class="top-link">ทำไมต้องสมัคร</a>
+                    <a href="#find" class="top-link">หาร้าน</a>
+                    <a href="/market-map" class="top-link">ผังตลาด</a>
+                    <a href="#visit" class="top-link">เปิดร้านกับเรา</a>
                     <a href="#announcements" class="top-link">ประกาศ</a>
                     <a href="#zones" class="top-link">โซนตลาด</a>
                     <a href="#faq" class="top-link">คำถามที่พบบ่อย</a>
@@ -93,9 +94,10 @@
                                 </article>
                             </div>
                             <div class="hero-actions">
-                                <a href="#announcements"
+                                <%# ลูกค้ามาเดินตลาดเป็นกลุ่มใหญ่สุด — หาร้าน/ดูผังเป็นปุ่มแรก ไม่ต้องล็อกอิน %>
+                                <a href="/market-map"
                                     class="btn btn-hero-main px-4 py-2"><i
-                                        class="fas fa-bullhorn me-2"></i>ดูประกาศล่าสุด</a>
+                                        class="fas fa-map-location-dot me-2"></i>หาร้าน / ดูผังตลาด</a>
                                 <% if (!user) { %>
                                 <a href="/login"
                                     class="btn btn-kangsadan hero-login-btn hero-cta px-4 py-2"><i
@@ -153,10 +155,57 @@
         </section>
 
         <main>
+            <%
+                // ข้อมูลจาก buildPublicHome (utils/publicHome.js) — null = โหลดไม่ได้ ซ่อนตัวเลข/รอบจองไป
+                const ph = (typeof publicHome !== 'undefined' && publicHome) ? publicHome : null;
+                const thDate = (d) => new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+                const rt = ph ? ph.roundTimeline : null;
+            %>
+            <section id="find" class="find-section">
+                <div class="container">
+                    <div class="find-card">
+                        <div class="find-main">
+                            <span class="find-kicker">สำหรับลูกค้า · ไม่ต้องสมัครสมาชิก</span>
+                            <h2 class="fw-bold mb-2">คืนนี้กินอะไรดี?</h2>
+                            <p class="text-muted mb-3">พิมพ์ชื่อร้าน เมนู หรือเลขล็อก แล้วระบบพาไปที่ร้านบนผังตลาด พร้อมบอกทางเดินจากจุดที่คุณยืนอยู่</p>
+                            <form class="find-search" action="/market-map" method="GET" role="search">
+                                <label for="findQuery" class="visually-hidden">ค้นหาร้านหรือเมนู</label>
+                                <i class="fas fa-search" aria-hidden="true"></i>
+                                <input id="findQuery" type="search" name="q" maxlength="80"
+                                    placeholder="เช่น หมาล่า, ชานม, เสื้อผ้า, F303" autocomplete="off">
+                                <button type="submit" class="btn btn-kangsadan px-4">ค้นหา</button>
+                            </form>
+                            <ul class="find-perks">
+                                <li><i class="fas fa-utensils"></i>ดูเมนูและรูปร้านก่อนเดินไป</li>
+                                <li><i class="fas fa-star"></i>อ่านรีวิวจากลูกค้าคนอื่น</li>
+                                <li><i class="fas fa-route"></i>นำทางทีละขั้นถึงหน้าร้าน</li>
+                            </ul>
+                        </div>
+                        <aside class="find-side">
+                            <% if (ph && ph.shopCount > 0) { %>
+                            <div class="find-stat">
+                                <span class="find-stat__dot" aria-hidden="true"></span>
+                                <div>
+                                    <strong><%= ph.openCount.toLocaleString('th-TH') %></strong>
+                                    <small>ร้านเปิดคืนนี้ <% if (ph.openCount < ph.shopCount) { %>(จาก <%= ph.shopCount.toLocaleString('th-TH') %> ร้านในตลาด)<% } %></small>
+                                </div>
+                            </div>
+                            <a href="/market-map?open=1" class="btn btn-kangsadan w-100 py-2"><i class="fas fa-store me-2"></i>ดูร้านที่เปิดอยู่ตอนนี้</a>
+                            <% } else { %>
+                            <p class="find-side__note">ตลาดเปิดทุกวัน 17:00–00:00 น. ดูร้านทั้งหมดและเมนูได้บนผังตลาด</p>
+                            <% } %>
+                            <a href="/market-map" class="btn btn-outline-kangsadan w-100 py-2"><i class="fas fa-map me-2"></i>เปิดผังตลาด</a>
+                            <a href="/announcements" class="find-side__link">ประกาศและกิจกรรมของตลาด <i class="fas fa-arrow-right"></i></a>
+                        </aside>
+                    </div>
+                </div>
+            </section>
+
             <section id="visit" class="visit-section py-5">
                 <div class="container">
                     <div class="visit-card">
                         <div class="visit-main">
+                            <span class="find-kicker">สำหรับผู้ที่อยากเปิดร้าน</span>
                             <h2 class="fw-bold mb-2">เริ่มใช้งานง่ายใน 3
                                 ขั้นตอน</h2>
                             <p class="text-muted mb-3">สมัครครั้งเดียว
@@ -185,6 +234,24 @@
                                     </div>
                                 </div>
                             </div>
+                            <% if (rt) { %>
+                            <%# รอบจองถัดไป — getRoundTimeline (utils/bookingRound.js) ชุดเดียวกับฟอร์มจองแผง ไม่โชว์ราคา/ล็อกว่าง %>
+                            <div class="round-strip" aria-label="รอบจองถัดไป">
+                                <div class="round-strip__head">
+                                    <strong>รอบจองถัดไป · รอบที่ <%= rt.next.roundNumber %></strong>
+                                    <small>ขาย <%= thDate(rt.next.cycleStart) %> – <%= thDate(rt.next.cycleEnd) %> (14 วัน)</small>
+                                </div>
+                                <ol class="round-strip__steps">
+                                    <% rt.steps.filter((st) => st.key !== 'closed').forEach(function (st) { %>
+                                    <li class="<%= st.key === rt.activeKey ? 'is-active' : '' %>">
+                                        <small><%= st.label %><%= st.key === rt.activeKey ? ' · ตอนนี้' : '' %></small>
+                                        <strong><%= thDate(st.from) %><% if (st.key !== 'selling') { %> – <%= thDate(st.to) %><% } %></strong>
+                                    </li>
+                                    <% }); %>
+                                </ol>
+                                <p class="round-strip__note">จอง 14 วันได้ก่อน · จองสั้นขั้นต่ำ 3 วันหรือรายวันล่วงหน้า 1 วัน เปิดทีหลัง · ชำระเงินหลังแอดมินจัดล็อกให้</p>
+                            </div>
+                            <% } %>
                         </div>
                         <aside class="visit-side">
                             <h6 class="fw-bold mb-3">พร้อมเริ่มเลยไหม?</h6>

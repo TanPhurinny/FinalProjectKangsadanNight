@@ -113,6 +113,7 @@ const sellerRoute = require('./routes/sellerRoute');
 const eventBoothRoutes = require('./routes/eventBoothRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const announceCtrl = require('./controllers/announcementController');
+const { buildPublicHome } = require('./utils/publicHome');
 
 // แจ้งเตือนของผู้ขาย (badge กระดิ่งใน navbarSeller) ให้ขึ้นทุกหน้า ไม่ใช่แค่ /booking-status และ /notifications
 // — cache รายผู้ใช้ 60 วินาทีกันยิง query ชุดสถานะการจองทุกครั้งที่เปลี่ยนหน้า (page ที่ส่ง notifications เองยังทับค่านี้ได้)
@@ -197,10 +198,18 @@ app.get('/', async (req, res) => {
     if (user?.role === 'CUSTOMER' || res.locals.viewAsCustomer) roleToFetch = 'CUSTOMER';
     else if (user?.role === 'ADMIN' || user?.role === 'STAFF') roleToFetch = 'CUSTOMER';
 
-    const announcements = await announceCtrl.getAnnouncementsForUser(roleToFetch);
+    // จำนวนร้านคืนนี้ + รอบจองถัดไป — โหลดไม่ได้ก็ยังแสดงหน้าแรกได้ (ส่วนนั้นซ่อนไป)
+    const [announcements, publicHome] = await Promise.all([
+      announceCtrl.getAnnouncementsForUser(roleToFetch),
+      buildPublicHome().catch((err) => {
+        console.error('Public home error:', err.message);
+        return null;
+      })
+    ]);
 
     res.render('index', {
       announcements,
+      publicHome,
       error: null,
       success: req.query.success || null,
     });
@@ -209,6 +218,7 @@ app.get('/', async (req, res) => {
     res.render('index', {
       user: req.user || null,
       announcements: [],
+      publicHome: null,
       error: 'เกิดข้อผิดพลาดในการโหลดข้อมูลประกาศ',
       success: null,
     });
