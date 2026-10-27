@@ -25,10 +25,11 @@ const MAX_PAST_DAYS = 7;
 // เตือนผู้ขายเมื่อเครดิตเหลืออายุไม่เกินนี้
 const EXPIRY_WARN_DAYS = 7;
 
+// % ชดเชยเป็นทีละ 10 เท่านั้น (50, 60, ... 100) ตรงกับตัวเลือกในหน้าแอดมิน — ค่าอื่นปัดเข้าหลักสิบที่ใกล้ที่สุด
 function clampPercent(value, fallback = MAX_PERCENT) {
     const n = Number.parseInt(value, 10);
     if (!Number.isInteger(n)) return fallback;
-    return Math.min(MAX_PERCENT, Math.max(MIN_PERCENT, n));
+    return Math.min(MAX_PERCENT, Math.max(MIN_PERCENT, Math.round(n / 10) * 10));
 }
 
 function creditAmount(baseRent, percent) {

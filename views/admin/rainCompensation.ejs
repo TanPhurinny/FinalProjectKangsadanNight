@@ -24,6 +24,9 @@
         const fmtShort = (d) => new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
         const fmtTime = (d) => new Date(d).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
         const money = (n) => Number(n || 0).toLocaleString('th-TH');
+        // ตัวเลือก % ชดเชย ทีละ 10 (50, 60, ... 100) — ให้กดเลือก ไม่ต้องพิมพ์
+        const percentOptions = [];
+        for (let p = limits.min; p <= limits.max; p += 10) percentOptions.push(p);
         const STATUS = {
             ACTIVE: ['ใช้ได้', 'state-upcoming'],
             USED: ['ใช้แล้ว', 'state-used'],
@@ -81,8 +84,12 @@
                                 <input type="date" class="field-input" name="date" max="<%= todayKey %>" value="<%= preview ? preview.dateKey : todayKey %>" required>
                             </div>
                             <div>
-                                <label class="field-label">ชดเชย (%) <span>(<%= limits.min %>–<%= limits.max %>)</span></label>
-                                <input type="number" class="field-input" name="percent" min="<%= limits.min %>" max="<%= limits.max %>" step="5" value="<%= preview ? preview.percent : 100 %>" required>
+                                <label class="field-label">ชดเชย (%)</label>
+                                <select class="field-input" name="percent" required>
+                                    <% percentOptions.forEach(function (p) { %>
+                                    <option value="<%= p %>" <%= (preview ? preview.percent : 100) === p ? 'selected' : '' %>><%= p %>%</option>
+                                    <% }) %>
+                                </select>
                             </div>
                             <button type="submit" class="btn-submit">ดูรายชื่อร้าน</button>
                         </form>
@@ -122,7 +129,13 @@
                                             <td><strong><%= shop.shopName || shop.name %></strong><% if (shop.shopName) { %><div class="cell-sub"><%= shop.name %></div><% } %></td>
                                             <td class="mono"><%= shop.stallCodes.join(', ') %></td>
                                             <td class="num mono"><%= money(shop.baseRent) %></td>
-                                            <td class="num"><input type="number" class="field-input pct-input js-pct" name="percent_<%= shop.userId %>" min="<%= limits.min %>" max="<%= limits.max %>" step="5" value="<%= shop.percent %>"></td>
+                                            <td class="num">
+                                                <select class="field-input pct-input js-pct" name="percent_<%= shop.userId %>">
+                                                    <% percentOptions.forEach(function (p) { %>
+                                                    <option value="<%= p %>" <%= shop.percent === p ? 'selected' : '' %>><%= p %>%</option>
+                                                    <% }) %>
+                                                </select>
+                                            </td>
                                             <td class="num mono js-amount"><%= money(shop.amount) %></td>
                                             <td class="cell-note">
                                                 <% if (shop.closed) { %><span class="state-badge state-revoked">กดปิดร้านวันนี้</span><% } %>
