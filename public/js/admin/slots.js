@@ -17,8 +17,9 @@ function readJsonScript(id) {
 const ZONES_DATA = readJsonScript('zonesDataJson');
 const BOOKING_BY_STALL = readJsonScript('bookingByStallJson');
 // วันที่กำลังดูผัง (ดู resolveViewDate ใน utils/stallDayStatus.js) — isToday=false คือโหมดดูล่วงหน้า/ย้อนหลัง
+// เปลี่ยนวันในหน้าเดิมได้ (applyDayData) — ZONES_DATA/BOOKING_BY_STALL/VIEW_DATE แก้ค่าในอ็อบเจกต์เดิม ไม่สร้างใหม่ ให้ slots-extras.js ที่ถืออ้างอิงไว้เห็นข้อมูลวันใหม่ด้วย
 const VIEW_DATE = readJsonScript('viewDateJson');
-const IS_TODAY_VIEW = VIEW_DATE.isToday !== false;
+let IS_TODAY_VIEW = VIEW_DATE.isToday !== false;
 
 // ข้อความป้ายสถานะร้านต่อท้ายชื่อร้าน (tooltip + การ์ดล็อก)
 function occupantBadgeText(occ) {
@@ -175,7 +176,7 @@ function moveStallTooltip(e) {
 let activeZone = null;
 let selectedStall = null;
 let currentQuery = '';
-let currentStatusFilter = null; // 'EMPTY' | 'BOOKED' | 'MAINTENANCE' | 'NEAR_EXPIRY' | 'SPECIAL' | null
+let currentStatusFilter = null; // 'EMPTY' | 'BOOKED' | 'NEW' | 'NEAR_EXPIRY' | 'MAINTENANCE' | 'FREED' | 'SPECIAL' | null
 let showLotColors = false; // เปิด/ปิดสีมุมพิเศษบนผัง
 
 function stallMatchesFilter(id, stall) {
@@ -189,6 +190,9 @@ function stallMatchesFilter(id, stall) {
         if (currentStatusFilter === 'SPECIAL') {
             return !!stall.lotColor && stall.lotColor !== 'ไม่มี';
         }
+        // อิงสถานะ ณ วันที่กำลังดู (stall.dayState/freedFromToday/occupant จาก getSlotsPage ฝั่ง server)
+        if (currentStatusFilter === 'FREED') return !!stall.freedFromToday;
+        if (currentStatusFilter === 'NEW') return stall.status === 'BOOKED' && !!(stall.occupant && stall.occupant.isNewCustomer);
         return stall.status === currentStatusFilter;
     }
     if (currentQuery) {
@@ -235,7 +239,6 @@ function renderZoneCards(z) {
             desc.textContent = ZONES_DATA[code].description || '';
             const stat = document.createElement('span');
             stat.className = 'zc-stat';
-            stat.innerHTML = `ว่าง <b>${free}</b> / ${total}`;
 
             btn.append(title, desc, stat);
             btn.addEventListener('click', () => openZone(code));
@@ -243,6 +246,9 @@ function renderZoneCards(z) {
         });
     }
     box.querySelectorAll('.zone-card').forEach((el) => {
+        // นับใหม่ทุกครั้ง — ตัวเลขเปลี่ยนตามวันที่กำลังดู
+        const { total, free } = zoneStallCounts(el.dataset.zone);
+        el.querySelector('.zc-stat').innerHTML = `ว่าง <b>${free}</b> / ${total}`;
         const on = el.dataset.zone === z;
         el.classList.toggle('active', on);
         el.setAttribute('aria-current', on ? 'true' : 'false');
@@ -380,6 +386,8 @@ function renderDZoneGrid(z, stallByCode) {
 function renderGrid(z) {
     const grid = document.getElementById('stallGrid');
     grid.innerHTML = '';
+    // กำลังกรอง: ล็อกที่ไม่ตรงจางลง ให้ล็อกที่ตรงเด่นขึ้นมา (ดู .is-filtering ใน slots.css)
+    grid.classList.toggle('is-filtering', Boolean(currentQuery || currentStatusFilter));
 
     if (z === 'D') {
         const stallByCode = {};
@@ -563,11 +571,11 @@ function showInfo(id) {
     }
 
     // ล็อกที่หมดสัญญาแล้ว (expiryState === 'expired') โชว์ปุ่ม "ปล่อยล็อก" ให้แอดมินกดเอง ไม่มี auto-release
-    // (expiryState มีเฉพาะตอนดูวันนี้ — ดูวันอื่นปุ่มพวกนี้ไม่ขึ้น เพราะทำงานกับสถานะปัจจุบันของล็อก)
+    // ปุ่มพวกนี้ทำงานกับสถานะปัจจุบันของล็อก จึงขึ้นเฉพาะตอนดูวันนี้ (ดูวันอื่น expiryState นับจากวันนั้น ใช้แค่ลงสี/กรอง)
     document.getElementById('icExpiredActions').classList.toggle('d-none', !(stallInfo && stallInfo.expiryState === 'expired'));
 
     // ใกล้หมดสัญญา (near/critical แต่ยังไม่ expired) โชว์ปุ่ม "แจ้งเตือนร้านค้า" ให้แอดมินกดส่งอีเมลเตือนเอง
-    const isExpiring = stallInfo && (stallInfo.expiryState === 'near' || stallInfo.expiryState === 'critical');
+    const isExpiring = IS_TODAY_VIEW && stallInfo && (stallInfo.expiryState === 'near' || stallInfo.expiryState === 'critical');
     document.getElementById('icExpiringActions').classList.toggle('d-none', !isExpiring);
     if (isExpiring) {
         document.getElementById('icExpiringNote').textContent = occ && occ.daysUntilExpiry != null
@@ -637,7 +645,10 @@ function notifyExpiring(code, sentCount, lastText) {
 }
 window.notifyExpiring = notifyExpiring;
 
-const STATUS_LABELS = { EMPTY: 'แผงว่าง', BOOKED: 'แผงที่จองแล้ว', MAINTENANCE: 'แผงซ่อมบำรุง', NEAR_EXPIRY: 'แผงใกล้/หมดอายุ', SPECIAL: 'แผงมุมพิเศษ' };
+const STATUS_LABELS = {
+    EMPTY: 'แผงว่าง', BOOKED: 'แผงที่จองแล้ว', MAINTENANCE: 'แผงซ่อมบำรุง', NEAR_EXPIRY: 'แผงใกล้/หมดสัญญา', SPECIAL: 'แผงมุมพิเศษ',
+    FREED: 'ว่างเพิ่มจากวันนี้', NEW: 'ร้านใหม่'
+};
 
 function refreshFilterResults() {
     if (window.onFilterChange) setTimeout(window.onFilterChange, 0);
@@ -711,6 +722,18 @@ function quickStatusFilter(btn, status) {
     refreshFilterResults();
 }
 
+// ตั้งตัวกรองจากแถบสรุปในผังล็อก (slots-extras.js renderZoneStrip) — กดซ้ำ = เอาออก, null = ดูทั้งหมด
+// ตัวกรองตัวเดียวกับ "ค้นหาด่วน" ของหน้าโซน จึงไฮไลต์ปุ่มด้านบนให้ตรงกันด้วย
+function setStatusFilter(status) {
+    document.getElementById('searchInput').value = '';
+    currentQuery = '';
+    currentStatusFilter = status && currentStatusFilter !== status ? status : null;
+    document.querySelectorAll('.qtag:not(.qtag-color-toggle)').forEach((t) => {
+        t.classList.toggle('active', !!currentStatusFilter && (t.getAttribute('onclick') || '').includes(`'${currentStatusFilter}'`));
+    });
+    refreshFilterResults();
+}
+
 // คำแนะนำตอนพิมพ์ค้นหา (แบบ Google) — ดู public/js/common/searchSuggest.js
 // ดัชนีคำมาจากร้านในผัง: ชื่อร้าน, ชื่อผู้ขาย, ประเภทสินค้า และคำในรายละเอียดสินค้า
 function findZoneOfStall(code) {
@@ -770,10 +793,30 @@ window.createSearchSuggest && createSearchSuggest({
 });
 
 // ให้ slots-extras.js (สรุป/ชั้นผลตรวจ/เลือกหลายล็อก/ส่งออก) ใช้สถานะและฟังก์ชันของผังร่วมกัน
+function replaceContents(target, source) {
+    Object.keys(target).forEach((key) => { delete target[key]; });
+    Object.assign(target, source || {});
+}
+
+// ใส่ข้อมูลผังของวันใหม่ (จาก GET /admin/slots/day) แล้ววาดใหม่ในที่ — โซนที่เปิดอยู่ยังเปิดอยู่ ตัวกรองยังอยู่
+function applyDayData(data) {
+    replaceContents(ZONES_DATA, data.zones);
+    replaceContents(BOOKING_BY_STALL, data.bookingByStallCode);
+    replaceContents(VIEW_DATE, data.viewDate);
+    IS_TODAY_VIEW = VIEW_DATE.isToday !== false;
+    selectedStall = null;
+    hideInfo();
+    if (activeZone && !ZONES_DATA[activeZone]) closeZone();
+    if (activeZone) renderZoneCards(activeZone);
+    refreshFilterResults();
+}
+
 window.slotsApi = {
     ZONES_DATA,
     VIEW_DATE,
-    IS_TODAY_VIEW,
+    get IS_TODAY_VIEW() { return IS_TODAY_VIEW; },
+    applyDayData,
+    setStatusFilter,
     BOOKING_BY_STALL,
     findStallByCode,
     findZoneOfStall,
@@ -783,6 +826,7 @@ window.slotsApi = {
     openZone,
     closeZone,
     renderActiveGrid() { if (activeZone) renderGrid(activeZone); },
+    doSearch,
     getState() {
         return { query: currentQuery, status: currentStatusFilter, lotColors: showLotColors, zone: activeZone };
     },
@@ -811,9 +855,9 @@ window.slotsApi = {
 };
 
 window.openZone = openZone;
+window.quickStatusFilter = quickStatusFilter;
 window.closeZone = closeZone;
 window.clearSearch = clearSearch;
-window.quickStatusFilter = quickStatusFilter;
 
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('searchInput');

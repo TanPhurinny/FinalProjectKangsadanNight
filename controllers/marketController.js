@@ -5,7 +5,7 @@ const zoneAccess = require('../utils/zoneAccess');
 const { getRenewalPhase, getRenewalOptions } = require('../utils/stallRenewal');
 const { buildTodayInspectionLayer } = require('../utils/inspectionToday');
 const { buildStallHistory } = require('../utils/stallHistory');
-const { resolveViewDate, buildStallStatusForDate } = require('../utils/stallDayStatus');
+const { resolveViewDate, buildStallStatusForDate, buildDayStrip } = require('../utils/stallDayStatus');
 const { getClosedShopsToday, getOpenStatus, businessDateOf } = require('../utils/shopOpenStatus');
 const { getPromosToday } = require('../utils/shopPromo');
 const { getRatingSummaries } = require('../utils/shopReviews');
@@ -424,7 +424,9 @@ function applyDayStatus(zonesData, dayStatus, todayStatus, isToday) {
             column.stalls.forEach((stall) => {
                 if (stall.status === 'PLACEHOLDER') return;
                 const day = dayStatus.byCode[stall.code] || { state: 'free' };
-                const keepExpired = isToday && stall.status === 'BOOKED' && stall.expiryState === 'expired';
+                // ล็อกที่หมดสัญญาแล้วแต่ยังไม่ปล่อย (ค่าจาก buildZonesData ก่อนเขียนทับ = สถานะวันนี้) ร้านยังอยู่หน้างานวันนี้
+                const heldExpiredToday = stall.status === 'BOOKED' && stall.expiryState === 'expired';
+                const keepExpired = isToday && heldExpiredToday;
 
                 if (day.state === 'paid' || day.state === 'unpaid' || keepExpired) stall.status = 'BOOKED';
                 else if (day.state === 'maintenance') stall.status = 'MAINTENANCE';
@@ -439,12 +441,19 @@ function applyDayStatus(zonesData, dayStatus, todayStatus, isToday) {
                 if (day.eventRequestId) eventRequestIdByCode[stall.code] = day.eventRequestId;
                 // บูธกิจกรรมของวันที่ดู (buildZonesData ติดงานของ "วันนี้" ไว้) — ดูวันอื่นเอาของวันนี้ออก ข้อมูลจริงอยู่ใน occupant
                 if (!isToday) delete stall.event;
-                if (!isToday) stall.expiryState = null;
+                // ดูวันอื่น: "ใกล้หมดสัญญา" นับจากวันที่ดู (สัญญาจบภายใน CRITICAL_EXPIRY_DAYS วันหลังวันนั้น) แทนการนับจากวันนี้
+                if (!isToday) {
+                    const daysLeft = day.endDate && stall.status === 'BOOKED'
+                        ? Math.round((toStartOfDay(day.endDate) - dayStatus.date) / (24 * 60 * 60 * 1000))
+                        : null;
+                    stall.expiryState = daysLeft !== null && daysLeft >= 0 && daysLeft <= CRITICAL_EXPIRY_DAYS ? 'critical' : null;
+                }
 
                 if (stall.status === 'AVAILABLE') {
                     summary.free += 1;
                     const today = todayStatus.byCode[stall.code];
-                    if (!isToday && today && (today.state === 'paid' || today.state === 'unpaid')) {
+                    const occupiedToday = heldExpiredToday || (today && (today.state === 'paid' || today.state === 'unpaid'));
+                    if (!isToday && occupiedToday) {
                         stall.freedFromToday = true;
                         summary.freedFromToday += 1;
                     }
@@ -455,92 +464,147 @@ function applyDayStatus(zonesData, dayStatus, todayStatus, isToday) {
     return { bookingIdByCode, eventRequestIdByCode, occupiedCodes, summary };
 }
 
+// แถบวันบนผัง /admin/slots (utils/stallDayStatus.js buildDayStrip) + ข้อมูลรอบจองของแต่ละวัน (รอบละ 14 วัน ดู utils/bookingRound.js)
+// วันแรกของรอบติด roundStart ไว้ให้หน้าเว็บขีดเส้นคั่นรอบ, วันนี้กับวันที่กำลังดูบอก "รอบ N วันที่ x/14"
+async function buildDayStripView(view, zonesData) {
+    const stallCodes = [];
+    zonesData.forEach((zone) => zone.columns.forEach((column) => column.stalls.forEach((stall) => {
+        if (stall.status !== 'PLACEHOLDER') stallCodes.push(stall.code);
+    })));
+    const days = await buildDayStrip(view, stallCodes);
+    return days.map((day) => {
+        const date = new Date(`${day.key}T00:00:00`);
+        const round = getBookingRoundMetaForDate(date);
+        const roundDay = Math.round((toStartOfDay(date) - round.cycleStart) / (24 * 60 * 60 * 1000)) + 1;
+        return { ...day, roundNumber: round.roundNumber, roundDay, roundStart: roundDay === 1 };
+    });
+}
+
+function roundInfoOf(date) {
+    const round = getBookingRoundMetaForDate(date);
+    return {
+        roundNumber: round.roundNumber,
+        roundDay: Math.round((toStartOfDay(date) - round.cycleStart) / (24 * 60 * 60 * 1000)) + 1,
+        roundLength: BOOKING_ROUND_LENGTH_DAYS
+    };
+}
+
+// ข้อมูลผังของวันที่เลือก — ใช้ทั้งตอนเรนเดอร์หน้า (getSlotsPage) และตอนเปลี่ยนวันในหน้าโดยไม่โหลดใหม่ (getSlotsDayData)
+async function loadSlotsView(rawDate, { withStrip = true } = {}) {
+    const view = resolveViewDate(rawDate);
+    const [zonesData, dayStatus] = await Promise.all([buildZonesData(), buildStallStatusForDate(view.date)]);
+    const todayStatus = view.isToday ? dayStatus : await buildStallStatusForDate(new Date(`${view.todayKey}T00:00:00`));
+    const { bookingIdByCode, eventRequestIdByCode, occupiedCodes, summary } = applyDayStatus(zonesData, dayStatus, todayStatus, view.isToday);
+
+    // ติด stall.occupant (ชื่อร้าน/รูป/ระยะเวลาเช่า/สถานะจ่ายเงิน/ลูกค้าใหม่ ฯลฯ) ให้ทุกล็อกที่จองแล้ว ณ วันที่ดู
+    // ใช้ util เดียวกับหน้า /admin/booking-stall (utils/stallOccupancy.js) ให้ข้อมูลตรงกันทั้งสองหน้า
+    const [dayStrip] = await Promise.all([
+        withStrip ? buildDayStripView(view, zonesData) : null,
+        stallOccupancy.attachOccupantDetails(zonesData, { bookingIdByCode, eventRequestIdByCode })
+    ]);
+
+    const approvedRequests = await prisma.bookingRequest.findMany({
+        where: { status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] }, assignedStallCode: { not: null } },
+        select: {
+            productName: true,
+            description: true,
+            sellerName: true,
+            phone: true,
+            zone: true,
+            assignedStallCode: true,
+            createdAt: true,
+            productImage: true,
+            user: { select: { shops: shopsRelation({ select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true } }) } }
+        }
+    });
+
+    const bookingByStallCode = {};
+    approvedRequests.forEach((request) => {
+        // assignedStallCode เก็บได้ทั้งล็อกเดียว ("A901") หรือหลายล็อกคั่นด้วย comma ("A901,A902")
+        // ต้องแตกออกเป็นรายล็อก ไม่งั้นล็อกที่ไม่ใช่ตัวแรกจะหาไม่เจอตอนคลิกดูรายละเอียดบนผัง
+        const stallCodes = String(request.assignedStallCode || '')
+            .split(',')
+            .map((code) => code.trim().toUpperCase())
+            .filter(Boolean);
+        if (!stallCodes.length) return;
+
+        const shopInfo = primaryShop(request.user) || {};
+        const product = shopInfo.productType
+            || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
+        const productDetail = shopInfo.productDetail || stripInternalTags(request.description) || '-';
+        // รูปย่อร้าน: โลโก้ (ช่องแยก) ก่อน — ร้านที่ยังไม่มีโลโก้ใช้ลำดับเดิม
+        const shopImage = shopInfo.logoImage || request.productImage || shopInfo.productImage || shopInfo.shopCoverImage || null;
+
+        stallCodes.forEach((stallCode) => {
+            // ค้นหาร้านได้เฉพาะล็อกที่มีคนอยู่จริงในวันที่กำลังดู
+            if (!occupiedCodes.has(stallCode)) return;
+            bookingByStallCode[stallCode] = {
+                shop: request.productName || '-',
+                product,
+                productDetail,
+                image: shopImage,
+                name: request.sellerName || '-',
+                phone: request.phone || '-',
+                date: toThaiDateShort(request.createdAt),
+                note: stripInternalTags(request.description) || '-'
+            };
+        });
+    });
+
+    // ผลตรวจวันนี้รายล็อก (ชั้น "ผลตรวจวันนี้" บนผัง) — มีเฉพาะตอนดูวันนี้ / พังก็ไม่ให้ทั้งหน้าล่ม แค่ไม่มีชั้นนี้
+    let inspectionToday = { byCode: {}, dateLabel: '' };
+    if (view.isToday) {
+        try {
+            inspectionToday = await buildTodayInspectionLayer();
+        } catch (inspectionError) {
+            console.error('Slots page inspection layer error:', inspectionError);
+        }
+    }
+
+    return {
+        zonesData,
+        bookingByStallCode,
+        inspectionToday: { byCode: inspectionToday.byCode, dateLabel: inspectionToday.dateLabel },
+        viewDate: {
+            ...view,
+            ...roundInfoOf(view.date),
+            strip: dayStrip,
+            date: undefined,
+            label: view.date.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: '2-digit' }),
+            isHoliday: dayStatus.isHoliday,
+            free: summary.free,
+            freedFromToday: summary.freedFromToday
+        }
+    };
+}
+
+function zonesByCode(zonesData) {
+    return zonesData.reduce((acc, zone) => {
+        acc[zone.code] = zone;
+        return acc;
+    }, {});
+}
+
 exports.getSlotsPage = async (req, res) => {
     try {
-        const view = resolveViewDate(req.query.date);
-        const [zonesData, dayStatus] = await Promise.all([buildZonesData(), buildStallStatusForDate(view.date)]);
-        const todayStatus = view.isToday ? dayStatus : await buildStallStatusForDate(new Date(`${view.todayKey}T00:00:00`));
-        const { bookingIdByCode, eventRequestIdByCode, occupiedCodes, summary } = applyDayStatus(zonesData, dayStatus, todayStatus, view.isToday);
-
-        // ติด stall.occupant (ชื่อร้าน/รูป/ระยะเวลาเช่า/สถานะจ่ายเงิน/ลูกค้าใหม่ ฯลฯ) ให้ทุกล็อกที่จองแล้ว ณ วันที่ดู
-        // ใช้ util เดียวกับหน้า /admin/booking-stall (utils/stallOccupancy.js) ให้ข้อมูลตรงกันทั้งสองหน้า
-        await stallOccupancy.attachOccupantDetails(zonesData, { bookingIdByCode, eventRequestIdByCode });
-
-        const approvedRequests = await prisma.bookingRequest.findMany({
-            where: { status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] }, assignedStallCode: { not: null } },
-            select: {
-                productName: true,
-                description: true,
-                sellerName: true,
-                phone: true,
-                zone: true,
-                assignedStallCode: true,
-                createdAt: true,
-                productImage: true,
-                user: { select: { shops: shopsRelation({ select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true } }) } }
-            }
-        });
-
-        const bookingByStallCode = {};
-        approvedRequests.forEach((request) => {
-            // assignedStallCode เก็บได้ทั้งล็อกเดียว ("A901") หรือหลายล็อกคั่นด้วย comma ("A901,A902")
-            // ต้องแตกออกเป็นรายล็อก ไม่งั้นล็อกที่ไม่ใช่ตัวแรกจะหาไม่เจอตอนคลิกดูรายละเอียดบนผัง
-            const stallCodes = String(request.assignedStallCode || '')
-                .split(',')
-                .map((code) => code.trim().toUpperCase())
-                .filter(Boolean);
-            if (!stallCodes.length) return;
-
-            const shopInfo = primaryShop(request.user) || {};
-            const product = shopInfo.productType
-                || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
-            const productDetail = shopInfo.productDetail || stripInternalTags(request.description) || '-';
-            // รูปย่อร้าน: โลโก้ (ช่องแยก) ก่อน — ร้านที่ยังไม่มีโลโก้ใช้ลำดับเดิม
-            const shopImage = shopInfo.logoImage || request.productImage || shopInfo.productImage || shopInfo.shopCoverImage || null;
-
-            stallCodes.forEach((stallCode) => {
-                // ค้นหาร้านได้เฉพาะล็อกที่มีคนอยู่จริงในวันที่กำลังดู
-                if (!occupiedCodes.has(stallCode)) return;
-                bookingByStallCode[stallCode] = {
-                    shop: request.productName || '-',
-                    product,
-                    productDetail,
-                    image: shopImage,
-                    name: request.sellerName || '-',
-                    phone: request.phone || '-',
-                    date: toThaiDateShort(request.createdAt),
-                    note: stripInternalTags(request.description) || '-'
-                };
-            });
-        });
-
-        // ผลตรวจวันนี้รายล็อก (ชั้น "ผลตรวจวันนี้" บนผัง) — มีเฉพาะตอนดูวันนี้ / พังก็ไม่ให้ทั้งหน้าล่ม แค่ไม่มีชั้นนี้
-        let inspectionToday = { byCode: {}, dateLabel: '' };
-        if (view.isToday) {
-            try {
-                inspectionToday = await buildTodayInspectionLayer();
-            } catch (inspectionError) {
-                console.error('Slots page inspection layer error:', inspectionError);
-            }
-        }
-
-        res.render('admin/slots', {
-            zonesData,
-            bookingByStallCode,
-            inspectionToday: { byCode: inspectionToday.byCode, dateLabel: inspectionToday.dateLabel },
-            viewDate: {
-                ...view,
-                date: undefined,
-                label: view.date.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: '2-digit' }),
-                isHoliday: dayStatus.isHoliday,
-                free: summary.free,
-                freedFromToday: summary.freedFromToday
-            },
-            user: req.user
-        });
+        const data = await loadSlotsView(req.query.date);
+        res.render('admin/slots', { ...data, user: req.user });
     } catch (error) {
         console.error("Slots Page Error:", error);
         res.status(500).send("Error loading slots map");
+    }
+};
+
+// GET /admin/slots/day?date= — ผังของวันที่เลือกเป็น JSON ให้หน้า /admin/slots สลับวันได้ทันทีไม่ต้องโหลดหน้าใหม่
+// (โครงเดียวกับ JSON ที่ฝังในหน้า: zones = zonesDataJson, bookingByStallCode, viewDate)
+exports.getSlotsDayData = async (req, res) => {
+    try {
+        // strip=0: หน้าเว็บมีแถบวันที่ครอบวันนี้อยู่แล้ว ไม่ต้องคำนวณใหม่ (ประหยัดเวลาโหลด)
+        const data = await loadSlotsView(req.query.date, { withStrip: req.query.strip !== '0' });
+        res.json({ zones: zonesByCode(data.zonesData), bookingByStallCode: data.bookingByStallCode, viewDate: data.viewDate });
+    } catch (error) {
+        console.error("Slots day data error:", error);
+        res.status(500).json({ error: 'โหลดผังของวันนี้ไม่สำเร็จ' });
     }
 };
 

@@ -57,17 +57,26 @@ async function findOverlappingRequest(stallCode, startDate, endDate, excludeId =
 // บูธกิจกรรมที่ไม่ว่าง ณ วันที่ระบุ: { G101: { state: 'paid'|'unpaid', request, isLastDay, startsToday } }
 async function getEventBoothStatusForDate(date) {
     const day = toStartOfDay(date);
-    const requests = await prisma.eventBoothRequest.findMany({
+    return eventBoothStatusOnDay(await loadEventBoothRequestsInRange(day, day), day);
+}
+
+// คำขอบูธที่ทับช่วง [from, to] — ใช้คู่กับ eventBoothStatusOnDay เวลาต้องคิดสถานะหลายวัน (แถบวันของ /admin/slots)
+function loadEventBoothRequestsInRange(from, to) {
+    return prisma.eventBoothRequest.findMany({
         where: {
             status: { in: ACTIVE_STATUSES },
             assignedStallCode: { not: null },
-            startDate: { lt: addDays(day, 1) },
-            endDate: { gte: day }
+            startDate: { lt: addDays(toStartOfDay(to), 1) },
+            endDate: { gte: toStartOfDay(from) }
         },
         orderBy: { id: 'desc' }
     });
+}
+
+function eventBoothStatusOnDay(requests, day) {
     const byCode = {};
     requests.forEach((request) => {
+        if (toStartOfDay(request.startDate) > day || toStartOfDay(request.endDate) < day) return;
         const code = String(request.assignedStallCode).toUpperCase();
         const current = byCode[code];
         // SUCCESS ชนะ IN_PROGRESS ถ้ามีหลายใบ (ไม่ควรเกิดเพราะเช็คทับตอนอนุมัติแล้ว)
@@ -117,6 +126,8 @@ module.exports = {
     countDays,
     findOverlappingRequest,
     getEventBoothStatusForDate,
+    loadEventBoothRequestsInRange,
+    eventBoothStatusOnDay,
     toPublicEventInfo,
     countEventBoothTodo
 };

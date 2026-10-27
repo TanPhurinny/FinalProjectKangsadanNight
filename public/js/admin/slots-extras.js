@@ -99,9 +99,57 @@
             chip('ซ่อมบำรุง', s.maintenance, '', () => clickQuickTag('.qtag-maintenance'), 'warn', status === 'MAINTENANCE'),
             chip('ใกล้/หมดสัญญา', s.expiring, '', () => clickQuickTag('.qtag-near-expiry'), s.expiring ? 'bad' : '', status === 'NEAR_EXPIRY')
         );
-        if (Object.keys(INSPECT_BY_CODE).length) {
+        // ผลตรวจเป็นของวันนี้เท่านั้น — เปลี่ยนไปดูวันอื่นในหน้าเดิมแล้วไม่ต้องโชว์
+        if (api.IS_TODAY_VIEW && Object.keys(INSPECT_BY_CODE).length) {
             box.append(chip('ตรวจวันนี้', `${s.checked}/${s.inspTotal}`, s.issues ? `พบปัญหา ${s.issues}` : 'ไม่พบปัญหา', () => toggleInspect(), s.issues ? 'bad' : 'ok', inspectOn));
         }
+    }
+
+    // ---------- แถบสรุปของโซนในผังล็อก (หน้าแผงค้า) ----------
+    // หน้าตาเดียวกับแถบสรุปของหน้าโซน (chip) แต่นับเฉพาะโซนที่เปิด และเป็นของวันที่กำลังดู
+    // กดช่องไหน = กรองล็อกแบบนั้น ตัวกรองตัวเดียวกับ "ค้นหาด่วน" ของหน้าโซน เข้า/ออกโซนแล้วยังกรองอยู่
+    function countZone(zoneCode) {
+        const c = { total: 0, free: 0, booked: 0, unpaid: 0, fresh: 0, expiring: 0, maintenance: 0, freed: 0 };
+        forEachStall((zone, stall) => {
+            if (zone !== zoneCode) return;
+            c.total += 1;
+            if (stall.status === 'BOOKED') {
+                c.booked += 1;
+                if (stall.dayState === 'unpaid') c.unpaid += 1;
+                if (stall.occupant && stall.occupant.isNewCustomer) c.fresh += 1;
+            } else if (stall.status === 'MAINTENANCE') {
+                c.maintenance += 1;
+            } else {
+                c.free += 1;
+            }
+            if (isExpiring(stall)) c.expiring += 1;
+            if (stall.freedFromToday) c.freed += 1;
+        });
+        return c;
+    }
+
+    function renderZoneStrip() {
+        const box = $('zoneStatsStrip');
+        const { zone, status, query } = api.getState();
+        if (!box || !zone) return;
+        const c = countZone(zone);
+        const pct = c.total ? Math.round((c.booked / c.total) * 100) : 0;
+        const pick = (value) => () => api.setStatusFilter(value);
+        box.innerHTML = '';
+        box.append(
+            chip(`ทั้งโซน ${zone}`, c.total, `เต็ม ${pct}%`, pick(null), '', !status && !query),
+            chip('ว่าง', c.free, '', pick('EMPTY'), 'ok', status === 'EMPTY'),
+            chip('จองแล้ว', c.booked, c.unpaid ? `รอจ่าย ${c.unpaid}` : '', pick('BOOKED'), '', status === 'BOOKED'),
+            chip('ร้านใหม่', c.fresh, '', pick('NEW'), '', status === 'NEW'),
+            chip('ซ่อมบำรุง', c.maintenance, '', pick('MAINTENANCE'), 'warn', status === 'MAINTENANCE'),
+            chip('ใกล้/หมดสัญญา', c.expiring, '', pick('NEAR_EXPIRY'), c.expiring ? 'bad' : '', status === 'NEAR_EXPIRY')
+        );
+        // ดูวันอื่น: ล็อกที่วันนี้ยังมีร้านแต่วันนั้นว่างแล้ว
+        if (!api.IS_TODAY_VIEW) {
+            box.append(chip('ว่างเพิ่มจากวันนี้', c.freed, '', pick('FREED'), c.freed ? 'ok' : '', status === 'FREED'));
+        }
+        const drawerSearch = $('drawerSearch');
+        if (drawerSearch && document.activeElement !== drawerSearch) drawerSearch.value = query || '';
     }
 
     // ---------- ป้ายตัวเลขบนโซนของผังหลัก ----------
@@ -376,11 +424,13 @@
 
     window.onZoneOpened = function (zone) {
         lastZone = zone;
+        renderZoneStrip();
         saveState();
     };
 
     window.onFilterChange = function () {
         renderStrip();
+        renderZoneStrip();
         saveState();
     };
 
@@ -578,24 +628,275 @@
         });
     }
 
-    // ---------- เลือกวันที่ดูผัง ----------
-    // เปลี่ยนวันในปฏิทินแล้วโหลดผังของวันนั้นทันที (หน้าเรนเดอร์ฝั่ง server ตาม ?date=)
-    // ดูวันนี้แล้วเปิดแท็บค้างข้ามตี 5 (ขึ้นวันขายใหม่ ดู businessDateOf ใน utils/shopOpenStatus.js) ให้โหลดใหม่เอง สีจะได้ตรงกับวันนั้น
+    // ---------- เลือกวันที่ดูผัง (แถบวัน วาดใส่ [data-day-ctl] ทั้งเหนือผังและในผังล็อก) ----------
+    // เปลี่ยนวันแล้วดึง GET /admin/slots/day?date= มาวาดผังใหม่ในหน้าเดิม (api.applyDayData) ไม่โหลดหน้าใหม่ โซน/ตัวกรองที่เปิดอยู่ยังอยู่
+    // ที่อยู่ในแถบเบราว์เซอร์อัปเดตตาม (?date=&zone=) กดย้อนกลับได้ รีเฟรชแล้วได้วันเดิม
+    const DAY_CACHE_LIMIT = 12;
+    const dayCache = new Map(); // dateKey -> ข้อมูลวันนั้น — กด ◀ ▶ วันข้างๆ ได้ทันที
+    let stripDays = (api.VIEW_DATE.strip || []).slice();
+    let dayRequest = null;
+
+    function dayUrl(dateKey) {
+        const params = new URLSearchParams();
+        if (dateKey && dateKey !== api.VIEW_DATE.todayKey) params.set('date', dateKey);
+        const zone = api.getState().zone;
+        if (zone) params.set('zone', zone);
+        const query = params.toString();
+        return `/admin/slots${query ? `?${query}` : ''}`;
+    }
+
+    function shiftKey(dateKey, days) {
+        const d = new Date(`${dateKey}T00:00:00`);
+        d.setDate(d.getDate() + days);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function inRange(dateKey) {
+        const v = api.VIEW_DATE;
+        return Boolean(dateKey) && dateKey >= v.minKey && dateKey <= v.maxKey;
+    }
+
+    // withStrip = ขอแถบวันชุดใหม่ (ล้อมรอบวันนั้น) มาด้วย — ใช้ตอนกระโดดไปวันที่อยู่นอกแถบที่แสดงอยู่
+    function fetchDay(dateKey, withStrip) {
+        const cached = dayCache.get(dateKey);
+        if (cached && !withStrip) return Promise.resolve(cached);
+        return fetch(`/admin/slots/day?date=${dateKey}${withStrip ? '' : '&strip=0'}`, { headers: { Accept: 'application/json' } })
+            .then((response) => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then((data) => {
+                dayCache.set(dateKey, data);
+                if (dayCache.size > DAY_CACHE_LIMIT) dayCache.delete(dayCache.keys().next().value);
+                return data;
+            });
+    }
+
+    // โหลดวันข้างๆ ไว้ก่อน กด ◀ ▶ แล้วเปลี่ยนทันที
+    function prefetchNeighbours(dateKey) {
+        [shiftKey(dateKey, 1), shiftKey(dateKey, -1)].forEach((key) => {
+            if (inRange(key) && !dayCache.has(key)) fetchDay(key, false).catch(() => { /* โหลดตอนกดจริงอีกที */ });
+        });
+    }
+
+    function goToDate(dateKey, { push = true } = {}) {
+        if (!inRange(dateKey) || dateKey === api.VIEW_DATE.dateKey) return;
+        const needStrip = !stripDays.some((day) => day.key === dateKey);
+        const token = {};
+        dayRequest = token;
+        document.body.classList.add('day-loading');
+        renderDayCtl(dateKey);
+        fetchDay(dateKey, needStrip)
+            .then((data) => {
+                if (dayRequest !== token) return; // กดวันอื่นต่อไปแล้ว
+                if (needStrip && data.viewDate.strip) stripDays = data.viewDate.strip.slice();
+                const wasToday = api.IS_TODAY_VIEW;
+                api.applyDayData({ ...data, viewDate: { ...data.viewDate, strip: stripDays } });
+                // ผลตรวจ/เลือกหลายล็อก (แจ้งเตือน-ปล่อยล็อก) ใช้ได้เฉพาะวันนี้
+                if (wasToday && !api.IS_TODAY_VIEW) {
+                    if (inspectOn) toggleInspect(false);
+                    if (multiOn) toggleMulti(false);
+                }
+                document.querySelectorAll('[data-when]').forEach((node) => {
+                    node.hidden = (node.dataset.when === 'today') !== api.IS_TODAY_VIEW;
+                });
+                if (push) history.pushState({ dateKey }, '', dayUrl(dateKey));
+                document.body.classList.remove('day-loading');
+                renderStrip();
+                renderZoneStrip();
+                renderZoneBadges();
+                renderDayCtl();
+                prefetchNeighbours(dateKey);
+            })
+            .catch(() => {
+                if (dayRequest === token) window.location.href = dayUrl(dateKey); // ดึงไม่ได้ โหลดทั้งหน้าแทน
+            });
+    }
+
+    // ---------- วาดแถบวัน ----------
+    function el(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text != null) node.textContent = text;
+        return node;
+    }
+
+    function offsetText(offset) {
+        if (offset === 0) return 'วันนี้';
+        if (offset === 1) return 'พรุ่งนี้';
+        if (offset === -1) return 'เมื่อวาน';
+        return offset > 0 ? `อีก ${offset} วัน` : `${-offset} วันก่อน`;
+    }
+
+    function longDateLabel(dateKey) {
+        return new Date(`${dateKey}T00:00:00`).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: '2-digit' });
+    }
+
+    function iconButton(className, icon, title, onClick) {
+        const btn = el('button', className);
+        btn.type = 'button';
+        btn.title = title;
+        btn.setAttribute('aria-label', title);
+        btn.innerHTML = `<i class="fa-solid ${icon}"></i>`;
+        btn.addEventListener('click', onClick);
+        return btn;
+    }
+
+    // โครงแถบวัน สร้างครั้งเดียวต่อกล่อง แล้วค่อยอัปเดตข้อความ/ช่องวันตอนเปลี่ยนวัน
+    function buildDayCtl(box, index) {
+        box.innerHTML = '';
+        const head = el('div', 'dctl-head');
+        const prev = iconButton('dctl-step', 'fa-chevron-left', 'วันก่อนหน้า', () => goToDate(shiftKey(api.VIEW_DATE.dateKey, -1)));
+        const next = iconButton('dctl-step', 'fa-chevron-right', 'วันถัดไป', () => goToDate(shiftKey(api.VIEW_DATE.dateKey, 1)));
+
+        const title = el('div', 'dctl-title');
+        const line = el('div', 'dctl-line');
+        line.append(el('b', 'dctl-date'), el('span', 'dctl-tag'));
+        title.append(line, el('div', 'dctl-sub'));
+
+        const today = el('button', 'dctl-today', 'กลับวันนี้');
+        today.type = 'button';
+        today.addEventListener('click', () => goToDate(api.VIEW_DATE.todayKey));
+
+        const cal = el('span', 'dctl-cal');
+        cal.title = 'เลือกวันจากปฏิทิน';
+        const input = el('input', 'dctl-cal-input');
+        input.type = 'date';
+        input.id = `dayPicker${index}`;
+        input.setAttribute('aria-label', 'เลือกวันที่');
+        input.value = api.VIEW_DATE.dateKey;
+        cal.appendChild(input);
+
+        head.append(prev, title, next, today, cal);
+        const track = el('div', 'dctl-track');
+        track.setAttribute('aria-label', 'เลือกวัน');
+        box.append(head, track);
+
+        // ปฏิทินตัวเดียวกับหน้าจองแผง (public/js/common/datePicker.js) — ข้อความวันที่เป็นภาษาไทย
+        if (window.createDatePicker) window.createDatePicker(input, { min: api.VIEW_DATE.minKey, max: api.VIEW_DATE.maxKey });
+        input.addEventListener('change', () => { if (input.value) goToDate(input.value); });
+        // เก็บอ้างอิงช่องจริงไว้ — datePicker.js ก็อป class ไปใส่ช่องแสดงผลด้วย หาด้วย class จะได้ช่องแสดงผลแทน
+        box.dayInput = input;
+        box.dataset.built = '1';
+    }
+
+    function dayChip(day) {
+        const chip = el('button', 'dchip');
+        chip.type = 'button';
+        chip.dataset.key = day.key;
+        chip.classList.toggle('is-today', day.offset === 0);
+        chip.classList.toggle('is-past', day.offset < 0);
+        chip.classList.toggle('is-holiday', Boolean(day.isHoliday));
+        chip.classList.toggle('round-start', Boolean(day.roundStart));
+        const dayNum = Number(day.key.slice(8));
+        chip.title = `${longDateLabel(day.key)} · รอบ ${day.roundNumber} วันที่ ${day.roundDay}/14`
+            + (day.isHoliday ? ' · วันหยุด' : ` · ว่าง ${day.free} ล็อก`);
+
+        if (day.roundStart) chip.appendChild(el('span', 'dchip-round', `รอบ ${day.roundNumber}`));
+        chip.appendChild(el('span', 'dchip-wd', day.offset === 0 ? 'วันนี้' : day.weekday));
+        chip.appendChild(el('span', 'dchip-num', dayNum === 1 ? day.dayLabel : String(dayNum)));
+        if (day.isHoliday) chip.appendChild(el('span', 'dchip-hol', 'หยุด'));
+        chip.addEventListener('click', () => goToDate(day.key));
+        return chip;
+    }
+
+    // pendingKey = วันที่เพิ่งกด (กำลังโหลด) — ไฮไลต์ช่องนั้นไว้ก่อนเลย ให้รู้ว่ากดติด
+    function renderDayCtl(pendingKey) {
+        const v = api.VIEW_DATE;
+        const target = pendingKey || v.dateKey;
+        const viewed = stripDays.find((d) => d.key === v.dateKey);
+        if (viewed && !pendingKey) viewed.free = v.free; // ช่องของวันที่ดูใช้ตัวเลขเดียวกับผัง
+        document.querySelectorAll('[data-day-ctl]').forEach((box, index) => {
+            if (!box.dataset.built) buildDayCtl(box, index);
+            box.classList.toggle('is-other-day', !v.isToday);
+            box.classList.toggle('is-loading', Boolean(pendingKey));
+            const [prev, next] = box.querySelectorAll('.dctl-step');
+            prev.disabled = !inRange(shiftKey(target, -1));
+            next.disabled = !inRange(shiftKey(target, 1));
+            box.querySelector('.dctl-today').hidden = target === v.todayKey;
+
+            if (!pendingKey) {
+                box.querySelector('.dctl-date').textContent = longDateLabel(v.dateKey);
+                box.querySelector('.dctl-tag').textContent = offsetText(v.dayOffset);
+                const parts = [`รอบ ${v.roundNumber} · วันที่ ${v.roundDay}/${v.roundLength}`];
+                if (v.isHoliday) parts.push('วันหยุด');
+                if (!v.isToday) parts.push('คาดการณ์จากการจองที่เข้ามาแล้ว อาจเปลี่ยนได้ระหว่างรอบ');
+                box.querySelector('.dctl-sub').textContent = parts.join(' · ');
+                if (box.dayInput.value !== v.dateKey) box.dayInput.value = v.dateKey;
+            }
+
+            const track = box.querySelector('.dctl-track');
+            const keys = stripDays.map((d) => d.key).join(',');
+            if (track.dataset.keys !== keys) {
+                track.innerHTML = '';
+                stripDays.forEach((d) => track.appendChild(dayChip(d)));
+                track.dataset.keys = keys;
+            }
+            track.querySelectorAll('.dchip').forEach((chip) => {
+                const on = chip.dataset.key === target;
+                chip.classList.toggle('active', on);
+                chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            const active = track.querySelector('.dchip.active');
+            if (active && track.clientWidth) {
+                const left = active.offsetLeft - track.offsetLeft - (track.clientWidth - active.offsetWidth) / 2;
+                track.scrollTo({ left, behavior: track.dataset.scrolled ? 'smooth' : 'auto' });
+                track.dataset.scrolled = '1';
+            }
+        });
+    }
+
     function bindDayBar() {
-        const picker = $('dayPicker');
-        if (picker) {
-            picker.addEventListener('change', () => {
-                if (picker.value) $('dayBar').submit();
+        renderDayCtl();
+        prefetchNeighbours(api.VIEW_DATE.dateKey);
+        // ปุ่มย้อนกลับ/ไปข้างหน้าของเบราว์เซอร์ = ย้อนวันที่ดู
+        window.addEventListener('popstate', () => {
+            const key = new URLSearchParams(window.location.search).get('date') || api.VIEW_DATE.todayKey;
+            goToDate(key, { push: false });
+        });
+        // ช่องค้นหาในผังล็อก ใช้ตัวค้นหาเดียวกับช่องค้นหาด้านบน
+        const drawerSearch = $('drawerSearch');
+        if (drawerSearch) {
+            let timer = null;
+            drawerSearch.addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    $('searchInput').value = drawerSearch.value;
+                    api.doSearch(drawerSearch.value);
+                }, 200);
             });
         }
-        if (!api.IS_TODAY_VIEW || !api.VIEW_DATE.todayKey) return;
+        // คำอธิบายสีพับไว้ กดปุ่ม "สี" เพื่อเปิด
+        const legendBtn = $('drawerLegendBtn');
+        const legend = $('drawerLegend');
+        if (legendBtn && legend) {
+            legendBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                legend.hidden = !legend.hidden;
+                legendBtn.setAttribute('aria-expanded', legend.hidden ? 'false' : 'true');
+            });
+            document.addEventListener('click', (event) => {
+                if (!legend.hidden && !legend.contains(event.target)) {
+                    legend.hidden = true;
+                    legendBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        // ดูวันนี้แล้วเปิดแท็บค้างข้ามตี 5 (ขึ้นวันขายใหม่ ดู businessDateOf ใน utils/shopOpenStatus.js) ให้โหลดใหม่เอง สีจะได้ตรงกับวันนั้น
         const businessDayKey = () => {
             const d = new Date(Date.now() - 5 * 60 * 60 * 1000);
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         };
         setInterval(() => {
-            if (businessDayKey() !== api.VIEW_DATE.todayKey && !document.body.classList.contains('multi-mode')) window.location.reload();
+            if (api.IS_TODAY_VIEW && businessDayKey() !== api.VIEW_DATE.todayKey && !document.body.classList.contains('multi-mode')) window.location.reload();
         }, 5 * 60 * 1000);
+    }
+
+    // มาจากการเปลี่ยนวันตอนเปิดผังล็อกอยู่ (?zone=) — เปิดโซนนั้นให้เลย
+    function openZoneFromUrl() {
+        const zone = String(new URLSearchParams(window.location.search).get('zone') || '').toUpperCase();
+        if (zone && ZONES[zone]) api.openZone(zone);
     }
 
     // ---------- เริ่มทำงาน ----------
@@ -641,5 +942,6 @@
         renderZoneBadges();
         renderLastZoneButton();
         showBulkFlash();
+        openZoneFromUrl();
     });
 })();

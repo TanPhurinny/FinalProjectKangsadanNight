@@ -179,125 +179,291 @@
     margin-right: 8px;
 }
 
-/* แถบเลือกวันที่ดูผัง (◀ ปฏิทิน ▶ วันนี้) */
+/* แถบเลือกวัน (slots-extras.js วาดใส่ [data-day-ctl]) — แถวบน: ◀ วันที่ที่กำลังดู ▶ กลับวันนี้ ปฏิทิน / แถวล่าง: ช่องวันเรียงต่อกัน
+   ช่องวันบอกแค่ "ว่างเพิ่ม/ลดจากวันก่อน" (วันที่เท่าเดิมเว้นว่าง) ให้เห็นทันทีว่าวันไหนล็อกจะหลุด — ตัวเลขเต็มอยู่ใน tooltip และหัวแถบ */
 .day-bar {
     background: var(--card);
     border-bottom: 1px solid var(--border);
-    padding: 6px 18px;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
+    padding: 10px 18px 8px;
     margin: 0;
 }
 
-.day-nav {
-    display: inline-flex;
-    align-items: stretch;
+.dctl-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
 }
 
-.day-step,
-.day-today {
+.dctl-step {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 32px;
-    padding: 0 10px;
     border: 1px solid var(--border);
     background: var(--card);
     color: var(--text);
     font-size: 12px;
-    font-weight: 500;
-    text-decoration: none;
 }
 
-.day-step:hover,
-.day-today:hover {
+.dctl-step:hover:not(:disabled) {
     border-color: var(--primary);
     color: var(--primary);
 }
 
-.day-step.disabled {
-    pointer-events: none;
+.dctl-step:disabled {
     color: var(--border);
+    cursor: default;
 }
 
-.day-today.active {
-    background: var(--primary);
-    border-color: var(--primary-dark);
-    color: #fff;
+.dctl-title {
+    min-width: 0;
+    padding: 0 6px;
 }
 
-.day-nav input[type="date"] {
-    border: 1px solid var(--border);
-    border-left: none;
-    border-right: none;
-    padding: 4px 8px;
-    font-family: inherit;
-    font-size: 12px;
+.dctl-line {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.dctl-date {
+    font-size: 15px;
+    font-weight: 600;
     color: var(--text);
-    background: #fff;
-    min-height: 30px;
+    white-space: nowrap;
 }
 
-.day-label {
+.dctl-tag {
+    padding: 1px 7px;
+    border: 1px solid var(--primary);
+    color: var(--primary-dark);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.dctl-sub {
+    margin-top: 2px;
     font-size: 12px;
     color: var(--sub);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.day-holiday {
-    color: #c0392b;
-}
-
-.day-banner {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 8px 18px;
-    background: #f3eafe;
-    border-bottom: 1px solid #d8c2f5;
-    border-left: 4px solid #a855f7;
-    font-size: 13px;
-    color: var(--text);
-}
-
-.day-banner b {
-    margin: 0 3px;
-}
-
-.day-banner-back {
-    margin-left: auto;
-    padding: 3px 10px;
-    border: 1px solid #a855f7;
-    color: #7e22ce;
-    font-size: 12px;
-    text-decoration: none;
-    background: #fff;
-}
-
-.day-banner-back:hover {
+/* ดูวันอื่นที่ไม่ใช่วันนี้: ป้ายเป็นสีม่วง ให้รู้ตัวว่ากำลังดูผังคาดการณ์ */
+.is-other-day .dctl-tag {
+    border-color: #a855f7;
     background: #a855f7;
     color: #fff;
 }
 
+.dctl-today {
+    flex: 0 0 auto;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--primary);
+    background: var(--primary);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.dctl-today:hover {
+    background: var(--primary-dark);
+}
+
+.dctl-cal {
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
+.dctl-cal .dp-field-wrap {
+    width: 168px;
+}
+
+.dctl-cal .dp-input {
+    width: 100%;
+    height: 32px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 0;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.dctl-track {
+    display: flex;
+    gap: 0;
+    margin-top: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border: 1px solid var(--border);
+}
+
+.dctl-track::-webkit-scrollbar {
+    display: none;
+}
+
+.dchip {
+    position: relative;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    width: 46px;
+    padding: 5px 0 4px;
+    border: none;
+    border-right: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+
+.dchip:last-child {
+    border-right: none;
+}
+
+.dchip:hover {
+    background: #eef7f9;
+}
+
+.dchip-wd {
+    font-size: 10px;
+    color: var(--sub);
+    white-space: nowrap;
+}
+
+.dchip-num {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.dchip-hol {
+    font-size: 10px;
+    color: #c0392b;
+}
+
+.dchip.is-past {
+    background: #f6f8f8;
+}
+
+.dchip.is-past .dchip-num {
+    color: var(--sub);
+    font-weight: 500;
+}
+
+/* วันนี้: ขีดบนสีหลัก */
+.dchip.is-today {
+    box-shadow: inset 0 3px 0 var(--primary);
+}
+
+.dchip.is-today .dchip-wd {
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+/* ขึ้นรอบจองใหม่: เส้นเข้มด้านซ้าย + ป้ายรอบเล็กๆ ที่มุม */
+.dchip.round-start {
+    border-left: 2px solid var(--text);
+    padding-top: 13px;
+}
+
+.dchip-round {
+    position: absolute;
+    top: 1px;
+    left: 3px;
+    font-size: 8.5px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.dchip.active,
+.dchip.active:hover {
+    background: var(--text);
+    color: #fff;
+}
+
+.dchip.active .dchip-wd,
+.dchip.active .dchip-num,
+.dchip.active .dchip-round,
+.dchip.active .dchip-hol {
+    color: #fff;
+}
+
+/* ระหว่างโหลดวันใหม่: ผังจางลงนิดหน่อย ไม่กระพริบทั้งหน้า */
+body.day-loading .stall-flex,
+body.day-loading .map-shell {
+    opacity: .55;
+    transition: opacity .15s;
+}
+
+.is-loading .dctl-date::after {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-left: 8px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: dctl-spin .7s linear infinite;
+}
+
+@keyframes dctl-spin {
+    to { transform: rotate(360deg); }
+}
+
 @media (max-width: 600px) {
-    .day-bar,
-    .day-banner {
-        padding: 6px 16px;
+    .day-bar {
+        padding: 8px 16px;
     }
 
-    .day-nav {
-        flex: 1;
+    .dctl-head {
+        flex-wrap: wrap;
     }
 
-    .day-nav input[type="date"] {
-        flex: 1;
-        min-width: 0;
+    .dctl-title {
+        flex: 1 1 0;
+        order: 0;
     }
 
-    .day-banner-back {
+    .dctl-line {
+        flex-wrap: wrap;
+        row-gap: 2px;
+    }
+
+    .dctl-date {
+        font-size: 14px;
+        white-space: normal;
+    }
+
+    .dctl-sub {
+        white-space: normal;
+    }
+
+    .dctl-cal {
+        order: 5;
+        flex: 1 1 100%;
         margin-left: 0;
+    }
+
+    .dctl-cal .dp-field-wrap {
+        width: 100%;
+    }
+
+    .dctl-today {
+        order: 4;
     }
 }
 
@@ -1639,4 +1805,140 @@
 @media (max-width: 600px) {
     .zone-block-event .z-title { font-size: 11px; }
     .zone-block-event .z-sub { display: none; }
+}
+
+/* ---------- ผังล็อกในโซน: แถบวัน + ตัวกรอง + คำอธิบายสี ---------- */
+.drawer-days {
+    flex-shrink: 0;
+    padding: 8px 20px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+}
+
+.drawer-filters {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+}
+
+/* แถบสรุปของโซนในผังล็อก: ใช้ .stats-strip/.stat-chip ตัวเดียวกับหน้าโซน (slots-extras.css) แค่ไม่เว้นขอบนอก */
+.drawer-filters .stats-strip--zone {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0;
+    background: transparent;
+}
+
+/* ช่องที่เลือกอยู่แล้วเอาเมาส์ชี้: คงพื้นเข้มไว้ (กฎ hover ใน slots-extras.css ทำพื้นอ่อนแต่ตัวอักษรยังขาว อ่านไม่ออก) */
+.stat-chip.active:not(.static):hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+/* หัวผังล็อกเคยบอกจำนวนแผงซ้ำกับแถบสรุปของโซน — ซ่อนไว้ */
+#drawerStats {
+    display: none;
+}
+
+.dz-search-wrap {
+    position: relative;
+    flex: 1 1 160px;
+    min-width: 120px;
+    max-width: 260px;
+    margin-left: auto;
+}
+
+.dz-search-wrap i {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: var(--sub);
+}
+
+.dz-search {
+    width: 100%;
+    height: 30px;
+    padding: 4px 10px 4px 28px;
+    border: 1px solid var(--border);
+    border-radius: 0;
+    font-size: 12px;
+}
+
+.dz-legend {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.dz-legend-btn {
+    height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.dz-legend-btn[aria-expanded="true"] {
+    border-color: var(--text);
+}
+
+/* คำอธิบายสีเป็นหน้าต่างเล็กลอยใต้ปุ่ม "สี" (พับไว้เป็นค่าเริ่มต้น) */
+.dz-legend .drawer-legend {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 30;
+    width: 300px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 7px;
+    padding: 12px 14px;
+    border: 1px solid var(--text);
+    box-shadow: 0 10px 24px rgba(18, 48, 58, .16);
+}
+
+.dz-legend .drawer-legend[hidden] {
+    display: none;
+}
+
+/* กำลังกรอง: ล็อกที่ไม่ตรงจางลง ล็อกที่ตรง (.s-match) เด่นขึ้นมา */
+#stallGrid.is-filtering .stall-cell:not(.s-match) {
+    opacity: 0.28;
+}
+
+@media (max-width: 600px) {
+    .drawer-days,
+    .drawer-filters {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .drawer-days .dctl-sub {
+        display: none;
+    }
+
+    .drawer-filters {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .drawer-filters .stats-strip--zone {
+        flex: 1 1 100%;
+    }
+
+    .dz-search-wrap {
+        max-width: none;
+        margin-left: 0;
+    }
+
+    .dz-legend .drawer-legend {
+        width: min(300px, calc(100vw - 32px));
+    }
 }

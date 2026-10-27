@@ -18,11 +18,12 @@
             rel="stylesheet" />
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
-        <link rel="stylesheet" href="/stylesheets/admin/slots.css?v=20261026-event">
+        <link rel="stylesheet" href="/stylesheets/admin/slots.css?v=20261027-zs">
         <link rel="stylesheet" href="/stylesheets/eventZonePlan.css?v=20261026">
         <link rel="stylesheet" href="/stylesheets/zoneContext.css?v=20261026">
-        <link rel="stylesheet" href="/stylesheets/admin/slots-extras.css?v=20261023-day">
+        <link rel="stylesheet" href="/stylesheets/admin/slots-extras.css?v=20261027-zs">
         <link rel="stylesheet" href="/stylesheets/common/searchSuggest.css?v=20261002">
+        <link rel="stylesheet" href="/stylesheets/common/datePicker.css?v=20261023-thai">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
     <body class="bg-light">
@@ -93,28 +94,9 @@
                 </a>
             </div>
 
-            <!-- เลือกวันที่ดูผัง: สีล็อกคิดจากการจองที่ครอบวันนั้น (ดู utils/stallDayStatus.js) -->
-            <form class="day-bar" method="get" action="/admin/slots" id="dayBar">
-                <span class="tag-lbl">ดูผังวันที่:</span>
-                <div class="day-nav">
-                    <a class="day-step<%= viewDate.prevKey ? '' : ' disabled' %>" href="<%= viewDate.prevKey ? '/admin/slots?date=' + viewDate.prevKey : '#' %>" aria-label="วันก่อนหน้า" title="วันก่อนหน้า"><i class="fa-solid fa-chevron-left"></i></a>
-                    <input type="date" name="date" id="dayPicker" value="<%= viewDate.dateKey %>" min="<%= viewDate.minKey %>" max="<%= viewDate.maxKey %>" aria-label="เลือกวันที่">
-                    <a class="day-step<%= viewDate.nextKey ? '' : ' disabled' %>" href="<%= viewDate.nextKey ? '/admin/slots?date=' + viewDate.nextKey : '#' %>" aria-label="วันถัดไป" title="วันถัดไป"><i class="fa-solid fa-chevron-right"></i></a>
-                </div>
-                <a class="day-today<%= viewDate.isToday ? ' active' : '' %>" href="/admin/slots">วันนี้</a>
-                <span class="day-label"><%= viewDate.label %><% if (viewDate.isHoliday) { %> · <b class="day-holiday">วันหยุด</b><% } %></span>
-            </form>
-            <% if (!viewDate.isToday) { %>
-            <div class="day-banner" role="status">
-                <i class="fa-solid fa-calendar-day"></i>
-                <span>
-                    กำลังดูผัง<b><%= viewDate.dayOffset > 0 ? 'ล่วงหน้า ' + viewDate.dayOffset + ' วัน' : 'ย้อนหลัง ' + (-viewDate.dayOffset) + ' วัน' %></b>
-                    (<%= viewDate.label %>) — อิงจากการจองที่เข้ามาแล้ว อาจเปลี่ยนได้ระหว่างรอบ ·
-                    ว่าง <b><%= viewDate.free %></b> ล็อก<% if (viewDate.dayOffset > 0) { %> (ว่างเพิ่มจากวันนี้ <b><%= viewDate.freedFromToday %></b>)<% } %>
-                </span>
-                <a href="/admin/slots" class="day-banner-back">กลับไปวันนี้</a>
-            </div>
-            <% } %>
+            <!-- เลือกวันที่ดูผัง: สีล็อกคิดจากการจองที่ครอบวันนั้น (utils/stallDayStatus.js) — slots-extras.js วาดแถบวันใส่ [data-day-ctl]
+                 เปลี่ยนวันแล้วดึง /admin/slots/day มาวาดผังใหม่ในหน้าเดิม ไม่โหลดหน้าใหม่ -->
+            <div class="day-bar" data-day-ctl></div>
 
             <!-- QUICK TAGS -->
             <div class="tag-bar">
@@ -145,9 +127,9 @@
             <!-- เครื่องมือ: ชั้นผลตรวจ / เลือกหลายล็อก / พิมพ์ / CSV / ซูม -->
             <div class="tool-bar">
                 <%# ผลตรวจ/เลือกหลายล็อก (แจ้งเตือน-ปล่อยล็อก) ทำงานกับสถานะปัจจุบัน จึงมีเฉพาะตอนดูวันนี้ %>
-                <button type="button" class="tool-btn" id="toolInspect" title="แสดงสีผลตรวจวันนี้บนผัง"<%= viewDate.isToday ? '' : ' hidden' %>>
+                <button type="button" class="tool-btn" id="toolInspect" title="แสดงสีผลตรวจวันนี้บนผัง" data-when="today"<%= viewDate.isToday ? '' : ' hidden' %>>
                     <i class="fa-solid fa-clipboard-check"></i> ผลตรวจวันนี้</button>
-                <button type="button" class="tool-btn" id="toolMulti" title="เลือกหลายล็อกที่ใกล้หมด/หมดสัญญาแล้วทำพร้อมกัน"<%= viewDate.isToday ? '' : ' hidden' %>>
+                <button type="button" class="tool-btn" id="toolMulti" title="เลือกหลายล็อกที่ใกล้หมด/หมดสัญญาแล้วทำพร้อมกัน" data-when="today"<%= viewDate.isToday ? '' : ' hidden' %>>
                     <i class="fa-solid fa-square-check"></i> เลือกหลายล็อก</button>
                 <button type="button" class="tool-btn" id="toolPrint"><i class="fa-solid fa-print"></i> พิมพ์ผัง</button>
                 <button type="button" class="tool-btn" id="toolCsv"><i class="fa-solid fa-file-csv"></i> ส่งออก CSV</button>
@@ -298,40 +280,53 @@
                     </div>
                 </div>
 
-                <div class="drawer-legend">
-                    <div class="leg"><div class="leg-box"
-                            style="background:#fff;"></div>ว่าง</div>
-                    <div class="leg"><div class="leg-box"
-                            style="background:#27AE60;border-color:#1E8449;"></div>ยืนยันสลิปแล้ว</div>
-                    <div class="leg"><div class="leg-box"
-                            style="background:#a855f7;border-color:#9333ea;"></div>จัดล็อกแล้ว รอจ่าย/รอยืนยันสลิป</div>
-                    <div class="leg"><div class="leg-box"
-                            style="background:#c98a2e;border-color:#a06c1f;"></div>ซ่อมบำรุง</div>
-                    <% if (viewDate.isToday) { %>
-                    <div class="leg"><div class="leg-box"
-                            style="background:#27AE60;box-shadow:inset 0 0 0 3px #c0392b;"></div>ใกล้หมดสัญญา (ขอบแดง)</div>
-                    <div class="leg"><div class="leg-box"
-                            style="background:#fff;"></div>หมดอายุแล้ว (แสดงเป็นว่าง)</div>
-                    <% } else { %>
-                    <div class="leg"><div class="leg-box"
-                            style="background:#fff;border:2px dashed #27AE60;"></div>ว่างเพิ่มจากวันนี้</div>
-                    <div class="leg"><div class="leg-box"
-                            style="background:#27AE60;box-shadow:inset 0 -4px 0 #e2b83a;"></div>วันสุดท้ายของสัญญา</div>
-                    <% } %>
-                    <div class="leg"><div class="leg-box leg-box-newdot"
-                            style="background:#27AE60;border-color:#1E8449;"></div>จุดมุม = ลูกค้าใหม่</div>
-                    <div class="leg"><div class="leg-box"
-                            style="background:#fff;"></div>⚠ ล็อกว่างแต่ยังมีการจองค้าง</div>
-                    <div class="leg"><div class="leg-box"
-                            style="background:#2C93A8;border-color:#1f6f80;"></div>กำลังดู</div>
-                    <div class="leg"><div class="leg-box"
-                            style="background:#fff;outline:3px solid #22c55e;outline-offset:1px;"></div>ผลค้นหา</div>
-                    <div class="leg"><div class="leg-box"
-                            style="background:#ec4899;border-color:#db2777;"></div>มุมพิเศษ สีชมพู (+69)</div>
-                    <div class="leg"><div class="leg-box"
-                            style="background:#38bdf8;border-color:#0ea5e9;"></div>มุมพิเศษ สีฟ้า (+29 / A9 +20)</div>
-                    <div class="leg"><div class="leg-box"
-                            style="background:#facc15;border-color:#eab308;"></div>มุมพิเศษ สีเหลือง (+89)</div>
+                <!-- แถบวัน (slots-extras.js วาดให้) — เปลี่ยนวันได้จากในผังล็อกเลย ผังเปลี่ยนในที่ ไม่ปิดโซน -->
+                <div class="drawer-days" data-day-ctl></div>
+
+                <!-- สรุปตัวเลขของโซนนี้ = ตัวกรอง หน้าตาเดียวกับแถบสรุปของหน้าโซน (slots-extras.js renderZoneStrip) ตัวกรองตัวเดียวกัน เข้า/ออกโซนแล้วยังกรองอยู่ -->
+                <div class="drawer-filters" id="drawerFilters">
+                    <div class="stats-strip stats-strip--zone" id="zoneStatsStrip" aria-label="สรุปสถานะแผงในโซนนี้ กดเพื่อกรอง"></div>
+                    <div class="dz-search-wrap">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="search" class="dz-search" id="drawerSearch" placeholder="ค้นหาร้าน / ผู้ขาย" aria-label="ค้นหาในผังล็อก">
+                    </div>
+                    <div class="dz-legend">
+                        <button type="button" class="dz-legend-btn" id="drawerLegendBtn" aria-expanded="false" aria-controls="drawerLegend">
+                            <i class="fa-solid fa-palette"></i> สี
+                        </button>
+                        <div class="drawer-legend" id="drawerLegend" hidden>
+                            <div class="leg"><div class="leg-box"
+                                    style="background:#fff;"></div>ว่าง</div>
+                            <div class="leg"><div class="leg-box"
+                                    style="background:#27AE60;border-color:#1E8449;"></div>ยืนยันสลิปแล้ว</div>
+                            <div class="leg"><div class="leg-box"
+                                    style="background:#a855f7;border-color:#9333ea;"></div>จัดล็อกแล้ว รอจ่าย/รอยืนยันสลิป</div>
+                            <div class="leg"><div class="leg-box"
+                                    style="background:#c98a2e;border-color:#a06c1f;"></div>ซ่อมบำรุง</div>
+                            <div class="leg" data-when="today"<%= viewDate.isToday ? '' : ' hidden' %>><div class="leg-box"
+                                    style="background:#27AE60;box-shadow:inset 0 0 0 3px #c0392b;"></div>ใกล้หมดสัญญา (ขอบแดง)</div>
+                            <div class="leg" data-when="today"<%= viewDate.isToday ? '' : ' hidden' %>><div class="leg-box"
+                                    style="background:#fff;"></div>หมดอายุแล้ว (แสดงเป็นว่าง)</div>
+                            <div class="leg" data-when="other"<%= viewDate.isToday ? ' hidden' : '' %>><div class="leg-box"
+                                    style="background:#fff;border:2px dashed #27AE60;"></div>ว่างเพิ่มจากวันนี้</div>
+                            <div class="leg" data-when="other"<%= viewDate.isToday ? ' hidden' : '' %>><div class="leg-box"
+                                    style="background:#27AE60;box-shadow:inset 0 -4px 0 #e2b83a;"></div>วันสุดท้ายของสัญญา</div>
+                            <div class="leg"><div class="leg-box leg-box-newdot"
+                                    style="background:#27AE60;border-color:#1E8449;"></div>จุดมุม = ลูกค้าใหม่</div>
+                            <div class="leg"><div class="leg-box"
+                                    style="background:#fff;"></div>⚠ ล็อกว่างแต่ยังมีการจองค้าง</div>
+                            <div class="leg"><div class="leg-box"
+                                    style="background:#2C93A8;border-color:#1f6f80;"></div>กำลังดู</div>
+                            <div class="leg"><div class="leg-box"
+                                    style="background:#fff;outline:3px solid #22c55e;outline-offset:1px;"></div>ผลค้นหา</div>
+                            <div class="leg"><div class="leg-box"
+                                    style="background:#ec4899;border-color:#db2777;"></div>มุมพิเศษ สีชมพู (+69)</div>
+                            <div class="leg"><div class="leg-box"
+                                    style="background:#38bdf8;border-color:#0ea5e9;"></div>มุมพิเศษ สีฟ้า (+29 / A9 +20)</div>
+                            <div class="leg"><div class="leg-box"
+                                    style="background:#facc15;border-color:#eab308;"></div>มุมพิเศษ สีเหลือง (+89)</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="info-card-backdrop" id="infoCardBackdrop" onclick="hideInfo()"></div>
@@ -424,8 +419,9 @@
         <script src="/js/common/searchSuggest.js?v=20261002"></script>
         <script src="/js/eventZonePlan.js?v=20261026"></script>
         <script src="/js/zoneContext.js?v=20261026"></script>
-        <script src="/js/admin/slots.js?v=20261027-renotify"></script>
-        <script src="/js/admin/slots-extras.js?v=20261026-event"></script>
+        <script src="/js/common/datePicker.js?v=20261023-thai"></script>
+        <script src="/js/admin/slots.js?v=20261027-zs"></script>
+        <script src="/js/admin/slots-extras.js?v=20261027-zs"></script>
         <script>
             // แจ้งผลลัพธ์ปุ่ม "ปล่อยล็อก"/"แจ้งเตือนร้านค้า" (ดู releaseStall()/notifyExpiring() ใน slots.js)
             // หลัง redirect กลับมาที่หน้านี้ แล้วล้าง query ทิ้ง
