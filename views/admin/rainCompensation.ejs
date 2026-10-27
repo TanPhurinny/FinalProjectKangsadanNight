@@ -16,7 +16,7 @@
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/admin/bookingHolidays.css">
-        <link rel="stylesheet" href="/stylesheets/admin/rainCompensation.css?v=20261027-today">
+        <link rel="stylesheet" href="/stylesheets/admin/rainCompensation.css?v=20261027-btn">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
     <%
@@ -110,7 +110,11 @@
                                 </label>
                                 <% }) %>
                             </div>
-                            <button type="submit" class="btn-submit rain-pick-submit" <%= today.error || !today.shopCount ? 'disabled' : '' %>>ยืนยันระดับฝน</button>
+                            <div class="rain-pick-footer">
+                                <% const pickedLevel = levelOf(pick.level); %>
+                                <span class="rain-pick-current js-pick-current"><% if (pickedLevel && pick.percent) { %>เลือกอยู่: <strong><%= pickedLevel.label %> <%= pick.percent %>%</strong><% } else { %>ยังไม่ได้เลือกระดับฝน<% } %></span>
+                                <button type="submit" class="btn-submit rain-pick-submit" <%= today.error || !today.shopCount ? 'disabled' : '' %>>ยืนยันระดับฝน <i class="fa-solid fa-arrow-right"></i></button>
+                            </div>
                         </form>
 
                     </div>
@@ -267,9 +271,23 @@
                 var pickForm = document.querySelector('.js-pick-form');
                 if (pickForm) {
                     var specialSelect = pickForm.querySelector('.js-special-percent');
+                    var currentEl = pickForm.querySelector('.js-pick-current');
                     var syncSpecial = function () {
                         var checked = pickForm.querySelector('input[name="level"]:checked');
-                        if (specialSelect) specialSelect.disabled = !(checked && checked.value === 'SPECIAL');
+                        var isSpecial = Boolean(checked && checked.value === 'SPECIAL');
+                        if (specialSelect) specialSelect.disabled = !isSpecial;
+                        // บอกระดับที่เลือกอยู่ข้างปุ่มยืนยัน
+                        if (currentEl) {
+                            if (!checked) {
+                                currentEl.textContent = 'ยังไม่ได้เลือกระดับฝน';
+                            } else {
+                                var card = checked.closest('.rain-level');
+                                var name = card.querySelector('.rain-level__name').textContent;
+                                var pct = isSpecial ? specialSelect.value + '%' : card.querySelector('.rain-level__pct').textContent;
+                                currentEl.innerHTML = 'เลือกอยู่: <strong></strong>';
+                                currentEl.querySelector('strong').textContent = name + ' ' + pct;
+                            }
+                        }
                     };
                     pickForm.addEventListener('change', syncSpecial);
                     syncSpecial();

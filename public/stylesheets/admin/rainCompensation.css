@@ -140,3 +140,21 @@
     .rain-levels { grid-template-columns: 1fr; }
 }
 .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* แถวปุ่มยืนยันระดับฝน: ระดับที่เลือกอยู่ทางซ้าย ปุ่มชิดขวา */
+.rain-pick-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+}
+.rain-pick-current { font-size: 14px; color: var(--sub); }
+.rain-pick-current strong { color: var(--text); }
+.rain-pick-submit { margin-left: auto; }
+.rain-pick-submit i { margin-left: 6px; }
+@media (max-width: 560px) {
+    .rain-pick-submit { width: 100%; }
+}
