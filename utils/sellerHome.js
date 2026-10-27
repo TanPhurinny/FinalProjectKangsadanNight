@@ -89,7 +89,7 @@ async function buildSellerHome(userId, now = new Date()) {
         buildMyStallHealth(userId, codes),
         getOpenStatus(userId, now),
         getShopViewStats(userId),
-        prisma.stallRenewalNotice.findMany({ where: { userId, createdAt: { gte: new Date(now.getTime() - 7 * DAY_MS) } }, orderBy: { createdAt: 'desc' }, take: 3 }),
+        prisma.stallRenewalNotice.findMany({ where: { userId, createdAt: { gte: new Date(now.getTime() - 7 * DAY_MS) } }, orderBy: { createdAt: 'desc' }, take: 20 }),
         prisma.maintenanceReport.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 3, select: { id: true, category: true, location: true, status: true, createdAt: true } }),
         getAnnouncementsForUser('SELLER').then((list) => list[0] || null)
     ]);
@@ -214,9 +214,15 @@ async function buildSellerHome(userId, now = new Date()) {
             at: r.createdAt, icon: 'bi-tools', tone: r.status === 'SUCCESS' ? 'good' : 'info',
             title: `แจ้งซ่อม ${r.category} · ${r.location}`, sub: REPAIR_STATUS[r.status] || r.status, href: '/repair'
         })),
-        ...notices.map((n) => ({
+        // แอดมินกดย้ำได้หลายครั้ง — รวมเป็นแถวเดียวต่อล็อก+สัญญา (notices เรียงใหม่สุดก่อน แถวที่เหลือคือครั้งล่าสุด) บอกจำนวนครั้ง
+        ...[...notices.reduce((groups, n) => {
+            const key = `${n.stallCode}@${new Date(n.bookingEndDate).toDateString()}`;
+            if (groups.has(key)) groups.get(key).count += 1;
+            else groups.set(key, { n, count: 1 });
+            return groups;
+        }, new Map()).values()].slice(0, 3).map(({ n, count }) => ({
             at: n.createdAt, icon: 'bi-bell', tone: 'warn',
-            title: `แอดมินเตือนต่อล็อก ${n.stallCode}`, sub: `สัญญาถึง ${fmtDate(n.bookingEndDate)}`, href: '/notifications'
+            title: `แอดมินเตือนต่อล็อก ${n.stallCode}${count > 1 ? ` (${count} ครั้ง)` : ''}`, sub: `สัญญาถึง ${fmtDate(n.bookingEndDate)}`, href: '/notifications'
         }))
     ].sort((a, b) => new Date(b.at) - new Date(a.at))
         .map((a) => ({ ...a, when: `${fmtDate(a.at)} ${fmtTime(a.at)}` }))
