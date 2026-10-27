@@ -10,6 +10,7 @@
 //   ส่วนที่เกินยอดจะหายไป ไม่สะสม และแลกเป็นเงินสดไม่ได้
 // - คำขอที่ใช้ส่วนลดไปแล้วถูกปฏิเสธ/ยกเลิก → เครดิตกลับมาใช้ได้ (วันหมดอายุเดิม) ดู releaseCreditsOfRejectedRequests
 const prisma = require('../config/prismaClient');
+const { shopsRelation, primaryShop } = require('./shops');
 const { toStartOfDay, addDays } = require('./bookingRound');
 const { isDateHoliday } = require('./bookingHolidays');
 const { extractBookingRequestId } = require('./bookingRequestTag');
@@ -141,7 +142,7 @@ async function findEligibleShops(date, now = new Date()) {
         select: {
             id: true, userId: true, dailyStallPrice: true, storeDetailSnapshot: true,
             slot: { select: { slotNumber: true } },
-            user: { select: { name: true, username: true, shop: { select: { shopName: true } } } }
+            user: { select: { name: true, username: true, shops: shopsRelation({ select: { shopName: true } }) } }
         },
         orderBy: { id: 'desc' }
     });
@@ -155,7 +156,7 @@ async function findEligibleShops(date, now = new Date()) {
             shop = {
                 userId: booking.userId,
                 name: booking.user?.name || booking.user?.username || '-',
-                shopName: booking.user?.shop?.shopName || null,
+                shopName: primaryShop(booking.user)?.shopName || null,
                 stalls: new Map(),
                 sourceRequestId: extractBookingRequestId(booking.storeDetailSnapshot)
             };
@@ -291,7 +292,7 @@ async function listRainDays() {
     const users = userIds.length
         ? await prisma.user.findMany({
             where: { id: { in: userIds } },
-            select: { id: true, name: true, username: true, shop: { select: { shopName: true } } }
+            select: { id: true, name: true, username: true, shops: shopsRelation({ select: { shopName: true } }) }
         })
         : [];
     const userById = new Map(users.map((u) => [u.id, u]));
@@ -299,7 +300,7 @@ async function listRainDays() {
         ...day,
         credits: day.credits.map((credit) => {
             const u = userById.get(credit.userId);
-            return { ...credit, name: u?.name || u?.username || '-', shopName: u?.shop?.shopName || null };
+            return { ...credit, name: u?.name || u?.username || '-', shopName: primaryShop(u)?.shopName || null };
         })
     }));
 }
