@@ -444,7 +444,8 @@ function openDetail(detail) {
     setText('m-rental-dates', booking ? `${booking.rentalStartDateText} – ${booking.rentalEndDateText} (${booking.rentalDays} วัน, คิดเงิน ${booking.billableDays} วัน)` : '-');
     setText('m-stall-appliance', booking ? `${booking.stallCount} ล็อก · เครื่องใช้ไฟฟ้า: ${booking.applianceText || `เครื่องเล็ก ${booking.smallApplianceCount} · เครื่องใหญ่ ${booking.largeApplianceCount}`}` : '-');
     setText('m-price-label', booking ? (detail.isFinalPrice ? 'ยอดจริง' : 'ยอดประเมิน') : 'ยอด');
-    setText('m-price', booking ? `${Number(booking.grandTotal).toLocaleString('th-TH')} บาท` : '-');
+    // grandTotal = ยอดที่ต้องโอนจริง หักส่วนลดชดเชยฝนตกแล้ว (utils/rainCompensation.js)
+    setText('m-price', booking ? `${Number(booking.grandTotal).toLocaleString('th-TH')} บาท${booking.rainDiscount > 0 ? ` (ยอดเต็ม ${Number(booking.fullTotal).toLocaleString('th-TH')} หักส่วนลดชดเชยฝนตก ${Number(booking.rainDiscount).toLocaleString('th-TH')})` : ''}` : '-');
 
     const tags = [];
     if (detail.cornerZoneNote) tags.push(`<span class="tag tag--corner">สนใจล็อกเต็ง: ${escapeHtml(detail.cornerZoneNote)}</span>`);

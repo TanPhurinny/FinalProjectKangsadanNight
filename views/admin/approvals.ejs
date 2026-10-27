@@ -348,7 +348,7 @@
                                     <dd class="mono"><%= request.assignedStallCode || (request.extension ? request.extension.originalStallText : '') || (request.requestedStallCount > 1 ? `ขอ ${request.requestedStallCount} ล็อก` : '-') %></dd>
                                 </div>
                                 <% if (request.booking) { %>
-                                <div><dt><%= request.isFinalPrice ? 'ยอดจริง' : 'ยอดประเมิน' %></dt><dd class="mono"><%= fmtMoney(request.booking.grandTotal) %> ฿</dd></div>
+                                <div><dt><%= request.isFinalPrice ? 'ยอดจริง' : 'ยอดประเมิน' %></dt><dd class="mono"><%= fmtMoney(request.booking.grandTotal) %> ฿<% if (request.booking.rainDiscount > 0) { %> <span class="q-muted" title="ยอดเต็ม <%= fmtMoney(request.booking.fullTotal) %> ฿">หักส่วนลดฝน <%= fmtMoney(request.booking.rainDiscount) %></span><% } %></dd></div>
                                 <div class="q-row__fact--wide"><dt>วันเช่า</dt><dd><span class="mono"><%= request.booking.rentalStartDateText %> – <%= request.booking.rentalEndDateText %></span> <span class="q-muted">คิดเงิน <%= request.booking.billableDays %> วัน</span></dd></div>
                                 <% } %>
                             </dl>
@@ -494,7 +494,7 @@
             };
         </script>
         <script src="/js/common/dialogs.js?v=20261023-input"></script>
-        <script src="/js/admin/approvals.js?v=20261023-pay"></script>
+        <script src="/js/admin/approvals.js?v=20261027-rain"></script>
 
     </body>
 </html>

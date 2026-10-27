@@ -690,3 +690,23 @@ body[data-page="booking-status"] .timeline-node p {
     font-size: 0.85rem;
     font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
 }
+
+/* ส่วนลดชดเชยฝนตกในการ์ดชำระเงิน + กระเป๋าส่วนลด (utils/rainCompensation.js) */
+.rain-pay {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    display: grid;
+    gap: 6px;
+    font-size: 14px;
+}
+.rain-pay--used { border-left-color: var(--success); }
+.rain-pay__hint { font-size: 12px; color: var(--ink-soft); }
+.rain-pay__form { margin: 4px 0 0; }
+.rain-wallet__total {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--navy);
+}

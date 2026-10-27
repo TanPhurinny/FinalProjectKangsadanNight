@@ -51,6 +51,7 @@ const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
 const { buildCommunityNotifications } = require('../utils/communityNotifications');
 const { applyReadState, markRead, markUnread } = require('../utils/notificationReads');
 const { EVENT_ZONE_CODE } = require('../utils/eventBooth');
+const rainCompensation = require('../utils/rainCompensation');
 
 // รูปแจ้งซ่อม (เก็บที่ Cloudinary หรือดิสก์ตาม utils/imageStorage.js)
 const storage = createImageStorage({ folder: 'repairs' });
@@ -2379,10 +2380,31 @@ async function loadSellerBookingStatus(userId) {
 
         // สร้าง QR พร้อมเพย์ให้จ่ายได้เลย เฉพาะตอนที่รู้ราคาจริงแล้วและยังไม่ได้ส่งสลิป
         // (จัดล็อกแล้ว รอชำระเงิน — ตรงกับตอนที่หน้า booking_status โชว์ช่องอัปโหลดสลิป)
+        // ส่วนลดชดเชยฝนตกที่ใช้กับคำขอนี้ (utils/rainCompensation.js) — ยอดที่ต้องโอน = grandTotal - rainDiscount
+        bookingView.rainDiscount = Number(latestRequest.rainDiscount || 0);
+        bookingView.rainDiscountForfeit = Number(latestRequest.rainDiscountForfeit || 0);
+        bookingView.payableTotal = rainCompensation.getPayableAmount(latestRequest, bookingView.grandTotal);
+
         if (normalizedRequestStatus === 'IN_PROGRESS' && bookingView.isFinalPrice && !awaitingPaymentVerification) {
             bookingView.promptPayId = PROMPTPAY_ID;
-            bookingView.promptPayQr = await buildPromptPayQrDataUrl(bookingView.grandTotal);
+            bookingView.promptPayQr = bookingView.payableTotal > 0 ? await buildPromptPayQrDataUrl(bookingView.payableTotal) : null;
         }
+    }
+
+    // กระเป๋าส่วนลดชดเชยฝนตก (เครดิตที่ยังใช้ได้) — โชว์ในหน้าสถานะการจอง และให้กดใช้ตอนรอชำระเงิน
+    const rainWallet = await rainCompensation.getAvailableCredits(userId);
+    if (bookingView) {
+        bookingView.rainWallet = {
+            total: rainWallet.total,
+            count: rainWallet.count,
+            maxCount: rainCompensation.MAX_ACTIVE_CREDITS,
+            nextExpiry: rainWallet.nextExpiry ? formatDateThai(rainWallet.nextExpiry) : null,
+            canApply: rainWallet.total > 0
+                && String(latestRequest?.status || '').toUpperCase() === 'IN_PROGRESS'
+                && Boolean(latestRequest?.assignedStallCode)
+                && !latestRequest?.paymentSlipImage
+                && !latestRequest?.rainDiscount
+        };
     }
 
     const notificationBooking = latestRequest
@@ -2464,6 +2486,7 @@ async function loadSellerBookingStatus(userId) {
         ...renewalNotices,
         ...communityNotifications,
         ...reviewNotifications,
+        ...(await rainCompensation.buildRainNotifications(userId)),
         ...buildRepairNotifications(repairReports),
         ...buildTaxInvoiceNotifications(taxInvoiceRequests),
         ...rejectionEntries,
@@ -2474,13 +2497,14 @@ async function loadSellerBookingStatus(userId) {
         userRecord,
         bookingView,
         eventBoothRequests,
+        rainWallet,
         notifications
     };
 }
 
 // --- 4. หน้าสถานะการจอง ---
 router.get('/booking-status', isAuthenticated, async (req, res) => {
-    const { userRecord, bookingView, notifications, eventBoothRequests } = await loadSellerBookingStatus(req.user.id);
+    const { userRecord, bookingView, notifications, eventBoothRequests, rainWallet } = await loadSellerBookingStatus(req.user.id);
     const activeLockForExtension = userRecord ? await findActiveLockForExtension(userRecord) : null;
 
     return res.render('seller/booking_status', {
@@ -2488,6 +2512,7 @@ router.get('/booking-status', isAuthenticated, async (req, res) => {
         booking: bookingView,
         notifications,
         eventBoothRequests,
+        rainWallet,
         canExtendLock: Boolean(activeLockForExtension && !activeLockForExtension.pendingExtension),
         error: req.query.error || null,
         success: req.query.success || null,
@@ -2540,7 +2565,7 @@ router.post('/booking-payment/confirm', isSellerOrApplicant, (req, res) => {
             const linkedBooking = requestTag
                 ? await prisma.booking.findFirst({ where: { storeDetailSnapshot: { startsWith: requestTag } } })
                 : null;
-            const verifyResult = await verifySlip(slipPath, linkedBooking ? Number(linkedBooking.grandTotal || 0) : null);
+            const verifyResult = await verifySlip(slipPath, linkedBooking ? rainCompensation.getPayableAmount(latestRequest, linkedBooking.grandTotal) : null);
 
             // เก็บสลิปไว้รอแอดมินตรวจสอบขั้นสุดท้ายก่อน ไม่เปลี่ยนสถานะเป็น SUCCESS ทันที
             // (แอดมินต้องกดยืนยันที่หน้า /admin/approvals ก่อน ระบบถึงจะแจ้งผู้ขายว่าล็อกเป็นของตนแล้ว)
@@ -2562,6 +2587,51 @@ router.post('/booking-payment/confirm', isSellerOrApplicant, (req, res) => {
             return backToStatus('error=payment_confirm_failed');
         }
     });
+});
+
+// --- 5.0 ใช้ส่วนลดชดเชยฝนตก (ต้องใช้ทั้งหมดในครั้งเดียว ส่วนที่เกินยอดหายไป) — กติกาใน utils/rainCompensation.js ---
+// ส่วนลดครอบคลุมยอดทั้งหมด (ไม่ต้องโอน) ยืนยันการชำระเงินให้เลยโดยไม่ต้องรอแอดมินตรวจสลิป เพราะไม่มีเงินให้ตรวจ
+router.post('/booking-payment/rain-discount', isSellerOrApplicant, async (req, res) => {
+    const tabToken = String(req.body.tabToken || req.query.tabToken || '');
+    const backToStatus = (query) => res.redirect(`/booking-status?${query}${tabToken ? `&tabToken=${encodeURIComponent(tabToken)}` : ''}`);
+
+    try {
+        const latestRequest = await findLatestSellerBookingRequest(req.user.id);
+        const requestTag = latestRequest ? buildBookingRequestTag(latestRequest.id) : '';
+        const linkedBooking = requestTag
+            ? await prisma.booking.findFirst({ where: { storeDetailSnapshot: { startsWith: requestTag } } })
+            : null;
+        if (!latestRequest || !linkedBooking) return backToStatus('error=not_awaiting_payment');
+
+        const result = await rainCompensation.applyCreditsToRequest(req.user.id, latestRequest, linkedBooking.grandTotal);
+        if (result.error) return backToStatus(`error=${result.error}`);
+
+        if (result.payable <= 0) {
+            const { markPaymentConfirmed } = require('../controllers/approvalController');
+            const fresh = await prisma.bookingRequest.findUnique({ where: { id: latestRequest.id } });
+            await markPaymentConfirmed(fresh, 'ระบบ (ส่วนลดชดเชยฝนตก)', `ใช้ส่วนลดชดเชยฝนตก ${result.discount} บาท ครอบคลุมยอดทั้งหมด`);
+            return backToStatus('success=rain_discount_paid');
+        }
+        return backToStatus('success=rain_discount_applied');
+    } catch (error) {
+        console.error('booking-payment rain discount error', error);
+        return backToStatus('error=rain_discount_failed');
+    }
+});
+
+router.post('/booking-payment/rain-discount/cancel', isSellerOrApplicant, async (req, res) => {
+    const tabToken = String(req.body.tabToken || req.query.tabToken || '');
+    const backToStatus = (query) => res.redirect(`/booking-status?${query}${tabToken ? `&tabToken=${encodeURIComponent(tabToken)}` : ''}`);
+
+    try {
+        const latestRequest = await findLatestSellerBookingRequest(req.user.id);
+        const result = await rainCompensation.cancelCreditsOnRequest(req.user.id, latestRequest);
+        if (result.error) return backToStatus(`error=${result.error}`);
+        return backToStatus('success=rain_discount_cancelled');
+    } catch (error) {
+        console.error('booking-payment rain discount cancel error', error);
+        return backToStatus('error=rain_discount_failed');
+    }
 });
 
 // --- 5.1 ผู้ขายลบสลิปที่ส่งไปแล้วเพื่ออัปโหลดใหม่ (ส่งผิดใบ / ตอนส่งระบบตรวจสลิปอัตโนมัติใช้ไม่ได้) ---

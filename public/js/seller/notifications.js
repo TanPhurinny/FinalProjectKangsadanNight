@@ -29,7 +29,10 @@
     'community-comment': ['bi-chat-dots-fill', 'info'],
     'community-like': ['bi-heart-fill', 'bad'],
     'shop-review': ['bi-star-fill', 'warn'],
-    'shop-review-item': ['bi-star-fill', 'warn']
+    'shop-review-item': ['bi-star-fill', 'warn'],
+    'rain-credit': ['bi-cloud-rain-fill', 'ok'],
+    'rain-credit-capped': ['bi-cloud-rain', 'info'],
+    'rain-credit-expiring': ['bi-hourglass-split', 'warn']
   };
 
   const STEP_LABELS = { 1: 'ส่งคำขอจองแล้ว', 2: 'จัดล็อก / ชำระเงิน', 3: 'จองสำเร็จ' };

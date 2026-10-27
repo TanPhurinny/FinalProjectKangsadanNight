@@ -12,7 +12,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios" />
-  <link rel="stylesheet" href="/stylesheets/seller/statusbook.css" />
+  <link rel="stylesheet" href="/stylesheets/seller/statusbook.css?v=20261027-rain" />
 </head>
 <%
   const bookingPayload = typeof booking !== 'undefined' ? booking : null;
@@ -43,7 +43,11 @@
             no_active_lock_to_extend: 'ไม่พบล็อกที่จัดสรรแล้วในรอบปัจจุบันให้ต่อ',
             extend_failed: 'เกิดข้อผิดพลาดขณะส่งคำขอต่อล็อค กรุณาลองใหม่',
             extend_already_requested: 'คุณต่อล็อกไปแล้ว กรุณาชำระเงินและแนบสลิปด้านล่างให้เสร็จก่อน',
-            blacklisted: 'ร้านค้าของคุณถูกระงับสิทธิ์การจอง/ต่อล็อก (Blacklist) กรุณาติดต่อผู้ดูแลตลาด'
+            blacklisted: 'ร้านค้าของคุณถูกระงับสิทธิ์การจอง/ต่อล็อก (Blacklist) กรุณาติดต่อผู้ดูแลตลาด',
+            no_rain_credit: 'ไม่มีส่วนลดชดเชยฝนตกที่ใช้ได้ (อาจหมดอายุแล้ว)',
+            rain_discount_already_applied: 'ใช้ส่วนลดชดเชยฝนตกกับรายการนี้ไปแล้ว',
+            no_rain_discount_to_cancel: 'ยกเลิกส่วนลดไม่ได้ (ส่งสลิปไปแล้ว หรือยังไม่ได้ใช้ส่วนลด)',
+            rain_discount_failed: 'ใช้ส่วนลดชดเชยฝนตกไม่สำเร็จ กรุณาลองใหม่'
           };
         %>
         <%= errorMessages[error] || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง' %>
@@ -51,6 +55,15 @@
     <% } %>
     <% if (typeof success !== 'undefined' && success === 'slip_uploaded') { %>
       <div class="alert alert-success" role="alert">ส่งสลิปโอนเงินสำเร็จแล้ว กรุณารอแอดมินตรวจสอบและยืนยันการชำระเงิน</div>
+    <% } %>
+    <% if (typeof success !== 'undefined' && success === 'rain_discount_applied') { %>
+      <div class="alert alert-success" role="alert">ใช้ส่วนลดชดเชยฝนตกแล้ว โอนเฉพาะยอดที่เหลือแล้วแนบสลิปด้านล่าง</div>
+    <% } %>
+    <% if (typeof success !== 'undefined' && success === 'rain_discount_paid') { %>
+      <div class="alert alert-success" role="alert">ส่วนลดชดเชยฝนตกครอบคลุมยอดทั้งหมด ไม่ต้องโอนเงิน ระบบยืนยันการชำระเงินให้แล้ว</div>
+    <% } %>
+    <% if (typeof success !== 'undefined' && success === 'rain_discount_cancelled') { %>
+      <div class="alert alert-success" role="alert">ยกเลิกการใช้ส่วนลดแล้ว ส่วนลดกลับไปอยู่ในรายการเดิม วันหมดอายุเท่าเดิม</div>
     <% } %>
     <% if (typeof success !== 'undefined' && success === 'slip_removed') { %>
       <div class="alert alert-success" role="alert">ลบสลิปเดิมแล้ว อัปโหลดสลิปใหม่ได้ด้านล่าง</div>
@@ -107,6 +120,29 @@
       </div>
     </div>
 
+    <%# ส่วนลดชดเชยฝนตกที่ยังใช้ได้ (utils/rainCompensation.js) — กดใช้ได้ในการ์ดชำระเงินตอนแอดมินจัดล็อกแล้ว %>
+    <% const wallet = typeof rainWallet !== 'undefined' && rainWallet ? rainWallet : null; %>
+    <% if (wallet && wallet.count) { %>
+    <div class="card card-custom p-4 shadow-soft mt-4">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+        <h5 class="fw-bold text-dark-custom m-0"><i class="bi bi-cloud-rain text-primary-custom me-2"></i>ส่วนลดชดเชยฝนตก</h5>
+        <span class="rain-wallet__total"><%= wallet.total.toLocaleString('th-TH') %> บาท · <%= wallet.count %>/5 ครั้ง</span>
+      </div>
+      <p class="text-muted small mb-2">ใช้เป็นส่วนลดตอนชำระเงินการจองครั้งถัดไป ต้องใช้ทั้งหมดในครั้งเดียว แลกเป็นเงินสดไม่ได้ ส่วนที่เกินค่าเช่าไม่สะสม และโอนสิทธิ์ให้ผู้อื่นไม่ได้</p>
+      <div class="list-group list-group-flush">
+        <% wallet.credits.forEach((c) => { %>
+        <div class="list-group-item d-flex justify-content-between align-items-center gap-2 px-0">
+          <span>
+            <span class="fw-semibold d-block">ฝนตก <%= new Date(c.day.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) %> · ล็อก <%= c.stallCodes.replace(/,/g, ', ') %></span>
+            <span class="text-muted small">ชดเชย <%= c.percent %>% · หมดอายุ <%= new Date(c.expiresAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) %></span>
+          </span>
+          <span class="fw-semibold text-nowrap"><%= c.amount.toLocaleString('th-TH') %> บาท</span>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+    <% } %>
+
     <%# คำขอบูธกิจกรรม (โซน G) ของบัญชีนี้ — ขั้นตอนแยกจากการจองแผง จัดการในหน้าติดตามของแต่ละคำขอ %>
     <% const eventBoothList = typeof eventBoothRequests !== 'undefined' ? eventBoothRequests : []; %>
     <div class="card card-custom p-4 shadow-soft mt-4">
@@ -160,7 +196,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/js/common/dialogs.js"></script>
-  <script src="/js/seller/statusbook.js?v=20261026-review"></script>
+  <script src="/js/seller/statusbook.js?v=20261027-rain"></script>
   <script>
     (function () {
       var el = document.getElementById('slipCheckModal');

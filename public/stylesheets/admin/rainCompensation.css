@@ -1,0 +1,79 @@
+/* ========================================
+   RAIN COMPENSATION PAGE — gridgeist
+   ต่อยอดจาก bookingHolidays.css (โครงหน้า/ตาราง/ปุ่มเดียวกัน) เพิ่มเฉพาะตารางรายชื่อร้านและประวัติรายวัน
+   ======================================== */
+
+.rain-pick-form { grid-template-columns: 1fr 1fr auto; }
+.rain-announce-form { grid-template-columns: 180px 1fr auto; margin-top: 16px; }
+
+.mono { font-variant-numeric: tabular-nums; }
+.num { text-align: right !important; white-space: nowrap; }
+.mb-0 { margin-bottom: 0; }
+
+.rain-table-wrap { margin-bottom: 16px; }
+.rain-table { min-width: 720px; }
+.rain-table tfoot td {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: #f6f8f8;
+    font-weight: 600;
+}
+.rain-table tr.is-off td { color: #9aa8ad; }
+.rain-table tr.is-off .js-amount { text-decoration: line-through; }
+
+.cell-check { width: 36px; }
+.cell-sub { font-size: 12px; color: var(--sub); }
+.cell-note .state-badge { margin-right: 4px; }
+
+.pct-input {
+    width: 76px;
+    padding: 6px 8px;
+    text-align: right;
+}
+
+.rain-confirm {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: 4px;
+    padding: 12px 16px;
+    display: grid;
+    gap: 8px;
+    font-size: 14px;
+}
+.check-line { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check-line input { margin-top: 4px; }
+
+.section-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 8px 0 12px;
+}
+
+.rain-day {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+.rain-day > summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    list-style: none;
+}
+.rain-day > summary::-webkit-details-marker { display: none; }
+.rain-day[open] > summary { border-bottom: 1px solid var(--border); background: #f6f8f8; }
+.rain-day__meta { flex: 1; font-size: 13px; color: var(--sub); }
+.rain-day__note { font-size: 13px; color: var(--sub); margin: 12px 16px 0; }
+.rain-day .table-wrap { margin: 12px 16px; }
+.rain-day__delete { margin: 0 16px 12px; text-align: right; }
+
+.state-used { background: #e8f5ec; color: #1E8449; }
+.state-revoked { background: #fbeceb; color: #922B21; }
+
+@media (max-width: 700px) {
+    .rain-pick-form,
+    .rain-announce-form { grid-template-columns: 1fr; }
+}
