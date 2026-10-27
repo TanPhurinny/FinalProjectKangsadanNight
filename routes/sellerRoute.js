@@ -2447,6 +2447,7 @@ async function loadAdminRenewalNotices(userId) {
                     ? `ผู้ดูแลตลาดย้ำเตือนครั้งที่ ${nudgeCount}: ต่อล็อก ${notice.stallCode} ไหม?`
                     : `ผู้ดูแลตลาดแจ้ง: ต่อล็อก ${notice.stallCode} ไหม?`,
                 nudgeCount,
+                stallCode: notice.stallCode,
                 desc: closed
                     ? `ล็อก ${notice.stallCode} เลยเวลา 20:00 น. วันที่ ${formatDateThai(stall.bookingEndDate)} แล้ว หมดสิทธิ์ต่อและถูกเปิดให้คนอื่นจอง`
                     : `ล็อก ${notice.stallCode} ขายวันสุดท้ายวันที่ ${formatDateThai(stall.bookingEndDate)} กด "ต่อล็อก" แล้วชำระเงิน ล็อกเดิมเป็นของคุณต่อทันที ไม่ต้องรอแอดมินจัดล็อกใหม่ ต้องต่อก่อน 20:00 น. ของวันนั้น เลยเวลาแล้วล็อกจะถูกเปิดให้คนอื่นจอง`,
@@ -2730,9 +2731,13 @@ async function loadSellerBookingStatus(userId, { previewNotice = false } = {}) {
         orderBy: { requestedAt: 'desc' }
     });
 
-    // การ์ดที่แอดมินกดแจ้งเตือน ก็ต่อล็อกจากการ์ดได้เลยเหมือนการ์ด "ต่อล็อกไหม?"
+    // การ์ดที่แอดมินกดแจ้งเตือน ก็ต่อล็อกจากการ์ดได้เลยเหมือนการ์ด "ต่อล็อกไหม?" — เฉพาะล็อกที่ตรงกับยอดต่อล็อก (renewQuote คิดจากคำขอล่าสุด)
+    // ร้านหลายล็อกที่แอดมินแจ้งล็อกอื่น ไม่แปะยอดของล็อกผิดตัว การ์ดนั้นเหลือปุ่มไปหน้าต่อล็อกตามปกติ
+    const quoteCodes = String(extendInfo?.renewQuote?.stallCode || '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
     const renewalNotices = (await loadAdminRenewalNotices(userId)).map((entry) => (
-        entry.link === '/booking-stall/extend' && extendInfo?.renewQuote ? { ...entry, renew: extendInfo.renewQuote } : entry
+        entry.link === '/booking-stall/extend' && extendInfo?.renewQuote && quoteCodes.includes(String(entry.stallCode).toUpperCase())
+            ? { ...entry, renew: extendInfo.renewQuote }
+            : entry
     ));
     const communityNotifications = await buildCommunityNotifications(userId);
     // รีวิวร้านใหม่ที่ยังไม่ได้ตอบ (utils/shopReviews.js)

@@ -195,7 +195,7 @@
     els.renewalList.innerHTML = renewalHtml(renewals);
     const todo = real.filter((i) => i.action && !isRenewal(i) && matchesSearch(i)).sort(byDeadline);
     // นับการ์ดต่อล็อกตามล็อก (ต่อในรอบ + แอดมินแจ้งเตือนล็อกเดียวกันนับเป็น 1)
-    const renewalCount = new Set(real.filter(isRenewal).map((i) => (i.renew && i.renew.stallCode) || i.id)).size;
+    const renewalCount = new Set(real.filter(isRenewal).map((i) => (i.renew && i.renew.stallCode) || i.stallCode || i.id)).size;
     els.statAction.textContent = renewalCount + real.filter((i) => i.action && !isRenewal(i)).length;
     const visible = state.items.filter(inView);
     const rest = visible.filter((i) => !i.action).sort(byTimeDesc);
@@ -329,7 +329,7 @@
   function renewalHtml(items) {
     const groups = new Map();
     items.filter((i) => !i.notice).sort(byDeadline).forEach((item) => {
-      const code = (item.renew && item.renew.stallCode) || item.id;
+      const code = (item.renew && item.renew.stallCode) || item.stallCode || item.id;
       if (!groups.has(code)) groups.set(code, { main: item, nudged: 0 });
       const g = groups.get(code);
       if (String(item.id).startsWith('renewal-notice-')) g.nudged = Math.max(g.nudged, Number(item.nudgeCount) || 1);
@@ -344,7 +344,7 @@
     const item = group.main;
     const r = item.renew;
     const cd = countdown(item.deadline);
-    const code = r ? r.stallCode : (plain(item.summary || '').split('·')[0].replace('ล็อก', '').trim() || 'ล็อก');
+    const code = r ? r.stallCode : (item.stallCode || plain(item.summary || '').split('·')[0].replace('ล็อก', '').trim() || 'ล็อก');
     const flag = group.nudged
       ? `<div class="nt-rn__flag"><i class="bi bi-megaphone-fill"></i>${group.nudged > 1 ? `ผู้ดูแลตลาดย้ำเตือนครั้งที่ ${group.nudged} ให้ต่อล็อกนี้` : 'ผู้ดูแลตลาดแจ้งเตือนให้ต่อล็อกนี้'}</div>`
       : '';
