@@ -516,78 +516,29 @@ async function runBulk(action, codes) {
 // ==========================================
 // staff: โหมดเดินตรวจ — เรียงร้านที่ยังไม่ตรวจตามเส้นทางเดินจริง แถบล่างจอบอก "ร้านถัดไป"
 // บันทึกผลตรวจด่วนแล้วเด้งไปร้านถัดไปเอง
-// หลายคนเดินพร้อมกัน: ใช้ใบงานชุดเดียวกับหน้าตรวจตลาด (/staff/marketinspection/walk/*, utils/inspectionAssignment.js)
-// คิวคือร้านในชุดของตัวเองที่ยังไม่ตรวจ หมดชุดแล้วกด "รับร้าน" เพื่อสุ่มชุดใหม่ที่ไม่ซ้ำกับคนอื่น
 // ==========================================
 let walkMode = false;
 let walkCurrent = null;
-let walkTeam = null; // ผลล่าสุดจาก /walk/status
-let walkBusy = false;
-let walkError = '';
-let walkPollTimer = null;
 
 function walkQueue() {
-    if (!HAS_INSPECTION || !walkTeam) return [];
-    return walkTeam.mine.filter((row) => !row.done).map((row) => row.stallCode);
+    if (!HAS_INSPECTION) return [];
+    return (INSPECTION.walkOrder || Object.keys(INSPECTION.byCode))
+        .filter((code) => (findStall(code) || {}).status === 'BOOKED' && inspectionStatusOf(code) === 'pending');
 }
 
-async function walkRequest(method, path) {
-    const response = await fetch(`/staff/marketinspection/walk/${path}`, {
-        method,
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: method === 'POST' ? '{}' : undefined
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || !payload.success) throw new Error(payload.message || 'โหลดสถานะการเดินตรวจไม่สำเร็จ');
-    return payload;
-}
-
-async function refreshWalkTeam() {
-    try {
-        walkTeam = await walkRequest('GET', 'status');
-        walkError = '';
-    } catch (error) {
-        walkError = error.message;
-    }
-    if (!walkMode) return;
-    // ร้านปัจจุบันยังอยู่ในคิว = กำลังตรวจอยู่ ไม่เปลี่ยนร้าน แค่อัปเดตตัวเลข
-    if (!walkCurrent || !walkQueue().includes(walkCurrent)) walkCurrent = walkQueue()[0] || null;
-    renderWalkBar();
-}
-
-async function claimWalkBatch() {
-    if (walkBusy) return;
-    walkBusy = true;
-    renderWalkBar();
-    try {
-        walkTeam = await walkRequest('POST', 'claim');
-        walkError = walkTeam.claimedCount ? '' : walkTeam.message;
-    } catch (error) {
-        walkError = error.message;
-    }
-    walkBusy = false;
-    walkCurrent = walkQueue()[0] || null;
-    renderWalkBar();
-    if (walkCurrent) openStallDeepLink(walkCurrent, true);
-}
-
-async function setWalkMode(on) {
+function setWalkMode(on) {
     if (walkMode === on) return;
     walkMode = on;
     document.body.classList.toggle('walk-on', on);
-    const btn = document.querySelector('#layerSummary [data-action="walk"]');
-    if (btn) btn.classList.toggle('active', on);
-    clearInterval(walkPollTimer);
-    if (!on) {
+    if (on) {
+        walkCurrent = walkQueue()[0] || null;
+        if (walkCurrent) openStallDeepLink(walkCurrent, true);
+    } else {
         walkCurrent = null;
-        renderWalkBar();
-        return;
     }
     renderWalkBar();
-    await refreshWalkTeam();
-    if (walkCurrent) openStallDeepLink(walkCurrent, true);
-    // ดึงสถานะทีมทุก 20 วิ — ขยับ heartbeat ให้ร้านในมือไม่ถูกคืนอัตโนมัติ
-    walkPollTimer = setInterval(() => { if (!document.hidden) refreshWalkTeam(); }, 20000);
+    const btn = document.querySelector('#layerSummary [data-action="walk"]');
+    if (btn) btn.classList.toggle('active', on);
 }
 
 function walkStep(delta) {
@@ -595,8 +546,8 @@ function walkStep(delta) {
     if (!queue.length) { walkCurrent = null; renderWalkBar(); return; }
     const idx = queue.indexOf(walkCurrent);
     if (idx === -1) {
-        // ร้านปัจจุบันเพิ่งตรวจเสร็จ (หลุดจากคิว) — ไปร้านที่ยังไม่ตรวจถัดไปในชุด ไม่ย้อนกลับไปต้นคิว
-        const order = walkTeam.mine.map((row) => row.stallCode);
+        // ร้านปัจจุบันเพิ่งตรวจเสร็จ (หลุดจากคิว) — ไปร้านที่ยังไม่ตรวจถัดไปตามเส้นทาง ไม่ย้อนกลับไปต้นคิว
+        const order = INSPECTION.walkOrder || [];
         const pos = order.indexOf(walkCurrent);
         walkCurrent = queue.find((code) => order.indexOf(code) > pos) || queue[0];
     } else {
@@ -616,36 +567,13 @@ function renderWalkBar() {
         bar.className = 'action-dock';
         document.body.appendChild(bar);
     }
-    const mine = walkTeam ? walkTeam.mine : [];
-    const total = mine.length;
-    const checked = mine.filter((row) => row.done).length;
+    const { total, checked } = inspectionCounts(allStalls());
     const pct = total ? Math.round((checked / total) * 100) : 0;
-    const teamLine = walkTeam ? `ทีม ${walkTeam.doneCount}/${walkTeam.totalCount} · ยังไม่มีคนรับ ${walkTeam.unclaimedCount}` : 'กำลังโหลดสถานะทีม...';
     const d = walkCurrent ? BOOKING_BY_STALL[walkCurrent] : null;
     bar.hidden = false;
-    if (!walkCurrent) {
-        // หมดชุด/ยังไม่มีชุด — รับร้านชุดใหม่ หรือไปส่งงานถ้าทุกร้านมีคนรับแล้ว
-        const canClaim = walkTeam && walkTeam.unclaimedCount > 0;
-        bar.innerHTML = `
-            <div class="ad-info">
-                <b>${total ? 'ตรวจชุดของคุณครบแล้ว' : (canClaim || !walkTeam ? 'ยังไม่มีร้านในมือ' : 'ทุกร้านมีคนรับไปตรวจแล้ว')}</b>
-                <small>${escapeHtml(walkError || teamLine)}</small>
-            </div>
-            <div class="ad-actions">
-                ${canClaim
-                    ? `<button type="button" class="ad-btn" data-walk="claim" ${walkBusy ? 'disabled' : ''}><i class="fa-solid fa-hand"></i> ${walkBusy ? 'กำลังสุ่ม...' : (total ? 'รับร้านเพิ่ม' : 'รับร้าน')}</button>`
-                    : '<a class="ad-btn" href="/staff/marketinspection">ไปส่งงาน</a>'}
-                <button type="button" class="ad-btn ad-ghost" data-walk="stop">จบ</button>
-            </div>`;
-        bar.querySelector('[data-walk="stop"]').onclick = () => setWalkMode(false);
-        const claimBtn = bar.querySelector('[data-walk="claim"]');
-        if (claimBtn) claimBtn.onclick = claimWalkBatch;
-        syncDockHeight();
-        return;
-    }
-    bar.innerHTML = `
+    bar.innerHTML = walkCurrent ? `
         <div class="ad-info">
-            <span class="ad-kicker">ร้านถัดไป · ชุดของคุณ ${checked}/${total} · ${escapeHtml(teamLine)}</span>
+            <span class="ad-kicker">ร้านถัดไป · ตรวจแล้ว ${checked}/${total}</span>
             <span class="ad-line"><b>${escapeHtml(walkCurrent)}</b> ${escapeHtml(d ? d.shop : '')}</span>
             <span class="ad-progress"><span style="width:${pct}%"></span></span>
         </div>
@@ -653,6 +581,11 @@ function renderWalkBar() {
             <button type="button" class="ad-btn ad-ghost" data-walk="prev" aria-label="ร้านก่อนหน้า"><i class="fa-solid fa-chevron-left"></i></button>
             <button type="button" class="ad-btn" data-walk="open"><i class="fa-solid fa-location-crosshairs"></i> เปิดร้านนี้</button>
             <button type="button" class="ad-btn ad-ghost" data-walk="next" aria-label="ร้านถัดไป"><i class="fa-solid fa-chevron-right"></i></button>
+            <button type="button" class="ad-btn ad-ghost" data-walk="stop">จบ</button>
+        </div>` : `
+        <div class="ad-info"><b>ตรวจครบทุกร้านแล้ว</b> <small>ตรวจแล้ว ${checked}/${total} — อย่าลืมกด "ส่งงาน" ที่หน้าตรวจตลาด</small></div>
+        <div class="ad-actions">
+            <a class="ad-btn" href="/staff/marketinspection">ไปส่งงาน</a>
             <button type="button" class="ad-btn ad-ghost" data-walk="stop">จบ</button>
         </div>`;
     const on = (sel, fn) => { const el = bar.querySelector(sel); if (el) el.onclick = fn; };
@@ -1078,9 +1011,6 @@ async function saveQuickInspect(id, markOk) {
         r.excess = { small, large };
         r.checkedAt = new Date().toISOString();
         r.status = inspectionProblems(r).length ? 'issue' : 'ok';
-        // เซิร์ฟเวอร์ปิดใบงานร้านนี้ให้แล้วตอนบันทึก — ตั้งตามทันทีไม่ต้องรอ poll ให้ walkStep ข้ามไปร้านถัดไปได้
-        const mineRow = walkTeam ? walkTeam.mine.find((row) => row.stallCode === id) : null;
-        if (mineRow) mineRow.done = true;
         renderLayerChrome();
         if (activeZone) renderGrid(activeZone);
         showInfo(id);

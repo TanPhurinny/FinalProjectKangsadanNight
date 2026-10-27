@@ -16,8 +16,6 @@ router.post('/marketinspection/issue', staffInspectionCtrl.saveStallIssue);
 router.post('/marketinspection/cleanliness', staffInspectionCtrl.saveCleanlinessInspection);
 router.post('/marketinspection/submit-day', staffInspectionCtrl.submitDay);
 router.get('/marketinspection/walk/status', staffInspectionCtrl.getWalkStatus);
-router.post('/marketinspection/walk/claim', staffInspectionCtrl.claimWalkBatch);
-router.post('/marketinspection/walk/release', staffInspectionCtrl.releaseWalkBatch);
 router.get('/marketinspection/report', inspectionReportCtrl.getStaffReportPage);
 router.get('/marketinspection/report/export', inspectionReportCtrl.exportStaffReportExcel);
 router.get('/seller-scores', scoreReportCtrl.getSellerScoresPage);

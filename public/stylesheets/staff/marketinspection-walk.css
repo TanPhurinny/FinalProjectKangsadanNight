@@ -18,12 +18,12 @@
     min-width: 0;
 }
 
-/* แถบทีม — หลายคนเดินตรวจพร้อมกัน (ยอดทั้งตลาด + ยอดแต่ละคน + คืนร้านที่ยังไม่ตรวจ) */
+/* แถบทีม — หลายคนเดินตรวจพร้อมกัน (ยอดทั้งตลาด + จำนวนร้านที่แต่ละคนตรวจ) แสดงทั้งมุมมองการ์ดและผัง */
 .walk-team {
     border: 1px solid var(--line);
     background: var(--soft-bg);
     padding: 8px 10px;
-    margin-bottom: 10px;
+    margin: 12px 0 10px;
     font-size: 0.8rem;
 }
 
@@ -64,24 +64,25 @@
     font-weight: 600;
 }
 
-.walk-team .walk-btn-sm {
-    min-height: 36px;
-    margin-top: 8px;
-    width: 100%;
-    font-size: 0.8rem;
+/* การ์ดร้านที่ตรวจแล้ววันนี้: บอกว่าใครตรวจ กี่โมง (คนอื่นตรวจแล้ว = สีเหลือง เตือนว่าบันทึกซ้ำจะทับผลเดิม) */
+.walk-inspected-by {
+    border: 1px solid var(--warning-color, #e0a800);
+    background: rgba(224, 168, 0, 0.12);
+    color: #6b4b00;
+    padding: 6px 10px;
+    margin-bottom: 12px;
+    font-size: 0.82rem;
 }
 
-/* ป้ายในตารางงานตรวจปัญหา: ร้านนี้อยู่ในชุดของพนักงานคนอื่น */
-.walk-holder-badge {
-    display: inline-block;
-    margin: 2px 0;
-    border: 1px solid var(--warning-color, #e0a800);
-    color: #8a6100;
-    background: rgba(224, 168, 0, 0.12);
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    font-weight: 600;
-    padding: 1px 6px;
+.walk-inspected-by small {
+    display: block;
+    color: var(--ink-soft);
+}
+
+.walk-inspected-by.is-mine {
+    border-color: var(--success-color);
+    background: rgba(39, 174, 96, 0.1);
+    color: var(--ink);
 }
 
 .walk-progress {

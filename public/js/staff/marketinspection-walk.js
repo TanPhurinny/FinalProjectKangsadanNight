@@ -2,15 +2,18 @@
 // ยิง /staff/marketinspection/issue และ /cleanliness เดิมพร้อมกันตอนกด "บันทึกและร้านถัดไป"
 // แล้วอัปเดตตารางงานตรวจปัญหา/ความสะอาด/ผังให้ตรงกัน (ดู marketinspection.js, marketinspection-cleanliness.js)
 //
-// หลายคนเดินตรวจพร้อมกัน: แต่ละคนกด "รับร้าน" แล้วเซิร์ฟเวอร์สุ่มชุดร้านที่ยังไม่มีใครรับให้ (/walk/claim)
-// การ์ดเดินเฉพาะร้านในชุดของตัวเอง สถานะทั้งทีมดึงใหม่ทุก 20 วิ (/walk/status) — ดู utils/inspectionAssignment.js
+// หลายคนเดินตรวจพร้อมกัน: เจ้าหน้าที่แบ่งร้านกันเองนอกระบบ หน้านี้แค่ช่วยเลือกร้าน — เปิดมาที่ผังภาพรวม
+// (สีบอกตรวจแล้ว/ยัง ของทั้งทีม) แตะร้านหรือค้นหาร้านเพื่อเปิดการ์ดตรวจ — สถานะทีมดึงใหม่ทุก 20 วิ จาก
+// /walk/status (ดู utils/inspectionAssignment.js) ไม่ล็อกร้าน ร้านที่คนอื่นตรวจแล้วบันทึกซ้ำได้ แค่บอกให้รู้
 document.addEventListener('DOMContentLoaded', () => {
     const panel = document.getElementById('walkModePanel');
     const cardEl = document.getElementById('walkCard');
     const zoneSelect = document.getElementById('walkZoneFilter');
+    const searchInput = document.getElementById('walkSearch');
     const jumpSelect = document.getElementById('walkJump');
     const progressText = document.getElementById('walkProgressText');
     const progressFill = document.getElementById('walkProgressFill');
+    const teamBar = document.getElementById('walkTeamBar');
     const modeTabWalk = document.getElementById('modeTabWalk');
     if (!panel || !cardEl) return;
 
@@ -32,18 +35,18 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    // --- ใบงานของทีม (เซิร์ฟเวอร์เป็นตัวตัดสินว่าร้านไหนของใคร ตรวจแล้วหรือยัง) ---
-    const teamBar = document.getElementById('walkTeamBar');
+    function timeLabel(value) {
+        if (!value) return '';
+        return new Date(value).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // --- สถานะทั้งทีมจากเซิร์ฟเวอร์ (ร้านไหนตรวจแล้วโดยใคร) ---
     let team = null; // ผลล่าสุดจาก /walk/status
     function walkInfo(it) {
         return team && team.byStall ? (team.byStall[it.id] || null) : null;
     }
     function isDone(it) {
-        return !!walkInfo(it)?.done;
-    }
-    function heldByOther(it) {
-        const info = walkInfo(it);
-        return info && !info.mine && !info.done ? info : null;
+        return !!walkInfo(it);
     }
 
     // --- สร้างรายการร้านจากตารางงานตรวจปัญหา (เรียงตามเส้นทางเดินจากเซิร์ฟเวอร์อยู่แล้ว) ข้ามล็อกว่าง ---
@@ -59,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const saved = cleanApi && cleanRow ? cleanApi.results[row.dataset.stallId] : null;
             const itemResults = {};
             ITEM_IDS.forEach((id) => { itemResults[id] = saved?.itemResults?.[id] !== false; }); // ค่าเริ่มต้น "ผ่าน"
+            const headMeta = Array.from(row.querySelectorAll('.stall-meta')).map((el) => el.textContent.trim());
 
             return {
                 row,
@@ -68,7 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 isFood: !!cleanRow,
                 cleanRow,
                 headMain: row.querySelector('.stall-main')?.textContent.trim() || code,
-                headMeta: Array.from(row.querySelectorAll('.stall-meta')).map((el) => el.textContent.trim()),
+                headMeta,
+                // ใช้ค้นหา: รหัสล็อก + ชื่อร้าน + ชื่อผู้ขาย + สินค้า (อยู่ใน stall-meta ทั้งหมด)
+                searchText: `${code} ${headMeta.join(' ')}`.toLowerCase(),
                 electricBtn: row.querySelector('.electric-excess-btn'),
                 draft: {
                     noShow: isChecked('no-show'),
@@ -80,31 +86,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     cleanNote: saved?.note || '',
                     cleanOpen: false
                 },
-                issueSyncedKey: null
+                issueSyncedKey: null,
+                touched: false // แก้ค่าในการ์ดแล้ว — ห้ามเอาค่าจากเซิร์ฟเวอร์มาทับ
             };
         });
 
-    const itemById = {};
-    items.forEach((it) => { itemById[it.id] = it; });
-
-    let visible = [];
+    let visible = items.slice();
     let index = 0;
     let saving = false;
-    let extra = null; // ร้านนอกชุดของตัวเองที่เปิดจากผัง (ยังไม่มีใครรับ/ตรวจแล้ว อยากแก้ผล)
-
-    // ชุดร้านของฉันตามลำดับเส้นทางจากเซิร์ฟเวอร์ — คงร้านที่เปิดอยู่ไว้ถ้ายังอยู่ในชุด
-    function rebuildVisible() {
-        const current = currentItem();
-        visible = (team ? team.mine : []).map((row) => itemById[String(row.stallId)]).filter(Boolean);
-        if (extra && !visible.includes(extra)) visible.push(extra);
-        const keep = current ? visible.indexOf(current) : -1;
-        if (keep !== -1) {
-            index = keep;
-        } else {
-            const firstPending = visible.findIndex((it) => !isDone(it));
-            index = firstPending === -1 ? 0 : firstPending;
-        }
-    }
+    let userNavigated = false; // เลือกร้านเองแล้ว (ผัง/ค้นหา/ข้ามไปล็อก) — โหลดสถานะทีมครั้งแรกจะไม่ย้ายการ์ดให้
 
     function issueKey(it) {
         const d = it.draft;
@@ -125,11 +115,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return visible[index] || null;
     }
 
-    // --- แถบความคืบหน้า + รายการข้ามไปล็อก ---
+    // --- แถบความคืบหน้า + รายการข้ามไปล็อก + แถบทีม ---
     function renderProgress() {
         const total = visible.length;
         const done = visible.filter((it) => isDone(it)).length;
-        if (progressText) progressText.textContent = total ? `ชุดของคุณ ร้านที่ ${Math.min(index + 1, total)} / ${total} · ตรวจแล้ว ${done}` : 'ยังไม่มีร้านในมือ';
+        if (progressText) progressText.textContent = total ? `ร้านที่ ${Math.min(index + 1, total)} / ${total} · ตรวจแล้ว ${done}` : 'ไม่พบร้าน';
         if (progressFill) progressFill.style.width = total ? `${Math.round((done / total) * 100)}%` : '0%';
 
         if (jumpSelect) {
@@ -141,45 +131,21 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTeamBar();
     }
 
-    // แถบทีม: ตรวจแล้วทั้งตลาด / กำลังตรวจ / ยังไม่มีคนรับ + ยอดของแต่ละคน
     function renderTeamBar() {
         if (!teamBar) return;
         if (!team) {
             teamBar.innerHTML = '<span class="walk-team-muted">กำลังโหลดสถานะทีม...</span>';
             return;
         }
-        const myPending = team.mine.filter((row) => !row.done).length;
         const members = team.team.map((member) =>
-            `<span class="walk-team-member ${member.isMe ? 'is-me' : ''}">${esc(member.isMe ? 'คุณ' : member.name)} ${member.done}/${member.total}</span>`
+            `<span class="walk-team-member ${member.isMe ? 'is-me' : ''}">${esc(member.isMe ? 'คุณ' : member.name)} ${member.done}</span>`
         ).join('');
         teamBar.innerHTML = `
             <div class="walk-team-summary">
                 <span><b>ทีมตรวจแล้ว ${team.doneCount}/${team.totalCount}</b></span>
-                <span>กำลังตรวจ ${team.inProgressCount}</span>
-                <span>ยังไม่มีคนรับ ${team.unclaimedCount}</span>
+                <span>ยังไม่ตรวจ ${team.uninspectedCount}</span>
             </div>
-            ${members ? `<div class="walk-team-members">${members}</div>` : ''}
-            ${myPending ? `<button type="button" class="walk-btn walk-btn-sm" data-walk-release="1"><i class="fas fa-rotate-left"></i> คืนร้านที่ยังไม่ตรวจ (${myPending})</button>` : ''}`;
-    }
-
-    // ป้าย "กำลังตรวจโดย ..." ในตารางงานตรวจปัญหา กันคนอื่นติ๊กร้านที่มีเจ้าของใบงานอยู่
-    function syncHolderBadges() {
-        items.forEach((it) => {
-            const held = heldByOther(it);
-            const host = it.row.querySelector('.stall-main');
-            if (!host) return;
-            let badge = it.row.querySelector('.walk-holder-badge');
-            if (!held) {
-                if (badge) badge.remove();
-                return;
-            }
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.className = 'walk-holder-badge';
-                host.insertAdjacentElement('afterend', badge);
-            }
-            badge.textContent = `กำลังตรวจโดย ${held.holderName}`;
-        });
+            ${members ? `<div class="walk-team-members">${members}</div>` : ''}`;
     }
 
     function chipHtml(it) {
@@ -238,12 +204,23 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`;
     }
 
+    // ร้านที่ตรวจแล้ววันนี้: บอกว่าใครตรวจ กี่โมง — คนอื่นตรวจแล้วก็บันทึกซ้ำได้ (ไม่บล็อก) แค่เตือนว่าจะทับผลเดิม
+    function inspectedByHtml(it) {
+        const info = walkInfo(it);
+        if (!info) return '';
+        if (info.mine) {
+            return `<div class="walk-inspected-by is-mine"><i class="fas fa-user-check"></i> คุณตรวจร้านนี้แล้ว เวลา ${esc(timeLabel(info.inspectedAt))}</div>`;
+        }
+        return `<div class="walk-inspected-by"><i class="fas fa-user-check"></i> ตรวจแล้วโดย <b>${esc(info.inspectorName)}</b> เวลา ${esc(timeLabel(info.inspectedAt))}
+            <small>บันทึกซ้ำได้ ผลใหม่จะแทนผลเดิม</small></div>`;
+    }
+
     function renderCard(errorMessage) {
         renderProgress();
         const it = currentItem();
 
         if (!it) {
-            renderClaimScreen(errorMessage);
+            cardEl.innerHTML = '<div class="walk-empty">ไม่พบร้านที่ค้นหา ลองเปลี่ยนคำค้นหรือโซน</div>';
             return;
         }
 
@@ -257,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${isDone(it) ? '<span class="walk-done-badge"><i class="fas fa-check"></i> ตรวจแล้ว</span>' : ''}
             </div>
             <div class="walk-card-meta">${it.headMeta.map((line) => `<div>${esc(line)}</div>`).join('')}</div>
+            ${inspectedByHtml(it)}
 
             <div class="walk-section">
                 <div class="walk-section-head">
@@ -280,125 +258,30 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`;
     }
 
-    // ยังไม่มีร้านในมือ — ให้กดรับชุดใหม่ (สุ่มจากร้านที่ยังไม่มีใครรับ เฉพาะโซนที่เลือกไว้ถ้าเลือก)
-    function renderClaimScreen(errorMessage) {
-        const zone = zoneSelect ? zoneSelect.value : 'ALL';
-        const nothingLeft = team && team.unclaimedCount === 0;
-        cardEl.innerHTML = `
-            <div class="walk-finished">
-                <i class="fas fa-${nothingLeft ? 'circle-check' : 'person-walking'}"></i>
-                <div class="walk-finished-title">${nothingLeft ? 'ทุกร้านมีคนรับไปตรวจแล้ว' : 'ยังไม่มีร้านในมือ'}</div>
-                <div class="walk-finished-sub">${nothingLeft
-                    ? 'รอทีมตรวจให้ครบ แล้วไปหน้างานตรวจปัญหาเพื่อกด "ส่งงาน"'
-                    : `ระบบจะสุ่มชุดร้านที่ยังไม่มีใครรับให้ ${zone === 'ALL' ? '' : `ในโซน ${esc(zone)} `}เรียงตามเส้นทางเดิน ไม่ซ้ำกับคนอื่น`}</div>
-                <div class="walk-error ${errorMessage ? '' : 'd-none'}">${esc(errorMessage || '')}</div>
-                ${nothingLeft
-                    ? '<button type="button" class="walk-btn walk-btn-primary" data-walk-to-submit="1">ไปหน้าส่งงาน</button>'
-                    : `<button type="button" class="walk-btn walk-btn-primary" data-walk-claim="1" ${!team || saving ? 'disabled' : ''}>
-                        <i class="fas fa-hand"></i> ${saving ? 'กำลังสุ่มร้าน...' : 'รับร้านที่จะตรวจ'}</button>`}
-            </div>`;
-    }
-
     function renderFinished() {
         renderProgress();
-        const canClaimMore = team && team.unclaimedCount > 0;
         cardEl.innerHTML = `
             <div class="walk-finished">
                 <i class="fas fa-circle-check"></i>
-                <div class="walk-finished-title">ตรวจชุดของคุณครบแล้ว</div>
-                <div class="walk-finished-sub">${canClaimMore
-                    ? `ยังมีร้านที่ไม่มีใครรับอีก ${team.unclaimedCount} ร้าน — รับเพิ่มได้เลย`
+                <div class="walk-finished-title">ร้านในรายการนี้ตรวจครบแล้ว</div>
+                <div class="walk-finished-sub">${team && team.uninspectedCount
+                    ? `ทั้งตลาดยังไม่ได้ตรวจอีก ${team.uninspectedCount} ร้าน — ดูบนผังหรือล้างคำค้น/เปลี่ยนโซน`
                     : 'ไปหน้างานตรวจปัญหาเพื่อกด "ส่งงาน" ได้เลย'}</div>
-                ${canClaimMore ? '<button type="button" class="walk-btn walk-btn-primary" data-walk-claim="1"><i class="fas fa-hand"></i> รับร้านเพิ่ม</button>' : ''}
-                <button type="button" class="walk-btn ${canClaimMore ? '' : 'walk-btn-primary'}" data-walk-to-submit="1">ไปหน้าส่งงาน</button>
+                <button type="button" class="walk-btn walk-btn-primary" data-walk-to-map="1"><i class="fas fa-border-all"></i> ดูผังภาพรวม</button>
+                <button type="button" class="walk-btn" data-walk-to-submit="1">ไปหน้าส่งงาน</button>
                 <button type="button" class="walk-btn" data-walk-review="1">กลับไปดูร้านแรก</button>
             </div>`;
     }
 
-    // --- เซิร์ฟเวอร์: ดึงสถานะทีม / รับร้าน / คืนร้าน ---
-    function applyTeam(payload) {
-        team = payload;
-        rebuildVisible();
-        syncHolderBadges();
-        if (walkMap) walkMap.refresh();
-    }
-
-    function renderCurrent(errorMessage) {
-        if (!visible.length) {
-            renderProgress();
-            renderClaimScreen(errorMessage);
-        } else if (visible.every((it) => isDone(it)) && !extra) {
-            renderFinished();
-        } else {
-            renderCard(errorMessage);
-        }
-    }
-
-    async function refreshTeam() {
-        try {
-            const response = await fetch('/staff/marketinspection/walk/status', { headers: { Accept: 'application/json' } });
-            const payload = await response.json();
-            if (!response.ok || !payload.success) throw new Error(payload.message || 'โหลดสถานะไม่สำเร็จ');
-            const before = currentItem();
-            applyTeam(payload);
-            // ไม่ render การ์ดใหม่ระหว่างกรอกข้อมูลร้านเดิม (กันสิ่งที่ติ๊กไว้/ตำแหน่งเลื่อนหาย) — อัปเดตแค่แถบความคืบหน้า
-            if (!saving && before && before === currentItem()) renderProgress();
-            else if (!saving) renderCurrent();
-        } catch (error) {
-            console.error(error);
-        }
-    }
-
-    async function claimBatch() {
-        if (saving) return;
-        saving = true;
-        renderCurrent();
-        try {
-            const payload = await postJson('/staff/marketinspection/walk/claim', { zone: zoneSelect ? zoneSelect.value : 'ALL' });
-            extra = null;
-            saving = false;
-            applyTeam(payload);
-            renderCurrent(payload.claimedCount ? '' : payload.message);
-        } catch (error) {
-            console.error(error);
-            saving = false;
-            renderCurrent(error.message || 'รับร้านไม่สำเร็จ กรุณาลองใหม่');
-        }
-    }
-
-    function releaseRemaining() {
-        const run = async () => {
-            try {
-                const payload = await postJson('/staff/marketinspection/walk/release', {});
-                extra = null;
-                applyTeam(payload);
-                renderCurrent();
-            } catch (error) {
-                console.error(error);
-                renderCurrent(error.message || 'คืนร้านไม่สำเร็จ กรุณาลองใหม่');
-            }
-        };
-        if (!window.showConfirmDialog) {
-            run();
-            return;
-        }
-        window.showConfirmDialog({
-            title: 'คืนร้านที่ยังไม่ตรวจ',
-            message: 'ร้านที่ยังไม่ได้ตรวจในชุดของคุณจะกลับไปให้คนอื่นรับต่อ ร้านที่ตรวจแล้วยังนับเป็นของคุณ',
-            tone: 'warning',
-            confirmText: 'คืนร้าน',
-            onConfirm: run
-        });
-    }
-
     function goTo(newIndex) {
         if (newIndex < 0 || newIndex >= visible.length) return;
+        userNavigated = true;
         index = newIndex;
         renderCard();
         window.scrollTo({ top: panel.offsetTop > 120 ? panel.offsetTop - 60 : 0, behavior: 'smooth' });
     }
 
-    // ร้านถัดไปที่ยังไม่ตรวจ (ต่อจากร้านปัจจุบัน แล้ววนกลับไปต้นลิสต์) — ไม่มี = ตรวจครบแล้ว
+    // ร้านถัดไปที่ยังไม่มีใครตรวจ (ต่อจากร้านปัจจุบัน แล้ววนกลับไปต้นลิสต์) — ไม่มี = ตรวจครบแล้ว
     function findNextPending() {
         for (let i = index + 1; i < visible.length; i += 1) {
             if (!isDone(visible[i])) return i;
@@ -416,11 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify(body)
         });
         const payload = await response.json();
-        if (!response.ok || !payload.success) {
-            const error = new Error(payload.message || 'บันทึกไม่สำเร็จ');
-            error.conflict = !!payload.conflict; // 409: ร้านนี้อยู่ในใบงานของคนอื่น
-            throw error;
-        }
+        if (!response.ok || !payload.success) throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
         return payload;
     }
 
@@ -436,6 +315,12 @@ document.addEventListener('DOMContentLoaded', () => {
             noteInput.dataset.lastSaved = it.draft.otherIssueNote;
         }
         if (typeof window.inspectionRefreshIssueView === 'function') window.inspectionRefreshIssueView();
+    }
+
+    function hasAnyProblem(it) {
+        const d = it.draft;
+        const cleanFailed = it.isFood && !d.noShow && failCount(it) > 0;
+        return d.noShow || d.sublease || d.otherMarket || d.wrongSeller || !!d.otherIssueNote || !!electricLabel(it) || cleanFailed;
     }
 
     async function saveCurrent() {
@@ -471,17 +356,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 cleanApi.applyResult(it.id, payload.inspection);
             }
 
-            // ตั้งเป็นตรวจแล้วทันทีไม่ต้องรอ poll รอบถัดไป (เซิร์ฟเวอร์ปิดใบงานให้แล้วตอนบันทึก)
-            if (team) {
-                team.byStall[it.id] = { ...(team.byStall[it.id] || {}), stallCode: it.code, done: true, mine: true };
-                const mineRow = team.mine.find((row) => String(row.stallId) === it.id);
-                if (mineRow) mineRow.done = true;
+            // ตั้งเป็นตรวจแล้วทันทีไม่ต้องรอ poll (เซิร์ฟเวอร์บันทึกคนตรวจให้แล้ว ถ้าวันนี้ยังไม่มีใครตรวจร้านนี้)
+            if (team && !team.byStall[it.id]) {
+                team.byStall[it.id] = { stallCode: it.code, inspectorName: 'คุณ', inspectedAt: new Date().toISOString(), mine: true };
+                team.doneCount += 1;
+                team.uninspectedCount = Math.max(0, team.uninspectedCount - 1);
+                const me = team.team.find((member) => member.isMe);
+                if (me) me.done += 1;
+                else team.team.push({ name: 'คุณ', done: 1, isMe: true });
             }
-            if (extra === it) extra = null;
+            if (team && team.byStall[it.id]) team.byStall[it.id].hasIssue = hasAnyProblem(it);
+            it.touched = false;
             saving = false;
-            syncHolderBadges();
             if (walkMap) walkMap.refresh();
-            refreshTeam(); // ยอดทีม/ยอดของฉันในแถบบนนับจากเซิร์ฟเวอร์ — ดึงใหม่เลยไม่ต้องรอ poll 20 วิ
+            refreshTeam(); // ยอดทีม/ยอดแต่ละคนนับจากเซิร์ฟเวอร์ — ดึงใหม่เลยไม่ต้องรอ poll 20 วิ
 
             const next = findNextPending();
             if (next === -1) {
@@ -494,8 +382,41 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error(error);
             saving = false;
-            if (error.conflict) refreshTeam();
             renderCard(error.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่');
+        }
+    }
+
+    // --- สถานะทีม: ดึงใหม่ทุก 20 วิ — ร้านที่เพื่อนเพิ่งตรวจจะเปลี่ยนสีบนผัง และการ์ดเติมค่าล่าสุดที่เพื่อนบันทึก ---
+    function applyServerIssue(it) {
+        const info = walkInfo(it);
+        if (!info || !info.issue || it.touched || it === currentItem()) return;
+        ['noShow', 'sublease', 'otherMarket', 'wrongSeller', 'otherIssueNote'].forEach((key) => {
+            it.draft[key] = info.issue[key];
+        });
+        it.issueSyncedKey = issueKey(it);
+        syncIssueToTable(it);
+    }
+
+    async function refreshTeam() {
+        try {
+            const response = await fetch('/staff/marketinspection/walk/status', { headers: { Accept: 'application/json' } });
+            const payload = await response.json();
+            if (!response.ok || !payload.success) throw new Error(payload.message || 'โหลดสถานะไม่สำเร็จ');
+            const firstLoad = !team;
+            team = payload;
+            items.forEach(applyServerIssue);
+            if (walkMap) walkMap.refresh();
+            if (firstLoad && !saving && !userNavigated) {
+                // เปิดหน้ามาก่อนรู้สถานะทีม — ย้ายการ์ดไปร้านแรกที่ยังไม่มีใครตรวจ
+                const firstPending = visible.findIndex((it) => !isDone(it));
+                index = firstPending === -1 ? 0 : firstPending;
+                renderCard();
+            } else if (!saving) {
+                // ไม่ render การ์ดใหม่ (กันสิ่งที่ติ๊กไว้/ตำแหน่งเลื่อนหาย) — อัปเดตแค่แถบความคืบหน้า/ทีม
+                renderProgress();
+            }
+        } catch (error) {
+            console.error(error);
         }
     }
 
@@ -507,6 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (target.dataset.walkChip && it) {
             it.draft[target.dataset.walkChip] = !it.draft[target.dataset.walkChip];
+            it.touched = true;
             renderCard();
         } else if (target.dataset.walkElectric && it) {
             if (it.electricBtn) it.electricBtn.click(); // เปิดแผงเครื่องใช้ไฟฟ้าเกินเดิม (บันทึกในแผงเลย)
@@ -524,22 +446,17 @@ document.addEventListener('DOMContentLoaded', () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } else if (target.dataset.walkReview) {
             goTo(0);
-        } else if (target.dataset.walkClaim) {
-            claimBatch();
+        } else if (target.dataset.walkToMap && walkMap) {
+            walkMap.setViewMode('zone');
         }
     });
-
-    if (teamBar) {
-        teamBar.addEventListener('click', (event) => {
-            if (event.target.closest('[data-walk-release]')) releaseRemaining();
-        });
-    }
 
     cardEl.addEventListener('input', (event) => {
         const it = currentItem();
         if (!it) return;
         if (event.target.id === 'walkOtherNote') {
             it.draft.otherIssueNote = event.target.value.trim();
+            it.touched = true;
         } else if (event.target.id === 'walkCleanNote') {
             it.draft.cleanNote = event.target.value.trim();
         }
@@ -568,19 +485,45 @@ document.addEventListener('DOMContentLoaded', () => {
         }).observe(it.electricBtn, { attributes: true, childList: true, subtree: true });
     });
 
-    // ตัวเลือกโซนใช้ตอนกดรับร้าน (สุ่มเฉพาะในโซนนั้น) — ชุดที่รับมาแล้วไม่ถูกกรองออก
-    if (zoneSelect) zoneSelect.addEventListener('change', () => { if (!saving) renderCurrent(); });
+    // --- กรองรายการ: โซน + ค้นหา (รหัสล็อก/ชื่อร้าน/ชื่อผู้ขาย) ---
+    function applyFilter(openItem) {
+        const zone = zoneSelect ? zoneSelect.value : 'ALL';
+        const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        const current = openItem || currentItem();
+        visible = items.filter((it) =>
+            (zone === 'ALL' || String(it.zone).toUpperCase() === zone.toUpperCase()) &&
+            (!query || it.searchText.includes(query)));
+        const keep = current ? visible.indexOf(current) : -1;
+        if (keep !== -1) {
+            index = keep;
+        } else {
+            const firstPending = visible.findIndex((it) => !isDone(it));
+            index = firstPending === -1 ? 0 : firstPending;
+        }
+        renderCard();
+    }
+
+    if (zoneSelect) zoneSelect.addEventListener('change', () => applyFilter());
+    if (searchInput) {
+        let timer = null;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => applyFilter(), 200);
+        });
+        // Enter = เปิดการ์ดร้านแรกที่ตรงคำค้น (ถ้าอยู่บนผังจะสลับมาที่การ์ด)
+        searchInput.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            applyFilter();
+            if (visible.length && walkMap) walkMap.setViewMode('table');
+            goTo(0);
+        });
+    }
     if (jumpSelect) jumpSelect.addEventListener('change', () => goTo(Number(jumpSelect.value)));
 
-    // --- ผังตลาด (ตัวสร้างผังเดียวกับโหมดอื่น) สีตามความคืบหน้าการเดินตรวจ กดล็อกเพื่อกระโดดไปการ์ดร้านนั้น ---
+    // --- ผังภาพรวม (ตัวสร้างผังเดียวกับโหมดอื่น) สีตามผลตรวจของทั้งทีม แตะล็อกเพื่อเปิดการ์ดร้านนั้น ---
     const itemByCode = {};
     items.forEach((it) => { itemByCode[it.code] = it; });
-
-    function hasAnyProblem(it) {
-        const d = it.draft;
-        const cleanFailed = it.isFood && !d.noShow && failCount(it) > 0;
-        return d.noShow || d.sublease || d.otherMarket || d.wrongSeller || !!d.otherIssueNote || !!electricLabel(it) || cleanFailed;
-    }
 
     const walkMap = typeof window.createInspectionMap === 'function' ? window.createInspectionMap({
         ids: {
@@ -592,8 +535,9 @@ document.addEventListener('DOMContentLoaded', () => {
         resolveStatus(code) {
             const it = itemByCode[code];
             if (!it) return 'vacant';
-            if (!isDone(it)) return 'pending';
-            return hasAnyProblem(it) ? 'failed' : 'passed';
+            const info = walkInfo(it);
+            if (!info) return 'pending';
+            return info.hasIssue ? 'failed' : 'passed';
         },
         statusLabel(status) {
             if (status === 'passed') return 'ตรวจแล้ว ปกติ';
@@ -601,33 +545,32 @@ document.addEventListener('DOMContentLoaded', () => {
             if (status === 'pending') return 'ยังไม่ตรวจ';
             return 'ว่าง';
         },
-        tooltipMeta: (status) => (status === 'vacant' ? 'ล็อคว่าง' : 'คลิกเพื่อตรวจร้านนี้'),
+        tooltipMeta(status, code) {
+            if (status === 'vacant') return 'ล็อคว่าง';
+            const it = itemByCode[code];
+            const info = it ? walkInfo(it) : null;
+            if (info) return esc(`ตรวจโดย ${info.mine ? 'คุณ' : info.inspectorName} ${timeLabel(info.inspectedAt)} · คลิกเพื่อเปิดร้านนี้`);
+            return 'คลิกเพื่อตรวจร้านนี้';
+        },
         isClickable: (status) => status !== 'vacant',
         onCellClick(code, api) {
             const it = itemByCode[code];
             if (!it) return;
-            const held = heldByOther(it);
-            if (held) {
-                if (window.showAlertDialog) {
-                    window.showAlertDialog({ title: 'มีคนตรวจร้านนี้อยู่', message: `ล็อก ${code} อยู่ในชุดของ ${held.holderName}`, tone: 'warning' });
-                }
-                return;
-            }
-            // ร้านนอกชุดของตัวเอง (ยังไม่มีใครรับ/ตรวจแล้ว) เปิดตรวจได้ทีละร้าน ต่อท้ายชุดไว้ชั่วคราว
+            userNavigated = true;
+            // ร้านถูกกรองออกอยู่ — ล้างตัวกรองให้เห็นทุกร้าน แล้วเปิดร้านนี้
             if (!visible.includes(it)) {
-                extra = it;
-                visible.push(it);
+                if (zoneSelect) zoneSelect.value = 'ALL';
+                if (searchInput) searchInput.value = '';
             }
-            index = visible.indexOf(it);
+            applyFilter(it);
             api.setViewMode('table');
-            renderCard();
+            window.scrollTo({ top: panel.offsetTop > 120 ? panel.offsetTop - 60 : 0, behavior: 'smooth' });
         }
     }) : null;
 
-    renderCurrent();
+    applyFilter();
     refreshTeam();
-    // ดึงสถานะทีมทุก 20 วิ ขณะหน้าจอเปิดอยู่ (ทุกแท็บ ป้าย "กำลังตรวจโดย" ในตารางจะได้ตรง และขยับ heartbeat
-    // ให้ร้านในมือไม่ถูกคืนอัตโนมัติ) — ล็อกจอ/สลับแอปนานเกิน STALE_MINUTES ร้านที่ยังไม่ตรวจจะกลับเข้ากองกลาง
+    // ดึงสถานะทีมทุก 20 วิ ขณะหน้าจอเปิดอยู่ — ผังของทุกคนเห็นร้านที่เพื่อนเพิ่งตรวจ
     setInterval(() => {
         if (!document.hidden) refreshTeam();
     }, 20000);
@@ -635,6 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!document.hidden) refreshTeam();
     });
 
-    // เปิดมาที่โหมดเดินตรวจเป็นค่าเริ่มต้น (รอบปัจจุบัน) — งานจริงเริ่มจากเดินตรวจ
+    // เปิดมาที่โหมดเดินตรวจ + ผังภาพรวมเป็นค่าเริ่มต้น (รอบปัจจุบัน) — เลือกร้านจากผังหรือค้นหา แล้วตรวจในการ์ด
     if (modeTabWalk) modeTabWalk.click();
+    if (walkMap) walkMap.setViewMode('zone');
 });
