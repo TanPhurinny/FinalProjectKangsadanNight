@@ -1,4 +1,6 @@
 const prisma = require('../config/prismaClient');
+const { loadApprovedInRange, leaveBadgeOf } = require('./stallLeave');
+const { businessDateOf } = require('./shopOpenStatus');
 const { toStartOfDay } = require('./bookingRound');
 const { buildPreferredWalkOrder } = require('./inspectionWalkOrder');
 
@@ -34,6 +36,11 @@ async function buildTodayInspectionLayer() {
         select: { assignedStallCode: true }
     });
     const paidCodes = new Set(paidRequests.flatMap((request) => parseStallCodes(request.assignedStallCode)));
+    // ลาหยุด/เช่าช่วงที่อนุมัติแล้ววันนี้ — ลาหยุดไม่อยู่ในคิวเดินตรวจ, เช่าช่วงบอก staff ว่าใครขายแทน (ไม่ต้องติ๊ก "ปล่อยเช่าช่วง")
+    // วันขายตัดตี 5 (หลังเที่ยงคืนยังเป็นวันขายเมื่อวาน) — ใช้วันเดียวกับที่ร้านลา/แอดมินอนุมัติ
+    const businessDay = businessDateOf();
+    const leaveRows = await loadApprovedInRange(businessDay, businessDay);
+    const leaveByCode = new Map(leaveRows.map((row) => [row.stallCode, leaveBadgeOf(row)]));
 
     const stalls = paidCodes.size
         ? await prisma.stall.findMany({
@@ -102,13 +109,14 @@ async function buildTodayInspectionLayer() {
                 otherIssueNote: issue?.otherIssueNote || ''
             },
             excess: { small: excess?.smallCount || 0, large: excess?.largeCount || 0 },
-            checkedAt
+            checkedAt,
+            leave: leaveByCode.get(String(stall.stallCode).trim().toUpperCase()) || null
         };
     });
 
     // ลำดับเดินตรวจจริง (เส้นทางเดียวกับหน้าตรวจตลาด) — ล็อกที่ไม่อยู่ในเส้นทางต่อท้ายตามรหัส
     const walkIndex = new Map(buildPreferredWalkOrder().map((code, idx) => [code, idx]));
-    const walkOrder = Object.keys(byCode).sort((a, b) => {
+    const walkOrder = Object.keys(byCode).filter((code) => !(byCode[code].leave && byCode[code].leave.kind === 'LEAVE')).sort((a, b) => {
         const ia = walkIndex.has(a) ? walkIndex.get(a) : Number.POSITIVE_INFINITY;
         const ib = walkIndex.has(b) ? walkIndex.get(b) : Number.POSITIVE_INFINITY;
         return ia === ib ? a.localeCompare(b) : ia - ib;

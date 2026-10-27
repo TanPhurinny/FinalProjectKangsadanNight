@@ -14,6 +14,7 @@ const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundTimeline, BOO
 const adminDashboard = require('../utils/adminDashboard');
 const eventBooth = require('../utils/eventBooth');
 const { shopsRelation, primaryShop, shopsOfRequests } = require('../utils/shops');
+const stallLeave = require('../utils/stallLeave');
 
 const ZONE_CATEGORY_META = {
     FASHION: { icon: 'fa-shirt', description: 'โซนแฟชั่น' },
@@ -437,6 +438,9 @@ function applyDayStatus(zonesData, dayStatus, todayStatus, isToday) {
                 if (day.isLastDay) stall.isLastDay = true;
                 if (day.startsToday) stall.startsToday = true;
                 if (day.mismatch) stall.dataMismatch = true;
+                // ลาหยุด/เช่าช่วงที่อนุมัติแล้วในวันที่ดู
+                if (day.leave) stall.leave = day.leave;
+                else delete stall.leave;
                 if (day.bookingId) bookingIdByCode[stall.code] = day.bookingId;
                 if (day.eventRequestId) eventRequestIdByCode[stall.code] = day.eventRequestId;
                 // บูธกิจกรรมของวันที่ดู (buildZonesData ติดงานของ "วันนี้" ไว้) — ดูวันอื่นเอาของวันนี้ออก ข้อมูลจริงอยู่ใน occupant
@@ -779,6 +783,66 @@ async function buildMyStallHealth(userId, stallCodes) {
 
 exports.buildMyStallHealth = buildMyStallHealth;
 
+// ลาหยุด/เช่าช่วงของวันขายนี้บนผังตลาด — แก้ข้อมูลการ์ดของล็อกที่มีร้านถืออยู่เท่านั้น
+// รีวิว/โปร/โพสต์ผูกกับร้านเจ้าของแผง จึงซ่อนในวันที่ร้านอื่นมาขายแทน (noReviews) ไม่ให้ลูกค้าสับสน
+// คนนอกตลาดไม่เปิดเผยชื่อจริงบนผัง แสดงเป็น "ร้านขายแทนชั่วคราว" + สินค้า
+async function applyStallLeavesToday(bookingByStallCode) {
+    const leaves = await stallLeave.getApprovedOnDay();
+    if (!leaves.size) return;
+    const occupants = await stallLeave.loadSubletOccupants([...leaves.values()]);
+    const memberShopIds = [...occupants.values()].map((o) => o.shop && o.shop.id).filter(Boolean);
+    const closedSubShops = await getClosedShopsToday(memberShopIds);
+    leaves.forEach((row, code) => {
+        const entry = bookingByStallCode[code];
+        if (!entry) return;
+        const rangeText = stallLeave.rangeText(row);
+        if (row.kind === 'LEAVE') {
+            entry.leave = { rangeText };
+            entry.closedAt = entry.closedAt || row.startDate;
+            entry.promo = null;
+            return;
+        }
+        const ownerShopName = entry.shop;
+        const occupant = occupants.get(code) || {};
+        const sub = occupant.shop;
+        const photos = sub ? (sub.productImages || []).map((img) => img.imageUrl) : stallLeave.guestImagesOf(row);
+        Object.assign(entry, sub ? {
+            shop: sub.shopName || 'ร้านขายแทนชั่วคราว',
+            product: sub.productType || entry.product,
+            productDetail: sub.productDetail || '-',
+            tags: sub.shopTags || '',
+            subtype: sub.productSubtype || '',
+            image: sub.logoImage || sub.productImage || photos[0] || sub.shopCoverImage || null,
+            logo: sub.logoImage || null,
+            cover: sub.shopCoverImage || null,
+            menuImages: (sub.menuImages || []).map((img) => img.imageUrl),
+            photos,
+            closedAt: closedSubShops.get(sub.id) || null
+        } : {
+            shop: 'ร้านขายแทนชั่วคราว',
+            product: row.guestProductType || entry.product,
+            productDetail: row.guestProductDetail || '-',
+            tags: row.guestProductSubtype || '',
+            subtype: row.guestProductSubtype || '',
+            image: photos[0] || null,
+            logo: null,
+            cover: null,
+            menuImages: [],
+            photos,
+            closedAt: null
+        });
+        Object.assign(entry, {
+            summary: `ขายแทนชั่วคราว ${rangeText} · แผงของร้าน ${ownerShopName}`,
+            sublet: { from: ownerShopName, rangeText, isGuest: !sub },
+            noReviews: true,
+            isNew: false,
+            promo: null,
+            post: null,
+            rating: { avg: 0, count: 0 }
+        });
+    });
+}
+
 exports.getMarketMapPage = async (req, res) => {
     try {
         // มุมมองตาม role: ผู้ขายเห็นล็อกของตัวเอง+โซนที่จองได้, แอดมิน/staff เห็นสถานะใกล้หมดอายุ, ลูกค้าดูอย่างเดียว
@@ -909,6 +973,9 @@ exports.getMarketMapPage = async (req, res) => {
                 };
             });
         });
+
+        // ลาหยุด/เช่าช่วงที่อนุมัติแล้ววันนี้ (utils/stallLeave.js): ลาหยุด = ร้านปิดวันนี้ / เช่าช่วง = การ์ดแสดงร้านที่มาขายแทน
+        await applyStallLeavesToday(bookingByStallCode);
 
         // บูธกิจกรรมที่มีงานวันนี้ (buildZonesData ติด stall.event ไว้) — การ์ดบนผังโชว์ชื่องาน/ผู้จัด แทนข้อมูลร้าน
         zonesData.forEach((zone) => zone.columns.forEach((column) => column.stalls.forEach((stall) => {

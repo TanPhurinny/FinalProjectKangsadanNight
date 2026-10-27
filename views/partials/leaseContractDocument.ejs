@@ -84,6 +84,29 @@ const money = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDig
         </table>
     </div>
 
+    <% if (c.leaves && c.leaves.length) { %>
+    <h2 class="lc-annex-title">ภาคผนวก — การลาหยุดและการให้เช่าช่วงที่ผู้ให้เช่าอนุมัติแล้ว</h2>
+    <div class="lc-table-wrap">
+        <table class="lc-table">
+            <thead>
+                <tr><th>ลำดับ</th><th>ประเภท</th><th>ล็อก</th><th>วันที่</th><th>ผู้เข้าขายแทน</th><th>อนุมัติเมื่อ</th></tr>
+            </thead>
+            <tbody>
+                <% c.leaves.forEach((l, i) => { %>
+                <tr>
+                    <td class="num"><%= i + 1 %></td>
+                    <td><%= l.kindLabel %></td>
+                    <td><%= l.stallCode %></td>
+                    <td><%= l.rangeText %></td>
+                    <td><%= l.subtenant %></td>
+                    <td><%= l.approvedText %></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+    <% } %>
+
     <% if (c.adminNote && c.status === 'ISSUED') { %><div class="lc-note">หมายเหตุจากผู้ให้เช่า: <%= c.adminNote %></div><% } %>
 
     <div class="lc-sign">

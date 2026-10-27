@@ -585,6 +585,51 @@ async function getApprovedOnDay(day = businessDateOf(new Date())) {
     return new Map(rows.map((row) => [row.stallCode, row]));
 }
 
+// คำขอที่อนุมัติแล้วในช่วงวัน (ผังแอดมินคิดหลายวันในครั้งเดียว) พร้อมชื่อร้านเจ้าของ/ผู้รับเช่าช่วง
+async function loadApprovedInRange(from, to) {
+    const rows = await prisma.stallLeaveRequest.findMany({
+        where: { status: 'APPROVED', startDate: { lte: toStartOfDay(to) }, endDate: { gte: toStartOfDay(from) } }
+    });
+    const names = await shopNamesOf(rows);
+    return rows.map((row) => ({ ...row, shopName: names.get(row.shopId) || '-', subtenantName: subtenantNameOf(row, names) }));
+}
+
+function subtenantNameOf(row, names) {
+    if (row.kind === 'SUBLET_MEMBER') return names.get(row.subShopId) || '-';
+    if (row.kind === 'SUBLET_GUEST') return row.guestName ? `${row.guestName} (นอกตลาด)` : '-';
+    return null;
+}
+
+// ข้อความสั้นสำหรับป้ายบนผัง/การ์ด: { kind, label, subtenant, from, rangeText }
+function leaveBadgeOf(row) {
+    return {
+        id: row.id,
+        kind: row.kind,
+        label: row.kind === 'LEAVE' ? 'ลาหยุด' : 'เช่าช่วง',
+        subtenant: row.subtenantName || null,
+        from: row.shopName || null,
+        rangeText: rangeText(row)
+    };
+}
+
+// ข้อมูลร้านที่มาขายแทนวันนี้ (ผังตลาดฝั่งลูกค้า) — Map stallCode → { row, shop (สมาชิก) }
+async function loadSubletOccupants(rows) {
+    const memberIds = [...new Set(rows.filter((r) => r.kind === 'SUBLET_MEMBER').map((r) => r.subShopId).filter(Boolean))];
+    const shops = memberIds.length
+        ? await prisma.shopDetail.findMany({
+            where: { id: { in: memberIds } },
+            select: {
+                id: true, userId: true, shopName: true, productType: true, productSubtype: true, productDetail: true, productImage: true,
+                shopCoverImage: true, logoImage: true, shopTags: true, shopSummary: true,
+                menuImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } },
+                productImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } }
+            }
+        })
+        : [];
+    const shopById = new Map(shops.map((s) => [s.id, s]));
+    return new Map(rows.filter((r) => r.kind !== 'LEAVE').map((r) => [r.stallCode, { row: r, shop: r.subShopId ? shopById.get(r.subShopId) || null : null }]));
+}
+
 // แจ้งเตือนเจ้าของแผงเมื่อแอดมินตัดสินแล้ว (หน้า /notifications) — 30 วันล่าสุด
 async function buildLeaveNotifications(userId, now = new Date()) {
     if (!userId) return [];
@@ -698,5 +743,9 @@ module.exports = {
     listForOwner,
     loadAdminPage,
     getApprovedOnDay,
+    loadApprovedInRange,
+    leaveBadgeOf,
+    loadSubletOccupants,
+    guestImagesOf,
     buildLeaveNotifications
 };

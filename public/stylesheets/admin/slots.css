@@ -1942,3 +1942,12 @@ body.day-loading .map-shell {
         width: min(300px, calc(100vw - 32px));
     }
 }
+
+/* ลาหยุด (ลายเส้นทแยง) / เช่าช่วงให้ร้านอื่นขายแทน (ขอบประม่วง) ในวันที่ดู — utils/stallLeave.js */
+.stall-cell.booked.on-leave {
+    background-image: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.18) 0 3px, transparent 3px 8px);
+}
+.stall-cell.booked.on-sublet {
+    outline: 2px dashed #6c3483;
+    outline-offset: -4px;
+}

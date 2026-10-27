@@ -43,6 +43,13 @@ function applyStallStateClasses(cell, stall) {
         }
         if (stall.occupant && stall.occupant.isNewCustomer) cell.classList.add('occ-new');
         if (!IS_TODAY_VIEW && stall.isLastDay) cell.classList.add('last-day');
+        // ลาหยุด/เช่าช่วงที่อนุมัติแล้ววันนั้น (utils/stallLeave.js)
+        if (stall.leave) {
+            cell.classList.add(stall.leave.kind === 'LEAVE' ? 'on-leave' : 'on-sublet');
+            cell.title = stall.leave.kind === 'LEAVE'
+                ? `${stall.code} ลาหยุด (${stall.leave.rangeText})`
+                : `${stall.code} เช่าช่วง: ${stall.leave.subtenant} (${stall.leave.rangeText})`;
+        }
     } else if (stall.status === 'MAINTENANCE') {
         cell.classList.add('maintenance');
     } else {
@@ -534,7 +541,9 @@ function showInfo(id) {
     const shopName = (occ && occ.shopName) || (d && d.shop) || 'ไม่พบชื่อร้าน';
     const badgeText = occupantBadgeText(occ);
 
-    document.getElementById('ic-head').textContent = `แผง ${id} — ${shopName}`;
+    const leave = stallInfo && stallInfo.leave;
+    const leaveText = leave ? (leave.kind === 'LEAVE' ? ' · ลาหยุด' : ` · เช่าช่วงให้ ${leave.subtenant}`) : '';
+    document.getElementById('ic-head').textContent = `แผง ${id} — ${shopName}${leaveText}`;
     document.getElementById('ic-shop').textContent = shopName + badgeText;
     document.getElementById('ic-product').textContent = occ
         ? ([occ.productTypeText, occ.productSubtype].filter(Boolean).join(' · ') || '-')

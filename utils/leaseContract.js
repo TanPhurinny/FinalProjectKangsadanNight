@@ -3,6 +3,8 @@ const { bahtText } = require('./bahtText');
 const { buildClauses } = require('./leaseContractTemplate');
 const { COMPANY_INFO } = require('../controllers/quotationController');
 const { getPrimaryShop } = require('./shops');
+const prisma = require('../config/prismaClient');
+const stallLeave = require('./stallLeave');
 
 // สร้างข้อมูลสัญญาเช่าจากประวัติการจองที่ชำระแล้วของร้าน ในช่วงวันที่ร้านขอ (LeaseContractRequest)
 // 1 สัญญา = 1 ร้าน (shopId) รวมทุกแผงของร้านนั้น — ผู้ใช้ที่มีหลายร้านขอแยกฉบับต่อร้าน
@@ -46,9 +48,40 @@ async function loadContractRows(request, shopId) {
     return rows.filter((row) => row.status === 'PAID' && (!cutoff || !row.paidAt || new Date(row.paidAt) <= cutoff));
 }
 
+// ลาหยุด/เช่าช่วงที่แอดมินอนุมัติแล้วของร้านนี้ในช่วงสัญญา (ภาคผนวก) — หลังอนุมัติสัญญาแล้วนับเฉพาะที่อนุมัติก่อน issuedAt
+async function loadContractLeaves(request, shopId) {
+    if (!shopId) return [];
+    const cutoff = request.status === 'ISSUED' && request.issuedAt ? new Date(request.issuedAt) : null;
+    const rows = await prisma.stallLeaveRequest.findMany({
+        where: {
+            shopId,
+            status: 'APPROVED',
+            startDate: { lte: request.periodEnd },
+            endDate: { gte: request.periodStart },
+            ...(cutoff ? { reviewedAt: { lte: cutoff } } : {})
+        },
+        orderBy: { startDate: 'asc' }
+    });
+    const subShopIds = [...new Set(rows.map((r) => r.subShopId).filter(Boolean))];
+    const subShops = subShopIds.length ? await prisma.shopDetail.findMany({ where: { id: { in: subShopIds } }, select: { id: true, shopName: true } }) : [];
+    const nameById = new Map(subShops.map((s) => [s.id, s.shopName || '-']));
+    return rows.map((row) => ({
+        kindLabel: row.kind === 'LEAVE' ? 'ลาหยุด' : 'เช่าช่วง',
+        stallCode: row.stallCode,
+        rangeText: stallLeave.rangeText(row),
+        subtenant: row.kind === 'SUBLET_MEMBER' ? `ร้าน ${nameById.get(row.subShopId) || '-'} (สมาชิกตลาด)`
+            : row.kind === 'SUBLET_GUEST' ? `${row.guestName || '-'} (ผู้ขายนอกตลาด)` : '-',
+        approvedText: rentalStatement.formatThaiDate(row.reviewedAt)
+    }));
+}
+
 async function buildLeaseContractData(request) {
     const shopId = await contractShopId(request);
-    const [seller, rows] = await Promise.all([rentalStatement.loadSellerInfo(request.userId, shopId), loadContractRows(request, shopId)]);
+    const [seller, rows, leaves] = await Promise.all([
+        rentalStatement.loadSellerInfo(request.userId, shopId),
+        loadContractRows(request, shopId),
+        loadContractLeaves(request, shopId)
+    ]);
     if (!seller) return null;
     const totals = rentalStatement.summarizeRows(rows);
     const byStall = rentalStatement.groupByStall(rows);
@@ -81,6 +114,7 @@ async function buildLeaseContractData(request) {
         rows,
         byStall,
         totals,
+        leaves,
         clauses: buildClauses(ctx),
         shopId,
         ownerUserId: request.userId

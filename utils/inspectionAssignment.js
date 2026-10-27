@@ -1,4 +1,5 @@
 const prisma = require('../config/prismaClient');
+const { getApprovedOnDay } = require('./stallLeave');
 const { businessDateOf } = require('./shopOpenStatus');
 const { buildPreferredWalkOrder } = require('./inspectionWalkOrder');
 const { buildTodayInspectionLayer } = require('./inspectionToday');
@@ -27,10 +28,15 @@ async function getInspectableStalls() {
     const paidCodes = new Set(paidRequests.flatMap((request) => parseStallCodes(request.assignedStallCode)));
     if (!paidCodes.size) return [];
 
-    const stalls = await prisma.stall.findMany({
-        where: { stallCode: { in: Array.from(paidCodes) }, status: 'BOOKED' },
-        select: { id: true, stallCode: true }
-    });
+    const [allStalls, leaves] = await Promise.all([
+        prisma.stall.findMany({
+            where: { stallCode: { in: Array.from(paidCodes) }, status: 'BOOKED' },
+            select: { id: true, stallCode: true }
+        }),
+        getApprovedOnDay(businessDateOf())
+    ]);
+    // ล็อกที่ร้านลาหยุดวันนี้ (แอดมินอนุมัติแล้ว utils/stallLeave.js) ไม่ต้องเดินตรวจ — เช่าช่วงยังตรวจตามปกติ
+    const stalls = allStalls.filter((stall) => leaves.get(String(stall.stallCode).toUpperCase())?.kind !== 'LEAVE');
 
     const orderIndex = new Map(buildPreferredWalkOrder().map((code, idx) => [code, idx]));
     const orderOf = (code) => (orderIndex.has(code) ? orderIndex.get(code) : Number.POSITIVE_INFINITY);

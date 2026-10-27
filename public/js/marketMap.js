@@ -914,7 +914,9 @@ function renderRoleActions(id, zone, isVacant) {
         const insp = inspectionOf(id);
         if (!isVacant) {
             const d0 = BOOKING_BY_STALL[id] || {};
-            if (d0.closedAt) notes.push(`<div>ผู้ขายแจ้ง<b>ปิดร้านวันนี้</b> เมื่อ ${formatClock(d0.closedAt)} น.</div>`);
+            if (d0.leave) notes.push(`<div>ร้าน<b>ลาหยุด</b> (แอดมินอนุมัติแล้ว · ${escapeHtml(d0.leave.rangeText)})</div>`);
+            else if (d0.closedAt) notes.push(`<div>ผู้ขายแจ้ง<b>ปิดร้านวันนี้</b> เมื่อ ${formatClock(d0.closedAt)} น.</div>`);
+            if (d0.sublet) notes.push(`<div><b>เช่าช่วง</b> จากร้าน ${escapeHtml(d0.sublet.from)}${d0.sublet.isGuest ? ' (ผู้ขายนอกตลาด)' : ''} · ${escapeHtml(d0.sublet.rangeText)}</div>`);
         }
         if (insp) {
             const st = INSPECTION_STATUS[insp.status];
@@ -1736,7 +1738,7 @@ function isCardShowing(code) {
 function renderCardRating(id, d) {
     const ratingBtn = document.getElementById('icRating');
     const section = document.getElementById('icReviews');
-    if (d.isEvent) {
+    if (d.isEvent || d.noReviews) {
         ratingBtn.classList.add('d-none');
         section.classList.add('d-none');
         return;
@@ -2180,7 +2182,7 @@ function showInfo(id) {
     document.getElementById('icNewBadge').classList.toggle('d-none', !d.isNew);
     const closedBadge = document.getElementById('icOpenBadge');
     closedBadge.classList.toggle('d-none', !d.closedAt);
-    if (d.closedAt) closedBadge.textContent = `ปิดร้านแล้ววันนี้ · ปิดเมื่อ ${formatClock(d.closedAt)} น.`;
+    if (d.closedAt) closedBadge.textContent = d.leave ? 'ร้านลาหยุดวันนี้' : `ปิดร้านแล้ววันนี้ · ปิดเมื่อ ${formatClock(d.closedAt)} น.`;
     const promoEl = document.getElementById('icPromo');
     promoEl.classList.toggle('d-none', !hasPromo(id));
     if (hasPromo(id)) promoEl.querySelector('span').textContent = d.promo;

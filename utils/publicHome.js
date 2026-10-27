@@ -2,11 +2,12 @@ const prisma = require('../config/prismaClient');
 const { getStallOwnerIndex } = require('./shopViews');
 const { getClosedShopsToday, businessDateOf } = require('./shopOpenStatus');
 const { getRoundTimeline } = require('./bookingRound');
+const { getApprovedOnDay } = require('./stallLeave');
 
 // ข้อมูลหน้าแรกสาธารณะ (/) สำหรับคนที่ยังไม่ล็อกอิน: จำนวนร้านคืนนี้ + รอบจองถัดไป
 // ตัวเลขเป็นยอดรวมทั้งตลาดเท่านั้น ไม่บอกล็อกว่าง/วันหมดสัญญา/ราคาแผง (ข้อมูลภายใน ดู getMarketMapPage)
 // ร้าน = ร้านของล็อก (ร้านหลายล็อกนับ 1) ที่สัญญาครอบคลุมวันขายนี้ ไม่นับบูธกิจกรรมโซน G
-// เปิดคืนนี้ = ร้านเหล่านั้นที่ไม่ได้กด "ปิดร้านวันนี้" (ทุกร้านเปิดเป็นค่าเริ่มต้น — utils/shopOpenStatus.js)
+// เปิดคืนนี้ = ร้านเหล่านั้นที่ไม่ได้กด "ปิดร้านวันนี้" (ทุกร้านเปิดเป็นค่าเริ่มต้น — utils/shopOpenStatus.js) และไม่ได้ลาหยุดทุกแผง
 async function buildPublicHome(now = new Date()) {
     const businessDate = businessDateOf(now);
     const dayEnd = new Date(businessDate);
@@ -37,7 +38,18 @@ async function buildPublicHome(now = new Date()) {
             shopKeys.add(`s${stall.stallCode}`);
         }
     });
-    const closed = await getClosedShopsToday([...shopIds], now);
+    const [closed, leaves] = await Promise.all([getClosedShopsToday([...shopIds], now), getApprovedOnDay(businessDate)]);
+    // ร้านที่ลาหยุดทุกแผงวันนี้ (อนุมัติแล้ว) นับเป็นปิด — แผงที่ให้เช่าช่วงยังมีคนขาย นับเป็นเปิด
+    const stallsByShop = new Map();
+    stalls.forEach((stall) => {
+        const owner = ownerByCode.get(String(stall.stallCode).toUpperCase());
+        if (!owner || !owner.shopId) return;
+        if (!stallsByShop.has(owner.shopId)) stallsByShop.set(owner.shopId, []);
+        stallsByShop.get(owner.shopId).push(String(stall.stallCode).toUpperCase());
+    });
+    stallsByShop.forEach((codes, shopId) => {
+        if (codes.every((code) => leaves.get(code)?.kind === 'LEAVE')) closed.set(shopId, true);
+    });
 
     return {
         shopCount: shopKeys.size,

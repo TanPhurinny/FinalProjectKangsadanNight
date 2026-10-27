@@ -7,6 +7,7 @@ const { toStartOfDay, addDays } = require('./bookingRound');
 const { businessDateOf } = require('./shopOpenStatus');
 const { getHolidaysInRange } = require('./bookingHolidays');
 const { loadEventBoothRequestsInRange, eventBoothStatusOnDay } = require('./eventBooth');
+const { loadApprovedInRange, leaveBadgeOf } = require('./stallLeave');
 
 const ACTIVE_BOOKING_STATUSES = ['APPROVED', 'IN_PROGRESS', 'SUCCESS'];
 // มีหลาย Booking ทับวันเดียวกันในล็อกเดียว (เช่น คำขอเก่าค้าง IN_PROGRESS) ให้เชื่อตัวที่จ่ายเงินแล้วก่อน
@@ -66,7 +67,7 @@ async function loadRangeData(from, to) {
     const start = toStartOfDay(from);
     const end = toStartOfDay(to);
     const endOfLastDay = new Date(addDays(end, 1).getTime() - 1);
-    const [stalls, bookings, holidays, eventRequests] = await Promise.all([
+    const [stalls, bookings, holidays, eventRequests, leaves] = await Promise.all([
         prisma.stall.findMany({ select: { stallCode: true, status: true, bookingStartDate: true, bookingEndDate: true } }),
         prisma.booking.findMany({
             where: {
@@ -78,10 +79,12 @@ async function loadRangeData(from, to) {
         }),
         getHolidaysInRange(start, end),
         // บูธกิจกรรม (โซน G) ไม่มี Booking — สถานะมาจาก EventBoothRequest ที่ครอบวันนั้น (utils/eventBooth.js)
-        loadEventBoothRequestsInRange(start, end)
+        loadEventBoothRequestsInRange(start, end),
+        // ลาหยุด/เช่าช่วงที่อนุมัติแล้ว (utils/stallLeave.js) — ติดป้ายบนล็อกที่มีร้านถือ ไม่เปลี่ยนสถานะว่าง/จอง
+        loadApprovedInRange(start, end)
     ]);
     const holidayKeys = new Set(holidays.map((holiday) => toDateKey(toStartOfDay(holiday.date))));
-    return { stalls, bookings, holidayKeys, eventRequests };
+    return { stalls, bookings, holidayKeys, eventRequests, leaves };
 }
 
 // คืน { byCode: { A101: { state, bookingId, bookingStatus, endDate, isLastDay, startsToday, mismatch } }, date, isHoliday }
@@ -153,6 +156,12 @@ function statusOnDay(data, date) {
         }
 
         byCode[code] = { state: 'free' };
+    });
+
+    (data.leaves || []).forEach((leave) => {
+        if (!covers(leave.startDate, leave.endDate, day)) return;
+        const entry = byCode[leave.stallCode];
+        if (entry && (entry.state === 'paid' || entry.state === 'unpaid')) entry.leave = leaveBadgeOf(leave);
     });
 
     return { byCode, date: day, isHoliday: data.holidayKeys.has(toDateKey(day)) };

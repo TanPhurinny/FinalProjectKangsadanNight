@@ -155,7 +155,7 @@
                                             <td class="num mono"><%= money(shop.baseRent) %></td>
                                             <td class="num mono js-amount"><%= money(shop.amount) %></td>
                                             <td class="cell-note">
-                                                <% if (shop.closed) { %><span class="state-badge state-revoked">กดปิดร้านวันนี้</span><% } %>
+                                                <% if (shop.onLeave) { %><span class="state-badge state-revoked">ลาหยุดวันนี้</span><% } else if (shop.closed) { %><span class="state-badge state-revoked">กดปิดร้านวันนี้</span><% } %>
                                                 <% if (shop.capped) { %><span class="state-badge state-past">สะสมครบ <%= limits.maxActive %> ครั้ง ไม่ได้รับ</span><% } else if (shop.activeCount) { %><span class="cell-sub">มีอยู่ <%= shop.activeCount %> ครั้ง</span><% } %>
                                             </td>
                                         </tr>

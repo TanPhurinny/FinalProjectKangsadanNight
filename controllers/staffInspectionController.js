@@ -1,4 +1,5 @@
 const prisma = require('../config/prismaClient');
+const stallLeave = require('../utils/stallLeave');
 const { electricExcessInputSchema, inspectionCheckInputSchema, stallIssueInputSchema, cleanlinessInspectionInputSchema } = require('../utils/validationSchemas');
 const { buildZonesData } = require('./marketController');
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundWindow } = require('../utils/bookingRound');
@@ -242,6 +243,10 @@ exports.getMarketInspectionPage = async (req, res) => {
 
         const preferredOrder = buildPreferredWalkOrder();
         const preferredIndex = new Map(preferredOrder.map((code, idx) => [code, idx]));
+        // ลาหยุด/เช่าช่วงที่อนุมัติแล้ววันนี้ (เฉพาะรอบปัจจุบัน) — ลาหยุดปิดการบันทึก (ไม่ใช่ "ไม่มาขาย"), เช่าช่วงบอกว่าใครขายแทน
+        const leaveToday = isCurrentRound ? await stallLeave.getApprovedOnDay(businessDateOf(new Date())) : new Map();
+        const leaveNames = isCurrentRound ? await stallLeave.loadApprovedInRange(businessDateOf(new Date()), businessDateOf(new Date())) : [];
+        const leaveBadgeByCode = new Map(leaveNames.map((row) => [row.stallCode, stallLeave.leaveBadgeOf(row)]));
 
         const excessRecords = await prisma.stallElectricExcessRecord.findMany({
             where: {
@@ -280,6 +285,8 @@ exports.getMarketInspectionPage = async (req, res) => {
             // ยึดจาก booking (มาจาก BookingRequest ที่ SUCCESS เท่านั้น) เป็นตัวตัดสิน "ว่าง" เพียงตัวเดียว
             // ไม่ใช้ stall.status === 'BOOKED' อีกต่อไป เพราะ field นั้นถูกตั้งตั้งแต่ตอน IN_PROGRESS (ยังไม่จ่ายเงิน)
             const isVacant = !booking;
+            const leave = isVacant ? null : (leaveBadgeByCode.get(String(stall.stallCode || '').trim().toUpperCase()) || null);
+            const onLeave = Boolean(leave && leave.kind === 'LEAVE' && leaveToday.size);
             const excess = latestExcessByStallId.get(stall.id) || null;
             const issue = latestIssueByStallId.get(stall.id) || null;
 
@@ -300,7 +307,12 @@ exports.getMarketInspectionPage = async (req, res) => {
                 bookingEndDate: null,
                 isVacant,
                 // รอบเก่า/รอบถัดไปเปิดดูได้อย่างเดียว บันทึก/แก้ไขได้เฉพาะรอบปัจจุบันเท่านั้น
-                inspectionEnabled: !isVacant && isCurrentRound,
+                inspectionEnabled: !isVacant && isCurrentRound && !onLeave,
+                leaveNote: leave
+                    ? (leave.kind === 'LEAVE'
+                        ? `ลาหยุดวันนี้ (แอดมินอนุมัติแล้ว · ${leave.rangeText}) ไม่ต้องตรวจ`
+                        : `เช่าช่วงที่อนุมัติแล้ว: ${leave.subtenant} ขายแทน (${leave.rangeText}) ไม่ต้องติ๊ก "ปล่อยเช่าช่วง"`)
+                    : null,
                 // เฉพาะร้านที่ลงทะเบียนเป็น "อาหาร" จริง (ไม่ใช่เช็คจากโซน เพราะโซน A เป็นโซนผสมแฟชั่น+อาหาร)
                 isFoodStall: !isVacant && normalizeProductType(booking?.productType) === 'FOOD',
                 electricExcess: excess ? {
@@ -699,6 +711,11 @@ exports.submitDay = async (req, res) => {
         // นับเฉพาะล็อคที่เปิดให้ตรวจได้จริง (มีการจองและชำระเงินแล้ว) ตรงกับ inspectionEnabled บนหน้า
         const stallRows = await prisma.stall.findMany({ select: { id: true, stallCode: true, status: true } });
         const bookedFlags = await Promise.all(stallRows.map((stall) => isStallPaidAndBooked(stall.stallCode, stall.status)));
+        // ล็อกที่ลาหยุดวันนี้ (อนุมัติแล้ว) ไม่นับเป็นงานตรวจ
+        const leaveToday = await stallLeave.getApprovedOnDay(businessDateOf(new Date()));
+        stallRows.forEach((stall, idx) => {
+            if (leaveToday.get(String(stall.stallCode).toUpperCase())?.kind === 'LEAVE') bookedFlags[idx] = false;
+        });
         const bookedStallIds = stallRows.filter((_, idx) => bookedFlags[idx]).map((stall) => stall.id);
         const bookedStallByCode = new Map(
             stallRows.filter((_, idx) => bookedFlags[idx]).map((stall) => [stall.id, stall.stallCode])

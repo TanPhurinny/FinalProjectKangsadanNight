@@ -235,6 +235,7 @@
                                 <div class="stall-meta">แถว <%= stall.rowCode %> | ร้าน <%= stall.shopName %></div>
                                 <div class="stall-meta">ชื่อผู้ขาย <%= stall.sellerName %> | โทร <%= stall.sellerPhone %></div>
                                 <div class="stall-meta">สินค้าหลัก <%= stall.productDetail %></div>
+                                <% if (stall.leaveNote) { %><div class="stall-meta" style="color:#6c3483;font-weight:600"><%= stall.leaveNote %></div><% } %>
                             </td>
                             <td data-label="ไม่มาขาย" data-issue="no-show"><input type="checkbox" data-issue="no-show" data-role="issue-field" data-stall-id="<%= stall.id %>" <%= stall.issues.noShow ? 'checked' : '' %> <%= fieldsDisabled ? 'disabled' : '' %>></td>
                             <td data-label="ปล่อยเช่าช่วง" data-issue="sublease"><input type="checkbox" data-issue="sublease" data-role="issue-field" data-stall-id="<%= stall.id %>" <%= stall.issues.sublease ? 'checked' : '' %> <%= fieldsDisabled ? 'disabled' : '' %>></td>
@@ -408,6 +409,7 @@
                                     <div class="stall-meta">แถว <%= stall.rowCode %> | ร้าน <%= stall.shopName %></div>
                                     <div class="stall-meta">ชื่อผู้ขาย <%= stall.sellerName %> | โทร <%= stall.sellerPhone %></div>
                                     <div class="stall-meta">สินค้าหลัก <%= stall.productDetail %></div>
+                                    <% if (stall.leaveNote) { %><div class="stall-meta" style="color:#6c3483;font-weight:600"><%= stall.leaveNote %></div><% } %>
                                 </td>
                                 <td><span class="cleanliness-status-badge status-<%= statusClass %>" data-role="cleanliness-status"><%= statusLabel %></span></td>
                                 <td data-role="cleanliness-checked-at">

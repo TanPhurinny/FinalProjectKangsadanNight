@@ -167,16 +167,21 @@ async function findEligibleShops(date, now = new Date()) {
     });
 
     const userIds = [...byUser.keys()];
-    const [closedRows, activeCounts] = await Promise.all([
+    const [closedRows, activeCounts, leaves] = await Promise.all([
         userIds.length
             ? prisma.shopOpenStatus.findMany({
                 where: { userId: { in: userIds }, businessDate: day, closedAt: { not: null } },
                 select: { userId: true }
             })
             : [],
-        countActiveCredits(userIds, now)
+        countActiveCredits(userIds, now),
+        // ลาหยุดที่แอดมินอนุมัติแล้วในวันนั้น (utils/stallLeave.js) — ลาครบทุกล็อก = ไม่ได้มาขาย ไม่ติ๊กไว้ก่อนเหมือนร้านที่กดปิด
+        require('./stallLeave').getApprovedOnDay(day)
     ]);
     const closedSet = new Set(closedRows.map((row) => row.userId));
+    const onLeaveSet = new Set([...byUser.values()]
+        .filter((shop) => [...shop.stalls.keys()].every((code) => leaves.get(code)?.kind === 'LEAVE'))
+        .map((shop) => shop.userId));
 
     return [...byUser.values()]
         .map((shop) => {
@@ -190,7 +195,8 @@ async function findEligibleShops(date, now = new Date()) {
                 stallCodes,
                 baseRent,
                 sourceRequestId: shop.sourceRequestId,
-                closed: closedSet.has(shop.userId),
+                closed: closedSet.has(shop.userId) || onLeaveSet.has(shop.userId),
+                onLeave: onLeaveSet.has(shop.userId),
                 activeCount,
                 capped: activeCount >= MAX_ACTIVE_CREDITS
             };
