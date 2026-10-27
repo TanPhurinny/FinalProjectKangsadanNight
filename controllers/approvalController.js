@@ -14,6 +14,7 @@ const { BOOKING_REQUEST_TAG_PREFIX, buildBookingRequestTag, stripInternalTags } 
 const { sendStallExpiringSoonEmail } = require('../config/mailer');
 const { describeBookingAppliances } = require('../utils/bookingAppliances');
 const { isEventBoothCode } = require('../utils/eventBooth');
+const { shopsRelation, primaryShop, getPrimaryShop } = require('../utils/shops');
 
 function normalizeZone(zone) {
     return String(zone || '').trim().toUpperCase();
@@ -168,13 +169,13 @@ async function buildAdminBookingStallPageData(requestId) {
     // จำกัดตัวเลือกโซนบนหน้านี้ให้ตรงกับประเภทสินค้าที่ผู้ขายลงทะเบียนไว้ (กันแอดมินจัดผิดโซน เช่น ร้านอาหารไปได้โซนแฟชั่น)
     // ข้อมูลประเภทสินค้าจริงอยู่ที่ ShopDetail.productType ของเจ้าของคำขอ (BookingRequest.userId)
     const applicantUser = bookingRequest.userId
-        ? await prisma.user.findUnique({ where: { id: bookingRequest.userId }, include: { shop: true } })
+        ? await prisma.user.findUnique({ where: { id: bookingRequest.userId }, include: { shops: shopsRelation() } })
         : null;
     // ShopDetail ยังไม่ถูกสร้างจนกว่าแอดมินจะยืนยันสลิปสำเร็จ (ดูคอมเมนต์ที่ confirmSlipPayment) แต่หน้านี้
     // ใช้ตอน "จัดล็อก" ซึ่งเกิดก่อนจ่ายเงินเสมอ — ถ้ายังไม่มี ShopDetail ต้องย้อนไปดูใบสมัคร (SellerApplication)
     // ล่าสุดของผู้ใช้แทน ไม่งั้นประเภทสินค้าจะว่างเปล่าทุกคำขอที่ยังไม่เคยจ่ายเงินมาก่อน
-    let applicantProductType = applicantUser?.shop?.productType || null;
-    let applicantProductSubtype = applicantUser?.shop?.productSubtype || null;
+    let applicantProductType = primaryShop(applicantUser)?.productType || null;
+    let applicantProductSubtype = primaryShop(applicantUser)?.productSubtype || null;
     if (!applicantProductType || !applicantProductSubtype) {
         const latestApplication = await prisma.sellerApplication.findFirst({
             where: applicantUser?.id ? { userId: applicantUser.id } : { phoneNumber: bookingRequest.phone },
@@ -387,7 +388,7 @@ exports.getRequestHistory = async (req, res) => {
         const seller = request.userId
             ? await prisma.user.findUnique({
                 where: { id: request.userId },
-                select: { id: true, name: true, createdAt: true, isBlacklisted: true, blacklistReason: true, shop: { select: { shopName: true } } }
+                select: { id: true, name: true, createdAt: true, isBlacklisted: true, blacklistReason: true, shops: shopsRelation({ select: { shopName: true } }) }
             })
             : null;
 
@@ -450,7 +451,7 @@ exports.getRequestHistory = async (req, res) => {
         return res.json({
             ok: true,
             seller: seller
-                ? { id: seller.id, name: seller.shop?.shopName || seller.name, memberSinceText: toThaiDate(seller.createdAt), isBlacklisted: seller.isBlacklisted, blacklistReason: seller.blacklistReason || '' }
+                ? { id: seller.id, name: primaryShop(seller)?.shopName || seller.name, memberSinceText: toThaiDate(seller.createdAt), isBlacklisted: seller.isBlacklisted, blacklistReason: seller.blacklistReason || '' }
                 : null,
             counts,
             attendance: { presentDays, absentDays, recordedDays: presentDays + absentDays },
@@ -537,12 +538,12 @@ exports.getApprovalsPage = async (req, res) => {
                 where: { id: { in: sellerUserIds } },
                 select: {
                     id: true,
-                    shop: {
+                    shops: shopsRelation({
                         select: {
                             productImage: true,
                             shopCoverImage: true
                         }
-                    }
+                    })
                 }
             })
             : [];
@@ -551,7 +552,7 @@ exports.getApprovalsPage = async (req, res) => {
         sellerProfiles.forEach((profile) => {
             sellerImageMap.set(
                 profile.id,
-                profile.shop?.productImage || profile.shop?.shopCoverImage || null
+                primaryShop(profile)?.productImage || primaryShop(profile)?.shopCoverImage || null
             );
         });
 
@@ -839,8 +840,11 @@ async function markPaymentConfirmed(requestRecord, actorName, actionLabel = 'ย
             // มาก่อน (isSellerOrApplicant อนุญาตให้จองได้ตั้งแต่ใบสมัครยังรอตรวจสอบ) การยืนยันจ่ายเงินสำเร็จ
             // ของแอดมินในเส้นทางนี้จึงถือเป็นการอนุมัติโดยพฤตินัย — ไม่ปล่อยให้ผู้ขายกรอกชื่อร้าน/
             // ประเภทสินค้าเองใหม่ใน /shop-profile จนไม่ตรงกับที่สมัครมา
+            // 1 ผู้ใช้มีได้หลายร้าน: คำขอที่ระบุร้าน (shopId) ใช้ใบสมัครของร้านนั้น / คำขอที่ยังไม่ระบุร้าน
+            // (ผู้สมัครใหม่จองระหว่างรอตรวจใบสมัคร) ใช้ใบสมัครล่าสุดของผู้ใช้
+            const requestShopId = requestRecord.shopId || null;
             const latestApplication = await prisma.sellerApplication.findFirst({
-                where: { userId: paidBooking.userId },
+                where: { userId: paidBooking.userId, ...(requestShopId ? { shopId: requestShopId } : {}) },
                 orderBy: { createdAt: 'desc' }
             });
             if (latestApplication) {
@@ -854,10 +858,13 @@ async function markPaymentConfirmed(requestRecord, actorName, actionLabel = 'ย
                 // ชื่อร้าน/ประเภทสินค้า(+เฉพาะ) ยึดตามใบสมัครเสมอ (ผู้ขายแก้เองไม่ได้ ใช้จัดโซน/ระยะห่างล็อก)
                 // ส่วนรายละเอียด/แนะนำร้าน/เมนูเด่น/รูปปก ผู้ขายแก้ต่อได้ใน /shop-profile — เติมจากใบสมัครเฉพาะช่องที่ยังว่าง
                 // ไม่งั้นทุกครั้งที่ยืนยันสลิปรอบใหม่จะเขียนทับของที่ผู้ขายแก้ไว้กลับเป็นค่าตอนสมัคร
-                const existingShop = await prisma.shopDetail.findUnique({
-                    where: { userId: paidBooking.userId },
-                    select: { productDetail: true, shopSummary: true, shopTags: true, shopCoverImage: true, logoImage: true }
-                });
+                const targetShopId = requestShopId || latestApplication.shopId || null;
+                const existingShop = targetShopId
+                    ? await prisma.shopDetail.findUnique({
+                        where: { id: targetShopId },
+                        select: { id: true, productDetail: true, shopSummary: true, shopTags: true, shopCoverImage: true, logoImage: true }
+                    })
+                    : null;
                 const fillIfEmpty = (field) => (existingShop?.[field] ? {} : { [field]: latestApplication[field] || null });
                 const applicationShopData = {
                     shopName: latestApplication.shopName,
@@ -865,30 +872,40 @@ async function markPaymentConfirmed(requestRecord, actorName, actionLabel = 'ย
                     productSubtype: latestApplication.productSubtype,
                     productSubtypeOther: latestApplication.productSubtypeOther
                 };
-                const syncedShop = await prisma.shopDetail.upsert({
-                    where: { userId: paidBooking.userId },
-                    update: {
-                        ...applicationShopData,
-                        ...fillIfEmpty('productDetail'),
-                        ...fillIfEmpty('shopSummary'),
-                        ...fillIfEmpty('shopTags'),
-                        ...fillIfEmpty('shopCoverImage'),
-                        ...fillIfEmpty('logoImage'),
-                        isVerified: true,
-                        ...(paidZoneLabel ? { shopZoneLabel: paidZoneLabel } : {})
-                    },
-                    create: {
-                        userId: paidBooking.userId,
-                        ...applicationShopData,
-                        productDetail: latestApplication.productDetail,
-                        shopSummary: latestApplication.shopSummary,
-                        shopTags: latestApplication.shopTags,
-                        shopCoverImage: latestApplication.shopCoverImage,
-                        logoImage: latestApplication.logoImage,
-                        isVerified: true,
-                        shopZoneLabel: paidZoneLabel || null
-                    }
-                });
+                const syncedShop = existingShop
+                    ? await prisma.shopDetail.update({
+                        where: { id: existingShop.id },
+                        data: {
+                            ...applicationShopData,
+                            ...fillIfEmpty('productDetail'),
+                            ...fillIfEmpty('shopSummary'),
+                            ...fillIfEmpty('shopTags'),
+                            ...fillIfEmpty('shopCoverImage'),
+                            ...fillIfEmpty('logoImage'),
+                            isVerified: true,
+                            ...(paidZoneLabel ? { shopZoneLabel: paidZoneLabel } : {})
+                        }
+                    })
+                    : await prisma.shopDetail.create({
+                        data: {
+                            userId: paidBooking.userId,
+                            ...applicationShopData,
+                            productDetail: latestApplication.productDetail,
+                            shopSummary: latestApplication.shopSummary,
+                            shopTags: latestApplication.shopTags,
+                            shopCoverImage: latestApplication.shopCoverImage,
+                            logoImage: latestApplication.logoImage,
+                            isVerified: true,
+                            shopZoneLabel: paidZoneLabel || null
+                        }
+                    });
+                // ผูกใบสมัคร/คำขอจองเข้ากับร้านที่ได้ (ร้านใหม่ที่เพิ่งสร้าง หรือคำขอที่ยังไม่ระบุร้าน)
+                if (latestApplication.shopId !== syncedShop.id) {
+                    await prisma.sellerApplication.update({ where: { id: latestApplication.id }, data: { shopId: syncedShop.id } });
+                }
+                if (!requestShopId) {
+                    await prisma.bookingRequest.update({ where: { id: requestRecord.id }, data: { shopId: syncedShop.id } });
+                }
                 await copyApplicationGalleries(syncedShop, latestApplication);
                 // เบอร์ในใบสมัครคือเบอร์ที่ผู้สมัครยืนยันตอนสมัคร — ที่อื่นอ่านจาก User.phoneNumber
                 // (การ์ดล็อกบนผังตลาด, จับคู่คำขอจองล็อกกับผู้ใช้ด้านบน) ซิงก์แค่ตอนอนุมัติครั้งแรก
@@ -902,10 +919,10 @@ async function markPaymentConfirmed(requestRecord, actorName, actionLabel = 'ย
             } else if (paidZoneLabel) {
                 // ไม่มีใบสมัครใหม่ (เช่น ผู้ขายเดิมต่อ/จองล็อกใหม่ในรอบถัดไป) แต่มี ShopDetail อยู่แล้ว
                 // ก็ยังต้องอัปเดตโซนให้ตรงกับล็อกล่าสุดที่จ่ายเงินจริง
-                await prisma.shopDetail.updateMany({
-                    where: { userId: paidBooking.userId },
-                    data: { shopZoneLabel: paidZoneLabel }
-                });
+                const zoneShop = requestShopId ? { id: requestShopId } : await getPrimaryShop(paidBooking.userId, { select: { id: true } });
+                if (zoneShop) {
+                    await prisma.shopDetail.update({ where: { id: zoneShop.id }, data: { shopZoneLabel: paidZoneLabel } });
+                }
             }
         }
     }

@@ -30,6 +30,7 @@ function toThaiDate(value) {
 // ซึ่งไม่ได้ require กลับมาที่ไฟล์นี้ ไม่มีปัญหา circular แต่ใส่ตรงนี้เพื่อให้เห็นชัดว่าใช้แค่ฟังก์ชันเดียว
 const { getBookingRoundMetaForDate } = require('./bookingRound');
 const eventBooth = require('./eventBooth');
+const { shopsRelation, primaryShop } = require('./shops');
 
 // เติม stall.occupant ให้ทุกล็อกที่ "จองแล้ว" (ไม่ใช่ AVAILABLE/PLACEHOLDER) ในทุกโซนของ zonesData ที่ส่งเข้ามา
 // (แก้ไข object ตรงๆ ในตัว ไม่ return ค่าใหม่ — เรียกแล้วใช้ zonesData ตัวเดิมต่อได้เลย)
@@ -74,7 +75,7 @@ async function attachOccupantDetails(zonesData, options = {}) {
                         select: {
                             name: true,
                             phoneNumber: true,
-                            shop: { select: { shopName: true, productType: true, productSubtype: true, productImage: true, shopCoverImage: true } }
+                            shops: shopsRelation({ select: { shopName: true, productType: true, productSubtype: true, productImage: true, shopCoverImage: true } })
                         }
                     }
                 }
@@ -87,7 +88,7 @@ async function attachOccupantDetails(zonesData, options = {}) {
         const wantedId = bookingIdByCode ? bookingIdByCode[slot.slotNumber] : null;
         const occupantBooking = (wantedId && slot.bookings.find((b) => b.id === wantedId)) || slot.bookings[0];
         if (!occupantBooking) return;
-        const shop = occupantBooking.user?.shop || null;
+        const shop = primaryShop(occupantBooking.user) || null;
         const requestIdMatch = String(occupantBooking.storeDetailSnapshot || '').match(/^\[BOOKING_REQUEST_ID:(\d+)\]/);
         const info = {
             userId: occupantBooking.userId,

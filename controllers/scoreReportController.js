@@ -5,12 +5,13 @@ const {
     toStartOfDay
 } = require('../utils/bookingRound');
 const { getRoundCalendarDates, toDateKey } = require('../utils/inspectionScoring');
+const { shopsRelation, primaryShop } = require('../utils/shops');
 
 // หมายเหตุสำคัญ: ตัวตนร้านค้าที่ระบบใช้งานจริงคือ User (role SELLER) + ShopDetail — ไม่ใช่ Seller model
 // (ตรวจสอบแล้วว่าไม่มีที่ไหนในโค้ดทั้งระบบเรียก prisma.seller.create() เลย ตาราง Seller ว่างเปล่าเสมอ
 // Booking.sellerId/BookingItem จึงไม่เคยถูกเติมข้อมูลจริง) รหัส "seller" ในไฟล์นี้จึงหมายถึง User.id เสมอ
 function sellerDisplayName(sellerUser) {
-    return sellerUser?.shop?.shopName || sellerUser?.name || `ผู้ใช้ #${sellerUser?.id ?? '-'}`;
+    return primaryShop(sellerUser)?.shopName || sellerUser?.name || `ผู้ใช้ #${sellerUser?.id ?? '-'}`;
 }
 
 const REQUEST_TAG_REGEX = /\[BOOKING_REQUEST_ID:(\d+)\]/;
@@ -46,7 +47,7 @@ async function getSellerStallOccupancy(rangeStart, rangeEnd) {
                     name: true,
                     isBlacklisted: true,
                     blacklistReason: true,
-                    shop: { select: { shopName: true, productType: true, productDetail: true } }
+                    shops: shopsRelation({ select: { shopName: true, productType: true, productDetail: true } })
                 }
             }
         }
@@ -340,7 +341,7 @@ exports.getSellerScoresPage = async (req, res) => {
                 : [],
             prisma.user.findMany({
                 where: { isBlacklisted: true },
-                select: { id: true, name: true, blacklistReason: true, blacklistedAt: true, shop: { select: { shopName: true } } },
+                select: { id: true, name: true, blacklistReason: true, blacklistedAt: true, shops: shopsRelation({ select: { shopName: true } }) },
                 orderBy: { blacklistedAt: 'desc' }
             })
         ]);
@@ -376,7 +377,7 @@ exports.getSellerScoresPage = async (req, res) => {
             rows,
             blacklistedRows: isAdmin ? blacklistedUsers.map((blacklisted) => ({
                 userId: blacklisted.id,
-                sellerName: blacklisted.shop?.shopName || blacklisted.name,
+                sellerName: primaryShop(blacklisted)?.shopName || blacklisted.name,
                 reason: blacklisted.blacklistReason || '',
                 blacklistedAt: blacklisted.blacklistedAt
             })) : [],

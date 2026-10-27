@@ -37,6 +37,7 @@
             <div class="quotation-field"><span>สาขา</span><b><%= data.branch %></b></div>
             <div class="quotation-field"><span>ที่อยู่</span><b><%= data.address %></b></div>
             <div class="quotation-field"><span>โทร</span><b><%= data.phoneNumber %></b></div>
+            <% if (data.shopNames && data.shopNames.length) { %><div class="quotation-field"><span>ร้าน</span><b><%= data.shopNames.join(", ") %></b></div><% } %>
         </div>
         <div class="quotation-meta-col quotation-meta-col-right">
             <div class="quotation-field"><span>เลขที่</span><b><%= data.documentNumber %></b></div>

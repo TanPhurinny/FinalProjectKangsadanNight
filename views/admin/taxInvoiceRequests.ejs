@@ -91,7 +91,7 @@
                 <% rows.forEach(function(r) { %>
                 <div class="tax-card"
                     data-status="<%= r.status %>"
-                    data-search="<%= String(`${r.taxpayerName} ${r.requestedByName} ${r.taxId}`).toLowerCase() %>">
+                    data-search="<%= String(`${r.taxpayerName} ${r.requestedByName} ${r.taxId} ${(r.shopNames || []).join(' ')}`).toLowerCase() %>">
                     <div class="card-header">
                         <h3 class="shop-name"><%= r.taxpayerName %></h3>
                         <span class="badge <%= r.status.toLowerCase() %>"><%= r.statusLabel %></span>
@@ -114,6 +114,7 @@
                         <p><i class="fa-solid fa-user"></i> ผู้ขอ: <%= r.requestedByName %></p>
                         <p><i class="fa-solid fa-calendar-check"></i> ยื่นคำขอ: <%= fmtDate(r.requestedAt) %></p>
                         <p><i class="fa-solid fa-receipt"></i> <%= r.quotationCount %> ใบเสนอราคา</p>
+                        <% if (r.shopNames && r.shopNames.length) { %><p><i class="fa-solid fa-store"></i> ร้าน <%= r.shopNames.join(', ') %></p><% } %>
                         <p><i class="fa-solid fa-coins"></i> ยอดรวม: <%= fmtMoney(r.netTotal) %> บาท</p>
                     </div>
 

@@ -1,5 +1,6 @@
 const prisma = require('../config/prismaClient');
 const { getStallOwnerIndex } = require('./shopViews');
+const { shopsRelation } = require('./shops');
 
 // รีวิวร้านค้า (ตาราง ShopReview) — ใช้ทั้งการ์ดร้านบนผังตลาด หน้าร้านค้าของฉัน และหน้าแอดมิน /admin/shop-reviews
 // รีวิวผูกกับเจ้าของร้าน (shopUserId) ไม่ใช่รหัสล็อก: หาเจ้าของจากรหัสล็อกด้วยดัชนีเดียวกับสถิติคนดูร้าน
@@ -261,7 +262,7 @@ async function listReviewsForAdmin({ filter = 'all', q = '' } = {}) {
             { stallCode: { contains: term.toUpperCase() } },
             { user: { name: { contains: term } } },
             { shop: { name: { contains: term } } },
-            { shop: { shop: { shopName: { contains: term } } } }
+            { shop: { shops: { some: { shopName: { contains: term } } } } }
         ];
     }
     const [reviews, counts] = await Promise.all([
@@ -271,7 +272,7 @@ async function listReviewsForAdmin({ filter = 'all', q = '' } = {}) {
             take: 200,
             include: {
                 user: { select: { id: true, name: true, username: true, role: true } },
-                shop: { select: { id: true, name: true, shop: { select: { shopName: true } } } }
+                shop: { select: { id: true, name: true, shops: shopsRelation({ select: { shopName: true } }) } }
             }
         }),
         countReviewsForAdmin()

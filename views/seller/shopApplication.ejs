@@ -42,6 +42,8 @@
                 const fd = (typeof formData !== 'undefined' && formData) ? formData : {};
                 const termsAlreadyAccepted = fd.termsAccepted === 'true';
                 const successMsg = successParam === 'application_submitted' ? 'ส่งใบสมัครเปิดร้านค้าสำเร็จ กรุณารอแอดมินตรวจสอบ' : null;
+                // ผู้ขายที่มีร้านแล้วสมัครเปิดร้านเพิ่ม (/shop-application?new=1) — 1 ผู้ใช้มีได้หลายร้าน
+                const isNewShopMode = typeof newShopMode !== 'undefined' && newShopMode;
                 const errorMsg = {
                     'not_customer': 'บัญชีนี้สมัครเปิดร้านค้าไม่ได้',
                     'missing_fields': 'กรุณากรอกข้อมูลให้ครบถ้วน',
@@ -70,9 +72,9 @@
                 <%
                 // แถบสถานะใบสมัคร: ส่งแล้ว → แอดมินตรวจ → อนุมัติ → จองล็อก
                 // role ถูกดึงจาก DB ทุก request (middlewares/jwtAuth.js refreshUserRole) อนุมัติแล้วใช้เมนูร้านค้าได้ทันที ไม่ต้องล็อกอินใหม่
-                const isSellerAccount = user.role === 'SELLER';
+                const isSellerAccount = user.role === 'SELLER' && !isNewShopMode;
                 const appStatus = latestApplication ? latestApplication.status : null;
-                const showStatusTrack = isSellerAccount || (user.role === 'CUSTOMER' && (appStatus === 'PENDING' || appStatus === 'APPROVED'));
+                const showStatusTrack = isSellerAccount || ((user.role === 'CUSTOMER' || isNewShopMode) && (appStatus === 'PENDING' || appStatus === 'APPROVED'));
                 const fmtThaiDate = (value) => value ? new Date(value).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }) : '';
                 const approvedDone = isSellerAccount || appStatus === 'APPROVED';
                 const statusSteps = [
@@ -111,10 +113,11 @@
                         <a href="/select-zone" class="status-btn status-btn--primary"><i class="fa-solid fa-map-location-dot me-2"></i>เลือกโซน/จองล็อก</a>
                         <% if (isSellerAccount) { %>
                         <a href="/shop-profile" class="status-btn"><i class="fa-solid fa-store me-2"></i>ร้านค้าของฉัน</a>
+                        <a href="/shop-application?new=1" class="status-btn"><i class="fa-solid fa-plus me-2"></i>สมัครเปิดร้านเพิ่ม</a>
                         <% } %>
                     </div>
                 </div>
-                <% } else if (user.role !== 'CUSTOMER') { %>
+                <% } else if (user.role !== 'CUSTOMER' && !isNewShopMode) { %>
                 <p class="text-muted">บัญชีนี้ไม่ใช่บัญชีลูกค้าทั่วไป จึงไม่ต้องสมัครเปิดร้านค้า</p>
                 <% } else { %>
 
@@ -149,9 +152,16 @@
                     </button>
                 </div>
 
-                <form action="/shop-application" method="POST"
+                <% if (isNewShopMode) { %>
+                <div class="form-alert form-alert--info">
+                    <i class="fa-solid fa-store"></i>
+                    <span>สมัครเปิด<strong>ร้านใหม่</strong>เพิ่มจากร้านที่มีอยู่ — อนุมัติแล้วจะเป็นอีกร้านแยกกัน มีหน้าร้าน การจองแผง ใบกำกับภาษี และสัญญาเช่าของตัวเอง ร้านเดิมไม่เปลี่ยน</span>
+                </div>
+                <% } %>
+
+                <form action="/shop-application<%= isNewShopMode ? '?new=1' : '' %>" method="POST"
                     enctype="multipart/form-data" id="shopApplicationForm"
-                    data-draft-key="shopApplicationDraft:<%= user.id %>"
+                    data-draft-key="shopApplicationDraft:<%= user.id %><%= isNewShopMode ? ':new' : '' %>"
                     data-skip-draft="<%= errorMsg ? '1' : '' %>">
                     <input type="hidden" name="termsAccepted" id="termsAcceptedInput" value="<%= termsAlreadyAccepted ? 'true' : '' %>">
 
@@ -473,7 +483,7 @@
             </div>
         </div>
 
-        <% if (user.role === 'CUSTOMER' && !(latestApplication && (latestApplication.status === 'PENDING' || latestApplication.status === 'APPROVED'))) { %>
+        <% if ((user.role === 'CUSTOMER' || isNewShopMode) && !(latestApplication && (latestApplication.status === 'PENDING' || latestApplication.status === 'APPROVED'))) { %>
         <div class="rules-overlay" id="rulesOverlay" <%= termsAlreadyAccepted ? 'hidden' : '' %>>
             <div class="rules-modal">
                 <div class="rules-modal__header">
@@ -563,7 +573,7 @@
         </div>
         <% } %>
 
-        <% if (user.role === 'CUSTOMER' && !(latestApplication && (latestApplication.status === 'PENDING' || latestApplication.status === 'APPROVED'))) { %>
+        <% if ((user.role === 'CUSTOMER' || isNewShopMode) && !(latestApplication && (latestApplication.status === 'PENDING' || latestApplication.status === 'APPROVED'))) { %>
         <div class="rules-overlay" id="reviewOverlay" hidden>
             <div class="rules-modal" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
                 <div class="rules-modal__header">

@@ -11,12 +11,20 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
   <link rel="stylesheet" href="/stylesheets/rentalStatement.css?v=20261026b">
+  <link rel="stylesheet" href="/stylesheets/partials/shopSwitch.css?v=20261027">
 </head>
 <body class="rs-body">
 <script src="/js/common/tabSession.js"></script>
   <%- include('../partials/navbarSeller') %>
 
   <main class="rs-page">
+    <%
+      const statementShops = (typeof shops !== 'undefined' && shops) || [];
+      // ดูทุกร้าน (มีหลายร้าน) = ชื่อทุกร้าน / เลือกร้าน = ร้านนั้น
+      const shopLabel = !statement.shopId && statementShops.length > 1
+        ? statementShops.map((s) => s.shopName || 'ยังไม่ตั้งชื่อ').join(', ')
+        : statement.seller.shopName;
+    %>
     <div class="rs-print-head">
       <div>
         <strong><%= company.nameTh %></strong>
@@ -24,14 +32,14 @@
       </div>
       <div style="text-align:right">
         <strong>รายงานการเช่าและชำระเงิน</strong>
-        ผู้เช่า: <%= statement.seller.name %> (ร้าน <%= statement.seller.shopName %>)<br>
+        ผู้เช่า: <%= statement.seller.name %> (ร้าน <%= shopLabel %>)<br>
         ช่วง: <%= statement.range.label %> · พิมพ์เมื่อ <%= printedAt %>
       </div>
     </div>
 
     <header class="rs-head">
       <div>
-        <p class="rs-kicker">Seller Center · <%= statement.seller.shopName %></p>
+        <p class="rs-kicker">Seller Center · <%= shopLabel %></p>
         <h1 class="rs-title">รายงานการเช่าและชำระเงิน</h1>
         <p class="rs-lead">ทุกรอบที่ร้านคุณเช่าล็อกในช่วงที่เลือก ยอดที่ชำระแล้ว ยอดค้าง และเลขที่ใบเสร็จ/ใบกำกับภาษี
           ใช้ทำบัญชีหรือตรวจยอดก่อนขอสัญญาเช่าได้ — ข้อมูลนี้ดูได้อย่างเดียว ถ้ายอดไม่ตรงกรุณาติดต่อแอดมิน</p>
@@ -47,7 +55,8 @@
     <% if (typeof success !== 'undefined' && success) { %><div class="rs-notice rs-notice--success" role="status"><%= success %></div><% } %>
     <% if (typeof error !== 'undefined' && error) { %><div class="rs-notice rs-notice--danger" role="alert"><%= error %></div><% } %>
 
-    <%- include('../partials/rentalStatementFilter', { action: '/rental-statement', range: statement.range }) %>
+    <%- include('../partials/shopSwitch', { shops: statementShops, selectedShopId: statement.shopId, href: function (id) { return '/rental-statement?shop=' + id; }, allHref: '/rental-statement', label: 'ร้าน' }) %>
+    <%- include('../partials/rentalStatementFilter', { action: '/rental-statement', range: statement.range, extraHidden: { shop: statement.shopId } }) %>
 
     <%- include('../partials/rentalStatementBody', { statement, docPrefix: '' }) %>
 

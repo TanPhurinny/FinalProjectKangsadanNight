@@ -6,6 +6,10 @@
                 const eligibleQuotationList = (typeof eligibleQuotations !== 'undefined' && Array.isArray(eligibleQuotations)) ? eligibleQuotations : [];
                 const taxInvoiceProfileList = (typeof taxInvoiceProfiles !== 'undefined' && Array.isArray(taxInvoiceProfiles)) ? taxInvoiceProfiles : [];
                 const taxInvoiceRequestList = (typeof taxInvoiceRequests !== 'undefined' && Array.isArray(taxInvoiceRequests)) ? taxInvoiceRequests : [];
+                // ใบเสร็จจัดกลุ่มตามร้าน (1 ผู้ใช้มีได้หลายร้าน) — taxInvoiceController.groupEligibleByShop
+                const eligibleGroups = (typeof eligibleGroupsByShop !== 'undefined' && Array.isArray(eligibleGroupsByShop)) ? eligibleGroupsByShop : [{ shopId: null, shopName: null, items: eligibleQuotationList }];
+                const manyShopGroups = eligibleGroups.length > 1;
+                const baht2 = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 const taxSuccessMsg = successParam === 'tax_invoice_requested' ? 'ส่งคำขอใบกำกับภาษีเรียบร้อยแล้ว รอแอดมินดำเนินการ' : null;
                 const taxErrorMsg = {
                     'missing_booking_requests': 'กรุณาเลือกใบเสนอราคาอย่างน้อย 1 ใบ',
@@ -31,7 +35,7 @@
                 <% } %>
 
                 <form action="/tax-invoice-requests" method="POST" id="taxInvoiceForm" novalidate>
-                    <p class="text-muted small mb-2">1. เลือกใบเสนอราคาที่ต้องการออกใบกำกับภาษี</p>
+                    <p class="text-muted small mb-2">1. เลือกใบเสร็จ (ใบเสนอราคาที่ชำระแล้ว) ที่ต้องการออกใบกำกับภาษี<% if (manyShopGroups) { %> — จัดกลุ่มตามร้าน เลือกข้ามร้านได้ถ้าออกในนามเดียวกัน<% } %></p>
                     <div class="quotation-pick-list">
                         <% if (!eligibleQuotationList.length) { %>
                         <div class="quotation-pick-empty">ไม่มีใบเสนอราคาที่ขอใบกำกับภาษีได้ในขณะนี้</div>
@@ -39,15 +43,27 @@
                         <% if (eligibleQuotationList.length > 1) { %>
                         <label class="quotation-pick-row quotation-pick-all">
                             <input type="checkbox" id="pickAllQuotations">
-                            <span class="qn">เลือกทั้งหมด (<%= eligibleQuotationList.length %> ใบ)</span>
+                            <span class="qn">เลือกทั้งหมด<%= manyShopGroups ? 'ทุกร้าน' : '' %> (<%= eligibleQuotationList.length %> ใบ)</span>
                         </label>
                         <% } %>
-                        <% eligibleQuotationList.forEach(function(q) { %>
-                        <label class="quotation-pick-row">
-                            <input type="checkbox" name="bookingRequestIds" value="<%= q.id %>" data-amount="<%= Number(q.netTotal) || 0 %>">
-                            <span class="qn">เลขที่ <%= q.quotationNumber %></span>
-                            <span class="qa"><%= q.issuedDateLabel %> — <%= Number(q.netTotal).toLocaleString('th-TH', { minimumFractionDigits: 2 }) %> บาท</span>
+                        <% eligibleGroups.forEach(function(group, groupIndex) { %>
+                        <% if (manyShopGroups) { %>
+                        <label class="quotation-pick-row quotation-pick-shop">
+                            <input type="checkbox" data-pick-shop="<%= groupIndex %>">
+                            <span class="qn"><i class="fa-solid fa-store"></i> <%= group.shopName || 'ร้านไม่ระบุ' %></span>
+                            <span class="qa">เลือกทั้งร้าน · <%= group.items.length %> ใบ · <%= baht2(group.total) %> บาท</span>
                         </label>
+                        <% } %>
+                        <% group.items.forEach(function(q) { %>
+                        <label class="quotation-pick-row<%= manyShopGroups ? ' quotation-pick-row--nested' : '' %>">
+                            <input type="checkbox" name="bookingRequestIds" value="<%= q.id %>" data-amount="<%= Number(q.netTotal) || 0 %>" data-shop-group="<%= groupIndex %>">
+                            <span class="qn">
+                                เลขที่ <%= q.quotationNumber || '-' %>
+                                <% if (q.stallCodes) { %><small class="qd">แผง <%= q.stallCodes.join(', ') %><% if (q.roundNumber) { %> · รอบที่ <%= q.roundNumber %><% } %><% if (q.isExtension) { %> · ต่อล็อก<% } %> · <%= q.rentalPeriodText %></small><% } %>
+                            </span>
+                            <span class="qa">ชำระ <%= q.issuedDateLabel %> — <%= baht2(q.netTotal) %> บาท</span>
+                        </label>
+                        <% }) %>
                         <% }) %>
                     </div>
                     <div class="tax-pick-summary" id="quotationSummary" aria-live="polite">เลือกแล้ว 0 ใบ</div>
@@ -141,7 +157,7 @@
                     <div class="request-row">
                         <div class="request-row-main">
                             <span class="request-row-title"><%= r.taxpayerName %> <% if (r.documentNumber) { %>(เลขที่ <%= r.documentNumber %>)<% } %></span>
-                            <span class="request-row-meta"><%= r.quotationCount %> ใบเสนอราคา — <%= Number(r.netTotal).toLocaleString('th-TH', { minimumFractionDigits: 2 }) %> บาท</span>
+                            <span class="request-row-meta"><% if (manyShopGroups && r.shopNames && r.shopNames.length) { %>ร้าน <%= r.shopNames.join(', ') %> · <% } %><%= r.quotationCount %> ใบเสนอราคา — <%= Number(r.netTotal).toLocaleString('th-TH', { minimumFractionDigits: 2 }) %> บาท</span>
                         </div>
                         <span class="badge <%= r.status.toLowerCase() %>"><%= r.statusLabel %></span>
                         <% if (r.status === 'ISSUED') { %>

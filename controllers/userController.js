@@ -1,5 +1,6 @@
 const prisma = require('../config/prismaClient');
 const { updateRoleSchema, bulkUpdateRoleSchema } = require('../utils/validationSchemas');
+const { shopsRelation, primaryShop } = require('../utils/shops');
 
 // ข้อความแจ้งผลหลังทำรายการ — หน้า EJS แสดงเป็น toast ตามรหัสนี้
 const SUCCESS_MESSAGES = {
@@ -67,7 +68,7 @@ exports.getUsersPage = async (req, res) => {
                 isBlacklisted: true,
                 blacklistedAt: true,
                 blacklistReason: true,
-                shop: {
+                shops: shopsRelation({
                     select: {
                         shopName: true,
                         productType: true,
@@ -78,7 +79,7 @@ exports.getUsersPage = async (req, res) => {
                         logoImage: true,
                         isVerified: true
                     }
-                },
+                }),
                 _count: {
                     select: {
                         bookingRequests: true,
@@ -93,35 +94,38 @@ exports.getUsersPage = async (req, res) => {
 
         const stallsByUser = await loadCurrentStalls(rows.map((u) => u.id));
 
-        const users = rows.map((u) => ({
-            id: u.id,
-            username: u.username,
-            name: u.name,
-            role: u.role,
-            createdAt: toIso(u.createdAt),
-            birthDate: toIso(u.birthDate),
-            phoneNumber: u.phoneNumber || null,
-            email: u.email || null,
-            avatarUrl: imageOrNull(u.avatarUrl),
-            isBlacklisted: Boolean(u.isBlacklisted),
-            blacklistedAt: toIso(u.blacklistedAt),
-            blacklistReason: u.blacklistReason || null,
-            shop: u.shop ? {
-                shopName: u.shop.shopName || null,
-                productType: u.shop.productType || null,
-                productSubtype: u.shop.productSubtypeOther || u.shop.productSubtype || null,
-                productDetail: u.shop.productDetail || null,
-                image: imageOrNull(u.shop.logoImage) || imageOrNull(u.shop.productImage),
-                isVerified: Boolean(u.shop.isVerified)
-            } : null,
-            stalls: stallsByUser.get(u.id) || [],
-            counts: {
-                bookingRequests: u._count.bookingRequests,
-                repairs: u._count.requests,
-                posts: u._count.communityPosts,
-                eventBooths: u._count.eventBoothRequests
-            }
-        }));
+        const users = rows.map((u) => {
+            const shop = primaryShop(u);
+            return {
+                id: u.id,
+                username: u.username,
+                name: u.name,
+                role: u.role,
+                createdAt: toIso(u.createdAt),
+                birthDate: toIso(u.birthDate),
+                phoneNumber: u.phoneNumber || null,
+                email: u.email || null,
+                avatarUrl: imageOrNull(u.avatarUrl),
+                isBlacklisted: Boolean(u.isBlacklisted),
+                blacklistedAt: toIso(u.blacklistedAt),
+                blacklistReason: u.blacklistReason || null,
+                shop: shop ? {
+                    shopName: shop.shopName || null,
+                    productType: shop.productType || null,
+                    productSubtype: shop.productSubtypeOther || shop.productSubtype || null,
+                    productDetail: shop.productDetail || null,
+                    image: imageOrNull(shop.logoImage) || imageOrNull(shop.productImage),
+                    isVerified: Boolean(shop.isVerified)
+                } : null,
+                stalls: stallsByUser.get(u.id) || [],
+                counts: {
+                    bookingRequests: u._count.bookingRequests,
+                    repairs: u._count.requests,
+                    posts: u._count.communityPosts,
+                    eventBooths: u._count.eventBoothRequests
+                }
+            };
+        });
 
         res.render('admin/users', {
             user: req.user,

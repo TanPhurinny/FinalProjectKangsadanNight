@@ -1,6 +1,7 @@
 const prisma = require('../config/prismaClient');
 const { deleteImage } = require('../utils/imageStorage');
 const { markPostSeenByOwner } = require('../utils/communityNotifications');
+const { shopsRelation, primaryShop, getPrimaryShop } = require('../utils/shops');
 
 // ปักหมุดได้พร้อมกันไม่เกินนี้ — เกินกว่านี้หัวฟีดจะเต็มไปด้วยโพสต์ปักจนไม่เห็นโพสต์ใหม่
 const MAX_PINNED_POSTS = 3;
@@ -46,10 +47,7 @@ function isSeller(user) {
 }
 
 async function getUserAvatar(userId) {
-    const shop = await prisma.shopDetail.findUnique({
-        where: { userId },
-        select: { logoImage: true, productImage: true }
-    });
+    const shop = await getPrimaryShop(userId, { select: { logoImage: true, productImage: true } });
 
     return shop?.logoImage || shop?.productImage || '/img/favicon.png';
 }
@@ -135,7 +133,7 @@ function isModerator(user) {
 // ส่วนจำนวนคอมเมนต์ทั้งหมดใช้ _count แทนการดึงทุกแถวมานับ
 const FEED_POST_INCLUDE = {
     author: {
-        include: { shop: true }
+        include: { shops: shopsRelation() }
     },
     images: true,
     likes: {
@@ -145,7 +143,7 @@ const FEED_POST_INCLUDE = {
         orderBy: { createdAt: 'desc' },
         take: 2,
         include: {
-            user: { include: { shop: true } }
+            user: { include: { shops: shopsRelation() } }
         }
     },
     _count: {
@@ -157,8 +155,8 @@ function buildCommentView(comment, currentUserId, canModerate = false) {
     return {
         id: comment.id,
         content: comment.content,
-        authorName: comment.user?.shop?.shopName || comment.user?.name || 'ผู้ใช้งาน',
-        profileImage: comment.user?.shop?.logoImage || comment.user?.shop?.productImage || '/img/favicon.png',
+        authorName: primaryShop(comment.user)?.shopName || comment.user?.name || 'ผู้ใช้งาน',
+        profileImage: primaryShop(comment.user)?.logoImage || primaryShop(comment.user)?.productImage || '/img/favicon.png',
         createdAt: new Date(comment.createdAt).toLocaleString('th-TH'),
         createdAtIso: new Date(comment.createdAt).toISOString(),
         canDelete: canModerate || Number(comment.userId) === Number(currentUserId)
@@ -168,7 +166,7 @@ function buildCommentView(comment, currentUserId, canModerate = false) {
 function buildPostView(post, currentUserId, activeStallCodes = [], canModerate = false) {
     const { date, time } = parseDateTimeThai(post.createdAt);
     const isOwner = Number(currentUserId) === Number(post.userId);
-    const shop = post.author?.shop || {};
+    const shop = primaryShop(post.author) || {};
 
     return {
         id: post.id,
@@ -527,7 +525,7 @@ exports.getComments = async (req, res) => {
             include: {
                 user: {
                     include: {
-                        shop: true
+                        shops: shopsRelation()
                     }
                 }
             },
@@ -582,7 +580,7 @@ exports.createComment = async (req, res) => {
             include: {
                 user: {
                     include: {
-                        shop: true
+                        shops: shopsRelation()
                     }
                 }
             }

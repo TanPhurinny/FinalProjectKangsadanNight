@@ -1,6 +1,7 @@
 const prisma = require('../config/prismaClient');
 const { addDays, getBookingRoundMetaForDate, getRoundWindow } = require('./bookingRound');
 const { BOOKING_REQUEST_TAG_PREFIX, buildBookingRequestTag, extractBookingRequestId } = require('./bookingRequestTag');
+const { shopsRelation, primaryShop } = require('./shops');
 
 // ข้อมูลส่วนเสริมของแดชบอร์ดแอดมิน (/admin/dashboard) — แยกจาก marketController ให้ controller ไม่บวม
 // ทุกฟังก์ชันอ่านอย่างเดียว ไม่แก้ข้อมูล
@@ -238,7 +239,7 @@ async function buildTopViewedShops(today, limit = 5) {
     const [users, latestCodes] = await Promise.all([
         prisma.user.findMany({
             where: { id: { in: top.map((entry) => entry.userId) } },
-            select: { id: true, name: true, shop: { select: { shopName: true } } }
+            select: { id: true, name: true, shops: shopsRelation({ select: { shopName: true } }) }
         }),
         prisma.shopViewEvent.findMany({
             where: { shopUserId: { in: top.map((entry) => entry.userId) } },
@@ -253,7 +254,7 @@ async function buildTopViewedShops(today, limit = 5) {
         const u = userById.get(entry.userId);
         return {
             ...entry,
-            shopName: u?.shop?.shopName || u?.name || `ผู้ขาย #${entry.userId}`,
+            shopName: primaryShop(u)?.shopName || u?.name || `ผู้ขาย #${entry.userId}`,
             ownerName: u?.name || '',
             stallCode: codeByUser.get(entry.userId) || ''
         };

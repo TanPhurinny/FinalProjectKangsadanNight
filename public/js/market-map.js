@@ -217,6 +217,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // เลือกแผงหัวมุม/แผงพิเศษ (ล็อคเต็ง) ย้ายไปเลือกในหน้าฟอร์มจองแผงแทน ไม่ส่ง corner param มาจากตรงนี้แล้ว
-    window.location.href = `/booking-stall?zone=${encodeURIComponent(String(selectedZoneKey).toUpperCase())}`;
+    window.location.href = `/booking-stall?zone=${encodeURIComponent(String(selectedZoneKey).toUpperCase())}${window.SELECTED_SHOP_ID ? `&shop=${window.SELECTED_SHOP_ID}` : ''}`;
   });
 });

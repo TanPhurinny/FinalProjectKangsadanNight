@@ -72,7 +72,7 @@
                     <div class="empty-row">ไม่มีรีวิวในหมวดนี้</div>
                     <% } %>
                     <% reviews.forEach(function (rv) {
-                        const shopName = (rv.shop.shop && rv.shop.shop.shopName) || rv.shop.name;
+                        const shopName = (rv.shop.shops && rv.shop.shops[0] && rv.shop.shops[0].shopName) || rv.shop.name;
                         const isReported = rv.reportCount > 0 && !rv.isHidden;
                     %>
                     <article class="review-row<%= rv.isHidden ? ' is-hidden' : '' %><%= isReported ? ' is-reported' : '' %>">

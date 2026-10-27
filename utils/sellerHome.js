@@ -9,6 +9,7 @@ const { getShopViewStats, getShopViewInsights } = require('./shopViews');
 const { getPromo, PROMO_MAX_LENGTH } = require('./shopPromo');
 const { buildProfileChecks } = require('./shopCompleteness');
 const { getAnnouncementsForUser } = require('../controllers/announcementController');
+const { shopsRelation, primaryShop } = require('./shops');
 
 // ข้อมูลหน้าแรกผู้ขาย (/seller): สถานะร้านคืนนี้, สิ่งที่ต้องทำ (เรียงตามความด่วน), ล็อกของฉัน,
 // ตัวเลขสรุป และความเคลื่อนไหวล่าสุด — รวมไว้ที่เดียวให้ route บางลง
@@ -48,10 +49,10 @@ async function buildSellerHome(userId, now = new Date()) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
-            shop: { include: { menuImages: { select: { id: true } }, productImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } } } }
+            shops: shopsRelation({ include: { menuImages: { select: { id: true } }, productImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } } } })
         }
     });
-    const shop = user?.shop || {};
+    const shop = primaryShop(user) || {};
 
     // คำขอจองของร้านนี้
     const requests = await prisma.bookingRequest.findMany({

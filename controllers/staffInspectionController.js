@@ -9,6 +9,7 @@ const { buildPreferredWalkOrder } = require('../utils/inspectionWalkOrder');
 const { stripInternalTags } = require('../utils/bookingRequestTag');
 const inspectionAssignment = require('../utils/inspectionAssignment');
 const { businessDateOf } = require('../utils/shopOpenStatus');
+const { shopsRelation, primaryShop } = require('../utils/shops');
 
 // ใช้แกะ requestId จาก Booking.storeDetailSnapshot เหมือน scoreReportController.js เพื่อย้อนกลับไปหา
 // BookingRequest.assignedStallCode จริงของรอบที่ดูอยู่ (Booking มีช่วงวันเช่า แต่ไม่มีล็อคที่ได้จริง)
@@ -70,10 +71,10 @@ async function isStallFoodType(stallCode) {
 
     const sellerUser = await prisma.user.findFirst({
         where: { role: 'SELLER', name: match.sellerName },
-        select: { shop: { select: { productType: true } } }
+        select: { shops: shopsRelation({ select: { productType: true } }) }
     });
 
-    return normalizeProductType(sellerUser?.shop?.productType) === 'FOOD';
+    return normalizeProductType(primaryShop(sellerUser)?.productType) === 'FOOD';
 }
 
 // ดูข้อมูลรอบเก่า/รอบถัดไปแบบย้อนหลัง (อ่านอย่างเดียว) — ต่างจาก bookingByStallCode ของรอบปัจจุบัน
@@ -93,7 +94,7 @@ async function buildHistoricalBookingByStallCode(cycleStart, cycleEnd) {
                 select: {
                     name: true,
                     phoneNumber: true,
-                    shop: { select: { shopName: true, productType: true, productDetail: true } }
+                    shops: shopsRelation({ select: { shopName: true, productType: true, productDetail: true } })
                 }
             }
         }
@@ -126,7 +127,7 @@ async function buildHistoricalBookingByStallCode(cycleStart, cycleEnd) {
         const stallCodes = requestId ? (stallCodesByRequestId.get(requestId) || []) : [];
         if (!stallCodes.length) return;
 
-        const shop = booking.user.shop || {};
+        const shop = primaryShop(booking.user) || {};
         stallCodes.forEach((stallCode) => {
             if (bookingByStallCode[stallCode]) return;
             bookingByStallCode[stallCode] = {
@@ -209,7 +210,7 @@ exports.getMarketInspectionPage = async (req, res) => {
                     zone: true,
                     createdAt: true,
                     status: true,
-                    user: { select: { shop: { select: { shopName: true, productType: true, productDetail: true } } } }
+                    user: { select: { shops: shopsRelation({ select: { shopName: true, productType: true, productDetail: true } }) } }
                 },
                 orderBy: { createdAt: 'desc' }
             });
@@ -218,7 +219,7 @@ exports.getMarketInspectionPage = async (req, res) => {
                 const stallCodes = parseStallCodes(request.assignedStallCode);
                 if (!stallCodes.length) return;
 
-                const shop = request.user?.shop || {};
+                const shop = primaryShop(request.user) || {};
                 const productDetail = shop.productDetail || stripInternalTags(request.description) || '-';
                 const productType = shop.productType || '';
 

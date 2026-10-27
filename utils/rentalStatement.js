@@ -2,6 +2,7 @@ const prisma = require('../config/prismaClient');
 const { BOOKING_REQUEST_TAG_PREFIX, extractBookingRequestId } = require('./bookingRequestTag');
 const { getBookingRoundMetaForDate, getRoundWindow, toStartOfDay, addDays } = require('./bookingRound');
 const { buildQuotationNumber, splitEvenly } = require('../controllers/quotationController');
+const { shopsRelation, primaryShop, shopsOfRequests } = require('./shops');
 
 // รายงานการเช่า/ชำระเงินย้อนหลัง (หลายรอบ) — ใช้ร่วมกันทั้งหน้าร้านค้า /rental-statement,
 // หน้าแอดมิน /admin/rental-statements และหน้าเตรียมเขียนสัญญาเช่า /admin/lease-contracts/:id
@@ -71,7 +72,9 @@ function buildRange(from, to, round) {
 
 // แถวรายงาน 1 แถว = 1 คำขอ (BookingRequest) ที่จัดล็อกแล้ว — ชำระแล้ว (SUCCESS) หรือค้างชำระ (IN_PROGRESS)
 // นับเข้าช่วงเมื่อช่วงเช่าทับกับช่วงรายงาน
-async function loadStatementRows({ userId = null, stallCode = null, range }) {
+// ทุกแถวบอกร้าน (shopId/shopName) — 1 ผู้ใช้มีได้หลายร้าน คำขอเก่าที่ยังไม่มี shopId นับเป็นร้านหลักของเจ้าของ
+// shopId = กรองเฉพาะร้านนั้น (สัญญาเช่า 1 ฉบับต่อ 1 ร้าน)
+async function loadStatementRows({ userId = null, shopId = null, stallCode = null, range }) {
     const rangeEndExclusive = addDays(range.to, 1);
     const bookings = await prisma.booking.findMany({
         where: {
@@ -102,10 +105,12 @@ async function loadStatementRows({ userId = null, stallCode = null, range }) {
             assignedStallCode: code ? { contains: code } : { not: null }
         },
         select: {
-            id: true, userId: true, zone: true, assignedStallCode: true, status: true, description: true,
-            paymentConfirmedAt: true, confirmedByName: true, sellerName: true
+            id: true, userId: true, shopId: true, zone: true, assignedStallCode: true, status: true, description: true,
+            paymentConfirmedAt: true, confirmedByName: true, sellerName: true, productName: true
         }
     });
+    const shopByRequest = await shopsOfRequests(requests, (request) => request.userId || bookingByRequest.get(request.id)?.userId);
+    const wantedShopId = shopId ? Number(shopId) : null;
 
     const ids = requests.map((request) => request.id);
     const taxItems = ids.length
@@ -123,6 +128,8 @@ async function loadStatementRows({ userId = null, stallCode = null, range }) {
         const booking = bookingByRequest.get(request.id);
         const ownerId = request.userId || booking.userId;
         if (userId && ownerId !== Number(userId)) return;
+        const shop = shopByRequest.get(request.id) || null;
+        if (wantedShopId && shop?.id !== wantedShopId) return;
         const isPaid = request.status === 'SUCCESS';
         const grandTotal = Number(booking.grandTotal || 0);
         const stallCount = stallCodes.length;
@@ -133,6 +140,8 @@ async function loadStatementRows({ userId = null, stallCode = null, range }) {
             requestId: request.id,
             userId: ownerId,
             sellerName: request.sellerName || '-',
+            shopId: shop?.id || null,
+            shopName: shop?.shopName || request.productName || '-',
             zone: request.zone || '-',
             roundNumber: booking.rentalStartDate ? getBookingRoundMetaForDate(booking.rentalStartDate).roundNumber : null,
             rentalStartDate: booking.rentalStartDate,
@@ -207,15 +216,21 @@ function groupByStall(rows) {
 }
 
 // ข้อมูลผู้เช่า — ที่อยู่/เลขบัตร/บัญชีจากใบสมัครร้านล่าสุด (เหมือนที่อยู่ในใบเสนอราคา)
-async function loadSellerInfo(userId) {
-    const [user, application] = await Promise.all([
+// shopId = ชื่อร้าน/ประเภทสินค้าของร้านนั้น (ต้องเป็นร้านของผู้ใช้) ไม่ระบุ = ร้านหลัก
+async function loadSellerInfo(userId, shopId = null) {
+    const wantedShopId = shopId ? Number(shopId) : null;
+    const [user, application, wantedShop] = await Promise.all([
         prisma.user.findUnique({
             where: { id: Number(userId) },
-            select: { id: true, name: true, email: true, phoneNumber: true, role: true, createdAt: true, shop: { select: { shopName: true, productType: true } } }
+            select: { id: true, name: true, email: true, phoneNumber: true, role: true, createdAt: true, shops: shopsRelation({ select: { id: true, shopName: true, productType: true } }) }
         }),
-        prisma.sellerApplication.findFirst({ where: { userId: Number(userId) }, orderBy: { createdAt: 'desc' } })
+        prisma.sellerApplication.findFirst({ where: { userId: Number(userId) }, orderBy: { createdAt: 'desc' } }),
+        wantedShopId
+            ? prisma.shopDetail.findFirst({ where: { id: wantedShopId, userId: Number(userId) }, select: { id: true, shopName: true, productType: true } })
+            : null
     ]);
     if (!user) return null;
+    const shop = wantedShop || primaryShop(user);
     const address = application
         ? [application.houseNumber, application.subdistrict, application.district, application.province].filter(Boolean).join(' ')
         : '';
@@ -224,8 +239,9 @@ async function loadSellerInfo(userId) {
         name: user.name,
         email: user.email || '-',
         phone: user.phoneNumber || application?.phoneNumber || '-',
-        shopName: user.shop?.shopName || application?.shopName || '-',
-        productType: user.shop?.productType || application?.productType || '-',
+        shopId: shop?.id || null,
+        shopName: shop?.shopName || application?.shopName || '-',
+        productType: shop?.productType || application?.productType || '-',
         sellerName: application?.sellerName || user.name,
         idCardNumber: application?.idCardNumber || '-',
         address: address || '-',
@@ -233,10 +249,11 @@ async function loadSellerInfo(userId) {
     };
 }
 
-async function buildSellerStatement(userId, range) {
-    const [seller, rows] = await Promise.all([loadSellerInfo(userId), loadStatementRows({ userId, range })]);
+// shopId = เฉพาะร้านนั้น ไม่ระบุ = ทุกร้านของผู้ใช้ (แต่ละแถวบอกร้านอยู่แล้ว)
+async function buildSellerStatement(userId, range, shopId = null) {
+    const [seller, rows] = await Promise.all([loadSellerInfo(userId, shopId), loadStatementRows({ userId, shopId, range })]);
     if (!seller) return null;
-    return { seller, range, rows, totals: summarizeRows(rows), byStall: groupByStall(rows) };
+    return { seller, range, shopId: shopId ? Number(shopId) : null, rows, totals: summarizeRows(rows), byStall: groupByStall(rows) };
 }
 
 // ภาพรวมทุกร้านในช่วง — 1 แถวต่อร้าน
@@ -250,7 +267,7 @@ async function buildMarketStatement(range) {
     });
     const userIds = Array.from(byUser.keys()).filter((key) => Number.isInteger(key));
     const users = userIds.length
-        ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, shop: { select: { shopName: true } } } })
+        ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, shops: shopsRelation({ select: { shopName: true } }) } })
         : [];
     const userById = new Map(users.map((user) => [user.id, user]));
     const sellers = Array.from(byUser.entries()).map(([key, list]) => {
@@ -258,7 +275,8 @@ async function buildMarketStatement(range) {
         return {
             userId: user ? user.id : null,
             name: user?.name || list[0].sellerName,
-            shopName: user?.shop?.shopName || '-',
+            // ผู้ใช้ 1 คนมีได้หลายร้าน — แสดงทุกร้านที่มีการเช่าในช่วงนี้
+            shopName: Array.from(new Set(list.map((row) => row.shopName).filter((name) => name && name !== '-'))).join(', ') || primaryShop(user)?.shopName || '-',
             ...summarizeRows(list)
         };
     }).sort((a, b) => b.paid - a.paid || a.name.localeCompare(b.name, 'th'));
@@ -270,13 +288,12 @@ async function buildStallStatement(stallCode, range) {
     const rows = await loadStatementRows({ stallCode: code, range });
     const userIds = Array.from(new Set(rows.map((row) => row.userId).filter(Boolean)));
     const users = userIds.length
-        ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, shop: { select: { shopName: true } } } })
+        ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, shops: shopsRelation({ select: { shopName: true } }) } })
         : [];
     const userById = new Map(users.map((user) => [user.id, user]));
     rows.forEach((row) => {
         const user = userById.get(row.userId);
         row.tenantName = user?.name || row.sellerName;
-        row.shopName = user?.shop?.shopName || '-';
     });
     const paidRows = rows.filter((row) => row.status === 'PAID');
     return {
@@ -306,12 +323,12 @@ function toCsv(headers, records) {
 function statementRowsToCsv(rows, { withSeller = false } = {}) {
     const headers = [
         ...(withSeller ? ['ผู้เช่า'] : []),
-        'เลขคำขอ', 'รอบที่', 'ล็อก', 'เริ่มเช่า', 'สิ้นสุด', 'วันคิดเงิน', 'ค่าเช่าแผง', 'ค่าไฟ', 'ค่าเครื่องใช้ไฟฟ้า', 'ยอดรวม',
+        'ร้าน', 'เลขคำขอ', 'รอบที่', 'ล็อก', 'เริ่มเช่า', 'สิ้นสุด', 'วันคิดเงิน', 'ค่าเช่าแผง', 'ค่าไฟ', 'ค่าเครื่องใช้ไฟฟ้า', 'ยอดรวม',
         'สถานะ', 'วันที่ชำระ', 'ผู้ยืนยัน', 'เลขที่ใบเสร็จ', 'เลขที่ใบกำกับภาษี'
     ];
     const records = rows.map((row) => [
         ...(withSeller ? [row.tenantName || row.sellerName] : []),
-        row.requestId, row.roundNumber || '', row.stallCodes.join(' '), toDateKeyOrBlank(row.rentalStartDate), toDateKeyOrBlank(row.rentalEndDate),
+        row.shopName || '', row.requestId, row.roundNumber || '', row.stallCodes.join(' '), toDateKeyOrBlank(row.rentalStartDate), toDateKeyOrBlank(row.rentalEndDate),
         row.billableDays, row.rentTotal.toFixed(2), row.lightTotal.toFixed(2), row.applianceTotal.toFixed(2), row.grandTotal.toFixed(2),
         row.statusLabel, toDateKeyOrBlank(row.paidAt), row.status === 'PAID' ? row.confirmedByName : '', row.receiptNumber || '', row.taxInvoiceNumber || ''
     ]);

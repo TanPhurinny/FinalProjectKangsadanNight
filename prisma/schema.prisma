@@ -24,7 +24,8 @@ model User {
   eventBoothRequests EventBoothRequest[]
   leaseContractRequests LeaseContractRequest[]
   requests      MaintenanceReport[] @relation("MaintenanceReportReporter")
-  shop          ShopDetail?
+  // 1 ผู้ใช้มีได้หลายร้าน — อ่านร้านหลักผ่าน primaryShop() ใน utils/shops.js (ร้านที่ id น้อยสุด)
+  shops         ShopDetail[]
   sellerProfile Seller?
   sellerApplications SellerApplication[]
   passwordResetTokens PasswordResetToken[]
@@ -154,9 +155,13 @@ model SellerApplication {
   rejectReason      String?   @db.Text
   reviewedAt        DateTime?
   createdAt         DateTime  @default(now())
+  // ร้านที่ใบสมัครนี้สร้าง/แก้ — null = ใบสมัครเปิดร้านใหม่ที่ยังไม่อนุมัติ (อนุมัติแล้วจะสร้างร้านใหม่แล้วเติมค่านี้)
+  shopId            Int?
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shop              ShopDetail? @relation(fields: [shopId], references: [id], onDelete: SetNull)
 
   @@index([userId], map: "SellerApplication_userId_fkey")
+  @@index([shopId], map: "SellerApplication_shopId_fkey")
 }
 
 // รายการ "ขายอะไรบ้าง" ที่แอดมินเพิ่มเองจากคำที่ผู้ขายพิมพ์ในช่อง "อื่นๆ (ระบุเอง)" (/admin/product-subtypes)
@@ -187,10 +192,15 @@ model ShopDetail {
   shopZoneLabel String?
   shopTags      String? @db.Text
   isVerified    Boolean @default(false)
-  userId        Int     @unique
+  userId        Int
   user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   productImages ShopProductImage[]
   menuImages    ShopMenuImage[]
+  sellerApplications SellerApplication[]
+  bookingRequests    BookingRequest[]
+  leaseContractRequests LeaseContractRequest[]
+
+  @@index([userId], map: "ShopDetail_userId_idx")
 }
 
 model ShopProductImage {
@@ -226,6 +236,8 @@ model BookingRequest {
   sellerId     Int?
   // เจ้าของคำขอ (ผู้ใช้ที่กดจอง) — sellerId ชี้ตาราง Seller ซึ่งไม่เคยถูกสร้างแถว จึงเป็น null เสมอ ใช้ userId แทน
   userId       Int?
+  // ร้านที่จอง (ผู้ใช้ 1 คนมีหลายร้านได้) — null = คำขอเก่าก่อนมีหลายร้าน ใช้ร้านหลักของ userId แทน (shopOfRequest)
+  shopId       Int?
   status       Status   @default(PENDING)
   createdAt    DateTime @default(now())
   // เวลาที่แอดมินจัดล็อกให้ (ตั้งสถานะเป็น IN_PROGRESS) — ใช้คำนวณกำหนดชำระเงินภายใน 6 ชม.
@@ -242,10 +254,12 @@ model BookingRequest {
   confirmedByName    String?
   seller       Seller?  @relation(fields: [sellerId], references: [id], onDelete: SetNull)
   user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  shop         ShopDetail? @relation(fields: [shopId], references: [id], onDelete: SetNull)
   taxInvoiceRequestItems TaxInvoiceRequestItem[]
 
   @@index([sellerId], map: "BookingRequest_sellerId_fkey")
   @@index([userId], map: "BookingRequest_userId_fkey")
+  @@index([shopId], map: "BookingRequest_shopId_fkey")
 }
 
 model BookingRound {
@@ -877,6 +891,8 @@ model EventBoothRequest {
 model LeaseContractRequest {
   id              Int      @id @default(autoincrement())
   userId          Int
+  // 1 สัญญา = 1 ร้าน รวมทุกแผงของร้านนั้นในช่วงวัน — null = คำขอเก่า ใช้ร้านหลักของ userId
+  shopId          Int?
   periodStart     DateTime
   periodEnd       DateTime
   note            String?  @db.Text
@@ -888,8 +904,10 @@ model LeaseContractRequest {
   issuedByName    String?
   createdAt       DateTime @default(now())
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shop            ShopDetail? @relation(fields: [shopId], references: [id], onDelete: SetNull)
 
   @@index([userId], map: "LeaseContractRequest_userId_fkey")
+  @@index([shopId], map: "LeaseContractRequest_shopId_fkey")
 }
 
 enum LeaseContractStatus {

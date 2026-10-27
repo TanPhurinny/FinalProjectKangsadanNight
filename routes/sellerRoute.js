@@ -54,6 +54,7 @@ const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
 const { buildCommunityNotifications } = require('../utils/communityNotifications');
 const { applyReadState, markRead, markUnread } = require('../utils/notificationReads');
 const { EVENT_ZONE_CODE } = require('../utils/eventBooth');
+const { SHOP_ORDER, shopsRelation, primaryShop, getPrimaryShop, getUserShops, resolveShopForUser } = require('../utils/shops');
 
 // รูปแจ้งซ่อม (เก็บที่ Cloudinary หรือดิสก์ตาม utils/imageStorage.js)
 const storage = createImageStorage({ folder: 'repairs' });
@@ -927,13 +928,18 @@ router.get('/booking-history', isAuthenticated, async (req, res) => {
 router.get('/rental-statement', isSellerOnly, async (req, res) => {
     try {
         const range = rentalStatement.parseStatementRange(req.query);
-        const statement = await rentalStatement.buildSellerStatement(req.user.id, range);
+        // ?shop= กรองเฉพาะร้านนั้น (ต้องเป็นร้านของตัวเอง) ไม่ระบุ = ทุกร้าน
+        const shops = await getUserShops(req.user.id, { select: { id: true, shopName: true } });
+        const shopId = shops.some((shop) => String(shop.id) === String(req.query.shop)) ? Number(req.query.shop) : null;
+        const statement = await rentalStatement.buildSellerStatement(req.user.id, range, shopId);
         if (!statement) return res.redirect('/seller');
+        const queryString = rentalStatement.rangeQueryString(range) + (shopId ? `&shop=${shopId}` : '');
         return res.render('seller/rentalStatement', {
             user: req.user,
             statement,
+            shops,
             company: COMPANY_INFO,
-            queryString: rentalStatement.rangeQueryString(range),
+            queryString,
             printedAt: new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })
         });
     } catch (error) {
@@ -967,6 +973,7 @@ router.get('/documents/tax-invoice', isSellerOnly, async (req, res) => {
         return res.render('seller/documentTaxInvoice', {
             user: req.user,
             eligibleQuotations,
+            eligibleGroupsByShop: taxInvoiceCtrl.groupEligibleByShop(eligibleQuotations),
             taxInvoiceProfiles,
             taxInvoiceRequests,
             error: req.query.error || null,
@@ -980,13 +987,21 @@ router.get('/documents/tax-invoice', isSellerOnly, async (req, res) => {
 
 router.get('/documents/lease-contract', isSellerOnly, async (req, res) => {
     try {
+        // 1 สัญญา = 1 ร้าน — เลือกร้านด้วย ?shop= (ไม่ระบุ = ร้านหลัก) ช่วงวันเริ่มต้นคำนวณจากร้านที่เลือก
+        const [shops, selectedShop] = await Promise.all([
+            getUserShops(req.user.id, { select: { id: true, shopName: true } }),
+            resolveShopForUser(req.user.id, req.query.shop, { select: { id: true, shopName: true } })
+        ]);
+        const shop = selectedShop || shops[0] || null;
         const [leaseRequests, paidSpan] = await Promise.all([
             leaseContractCtrl.getLeaseRequestsForUser(req.user.id),
-            leaseContract.getPaidSpan(req.user.id)
+            shop ? leaseContract.getPaidSpan(req.user.id, shop.id) : null
         ]);
         const today = new Date();
         return res.render('seller/documentLeaseContract', {
             user: req.user,
+            shops,
+            shop,
             leaseRequests,
             paidSpan: paidSpan ? {
                 ...paidSpan,
@@ -1011,8 +1026,9 @@ router.get('/documents/lease-contract', isSellerOnly, async (req, res) => {
 router.post('/lease-contracts', isSellerOnly, async (req, res) => {
     try {
         const error = await leaseContractCtrl.createLeaseRequest(req.user.id, req.body);
-        if (error) return res.redirect(`/documents/lease-contract?leaseError=${error}`);
-        return res.redirect('/documents/lease-contract?lease=requested');
+        const shopQuery = /^\d+$/.test(String(req.body.shopId || '')) ? `&shop=${req.body.shopId}` : '';
+        if (error) return res.redirect(`/documents/lease-contract?leaseError=${error}${shopQuery}`);
+        return res.redirect(`/documents/lease-contract?lease=requested${shopQuery}`);
     } catch (error) {
         console.error('lease contract request error', error);
         return res.redirect('/documents/lease-contract?leaseError=action_failed');
@@ -1024,7 +1040,9 @@ router.get('/lease-contracts/:id', isSellerOnly, leaseContractCtrl.getSellerDocu
 router.get('/rental-statement.csv', isSellerOnly, async (req, res) => {
     try {
         const range = rentalStatement.parseStatementRange(req.query);
-        const rows = await rentalStatement.loadStatementRows({ userId: req.user.id, range });
+        const shops = await getUserShops(req.user.id, { select: { id: true } });
+        const shopId = shops.some((shop) => String(shop.id) === String(req.query.shop)) ? Number(req.query.shop) : null;
+        const rows = await rentalStatement.loadStatementRows({ userId: req.user.id, shopId, range });
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${rentalStatement.csvFilename('rental-statement', range)}"`);
         return res.send(rentalStatement.statementRowsToCsv(rows));
@@ -1054,12 +1072,18 @@ function planGalleryUpdate(existingImages, removeIdsText, newFiles, maxCount) {
     return { toRemove, kept, accepted };
 }
 
+// ร้านที่กำลังแก้ใน /shop-profile (?shop=<id>) — 1 ผู้ใช้มีได้หลายร้าน ไม่ระบุ/ไม่ใช่ร้านตัวเอง = ร้านหลัก
+async function loadProfileShop(req) {
+    const [shops, shop] = await Promise.all([
+        getUserShops(req.user.id, { select: { id: true, shopName: true } }),
+        resolveShopForUser(req.user.id, req.query.shop, { include: SHOP_GALLERY_INCLUDE })
+    ]);
+    return { shops, shop: shop || await getPrimaryShop(req.user.id, { include: SHOP_GALLERY_INCLUDE }) };
+}
+
 // --- หน้าแก้ไขโปรไฟล์ร้านค้า (เฉพาะผู้ขายที่ได้รับอนุมัติเป็น SELLER แล้ว) ---
 router.get('/shop-profile', isSellerOnly, async (req, res) => {
-    const userRecord = await prisma.user.findUnique({
-        where: { id: req.user.id },
-        include: { shop: { include: SHOP_GALLERY_INCLUDE } }
-    });
+    const { shops, shop } = await loadProfileShop(req);
 
     // ขอใบกำกับภาษีย้ายไปอยู่หน้า /documents/tax-invoice (รวมกับขอสัญญาเช่าที่ /documents)
     const [viewStats, reviewPanel] = await Promise.all([
@@ -1070,8 +1094,9 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
 
     res.render('seller/shopProfile', {
         user: req.user,
-        shop: userRecord?.shop || null,
-        profile: buildProfileChecks(userRecord?.shop),
+        shop: shop || null,
+        shops,
+        profile: buildProfileChecks(shop),
         maxProductImages: MAX_SHOP_PRODUCT_IMAGES,
         maxMenuImages: MAX_SHOP_MENU_IMAGES,
         viewStats,
@@ -1083,14 +1108,12 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
 
 router.post('/shop-profile', isSellerOnly, (req, res) => {
     async function renderWithError(errorCode) {
-        const userRecord = await prisma.user.findUnique({
-            where: { id: req.user.id },
-            include: { shop: { include: SHOP_GALLERY_INCLUDE } }
-        });
+        const { shops, shop } = await loadProfileShop(req);
         return res.render('seller/shopProfile', {
             user: req.user,
-            shop: userRecord?.shop || null,
-            profile: buildProfileChecks(userRecord?.shop),
+            shop: shop || null,
+            shops,
+            profile: buildProfileChecks(shop),
             maxProductImages: MAX_SHOP_PRODUCT_IMAGES,
             maxMenuImages: MAX_SHOP_MENU_IMAGES,
             error: errorCode,
@@ -1125,10 +1148,11 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
 
             // ชื่อร้าน/ประเภทสินค้าไม่รับจากฟอร์มนี้ (ดูเหตุผลใน utils/validationSchemas.js) — ถ้ายังไม่มี
             // ShopDetail มาก่อนเลย (กรณีข้อมูลเก่าก่อนมีการซิงก์อัตโนมัติ) ค่อย fallback ไปเอาจากใบสมัครล่าสุด
-            const existingShop = await prisma.shopDetail.findUnique({
-                where: { userId: req.user.id },
-                include: SHOP_GALLERY_INCLUDE
-            });
+            // ร้านที่แก้มาจาก ?shop= ใน action ของฟอร์ม (ตรวจว่าเป็นร้านของผู้ใช้เอง) ไม่ระบุ = ร้านหลัก
+            const existingShop = await resolveShopForUser(req.user.id, req.query.shop, { include: SHOP_GALLERY_INCLUDE });
+            if (req.query.shop && !existingShop) {
+                return renderWithError('shop_not_found');
+            }
             let fallbackShopName = existingShop?.shopName;
             let fallbackProductType = existingShop?.productType;
             if (!fallbackShopName || !fallbackProductType) {
@@ -1155,26 +1179,29 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
             }
             await Promise.all(oldFilesToDelete.map((oldUrl) => deleteImage(oldUrl)));
 
-            const shopDetail = await prisma.shopDetail.upsert({
-                where: { userId: req.user.id },
-                update: {
-                    productDetail: productDetail || null,
-                    shopSummary: shopSummary || null,
-                    shopTags: shopTags || null,
-                    ...(shopCoverImage ? { shopCoverImage } : removeShopCoverImage ? { shopCoverImage: null } : {}),
-                    ...(logoImage ? { logoImage } : removeLogoImage ? { logoImage: null } : {})
-                },
-                create: {
-                    userId: req.user.id,
-                    shopName: fallbackShopName,
-                    productType: fallbackProductType,
-                    productDetail: productDetail || null,
-                    shopSummary: shopSummary || null,
-                    shopTags: shopTags || null,
-                    shopCoverImage: shopCoverImage || null,
-                    logoImage: logoImage || null
-                }
-            });
+            const shopDetail = existingShop
+                ? await prisma.shopDetail.update({
+                    where: { id: existingShop.id },
+                    data: {
+                        productDetail: productDetail || null,
+                        shopSummary: shopSummary || null,
+                        shopTags: shopTags || null,
+                        ...(shopCoverImage ? { shopCoverImage } : removeShopCoverImage ? { shopCoverImage: null } : {}),
+                        ...(logoImage ? { logoImage } : removeLogoImage ? { logoImage: null } : {})
+                    }
+                })
+                : await prisma.shopDetail.create({
+                    data: {
+                        userId: req.user.id,
+                        shopName: fallbackShopName,
+                        productType: fallbackProductType,
+                        productDetail: productDetail || null,
+                        shopSummary: shopSummary || null,
+                        shopTags: shopTags || null,
+                        shopCoverImage: shopCoverImage || null,
+                        logoImage: logoImage || null
+                    }
+                });
 
             if (product.toRemove.length) {
                 await prisma.shopProductImage.deleteMany({
@@ -1210,7 +1237,7 @@ router.post('/shop-profile', isSellerOnly, (req, res) => {
                 });
             }
 
-            return res.redirect('/shop-profile?success=profile_updated');
+            return res.redirect(`/shop-profile?success=profile_updated${req.query.shop ? `&shop=${shopDetail.id}` : ''}`);
         } catch (dbErr) {
             return renderWithError('db_error');
         }
@@ -1319,11 +1346,26 @@ function getReusableImages(application) {
     return images.cover || images.logo || images.products.length || images.menus.length ? images : null;
 }
 
+// ผู้ขายที่มีร้านแล้วสมัครเปิดร้านเพิ่ม (?new=1) — 1 ผู้ใช้มีได้หลายร้าน ใบสมัครร้านใหม่ยังไม่ผูกร้าน (shopId null)
+// อนุมัติแล้วสร้างร้านใหม่ (sellerApplicationController.approveSellerApplication)
+function isNewShopRequest(req) {
+    return req.user.role === 'SELLER' && req.query.new === '1';
+}
+
+// ใบสมัครที่ใช้แสดงสถานะ/เติมฟอร์ม: โหมดร้านใหม่ดูเฉพาะใบสมัครร้านใหม่ (ยังไม่ผูกร้าน) ไม่งั้นใบสมัครล่าสุดของผู้ใช้
+function findLatestApplication(req) {
+    return prisma.sellerApplication.findFirst({
+        where: { userId: req.user.id, ...(isNewShopRequest(req) ? { shopId: null } : {}) },
+        orderBy: { createdAt: 'desc' }
+    });
+}
+
 async function renderShopApplication(req, res, { latestApplication, error = null, success = null, formData = null }) {
     await loadCustomSubtypes();
     return res.render('seller/shopApplication', {
         user: req.user,
         latestApplication,
+        newShopMode: isNewShopRequest(req),
         bankNames: THAI_BANK_NAMES,
         productSubtypeGroups: getProductSubtypeGroups(),
         zonesByType: getApplicationZonesByType(),
@@ -1339,10 +1381,7 @@ async function renderShopApplication(req, res, { latestApplication, error = null
 }
 
 router.get('/shop-application', isAuthenticated, async (req, res) => {
-    const latestApplication = await prisma.sellerApplication.findFirst({
-        where: { userId: req.user.id },
-        orderBy: { createdAt: 'desc' }
-    });
+    const latestApplication = await findLatestApplication(req);
 
     return renderShopApplication(req, res, {
         latestApplication,
@@ -1351,7 +1390,7 @@ router.get('/shop-application', isAuthenticated, async (req, res) => {
     });
 });
 
-// เช็คชื่อร้านซ้ำระหว่างพิมพ์ (แค่เตือน ไม่บล็อก) — ร้านที่อนุมัติแล้ว + ใบสมัครที่รอตรวจของคนอื่น
+// เช็คชื่อร้านซ้ำระหว่างพิมพ์ (แค่เตือน ไม่บล็อก) — ร้านที่อนุมัติแล้ว (รวมร้านอื่นของตัวเอง เพราะ 1 ผู้ใช้มีได้หลายร้าน) + ใบสมัครที่รอตรวจของคนอื่น
 // ชื่อซ้ำทำให้จับคู่ร้าน/คำขอจองจากชื่อปนกันได้ (ดูหมายเหตุ "ล็อกของฉัน" ใน CLAUDE.md)
 // ใช้ limiter เดียวกับสถิติเปิดดูร้าน (60 ครั้ง/นาที) กันยิงไล่เดาชื่อร้าน
 router.get('/shop-application/check-name', isAuthenticated, shopViewLimiter, async (req, res) => {
@@ -1359,7 +1398,7 @@ router.get('/shop-application/check-name', isAuthenticated, shopViewLimiter, asy
     if (!name) return res.json({ taken: false });
     try {
         const [shop, pendingApplication] = await Promise.all([
-            prisma.shopDetail.findFirst({ where: { shopName: name, NOT: { userId: req.user.id } }, select: { id: true } }),
+            prisma.shopDetail.findFirst({ where: { shopName: name }, select: { id: true } }),
             prisma.sellerApplication.findFirst({ where: { shopName: name, status: 'PENDING', NOT: { userId: req.user.id } }, select: { id: true } })
         ]);
         return res.json({ taken: !!(shop || pendingApplication) });
@@ -1376,10 +1415,7 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
 
     async function renderWithError(errorCode) {
         await Promise.all(uploadedFileUrls().map((url) => deleteImage(url).catch(() => {})));
-        const latestApplication = await prisma.sellerApplication.findFirst({
-            where: { userId: req.user.id },
-            orderBy: { createdAt: 'desc' }
-        });
+        const latestApplication = await findLatestApplication(req);
         // checkbox หลายตัวชื่อเดียวกัน (productSubtype) req.body ส่งมาเป็น array/string/undefined
         // แปลงเป็น comma string ก่อนส่งกลับให้ view เพื่อ pre-check กล่องเดิมไว้ (ดู sellerApplicationSchema)
         const rawSubtype = req.body.productSubtype;
@@ -1390,7 +1426,8 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
         return renderShopApplication(req, res, { latestApplication, error: errorCode, formData });
     }
 
-    if (req.user.role !== 'CUSTOMER') {
+    const newShop = isNewShopRequest(req);
+    if (req.user.role !== 'CUSTOMER' && !newShop) {
         return res.redirect('/shop-application?error=not_customer');
     }
 
@@ -1440,7 +1477,7 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
             let previousImages = null;
             if (req.body.reusePreviousImages === '1') {
                 const previousApplication = await prisma.sellerApplication.findFirst({
-                    where: { userId: req.user.id, status: 'REJECTED' },
+                    where: { userId: req.user.id, status: 'REJECTED', ...(newShop ? { shopId: null } : {}) },
                     orderBy: { createdAt: 'desc' },
                     select: { shopCoverImage: true, logoImage: true, productImages: true, menuImages: true }
                 });
@@ -1475,6 +1512,8 @@ router.post('/shop-application', isAuthenticated, (req, res) => {
                 }
             });
 
+            // ร้านใหม่ของผู้ขายเดิมจองแผงได้หลังอนุมัติแล้วเท่านั้น (ตอนจองต้องเลือกร้านที่มีอยู่จริง)
+            if (newShop) return res.redirect('/shop-application?new=1&success=application_submitted');
             return res.redirect('/select-zone');
         } catch (dbErr) {
             return renderWithError('db_error');
@@ -1576,22 +1615,34 @@ router.post("/repair", isAuthenticated, (req, res) => {
 // --- 2. หน้าเลือกโซน/แผงค้า ---
 const zoneAccess = require('../utils/zoneAccess');
 
+// ร้านที่กำลังจองให้ — 1 ผู้ใช้มีได้หลายร้าน เลือกด้วย ?shop= (หน้าเลือกโซน/ฟอร์มจอง) หรือ shopId (POST)
+// ไม่ระบุ/ไม่ใช่ร้านของผู้ใช้ = ร้านหลัก / ผู้สมัครที่ยังไม่มีร้าน = null (ใช้ข้อมูลจากใบสมัครแทนเหมือนเดิม)
+const ALL_SHOPS_INCLUDE = { shops: SHOP_ORDER };
+function pickBookingShop(userRecord, rawShopId) {
+    const shops = userRecord?.shops || [];
+    const id = Number.parseInt(rawShopId, 10);
+    return shops.find((shop) => shop.id === id) || shops[0] || null;
+}
+
 router.get("/select-zone", isAuthenticated, isSellerOrApplicant, async (req, res) => {
     try {
-        // ดึงข้อมูลผู้ขายจากฐานข้อมูล (รวมถึง shop.productType)
+        // ดึงข้อมูลผู้ขายจากฐานข้อมูล (รวมถึง shop.productType ของร้านที่เลือก)
         // ถ้ายังไม่ใช่ SELLER จริง (สมัครแล้วรออนุมัติอยู่) ใช้ productType จากใบสมัครแทน
         const userRecord = await prisma.user.findUnique({
             where: { id: req.user.id },
-            include: { shop: true }
+            include: ALL_SHOPS_INCLUDE
         });
+        const selectedShop = pickBookingShop(userRecord, req.query.shop);
 
-        const productType = userRecord?.shop?.productType || req.sellerApplication?.productType || null;
+        const productType = selectedShop?.productType || req.sellerApplication?.productType || null;
         const allowedZones = zoneAccess.allowedZonesFor(productType);
 
         const zoneDetails = await loadZoneDetailsMap();
 
         res.render("seller/select_zone", {
             user: req.user,
+            shops: userRecord?.shops || [],
+            selectedShop,
             productType,
             allowedZones,
             zoneDetails,
@@ -1639,9 +1690,10 @@ function toDateKey(dateValue) {
 
 // render หน้าจองแผงจากจุดเดียว (GET และทุกกรณีที่ POST ตีกลับ) ให้ข้อมูลรอบ/ราคา/โควตาครบเสมอ
 // gate (ถูกระงับสิทธิ์ / ไม่ได้เลือกโซน / ไม่มีสิทธิ์โซน / ไม่มีราคา) จะซ่อนฟอร์มและบอกเหตุผลแทน
-async function renderBookingStallPage(req, res, { status = 200, zoneCode = '', error = null, userRecord = null, formValues = null, cornerParam = null } = {}) {
-    const record = userRecord || await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true } });
-    const productType = record?.shop?.productType || req.sellerApplication?.productType || null;
+async function renderBookingStallPage(req, res, { status = 200, zoneCode = '', error = null, userRecord = null, formValues = null, cornerParam = null, shopId = null } = {}) {
+    const record = userRecord || await prisma.user.findUnique({ where: { id: req.user.id }, include: ALL_SHOPS_INCLUDE });
+    const shop = pickBookingShop(record, shopId);
+    const productType = shop?.productType || req.sellerApplication?.productType || null;
     const allowedZones = zoneAccess.allowedZonesFor(productType).map((z) => String(z).toUpperCase());
     const now = new Date();
     const bookingRoundInfo = getBookingRoundInfoForDate(now);
@@ -1743,7 +1795,9 @@ async function renderBookingStallPage(req, res, { status = 200, zoneCode = '', e
         zonePrice,
         error,
         gateError: null,
-        defaultStoreDetail: record?.shop?.productDetail || record?.shop?.shopSummary || req.sellerApplication?.productDetail || '',
+        defaultStoreDetail: shop?.productDetail || shop?.shopSummary || req.sellerApplication?.productDetail || '',
+        shop,
+        shopCount: (record?.shops || []).length,
         formValues,
         cornerZoneValue: resolveCornerZonePrice(formValues ? formValues.cornerZone : cornerParam),
         roundOptions: [
@@ -1778,7 +1832,7 @@ const isEventZoneCode = (zone) => String(zone || '').trim().toUpperCase() === EV
 
 router.get("/booking-stall", isAuthenticated, isSellerOrApplicant, async (req, res) => {
     if (isEventZoneCode(req.query.zone)) return res.redirect('/event-booth');
-    return renderBookingStallPage(req, res, { zoneCode: req.query.zone, cornerParam: req.query.corner });
+    return renderBookingStallPage(req, res, { zoneCode: req.query.zone, cornerParam: req.query.corner, shopId: req.query.shop });
 });
 
 router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
@@ -1786,11 +1840,15 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
     if (isEventZoneCode(zoneCode)) return res.redirect('/event-booth');
     const formValues = pickBookingFormValues(req.body);
     let userRecord = null;
-    const rejectBooking = (message, status = 400) => renderBookingStallPage(req, res, { status, zoneCode, error: message, userRecord, formValues });
+    const rejectBooking = (message, status = 400) => renderBookingStallPage(req, res, { status, zoneCode, error: message, userRecord, formValues, shopId: req.body.shopId });
 
     try {
-        userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true } });
-        const productType = userRecord?.shop?.productType || req.sellerApplication?.productType || null;
+        userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: ALL_SHOPS_INCLUDE });
+        const bookingShop = pickBookingShop(userRecord, req.body.shopId);
+        if (req.body.shopId && bookingShop && String(bookingShop.id) !== String(req.body.shopId)) {
+            return rejectBooking('ไม่พบร้านที่เลือก กรุณาเลือกร้านใหม่จากหน้าเลือกโซน');
+        }
+        const productType = bookingShop?.productType || req.sellerApplication?.productType || null;
         const allowedZones = zoneAccess.allowedZonesFor(productType).map(z => String(z).toUpperCase());
 
         // ร้านที่แอดมิน Blacklist จากคะแนนตรวจตลาด จองแผงรอบใหม่ไม่ได้ (ดู controllers/scoreReportController.js)
@@ -1950,19 +2008,21 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
 
         await prisma.$transaction(async (tx) => {
             const detailForRequest = [
-                storeDetail || userRecord?.shop?.productDetail || userRecord?.shop?.shopSummary || req.sellerApplication?.productDetail || 'ไม่มีรายละเอียดเพิ่มเติม',
+                storeDetail || bookingShop?.productDetail || bookingShop?.shopSummary || req.sellerApplication?.productDetail || 'ไม่มีรายละเอียดเพิ่มเติม',
                 cornerZoneOption ? `[สนใจแผงพิเศษ: ${cornerZoneOption.label} +${cornerZoneOption.value} บาท/ล็อก/วัน]` : ''
             ].filter(Boolean).join(' ').trim();
 
             const bookingRequestRecord = await tx.bookingRequest.create({
                 data: {
-                    productName: userRecord?.shop?.shopName || req.sellerApplication?.shopName || `ร้านของ ${userRecord?.name || req.user.username || 'ผู้ขาย'}`,
+                    productName: bookingShop?.shopName || req.sellerApplication?.shopName || `ร้านของ ${userRecord?.name || req.user.username || 'ผู้ขาย'}`,
                     description: detailForRequest,
                     sellerName: userRecord?.name || req.user.username || 'ไม่ระบุ',
                     phone: userRecord?.phoneNumber || req.sellerApplication?.phoneNumber || '-',
                     zone: zoneCode,
-                    productImage: userRecord?.shop?.productImage || req.sellerApplication?.shopCoverImage || null,
+                    productImage: bookingShop?.productImage || req.sellerApplication?.shopCoverImage || null,
                     userId: req.user.id,
+                    // ผู้สมัครที่ยังไม่มีร้าน = null แล้วผูกร้านให้ตอนแอดมินยืนยันสลิป (approvalController.markPaymentConfirmed)
+                    shopId: bookingShop?.id || null,
                     status: 'PENDING'
                 }
             });
@@ -2046,13 +2106,23 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
 // (isUnpaidPastDeadline ตัวเดียวกับ job ตัดสิทธิ์ใน utils/stallRenewal.js)
 const isExtendRequest = (request) => String(request.description || '').startsWith('[EXTEND_OF:');
 
-async function findActiveLockForExtension(userRecord) {
+// shopId = ต่อล็อกของร้านไหน (1 ผู้ใช้มีได้หลายร้าน) ไม่ระบุ = สัญญาล่าสุดของทุกร้าน (การ์ดแจ้งเตือน/หน้าสถานะ)
+// คำขอเก่าที่ยังไม่มี shopId นับเป็นของร้านหลัก
+async function findActiveLockForExtension(userRecord, shopId = null) {
     if (!userRecord?.id) return null;
+
+    let shopFilter = {};
+    const wantedShopId = Number.parseInt(shopId, 10);
+    if (Number.isInteger(wantedShopId) && wantedShopId > 0) {
+        const primary = await getPrimaryShop(userRecord.id, { select: { id: true } });
+        shopFilter = { OR: [{ shopId: wantedShopId }, ...(primary?.id === wantedShopId ? [{ shopId: null }] : [])] };
+    }
 
     const candidates = await prisma.bookingRequest.findMany({
         where: {
             status: { in: ['PENDING', 'APPROVED', 'IN_PROGRESS', 'SUCCESS'] },
-            userId: userRecord.id
+            userId: userRecord.id,
+            ...shopFilter
         },
         orderBy: { createdAt: 'desc' },
         take: 20
@@ -2088,14 +2158,14 @@ async function findActiveLockForExtension(userRecord) {
 }
 
 router.get('/booking-stall/extend', isAuthenticated, async (req, res) => {
-    const userRecord = await prisma.user.findUnique({ where: { id: req.user.id } });
+    const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: ALL_SHOPS_INCLUDE });
 
     // ร้านที่แอดมิน Blacklist จากคะแนนตรวจตลาด ต่อล็อกไม่ได้ (ดู controllers/scoreReportController.js)
     if (userRecord?.isBlacklisted) {
         return res.redirect('/booking-status?error=blacklisted');
     }
 
-    const active = await findActiveLockForExtension(userRecord);
+    const active = await findActiveLockForExtension(userRecord, req.query.shop);
 
     if (!active) {
         return res.redirect('/booking-status?error=no_active_lock_to_extend');
@@ -2114,6 +2184,9 @@ router.get('/booking-stall/extend', isAuthenticated, async (req, res) => {
         roundMeta: active.roundMeta,
         renewal,
         dailyTotal: getExtensionDailyTotal(active.latestRequest, active.currentBooking),
+        // ร้านเจ้าของสัญญาที่ต่อ (คำขอเก่าที่ยังไม่มี shopId = ร้านหลัก) + แถบสลับร้านถ้ามีหลายร้าน
+        shops: userRecord?.shops || [],
+        extendShopId: active.latestRequest.shopId || userRecord?.shops?.[0]?.id || null,
         error: req.query.error || null
     });
 });
@@ -2131,14 +2204,15 @@ function parseStallCodeList(text) {
 
 router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
     try {
-        const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true } });
+        const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shops: shopsRelation() } });
 
         // ร้านที่แอดมิน Blacklist จากคะแนนตรวจตลาด ต่อล็อกไม่ได้ (ดู controllers/scoreReportController.js)
         if (userRecord?.isBlacklisted) {
             return res.redirect('/booking-status?error=blacklisted');
         }
 
-        const active = await findActiveLockForExtension(userRecord);
+        const active = await findActiveLockForExtension(userRecord, req.body.shopId);
+        const extendShopQuery = req.body.shopId ? `&shop=${encodeURIComponent(req.body.shopId)}` : '';
 
         if (!active) {
             return res.redirect('/booking-status?error=no_active_lock_to_extend');
@@ -2153,7 +2227,7 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
 
         const renewalError = validateRenewal(currentEndDate, newEndDate, new Date());
         if (renewalError) {
-            return res.redirect(`/booking-stall/extend?error=${renewalError}`);
+            return res.redirect(`/booking-stall/extend?error=${renewalError}${extendShopQuery}`);
         }
 
         const extendStartDate = addDays(currentEndDate, 1);
@@ -2162,7 +2236,7 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
         // วันหยุดที่แอดมินประกาศระหว่างช่วงต่อล็อก ไม่คิดเงิน (ดู utils/bookingHolidays.js เหมือนตอนจองใหม่)
         const billableDays = await getBillableDays(extendStartDate, newEndDate);
         if (billableDays <= 0) {
-            return res.redirect('/booking-stall/extend?error=all_days_are_holiday');
+            return res.redirect(`/booking-stall/extend?error=all_days_are_holiday${extendShopQuery}`);
         }
 
         // ต่อล็อกเดิมที่แอดมินจัดไว้จริง (assignedStallCode) จำนวนล็อกนับจากที่ได้จริง ไม่ใช่ที่ขอตอนแรก
@@ -2208,6 +2282,8 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
                     zone: latestRequest.zone,
                     productImage: latestRequest.productImage || null,
                     userId: req.user.id,
+                    // ต่อให้ร้านเดียวกับสัญญาเดิม (คำขอเก่าที่ยังไม่มี shopId = ร้านหลัก)
+                    shopId: latestRequest.shopId || primaryShop(userRecord)?.id || null,
                     status: 'IN_PROGRESS',
                     assignedStallCode,
                     lockAssignedAt,
@@ -2282,7 +2358,7 @@ router.post('/booking-stall/extend', isAuthenticated, async (req, res) => {
         });
 
         if (stallNoLongerYours) {
-            return res.redirect('/booking-stall/extend?error=stall_no_longer_yours');
+            return res.redirect(`/booking-stall/extend?error=stall_no_longer_yours${extendShopQuery}`);
         }
         return res.redirect('/booking-status?success=extend_ready_to_pay');
     } catch (error) {
@@ -2342,7 +2418,7 @@ async function loadAdminRenewalNotices(userId) {
 async function loadSellerBookingStatus(userId) {
     const userRecord = await prisma.user.findUnique({
         where: { id: userId },
-        include: { shop: true }
+        include: { shops: shopsRelation() }
     });
 
     // เอารายการคำขอล่าสุดของผู้ขายรายนี้เสมอ (ไม่ว่าจะอยู่สถานะไหน) เพื่อให้สะท้อน
@@ -2407,8 +2483,8 @@ async function loadSellerBookingStatus(userId) {
                 return `${formatDateThai(window.cycleStart)} ถึง ${formatDateThai(window.cycleEnd)}`;
             })(),
             sellDaysList: '',
-            shopName: userRecord?.shop?.shopName || latestRequest.productName || '-',
-            productType: userRecord?.shop?.productType || '-',
+            shopName: primaryShop(userRecord)?.shopName || latestRequest.productName || '-',
+            productType: primaryShop(userRecord)?.productType || '-',
             customerName: userRecord?.name || latestRequest.sellerName || '-',
             customerPhone: userRecord?.phoneNumber || latestRequest.phone || '-',
             // ไม่เปิดเผยโซน/เลขล็อกจนกว่าจะยืนยันสลิปโอนเงินเสร็จ (ดูจุด merge ด้านล่างด้วย)
@@ -2445,8 +2521,8 @@ async function loadSellerBookingStatus(userId) {
         bookingView.paymentSlipImage = latestRequest.paymentSlipImage || null;
         bookingView.awaitingPaymentVerification = awaitingPaymentVerification;
         // ชื่อร้าน/ประเภทสินค้า สำหรับการ์ดใบเสนอราคา — เอาจากโปรไฟล์ร้าน ถ้าไม่มีใช้ชื่อจากคำขอจองแทน
-        bookingView.shopName = userRecord?.shop?.shopName || latestRequest.productName || '-';
-        bookingView.productType = userRecord?.shop?.productType || '-';
+        bookingView.shopName = primaryShop(userRecord)?.shopName || latestRequest.productName || '-';
+        bookingView.productType = primaryShop(userRecord)?.productType || '-';
         bookingView.customerName = userRecord?.name || latestRequest.sellerName || '-';
         bookingView.customerPhone = userRecord?.phoneNumber || latestRequest.phone || '-';
         // ผลตรวจสลิปอัตโนมัติ (SlipOK) ที่เก็บไว้ตอนอัปโหลด — null = ยังไม่ตรวจ/ไม่ได้ตั้งค่า SlipOK

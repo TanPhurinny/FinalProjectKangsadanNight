@@ -13,6 +13,7 @@ const { stripInternalTags } = require('../utils/bookingRequestTag');
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundTimeline, BOOKING_ROUND_LENGTH_DAYS } = require('../utils/bookingRound');
 const adminDashboard = require('../utils/adminDashboard');
 const eventBooth = require('../utils/eventBooth');
+const { shopsRelation, primaryShop } = require('../utils/shops');
 
 const ZONE_CATEGORY_META = {
     FASHION: { icon: 'fa-shirt', description: 'โซนแฟชั่น' },
@@ -476,7 +477,7 @@ exports.getSlotsPage = async (req, res) => {
                 assignedStallCode: true,
                 createdAt: true,
                 productImage: true,
-                user: { select: { shop: { select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true } } } }
+                user: { select: { shops: shopsRelation({ select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true } }) } }
             }
         });
 
@@ -490,7 +491,7 @@ exports.getSlotsPage = async (req, res) => {
                 .filter(Boolean);
             if (!stallCodes.length) return;
 
-            const shopInfo = request.user?.shop || {};
+            const shopInfo = primaryShop(request.user) || {};
             const product = shopInfo.productType
                 || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
             const productDetail = shopInfo.productDetail || stripInternalTags(request.description) || '-';
@@ -726,7 +727,7 @@ exports.getMarketMapPage = async (req, res) => {
                 where: { role: 'SELLER', id: { in: allSellerUserIds } },
                 select: {
                     id: true,
-                    shop: {
+                    shops: shopsRelation({
                         select: {
                             productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true, shopTags: true, shopSummary: true,
                             productSubtype: true,
@@ -734,11 +735,12 @@ exports.getMarketMapPage = async (req, res) => {
                             menuImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } },
                             productImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } }
                         }
-                    }
+                    })
                 }
             });
             sellerUsers.forEach((u) => {
-                if (u.shop) shopInfoByUserId[u.id] = { ...u.shop, userId: u.id };
+                const shop = primaryShop(u);
+                if (shop) shopInfoByUserId[u.id] = { ...shop, userId: u.id };
             });
         }
 
@@ -852,8 +854,8 @@ exports.getMarketMapPage = async (req, res) => {
         const viewer = { role, allowedZones: [], myStalls: [], isGuest: !req.user };
 
         if (role === 'SELLER') {
-            const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shop: true } });
-            viewer.allowedZones = zoneAccess.allowedZonesFor(userRecord?.shop?.productType || null).map((z) => String(z).toUpperCase());
+            const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: { shops: shopsRelation() } });
+            viewer.allowedZones = zoneAccess.allowedZonesFor(primaryShop(userRecord)?.productType || null).map((z) => String(z).toUpperCase());
             const myRequests = approvedRequests.filter((r) => r.userId === req.user.id);
             viewer.myStalls = [...new Set(myRequests.flatMap((r) => String(r.assignedStallCode || '')
                 .split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)))];

@@ -110,30 +110,22 @@ exports.approveSellerApplication = async (req, res) => {
                 data: { status: 'APPROVED', reviewedAt: new Date() }
             });
 
-            await tx.shopDetail.upsert({
-                where: { userId: application.userId },
-                update: {
-                    shopName: application.shopName,
-                    productType: application.productType,
-                    productSubtype: application.productSubtype,
-                    productSubtypeOther: application.productSubtypeOther,
-                    productDetail: application.productDetail,
-                    shopCoverImage: application.shopCoverImage,
-                    logoImage: application.logoImage,
-                    isVerified: true
-                },
-                create: {
-                    userId: application.userId,
-                    shopName: application.shopName,
-                    productType: application.productType,
-                    productSubtype: application.productSubtype,
-                    productSubtypeOther: application.productSubtypeOther,
-                    productDetail: application.productDetail,
-                    shopCoverImage: application.shopCoverImage,
-                    logoImage: application.logoImage,
-                    isVerified: true
-                }
-            });
+            // 1 ผู้ใช้มีได้หลายร้าน: ใบสมัครที่ผูกร้านแล้ว (shopId) = แก้ร้านนั้น / ยังไม่ผูก = ใบสมัครเปิดร้านใหม่ → สร้างร้านใหม่
+            // (ใบสมัครเก่าก่อนมีหลายร้านถูกผูกกับร้านเดิมด้วย scripts/backfill-shop-id.js แล้ว)
+            const shopData = {
+                shopName: application.shopName,
+                productType: application.productType,
+                productSubtype: application.productSubtype,
+                productSubtypeOther: application.productSubtypeOther,
+                productDetail: application.productDetail,
+                shopCoverImage: application.shopCoverImage,
+                logoImage: application.logoImage,
+                isVerified: true
+            };
+            const shop = application.shopId
+                ? await tx.shopDetail.update({ where: { id: application.shopId }, data: shopData })
+                : await tx.shopDetail.create({ data: { userId: application.userId, ...shopData } });
+            await tx.sellerApplication.update({ where: { id: applicationId }, data: { shopId: shop.id } });
 
             await tx.user.update({
                 where: { id: application.userId },

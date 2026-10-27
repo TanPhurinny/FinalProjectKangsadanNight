@@ -68,10 +68,10 @@ async function cleanup(apply) {
 }
 
 async function seed(shopUsername, apply) {
-    const shop = await prisma.user.findUnique({ where: { username: shopUsername }, include: { shop: true } });
+    const shop = await prisma.user.findUnique({ where: { username: shopUsername }, include: { shops: { orderBy: { id: 'asc' }, take: 1 } } });
     if (!shop) throw new Error(`ไม่พบผู้ใช้ username "${shopUsername}"`);
     if (shop.role !== 'SELLER') throw new Error(`"${shopUsername}" เป็น ${shop.role} ไม่ใช่ผู้ขาย`);
-    console.log(`ร้าน: ${shop.shop?.shopName || '(ยังไม่ตั้งชื่อร้าน)'} — เจ้าของ ${shop.name} (id ${shop.id})`);
+    console.log(`ร้าน: ${shop.shops[0]?.shopName || '(ยังไม่ตั้งชื่อร้าน)'} — เจ้าของ ${shop.name} (id ${shop.id})`);
     console.log(`จะใส่รีวิว ${REVIEWS.length} รีวิว จากบัญชี ${USERNAME_PREFIX}01..${String(REVIEWS.length).padStart(2, '0')}`);
     if (!apply) {
         console.log('dry-run — ใส่ --apply เพื่อเขียนจริง');

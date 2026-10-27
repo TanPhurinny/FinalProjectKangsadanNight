@@ -1,6 +1,7 @@
 const prisma = require('../config/prismaClient');
 const { buildBookingRequestTag } = require('../utils/bookingRequestTag');
 const { bahtText } = require('../utils/bahtText');
+const { shopsOfRequests } = require('../utils/shops');
 
 const VAT_RATE = 0.07;
 
@@ -87,6 +88,10 @@ async function buildQuotationData(requestId, printedByName, options = {}) {
     // ค่าเครื่องใช้ไฟฟ้า/พัดลมคิดตามวันที่คิดเงินจริง (หักวันหยุด) เหมือนยอดใน grandTotal
     const applianceDays = first.billableDays ?? rentalDays;
 
+    // แผงที่จัดให้จริง เรียงตามลำดับในคำขอ — ใช้บอกว่ารายการต่อล็อกเป็นของแผงไหน
+    const stallCodes = String(bookingRequest.assignedStallCode || '').split(',').map((code) => code.trim().toUpperCase()).filter(Boolean);
+    const withStall = (name, index) => (stallCodes[index] ? `${name} แผง ${stallCodes[index]}` : name);
+
     const items = [];
     if (options.perStall && stallCount > 1) {
         const rentParts = splitEvenly(rentTotal, stallCount);
@@ -94,13 +99,13 @@ async function buildQuotationData(requestId, printedByName, options = {}) {
         for (let i = 0; i < stallCount; i += 1) {
             if (rentTotal > 0) {
                 items.push({
-                    name: 'ค่าเช่าแผง', qty: 1, unit: 'แผง', days: rentalDays,
+                    name: withStall('ค่าเช่าแผง', i), qty: 1, unit: 'แผง', days: rentalDays,
                     unitPrice: dailyStallPrice, discount: 0, total: rentParts[i]
                 });
             }
             if (lightTotal > 0) {
                 items.push({
-                    name: 'ค่าไฟฟ้า', qty: 1, unit: 'จุด', days: rentalDays,
+                    name: withStall('ค่าไฟฟ้า', i), qty: 1, unit: 'จุด', days: rentalDays,
                     unitPrice: lightUnitPrice, discount: 0, total: lightParts[i]
                 });
             }
@@ -108,7 +113,7 @@ async function buildQuotationData(requestId, printedByName, options = {}) {
     } else {
         if (rentTotal > 0) {
             items.push({
-                name: 'ค่าเช่าแผง', qty: stallCount, unit: 'แผง', days: rentalDays,
+                name: stallCodes.length ? `ค่าเช่าแผง ${stallCodes.join(', ')}` : 'ค่าเช่าแผง', qty: stallCount, unit: 'แผง', days: rentalDays,
                 unitPrice: dailyStallPrice, discount: 0, total: rentTotal
             });
         }
@@ -139,6 +144,8 @@ async function buildQuotationData(requestId, printedByName, options = {}) {
     const netTotal = amountAfterDiscount;
 
     const customer = await prisma.user.findUnique({ where: { id: first.userId } });
+    // ร้านที่จอง (1 ผู้ใช้มีได้หลายร้าน) — คำขอเก่าที่ยังไม่มี shopId ใช้ร้านหลักของเจ้าของ
+    const shop = (await shopsOfRequests([bookingRequest], () => bookingRequest.userId || first.userId)).get(bookingRequest.id);
     const latestApplication = await prisma.sellerApplication.findFirst({
         where: { userId: first.userId },
         orderBy: { createdAt: 'desc' }
@@ -157,6 +164,8 @@ async function buildQuotationData(requestId, printedByName, options = {}) {
         // สำหรับ BookingRequest เก่าที่ยืนยันไปก่อนจะมีคอลัมน์นี้ (confirmedByName เป็น null)
         printedByName: bookingRequest.confirmedByName || printedByName || '-',
         customerName: customer?.name || first.storeDetailSnapshot || '-',
+        shopName: shop?.shopName || bookingRequest.productName || null,
+        stallCodes,
         customerAddress: addressParts.join(' ') || '-',
         items,
         totalBeforeDiscount,

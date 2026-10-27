@@ -2,7 +2,9 @@ const prisma = require('../config/prismaClient');
 const rentalStatement = require('../utils/rentalStatement');
 const leaseContract = require('../utils/leaseContract');
 const { sendLeaseContractEmail } = require('../config/mailer');
+const { shopsRelation, primaryShop, resolveShopForUser } = require('../utils/shops');
 
+// 1 สัญญา = 1 ร้าน: ผู้ใช้ที่มีหลายร้านเลือกร้านก่อน (shopId) แล้วสัญญารวมเฉพาะแผงของร้านนั้น
 // คำขอสัญญาเช่า: ร้านเลือกช่วงวันในหน้า /documents/lease-contract → ระบบสร้างร่างสัญญาจากประวัติการจองที่ชำระแล้ว
 // ในช่วงนั้น (utils/leaseContract.js) → แอดมินตรวจร่างที่ /admin/lease-contracts/:id แล้วอนุมัติ (ออกเลขที่สัญญา)
 // หรือไม่อนุมัติพร้อมเหตุผล → ร้านเปิด/พิมพ์สัญญาที่อนุมัติแล้วได้ที่ /lease-contracts/:id
@@ -13,6 +15,8 @@ const MAX_PERIOD_DAYS = 731;
 function toView(request) {
     return {
         ...request,
+        // ชื่อร้านของสัญญา — คำขอเก่าที่ยังไม่มี shopId ใช้ร้านหลักของผู้ใช้
+        shopName: request.shop?.shopName || primaryShop(request.user)?.shopName || null,
         statusLabel: leaseContract.STATUS_LABEL[request.status] || request.status,
         periodText: leaseContract.periodText(request),
         createdAtText: rentalStatement.formatThaiDate(request.createdAt),
@@ -23,7 +27,11 @@ function toView(request) {
 // ---------- ฝั่งร้านค้า ----------
 
 async function getLeaseRequestsForUser(userId) {
-    const requests = await prisma.leaseContractRequest.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
+    const requests = await prisma.leaseContractRequest.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        include: { shop: { select: { shopName: true } }, user: { select: { shops: shopsRelation({ select: { shopName: true } }) } } }
+    });
     return requests.map(toView);
 }
 
@@ -36,16 +44,28 @@ async function createLeaseRequest(userId, body) {
     const note = String(body.note || '').trim();
     if (note.length > MAX_NOTE_LENGTH) return 'note_too_long';
 
-    // สัญญาสร้างจากการเช่าที่ชำระแล้วเท่านั้น — ช่วงที่ไม่มีเลยไม่มีอะไรให้ทำสัญญา
-    if (!(await leaseContract.countPaidRowsInPeriod(userId, periodStart, periodEnd))) return 'no_paid_rentals';
+    // ร้านที่ขอสัญญา (ต้องเป็นร้านของผู้ใช้ ไม่ส่งมา = ร้านหลัก)
+    const shop = await resolveShopForUser(userId, body.shopId, { select: { id: true } });
+    if (!shop) return 'shop_not_found';
 
-    // กันกดส่งซ้ำ: มีคำขอที่ยังรอแอดมินและช่วงทับกันอยู่แล้ว
+    // สัญญาสร้างจากการเช่าที่ชำระแล้วของร้านนี้เท่านั้น — ช่วงที่ไม่มีเลยไม่มีอะไรให้ทำสัญญา
+    if (!(await leaseContract.countPaidRowsInPeriod(userId, periodStart, periodEnd, shop.id))) return 'no_paid_rentals';
+
+    // กันกดส่งซ้ำ: ร้านเดียวกันมีคำขอที่ยังรอแอดมินและช่วงทับกันอยู่แล้ว (ร้านอื่นของผู้ใช้ขอช่วงเดียวกันได้)
+    // คำขอเก่าที่ยังไม่มี shopId นับเป็นร้านหลัก
+    const primary = await resolveShopForUser(userId, null, { select: { id: true } });
     const overlap = await prisma.leaseContractRequest.findFirst({
-        where: { userId, status: 'PENDING', periodStart: { lte: periodEnd }, periodEnd: { gte: periodStart } }
+        where: {
+            userId,
+            status: 'PENDING',
+            periodStart: { lte: periodEnd },
+            periodEnd: { gte: periodStart },
+            OR: [{ shopId: shop.id }, ...(primary?.id === shop.id ? [{ shopId: null }] : [])]
+        }
     });
     if (overlap) return 'duplicate_pending';
 
-    await prisma.leaseContractRequest.create({ data: { userId, periodStart, periodEnd, note: note || null } });
+    await prisma.leaseContractRequest.create({ data: { userId, shopId: shop.id, periodStart, periodEnd, note: note || null } });
     return null;
 }
 
@@ -107,7 +127,10 @@ async function getAdminListPage(req, res) {
             prisma.leaseContractRequest.findMany({
                 where: { status: tab },
                 orderBy: { createdAt: tab === 'PENDING' ? 'asc' : 'desc' },
-                include: { user: { select: { id: true, name: true, phoneNumber: true, shop: { select: { shopName: true } } } } }
+                include: {
+                    shop: { select: { shopName: true } },
+                    user: { select: { id: true, name: true, phoneNumber: true, shops: shopsRelation({ select: { shopName: true } }) } }
+                }
             }),
             prisma.leaseContractRequest.groupBy({ by: ['status'], _count: { _all: true } })
         ]);
@@ -169,7 +192,8 @@ async function issue(req, res) {
         if (!request) return res.redirect('/admin/lease-contracts?error=not_found');
         if (request.status !== 'PENDING') return back('error=not_pending');
         // ตรวจซ้ำตอนอนุมัติ — ร่างต้องมีการเช่าที่ชำระแล้วอย่างน้อย 1 รายการ
-        if (!(await leaseContract.countPaidRowsInPeriod(request.userId, request.periodStart, request.periodEnd))) {
+        const shopId = await leaseContract.contractShopId(request);
+        if (!(await leaseContract.countPaidRowsInPeriod(request.userId, request.periodStart, request.periodEnd, shopId))) {
             return back('error=no_paid_rentals');
         }
         const issuedAt = new Date();

@@ -1,4 +1,5 @@
 const prisma = require('../config/prismaClient');
+const { shopsRelation, primaryShop } = require('../utils/shops');
 
 function normalizeEmail(email) {
     return String(email || '').trim().toLowerCase();
@@ -41,11 +42,17 @@ async function findByUsernameOrEmail(username, email) {
     });
 }
 
+// แนบ user.shop = ร้านหลัก (views หน้าโปรไฟล์ยังอ่าน profileUser.shop ร้านเดียว)
+function withPrimaryShop(user) {
+    if (user) user.shop = primaryShop(user);
+    return user;
+}
+
 async function findById(userId) {
-    return prisma.user.findUnique({
+    return withPrimaryShop(await prisma.user.findUnique({
         where: { id: Number(userId) },
-        include: { shop: true }
-    });
+        include: { shops: shopsRelation() }
+    }));
 }
 
 async function createUser(data) {
@@ -53,11 +60,11 @@ async function createUser(data) {
 }
 
 async function updateUser(userId, data) {
-    return prisma.user.update({
+    return withPrimaryShop(await prisma.user.update({
         where: { id: Number(userId) },
         data,
-        include: { shop: true }
-    });
+        include: { shops: shopsRelation() }
+    }));
 }
 
 async function createPasswordResetToken(userId, tokenHash, expiresAt) {

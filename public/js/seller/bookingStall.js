@@ -915,7 +915,7 @@
             // เปิดหน้าใหม่ด้วย GET เสมอ — หน้านี้อาจเป็นผลของ POST (เซิร์ฟเวอร์ตีกลับ) ถ้า reload() จะส่งฟอร์มซ้ำ
             saveDraft();
             const token = window.getTabToken ? window.getTabToken() : null;
-            window.location.href = `/booking-stall?zone=${encodeURIComponent(DATA.zone || '')}${token ? `&tabToken=${encodeURIComponent(token)}` : ''}`;
+            window.location.href = `/booking-stall?zone=${encodeURIComponent(DATA.zone || '')}${DATA.shopId ? `&shop=${DATA.shopId}` : ''}${token ? `&tabToken=${encodeURIComponent(token)}` : ''}`;
             return;
         }
         if (!DATA.sameDayClosed && DATA.sameDayCutoffMs && nowMs >= Number(DATA.sameDayCutoffMs)) {

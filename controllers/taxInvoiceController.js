@@ -2,6 +2,7 @@ const prisma = require('../config/prismaClient');
 const { buildQuotationData } = require('./quotationController');
 const { validateNewTaxProfile } = require('../utils/taxProfileValidation');
 const { bahtText } = require('../utils/bahtText');
+const rentalStatement = require('../utils/rentalStatement');
 
 // สถานะที่ถือว่า "ยังจับจองอยู่" กับใบเสนอราคานั้น ไม่ให้ถูกเลือกไปผูกกับคำขออื่นซ้ำ
 const ACTIVE_TAX_INVOICE_STATUSES = ['PENDING', 'ISSUED'];
@@ -13,39 +14,56 @@ function buildTaxInvoiceNumber(requestId, issuedAt) {
     return `T${yyyy}${mm}/${String(requestId).padStart(5, '0')}`;
 }
 
-// ใบเสนอราคา (BookingRequest, status SUCCESS) ของ user ที่ "ขอใบกำกับภาษีได้" — ยังไม่ถูกผูกกับ
+// ทุกช่วงเวลา — ขอใบกำกับภาษีย้อนหลังได้ทุกใบที่ชำระแล้ว ไม่จำกัดรอบ
+const ALL_TIME_RANGE = { from: new Date(2000, 0, 1), to: new Date(2100, 0, 1) };
+
+// ใบเสร็จ/ใบเสนอราคา (BookingRequest ที่ชำระแล้ว) ของ user ที่ "ขอใบกำกับภาษีได้" — ยังไม่ถูกผูกกับ
 // คำขอที่ยัง PENDING/ISSUED อยู่ (คำขอที่ถูกยกเลิกแล้วไม่นับ ปลดล็อกให้เลือกใหม่ได้)
+// ดึงเป็น batch จาก utils/rentalStatement.js (ยอดเท่ากับ netTotal ของใบเสนอราคา) แต่ละรายการบอกร้าน แผง รอบ ช่วงเช่า
+// ให้ผู้ใช้ที่มีหลายร้านจัดกลุ่มตามร้านได้ — ใบกำกับภาษี 1 ใบรวมใบเสร็จข้ามร้านได้ถ้าออกในนามเดียวกัน
 async function getEligibleQuotationsForUser(userId) {
-    const successRequests = await prisma.bookingRequest.findMany({
-        where: { status: 'SUCCESS' },
-        orderBy: { createdAt: 'desc' }
-    });
-
-    // BookingRequest ไม่มี userId ผูกตรงๆ (ดูคอมเมนต์ใน approvalController.js) เจ้าของตัวจริงมาจาก
-    // Booking ที่ผูกด้วย tag เดียวกัน — ใช้ quotationController.buildQuotationData ต่อรายการเพื่ออ่าน ownerUserId
-    const withOwner = await Promise.all(
-        successRequests.map(async (request) => {
-            const quotation = await buildQuotationData(request.id, null);
-            return quotation ? { request, quotation } : null;
-        })
-    );
-
-    const ownRequests = withOwner.filter((row) => row && row.quotation.ownerUserId === userId);
+    const rows = (await rentalStatement.loadStatementRows({ userId, range: ALL_TIME_RANGE }))
+        .filter((row) => row.status === 'PAID');
+    if (!rows.length) return [];
 
     const linkedItems = await prisma.taxInvoiceRequestItem.findMany({
-        where: { taxInvoiceRequest: { status: { in: ACTIVE_TAX_INVOICE_STATUSES } } },
+        where: {
+            bookingRequestId: { in: rows.map((row) => row.requestId) },
+            taxInvoiceRequest: { status: { in: ACTIVE_TAX_INVOICE_STATUSES } }
+        },
         select: { bookingRequestId: true }
     });
     const linkedIds = new Set(linkedItems.map((item) => item.bookingRequestId));
 
-    return ownRequests
-        .filter((row) => !linkedIds.has(row.request.id))
+    return rows
+        .filter((row) => !linkedIds.has(row.requestId))
+        .sort((a, b) => new Date(b.paidAt || 0) - new Date(a.paidAt || 0) || b.requestId - a.requestId)
         .map((row) => ({
-            id: row.request.id,
-            quotationNumber: row.quotation.quotationNumber,
-            issuedDateLabel: row.quotation.issuedDateLabel,
-            netTotal: row.quotation.netTotal
+            id: row.requestId,
+            quotationNumber: row.receiptNumber,
+            issuedDateLabel: row.paidAtText,
+            netTotal: row.grandTotal,
+            shopId: row.shopId,
+            shopName: row.shopName,
+            stallCodes: row.stallCodes,
+            zone: row.zone,
+            roundNumber: row.roundNumber,
+            rentalPeriodText: `${row.rentalStartText} – ${row.rentalEndText}`,
+            isExtension: row.isExtension
         }));
+}
+
+// จัดกลุ่มใบเสร็จที่ขอได้ตามร้าน (หน้า /documents/tax-invoice) — เรียงตามชื่อร้าน
+function groupEligibleByShop(eligible) {
+    const groups = new Map();
+    (eligible || []).forEach((q) => {
+        const key = q.shopId || `name:${q.shopName}`;
+        if (!groups.has(key)) groups.set(key, { shopId: q.shopId, shopName: q.shopName, items: [], total: 0 });
+        const group = groups.get(key);
+        group.items.push(q);
+        group.total += Number(q.netTotal) || 0;
+    });
+    return Array.from(groups.values()).sort((a, b) => String(a.shopName).localeCompare(String(b.shopName), 'th'));
 }
 
 async function createTaxInvoiceRequest({ requestedByUserId, bookingRequestIds, taxInvoiceProfileId, newProfileData }) {
@@ -109,7 +127,11 @@ async function buildTaxInvoiceData(taxInvoiceRequestId, options = {}) {
     )).filter(Boolean);
     if (!quotations.length) return null;
 
-    const items = quotations.flatMap((quotation) => quotation.items);
+    // รายการบอกแผงอยู่แล้ว (perStall) — ใบที่รวมหลายร้านให้ขึ้นต้นด้วยชื่อร้านด้วย จะได้แยกได้ว่าแผงไหนของร้านไหน
+    const shopNames = Array.from(new Set(quotations.map((quotation) => quotation.shopName).filter(Boolean)));
+    const items = quotations.flatMap((quotation) => quotation.items.map((item) => (
+        shopNames.length > 1 && quotation.shopName ? { ...item, name: `${quotation.shopName} · ${item.name}` } : item
+    )));
     const amountBeforeVat = quotations.reduce((sum, q) => sum + q.amountBeforeVat, 0);
     const vatAmount = quotations.reduce((sum, q) => sum + q.vatAmount, 0);
     const netTotal = quotations.reduce((sum, q) => sum + q.netTotal, 0);
@@ -132,6 +154,7 @@ async function buildTaxInvoiceData(taxInvoiceRequestId, options = {}) {
         address: taxRequest.taxInvoiceProfile.address,
         phoneNumber: taxRequest.taxInvoiceProfile.phoneNumber || '-',
         items,
+        shopNames,
         totalBeforeDiscount,
         discount: 0,
         amountBeforeVat,
@@ -310,6 +333,7 @@ async function buildTaxInvoiceListRows(where) {
 
         return {
             id: request.id,
+            shopNames: Array.from(new Set(quotations.map((q) => q.shopName).filter(Boolean))),
             status: request.status,
             statusLabel: STATUS_LABEL[request.status] || request.status,
             requestedAt: request.requestedAt,
@@ -329,6 +353,7 @@ async function buildTaxInvoiceListRows(where) {
 module.exports = {
     buildTaxInvoiceNumber,
     getEligibleQuotationsForUser,
+    groupEligibleByShop,
     getTaxInvoiceProfilesForUser,
     createTaxInvoiceRequest,
     buildTaxInvoiceData,

@@ -24,6 +24,13 @@
 .quotation-pick-row input[type="checkbox"] { width: 18px; height: 18px; flex: 0 0 auto; }
 .quotation-pick-row .qn { font-family: var(--mono, 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif); color: var(--navy, #12303a); font-weight: 600; flex: 1 1 auto; }
 .quotation-pick-row .qa { color: var(--ink-soft, #5b7a84); }
+.quotation-pick-row .qd { display: block; margin-top: 2px; font-weight: 400; font-size: 0.8rem; color: var(--ink-soft, #5b7a84); }
+.quotation-pick-shop { background: var(--soft-bg, #f4f8f9); border-top: 1px solid var(--line, #d7e3e6); }
+.quotation-pick-row--nested { padding-left: 34px; }
+@media (max-width: 576px) {
+    .quotation-pick-row { flex-wrap: wrap; }
+    .quotation-pick-row .qa { flex-basis: 100%; padding-left: 30px; }
+}
 .quotation-pick-empty { padding: 20px; text-align: center; color: var(--ink-soft, #5b7a84); font-size: 0.9rem; }
 
 .profile-toggle { display: flex; gap: 10px; margin-bottom: 16px; }

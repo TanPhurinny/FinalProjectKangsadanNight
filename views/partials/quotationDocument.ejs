@@ -21,6 +21,7 @@
     <div class="quotation-meta-row">
         <div class="quotation-meta-col">
             <div class="quotation-field"><span>ชื่อ-นามสกุล</span><b><%= data.customerName %></b></div>
+            <% if (data.shopName) { %><div class="quotation-field"><span>ร้าน</span><b><%= data.shopName %><% if (data.stallCodes && data.stallCodes.length) { %> (แผง <%= data.stallCodes.join(', ') %>)<% } %></b></div><% } %>
             <div class="quotation-field"><span>ที่อยู่</span><b><%= data.customerAddress %></b></div>
         </div>
         <div class="quotation-meta-col quotation-meta-col-right">

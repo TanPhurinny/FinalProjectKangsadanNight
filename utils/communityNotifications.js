@@ -1,4 +1,5 @@
 const prisma = require('../config/prismaClient');
+const { shopsRelation, primaryShop } = require('./shops');
 
 // แจ้งเตือน "มีคนถูกใจ/คอมเมนต์โพสต์ของคุณ" สำหรับกระดิ่งผู้ขาย (รวมเข้าชุดเดียวกับ loadSellerBookingStatus)
 // ไม่มีตารางแจ้งเตือนแยก — คำนวณสดจากถูกใจ/คอมเมนต์ของคนอื่นที่ใหม่กว่า CommunityPost.ownerSeenAt
@@ -22,7 +23,7 @@ function snippet(content) {
 }
 
 function displayName(user) {
-    return user?.shop?.shopName || user?.name || 'ผู้ใช้งาน';
+    return primaryShop(user)?.shopName || user?.name || 'ผู้ใช้งาน';
 }
 
 // "ร้าน A, ร้าน B และอีก 3 คน"
@@ -35,7 +36,7 @@ function joinNames(names) {
 async function buildCommunityNotifications(userId) {
     const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
     const activityFilter = { userId: { not: userId }, createdAt: { gte: since } };
-    const userInclude = { select: { name: true, shop: { select: { shopName: true } } } };
+    const userInclude = { select: { name: true, shops: shopsRelation({ select: { shopName: true } }) } };
 
     const posts = await prisma.communityPost.findMany({
         where: {

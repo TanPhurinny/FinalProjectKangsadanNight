@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="/stylesheets/common/datePicker.css?v=20261023-thai">
   <link rel="stylesheet" href="/stylesheets/rentalStatement.css?v=20261026b">
   <link rel="stylesheet" href="/stylesheets/documents.css?v=20261026b">
+  <link rel="stylesheet" href="/stylesheets/partials/shopSwitch.css?v=20261027">
 </head>
 <body class="rs-body">
 <script src="/js/common/tabSession.js"></script>
@@ -23,12 +24,14 @@
       period_too_long: 'ขอสัญญาได้ครั้งละไม่เกิน 2 ปี',
       note_too_long: 'หมายเหตุยาวเกิน 500 ตัวอักษร',
       no_paid_rentals: 'ช่วงที่เลือกยังไม่มีการเช่าที่ชำระเงินแล้ว จึงสร้างสัญญาไม่ได้ ลองเลือกช่วงที่มีการจองที่ชำระแล้ว',
-      duplicate_pending: 'มีคำขอสัญญาช่วงเดียวกันที่รอแอดมินอนุมัติอยู่แล้ว',
+      duplicate_pending: 'ร้านนี้มีคำขอสัญญาช่วงเดียวกันที่รอแอดมินอนุมัติอยู่แล้ว',
+      shop_not_found: 'ไม่พบร้านที่เลือก กรุณาเลือกร้านใหม่',
       not_found: 'ไม่พบสัญญาที่ต้องการ หรือสัญญายังไม่ได้รับการอนุมัติ',
       action_failed: 'ดำเนินการไม่สำเร็จ กรุณาลองใหม่'
     };
     const pill = { PENDING: 'rs-pill--pending', ISSUED: 'rs-pill--paid', CANCELLED: 'rs-pill--danger' };
     const pending = leaseRequests.filter((r) => r.status === 'PENDING').length;
+    const hasManyShops = shops.length > 1;
   %>
 
   <main class="rs-page" style="max-width:960px">
@@ -36,7 +39,7 @@
       <div>
         <p class="rs-kicker">Seller Center · เอกสาร</p>
         <h1 class="rs-title">ขอสัญญาเช่า</h1>
-        <p class="rs-lead">เลือกช่วงวันที่ต้องการให้สัญญาครอบคลุม ระบบจะสร้างสัญญาจากล็อกและยอดที่ชำระแล้วในช่วงนั้นให้อัตโนมัติ
+        <p class="rs-lead">สัญญา 1 ฉบับต่อ 1 ร้าน — เลือกร้านและช่วงวันที่ต้องการให้สัญญาครอบคลุม ระบบจะสร้างสัญญาจากทุกแผงของร้านนั้นและยอดที่ชำระแล้วในช่วงนั้นให้อัตโนมัติ
           เมื่อแอดมินอนุมัติจะได้เลขที่สัญญา แล้วเปิดดูและพิมพ์ได้ที่หน้านี้</p>
       </div>
     </header>
@@ -47,20 +50,22 @@
     <% if (leaseError) { %><div class="rs-notice rs-notice--danger" role="alert"><%= leaseErrors[leaseError] || 'ส่งคำขอไม่สำเร็จ' %></div><% } %>
 
     <section class="rs-section">
+      <%- include('../partials/shopSwitch', { shops, selectedShopId: shop ? shop.id : null, href: function (id) { return '/documents/lease-contract?shop=' + id; }, label: 'ขอสัญญาให้ร้าน' }) %>
       <div class="rs-section-head">
-        <h2 class="rs-section-title">เลือกช่วงสัญญา</h2>
+        <h2 class="rs-section-title">เลือกช่วงสัญญา<% if (shop) { %> · ร้าน <%= shop.shopName || 'ยังไม่ตั้งชื่อ' %><% } %></h2>
         <span class="rs-section-meta">ปฏิทินแบบเดียวกับตอนจองล็อก</span>
       </div>
       <div class="lc-hint">
         <% if (paidSpan) { %>
-        <span>ปีนี้คุณมีการเช่าที่ชำระแล้ว <b><%= paidSpan.count %> รายการ</b> ช่วง <b><%= paidSpan.text %></b></span>
+        <span>ปีนี้<%= hasManyShops ? 'ร้านนี้' : 'คุณ' %>มีการเช่าที่ชำระแล้ว <b><%= paidSpan.count %> รายการ</b> ช่วง <b><%= paidSpan.text %></b></span>
         <button type="button" class="rs-btn rs-btn--sm" data-fill="<%= paidSpan.startKey %>|<%= paidSpan.endKey %>">ใช้ช่วงนี้</button>
         <% } else { %>
         <span>ปีนี้ยังไม่มีการเช่าที่ชำระแล้ว — เลือกช่วงที่เคยเช่าและชำระเงินแล้วเท่านั้นจึงจะสร้างสัญญาได้</span>
         <% } %>
-        <a href="/rental-statement" style="margin-left:auto">ดูรายงานการเช่าก่อน <i class="fa-solid fa-arrow-right"></i></a>
+        <a href="/rental-statement<%= hasManyShops && shop ? `?shop=${shop.id}` : '' %>" style="margin-left:auto">ดูรายงานการเช่าก่อน <i class="fa-solid fa-arrow-right"></i></a>
       </div>
       <form class="rs-form" method="post" action="/lease-contracts" id="leaseForm">
+        <input type="hidden" name="shopId" value="<%= shop ? shop.id : '' %>">
         <label class="rs-field">วันที่เริ่มสัญญา
           <input type="date" id="periodStart" name="periodStart" value="<%= defaults.start %>" required>
         </label>
@@ -72,7 +77,7 @@
         </label>
         <div class="rs-form-actions">
           <button type="submit" class="rs-btn rs-btn--primary"><i class="fa-solid fa-file-signature"></i> ส่งคำขอสัญญาเช่า</button>
-          <p class="rs-hint">ขอได้ครั้งละไม่เกิน 2 ปี · ระบบนับเฉพาะการจองที่ชำระเงินแล้วในช่วงที่เลือก</p>
+          <p class="rs-hint">ขอได้ครั้งละไม่เกิน 2 ปี · ระบบนับเฉพาะการจองที่ชำระเงินแล้วของร้านนี้ในช่วงที่เลือก</p>
         </div>
       </form>
       <ol class="lc-steps">
@@ -93,11 +98,12 @@
       <div class="rs-table-wrap">
         <table class="rs-table">
           <thead>
-            <tr><th>ช่วงสัญญา</th><th>เลขที่สัญญา</th><th>ส่งคำขอเมื่อ</th><th>สถานะ</th><th>ข้อความจากแอดมิน</th><th></th></tr>
+            <tr><% if (hasManyShops) { %><th>ร้าน</th><% } %><th>ช่วงสัญญา</th><th>เลขที่สัญญา</th><th>ส่งคำขอเมื่อ</th><th>สถานะ</th><th>ข้อความจากแอดมิน</th><th></th></tr>
           </thead>
           <tbody>
             <% leaseRequests.forEach((lr) => { %>
             <tr>
+              <% if (hasManyShops) { %><td><%= lr.shopName || '-' %></td><% } %>
               <td><%= lr.periodText %><% if (lr.note) { %><div class="rs-muted" style="white-space:normal;max-width:260px"><%= lr.note %></div><% } %></td>
               <td class="rs-code"><%= lr.documentNumber || '-' %></td>
               <td><%= lr.createdAtText %></td>

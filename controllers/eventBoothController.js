@@ -12,6 +12,7 @@ const { verifySlip } = require('../utils/slipVerification');
 const { deleteImage } = require('../utils/imageStorage');
 const { buildPromptPayQrDataUrl, PROMPTPAY_ID } = require('../utils/promptpayQr');
 const { sendEventBoothStatusEmail } = require('../config/mailer');
+const { shopsRelation, primaryShop } = require('../utils/shops');
 
 const TOKEN_PATTERN = /^[a-f0-9]{48}$/;
 
@@ -74,11 +75,11 @@ async function loadBoothStatuses() {
 async function renderForm(req, res, { status = 200, error = null, values = null } = {}) {
     let prefill = {};
     if (req.user) {
-        const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, select: { name: true, phoneNumber: true, email: true, shop: { select: { shopName: true } } } });
+        const userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, select: { name: true, phoneNumber: true, email: true, shops: shopsRelation({ select: { shopName: true } }) } });
         // ชื่อในบัญชีเก็บเป็นช่องเดียว — แยกคำแรกเป็นชื่อ ที่เหลือเป็นนามสกุล (ผู้ใช้แก้ได้ในฟอร์ม)
         const [firstName = '', ...rest] = String(userRecord?.name || '').trim().split(/\s+/);
         prefill = {
-            companyName: userRecord?.shop?.shopName || '',
+            companyName: primaryShop(userRecord)?.shopName || '',
             firstName,
             lastName: rest.join(' '),
             phone: userRecord?.phoneNumber || '',

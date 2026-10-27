@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
   <link rel="stylesheet" href="/stylesheets/seller/bookingStall.css">
   <link rel="stylesheet" href="/stylesheets/seller/extendLock.css">
+  <link rel="stylesheet" href="/stylesheets/partials/shopSwitch.css?v=20261027">
 </head>
 <body>
 <script src="/js/common/tabSession.js"></script>
@@ -31,7 +32,9 @@
   </header>
 
   <main class="main-content">
+    <%- include('../partials/shopSwitch', { shops: typeof shops !== 'undefined' ? shops : [], selectedShopId: typeof extendShopId !== 'undefined' ? extendShopId : null, href: function (id) { return '/booking-stall/extend?shop=' + id; }, label: 'ต่อล็อกของร้าน' }) %>
     <form class="form-card" method="POST" action="/booking-stall/extend" id="extendForm">
+      <input type="hidden" name="shopId" value="<%= typeof extendShopId !== 'undefined' && extendShopId ? extendShopId : '' %>" />
       <% if (error) { %>
         <%
         const errorMsg = {
@@ -56,6 +59,7 @@
         <div class="ext-stall">
           <div class="ext-stall-code"><%= request.assignedStallCode || '-' %></div>
           <div class="ext-stall-info">
+            <div>ร้าน <strong><%= request.productName || '-' %></strong></div>
             <div>โซน <strong><%= request.zone %></strong></div>
             <div>ขายได้ถึงวันที่ <strong><%= fmtD(activeLock.rentalEndDate) %></strong></div>
             <div>รอบนี้จบวันที่ <strong><%= fmtD(roundMeta.cycleEnd) %></strong></div>

@@ -3,6 +3,7 @@ const prisma = require('../config/prismaClient');
 const { buildZonesData } = require('./marketController');
 const { getStallOwnerIndex, recordShopView } = require('../utils/shopViews');
 const { getRatingSummaries } = require('../utils/shopReviews');
+const { getPrimaryShop } = require('../utils/shops');
 
 // งานเสริมของผังตลาด: QR ร้าน, ป้ายหน้าร้าน (พิมพ์), ผังตลาดฉบับพิมพ์ และเก็บสถิติการเปิดดูร้าน
 // แยกจาก marketController.js ที่ดูแลการสร้างข้อมูลผัง (buildZonesData) อยู่แล้ว
@@ -49,7 +50,7 @@ exports.getStallSign = async (req, res) => {
         const owner = (await getStallOwnerIndex()).get(code);
         if (!owner) return res.status(404).send('ล็อกนี้ยังไม่มีร้านค้า');
         const shop = owner.userId
-            ? await prisma.shopDetail.findUnique({ where: { userId: owner.userId }, select: { shopName: true, shopTags: true, productType: true } })
+            ? await getPrimaryShop(owner.userId, { select: { shopName: true, shopTags: true, productType: true } })
             : null;
         const tags = String(shop?.shopTags || '').split(',').map((t) => t.trim()).filter(Boolean).slice(0, 6);
         const rating = owner.userId ? (await getRatingSummaries([owner.userId])).get(owner.userId) : null;
@@ -75,8 +76,9 @@ exports.getPrintableMap = async (req, res) => {
         const [zones, owners] = await Promise.all([buildZonesData(), getStallOwnerIndex()]);
         const userIds = [...new Set([...owners.values()].map((o) => o.userId).filter(Boolean))];
         const shops = userIds.length
-            ? await prisma.shopDetail.findMany({ where: { userId: { in: userIds } }, select: { userId: true, shopTags: true, productType: true } })
+            ? await prisma.shopDetail.findMany({ where: { userId: { in: userIds } }, orderBy: { id: 'desc' }, select: { userId: true, shopTags: true, productType: true } })
             : [];
+        // เรียง id มาก→น้อย ให้ Map เก็บร้านหลัก (id น้อยสุด) ของแต่ละผู้ใช้ไว้ท้ายสุด
         const shopByUserId = new Map(shops.map((shop) => [shop.userId, shop]));
 
         const directory = zones.map((zone) => {

@@ -30,6 +30,9 @@
     // ---------- ส่วนที่ 1: เลือกใบเสนอราคา ----------
     const quoteBoxes = Array.from(form.querySelectorAll('input[name="bookingRequestIds"]'));
     const pickAll = $('pickAllQuotations');
+    // "เลือกทั้งร้าน" (มีหลายร้าน) — data-pick-shop จับคู่กับ data-shop-group ของใบเสร็จในร้านนั้น
+    const shopPicks = Array.from(form.querySelectorAll('input[data-pick-shop]'));
+    const boxesOfShop = (pick) => quoteBoxes.filter((box) => box.dataset.shopGroup === pick.dataset.pickShop);
     const summary = $('quotationSummary');
     const submitBtn = $('taxSubmitBtn');
 
@@ -45,9 +48,21 @@
             pickAll.checked = picked.length === quoteBoxes.length && quoteBoxes.length > 0;
             pickAll.indeterminate = picked.length > 0 && picked.length < quoteBoxes.length;
         }
+        shopPicks.forEach((pick) => {
+            const boxes = boxesOfShop(pick);
+            const count = boxes.filter((box) => box.checked).length;
+            pick.checked = count === boxes.length && boxes.length > 0;
+            pick.indeterminate = count > 0 && count < boxes.length;
+        });
         if (picked.length) $('quotationError').hidden = true;
     }
     quoteBoxes.forEach((box) => box.addEventListener('change', updateQuotationSummary));
+    shopPicks.forEach((pick) => {
+        pick.addEventListener('change', () => {
+            boxesOfShop(pick).forEach((box) => { box.checked = pick.checked; });
+            updateQuotationSummary();
+        });
+    });
     if (pickAll) {
         pickAll.addEventListener('change', () => {
             quoteBoxes.forEach((box) => { box.checked = pickAll.checked; });

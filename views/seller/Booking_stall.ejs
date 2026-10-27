@@ -78,20 +78,26 @@
 
     <form class="form-card" method="POST" action="/booking-stall" id="bookingForm" novalidate>
       <input type="hidden" name="zone" value="<%= zone %>" />
+      <input type="hidden" name="shopId" value="<%= shop ? shop.id : '' %>" />
       <input type="hidden" name="applianceItems" id="applianceItemsInput" value="[]" />
 
       <!-- ผู้จอง: อ่านอย่างเดียว ย่อเหลือแถบเดียว พร้อมทางลัดเปลี่ยนโซน -->
       <div class="identity-bar">
         <div class="identity-bar__who">
+          <% if (shop) { %>
+          <strong><i class="fa-solid fa-store"></i> <%= shop.shopName || 'ร้านยังไม่ตั้งชื่อ' %></strong>
+          <span><%= user ? user.name : '-' %> · <%= user ? (user.phoneNumber || '-') : '-' %></span>
+          <% } else { %>
           <strong><%= user ? user.name : '-' %></strong>
           <span><%= user ? (user.phoneNumber || '-') : '-' %></span>
+          <% } %>
         </div>
         <div class="identity-bar__zone">
           <span class="identity-bar__zone-code">โซน <%= zone %></span>
           <span class="identity-bar__zone-price"><%= Number(zonePrice || 0).toLocaleString('th-TH') %> บาท/ล็อก/วัน</span>
         </div>
-        <% if (allowedZoneCount !== 1) { %>
-        <a class="identity-bar__change" href="/select-zone">เปลี่ยนโซน</a>
+        <% if (allowedZoneCount !== 1 || shopCount > 1) { %>
+        <a class="identity-bar__change" href="/select-zone<%= shop ? `?shop=${shop.id}` : '' %>"><%= shopCount > 1 ? 'เปลี่ยนร้าน/โซน' : 'เปลี่ยนโซน' %></a>
         <% } %>
       </div>
 
@@ -401,6 +407,7 @@
       window.BOOKING_DATA = {
         userId: <%= user && user.id ? Number(user.id) : 0 %>,
         zone: <%- safeJson(zone) %>,
+        shopId: <%= shop ? Number(shop.id) : 'null' %>,
         zonePrice: <%= Number(zonePrice || 0) %>,
         lightUnitPrice: <%= Number(pricing.lightUnitPrice || 15) %>,
         maxStallsPerSeller: <%= maxStallsVal %>,

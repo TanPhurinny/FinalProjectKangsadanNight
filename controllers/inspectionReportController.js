@@ -7,6 +7,7 @@ const { CLEANLINESS_CHECKLIST, CLEANLINESS_ITEM_IDS } = require('../utils/cleanl
 const { buildPreferredWalkOrder } = require('../utils/inspectionWalkOrder');
 const { stripInternalTags } = require('../utils/bookingRequestTag');
 const { reportHelpers } = require('./scoreReportController');
+const { shopsRelation, primaryShop } = require('../utils/shops');
 
 // รายงานตรวจตลาด "รายวัน" ไม่เน้นคะแนน — งานตรวจปัญหา = มาขาย/ไม่มาขาย + ปัญหาย่อย (ไฟฟ้าเกิน ฯลฯ)
 // งานตรวจความสะอาด = ผ่าน/ไม่ผ่านตาม overallPassed ที่บันทึกไว้ พร้อมข้อย่อยที่ไม่ผ่าน (แสดงทั้งร้านที่ผ่านและไม่ผ่าน)
@@ -83,7 +84,7 @@ async function loadHeldStalls() {
             productName: true,
             description: true,
             createdAt: true,
-            user: { select: { shop: { select: { shopName: true, productType: true, productDetail: true } } } }
+            user: { select: { shops: shopsRelation({ select: { shopName: true, productType: true, productDetail: true } }) } }
         },
         orderBy: { createdAt: 'desc' }
     });
@@ -93,7 +94,7 @@ async function loadHeldStalls() {
 
     const byCode = new Map();
     requests.forEach((request) => {
-        const shop = request.user?.shop || {};
+        const shop = primaryShop(request.user) || {};
         const entry = {
             seller: {
                 id: request.userId || null,

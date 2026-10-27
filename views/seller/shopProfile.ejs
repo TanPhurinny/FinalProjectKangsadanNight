@@ -14,6 +14,7 @@
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/seller/repair.css">
         <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261026-reviewtabs">
+        <link rel="stylesheet" href="/stylesheets/partials/shopSwitch.css?v=20261027">
     </head>
 
     <body>
@@ -41,8 +42,12 @@
                 const errorMsg = {
                     'missing_fields': 'กรุณากรอกข้อมูลให้ครบถ้วน',
                     'upload_failed': 'อัปโหลดรูปภาพล้มเหลว กรุณาลองใหม่',
-                    'db_error': 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่'
+                    'db_error': 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่',
+                    'shop_not_found': 'ไม่พบร้านที่เลือก กรุณาเลือกร้านใหม่'
                 }[errorParam] || null;
+                const profileShops = (typeof shops !== 'undefined' && shops) || [];
+                // ร้านหลายร้าน: ฟอร์มบันทึกเข้าร้านที่เลือกอยู่ (?shop=) เสมอ
+                const shopQuery = profileShops.length > 1 && shopRecord.id ? `?shop=${shopRecord.id}` : '';
                 const currentShopName = fd.shopName || shopRecord.shopName || '';
                 const currentProductType = fd.productType || shopRecord.productType || '';
                 const currentProductDetail = fd.productDetail || shopRecord.productDetail || '';
@@ -53,6 +58,12 @@
                 const currentMenuImages = shopRecord.menuImages || [];
                 const maxMenuImagesCount = (typeof maxMenuImages !== 'undefined' && maxMenuImages) ? maxMenuImages : 4;
                 %>
+
+                <%- include('../partials/shopSwitch', { shops: profileShops, selectedShopId: shopRecord.id, href: function (id) { return '/shop-profile?shop=' + id; }, label: 'ร้านของฉัน' }) %>
+                <% if (profileShops.length > 1) { %>
+                <p class="text-muted small mb-3"><i class="fa-solid fa-circle-info me-1"></i>รีวิวและสถิติคนเปิดดูร้านด้านล่างยังรวมทุกร้านของคุณ</p>
+                <% } %>
+                <p class="mb-3"><a href="/shop-application?new=1" class="small"><i class="fa-solid fa-plus me-1"></i>สมัครเปิดร้านเพิ่ม</a></p>
 
                 <% if (successMsg) { %>
                 <div class="form-alert form-alert--success">
@@ -213,7 +224,7 @@
                     <% } %>
                 </div>
 
-                <form action="/shop-profile" method="POST" enctype="multipart/form-data">
+                <form action="/shop-profile<%= shopQuery %>" method="POST" enctype="multipart/form-data">
 
                     <div class="form-section">
                         <div class="form-section-head">

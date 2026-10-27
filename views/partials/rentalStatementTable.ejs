@@ -7,6 +7,8 @@ const withTenant = typeof showTenant !== 'undefined' && showTenant;
 const perStall = typeof stallMode !== 'undefined' && stallMode;
 const baht = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const footPaid = rows.filter((r) => r.status === 'PAID');
+// ผู้ใช้ 1 คนมีได้หลายร้าน — มีแถวจากหลายร้านให้บอกร้านใต้รหัสล็อก (คอลัมน์ผู้เช่าบอกร้านอยู่แล้ว)
+const showShop = !withTenant && new Set(rows.map((r) => r.shopId || r.shopName)).size > 1;
 %>
 <% if (!rows.length) { %>
 <div class="rs-empty">ไม่มีรายการเช่าในช่วงนี้</div>
@@ -46,7 +48,7 @@ const footPaid = rows.filter((r) => r.status === 'PAID');
                 <% } %>
                 <td class="rs-code">
                     <% r.stallCodes.forEach((code, i) => { %><% if (prefix === '/admin') { %><a href="/admin/rental-statements/stall/<%= code %>"><%= code %></a><% } else { %><%= code %><% } %><%= i < r.stallCodes.length - 1 ? ', ' : '' %><% }) %>
-                    <div class="rs-muted">โซน <%= r.zone %></div>
+                    <div class="rs-muted">โซน <%= r.zone %><% if (showShop) { %> · ร้าน <%= r.shopName %><% } %></div>
                 </td>
                 <td><%= r.rentalStartText %> – <%= r.rentalEndText %></td>
                 <td class="rs-num"><%= r.billableDays %></td>
