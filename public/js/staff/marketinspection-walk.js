@@ -481,6 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
             saving = false;
             syncHolderBadges();
             if (walkMap) walkMap.refresh();
+            refreshTeam(); // ยอดทีม/ยอดของฉันในแถบบนนับจากเซิร์ฟเวอร์ — ดึงใหม่เลยไม่ต้องรอ poll 20 วิ
 
             const next = findNextPending();
             if (next === -1) {
