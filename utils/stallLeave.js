@@ -10,6 +10,8 @@ const { businessDateOf } = require('./shopOpenStatus');
 const { extractBookingRequestId } = require('./bookingRequestTag');
 const { shopsOfRequests } = require('./shops');
 const { isEventBoothCode } = require('./eventBooth');
+const crypto = require('crypto');
+const { PRODUCT_TYPE_LABELS, loadCustomSubtypes, isAllowedSubtype } = require('./productSubtypes');
 
 const NOTICE_CUTOFF_HOUR = 12;
 const MAX_RANGE_DAYS = 60;
@@ -17,6 +19,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // สถานะที่ยังกันช่วงวันของแผงไว้ (ห้ามขอซ้อน)
 const ACTIVE_STATUSES = ['WAITING_SUBTENANT', 'PENDING', 'APPROVED'];
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+// ลิงก์ให้คนนอกกรอกข้อมูลเอง ใช้ได้ 72 ชม. (และไม่เกินวันเริ่มเช่าช่วง — ดู expireStale)
+const GUEST_LINK_HOURS = 72;
+const GUEST_TOKEN_PATTERN = /^[a-f0-9]{48}$/;
+const GUEST_MAX_IMAGES = 3;
 
 const KIND_LABEL = {
     LEAVE: 'ลาหยุด',
@@ -47,6 +53,15 @@ const ERROR_MESSAGES = {
     missing_subtenant: 'กรุณาเลือกร้านที่จะให้เช่าช่วง',
     invalid_subtenant: 'ร้านที่เลือกรับเช่าช่วงไม่ได้ (ไม่พบร้าน เป็นร้านของคุณเอง หรือถูกระงับสิทธิ์)',
     not_waiting: 'คำขอนี้ไม่ได้รอให้คุณตอบรับแล้ว',
+    link_invalid: 'ลิงก์นี้ใช้ไม่ได้แล้ว (หมดอายุ ถูกยกเลิก หรือกรอกข้อมูลไปแล้ว)',
+    guest_name: 'กรุณากรอกชื่อ-นามสกุล',
+    guest_phone: 'เบอร์โทรไม่ถูกต้อง (ตัวเลข 9–10 หลัก)',
+    guest_idcard: 'เลขบัตรประชาชนไม่ถูกต้อง (13 หลัก)',
+    guest_product: 'กรุณาเลือกประเภทและชนิดสินค้าที่จะขาย',
+    guest_detail: 'กรุณาอธิบายสินค้าที่จะขายสั้นๆ',
+    guest_images: `กรุณาแนบรูปสินค้า 1–${GUEST_MAX_IMAGES} รูป`,
+    guest_terms: 'กรุณายอมรับกติกาการเช่าช่วงของตลาด',
+    upload_failed: 'อัปโหลดรูปไม่สำเร็จ (ไฟล์รูปไม่เกิน 5MB)',
     action_failed: 'บันทึกไม่สำเร็จ กรุณาลองใหม่'
 };
 
@@ -333,6 +348,116 @@ async function listIncoming(userId, now = new Date()) {
     return rows.map((row) => ({ ...decorate(row, names, now), canRespond: row.status === 'WAITING_SUBTENANT' }));
 }
 
+// --- เช่าช่วงให้คนนอก (ไม่ใช่สมาชิกตลาด) ---
+// เจ้าของแผงสร้างคำขอ → ได้ลิงก์ /sublet/guest/:token ส่งให้คนนอกกรอกข้อมูล/รูปสินค้าเอง → PENDING (ถึงแอดมิน)
+
+function newGuestToken() {
+    return crypto.randomBytes(24).toString('hex');
+}
+
+async function createGuestSublet({ user, shop, stallCode, startKey, endKey, reason, now = new Date() }) {
+    const text = cleanReason(reason);
+    const checked = await validateRequest({ userId: user.id, shopId: shop.id, stallCode, startKey, endKey, now });
+    return prisma.stallLeaveRequest.create({
+        data: {
+            kind: 'SUBLET_GUEST',
+            status: 'WAITING_SUBTENANT',
+            userId: user.id,
+            shopId: shop.id,
+            bookingRequestId: checked.bookingRequestId,
+            stallCode: checked.stall.code,
+            startDate: checked.start,
+            endDate: checked.end,
+            reason: text,
+            guestToken: newGuestToken(),
+            guestTokenExpiresAt: new Date(now.getTime() + GUEST_LINK_HOURS * 60 * 60 * 1000)
+        }
+    });
+}
+
+// คำขอของลิงก์คนนอก (ทุกสถานะ — หน้าลิงก์บอกสถานะต่อได้หลังกรอกแล้ว)
+async function findGuestRequest(token, now = new Date()) {
+    if (!GUEST_TOKEN_PATTERN.test(String(token || ''))) return null;
+    await expireStale(now);
+    const row = await prisma.stallLeaveRequest.findUnique({ where: { guestToken: token } });
+    if (!row || row.kind !== 'SUBLET_GUEST') return null;
+    const names = await shopNamesOf([row]);
+    return decorate(row, names, now);
+}
+
+// เลขบัตรประชาชนไทย 13 หลัก + หลักตรวจสอบ
+function isValidThaiId(value) {
+    if (!/^\d{13}$/.test(value)) return false;
+    let sum = 0;
+    for (let i = 0; i < 12; i += 1) sum += Number(value[i]) * (13 - i);
+    return (11 - (sum % 11)) % 10 === Number(value[12]);
+}
+
+// ตรวจข้อมูลที่คนนอกกรอก — คืนค่าที่ทำความสะอาดแล้ว (โยน StallLeaveError ถ้าไม่ผ่าน)
+async function cleanGuestInput(body, imageUrls) {
+    await loadCustomSubtypes();
+    const name = String(body.guestName || '').trim().replace(/\s+/g, ' ').slice(0, 100);
+    const phone = String(body.guestPhone || '').replace(/[\s-]/g, '');
+    const idCard = String(body.guestIdCard || '').replace(/[\s-]/g, '');
+    const productType = String(body.guestProductType || '');
+    const productSubtype = String(body.guestProductSubtype || '').trim();
+    const detail = String(body.guestProductDetail || '').trim().slice(0, 1000);
+    if (name.length < 2) throw new StallLeaveError('guest_name');
+    if (!/^0\d{8,9}$/.test(phone)) throw new StallLeaveError('guest_phone');
+    if (!isValidThaiId(idCard)) throw new StallLeaveError('guest_idcard');
+    if (!PRODUCT_TYPE_LABELS[productType]) throw new StallLeaveError('guest_product');
+    // "อื่นๆ" ไม่มีรายการให้เลือกครบทุกอย่าง — ไม่บังคับชนิดสินค้า แต่ถ้าเลือกต้องเป็นรายการในระบบ
+    if (productSubtype ? !isAllowedSubtype(productSubtype) : productType !== 'อื่นๆ') throw new StallLeaveError('guest_product');
+    if (detail.length < 5) throw new StallLeaveError('guest_detail');
+    if (!imageUrls.length || imageUrls.length > GUEST_MAX_IMAGES) throw new StallLeaveError('guest_images');
+    if (body.acceptTerms !== 'on' && body.acceptTerms !== '1') throw new StallLeaveError('guest_terms');
+    return { name, phone, idCard, productType, productSubtype, detail };
+}
+
+async function submitGuestInfo(token, body, imageUrls, now = new Date()) {
+    const row = await findGuestRequest(token, now);
+    if (!row || row.status !== 'WAITING_SUBTENANT') throw new StallLeaveError('link_invalid');
+    const input = await cleanGuestInput(body, imageUrls);
+    // กันส่งซ้ำพร้อมกัน 2 ครั้ง: อัปเดตเฉพาะตอนที่ยังรอข้อมูลอยู่
+    const result = await prisma.stallLeaveRequest.updateMany({
+        where: { id: row.id, status: 'WAITING_SUBTENANT' },
+        data: {
+            status: 'PENDING',
+            subtenantAcceptedAt: now,
+            guestName: input.name,
+            guestPhone: input.phone,
+            guestIdCard: input.idCard,
+            guestProductType: input.productType,
+            guestProductSubtype: input.productSubtype || null,
+            guestProductDetail: input.detail,
+            guestImages: JSON.stringify(imageUrls),
+            guestTermsAcceptedAt: now
+        }
+    });
+    if (!result.count) throw new StallLeaveError('link_invalid');
+    return prisma.stallLeaveRequest.findUnique({ where: { id: row.id } });
+}
+
+function guestImagesOf(row) {
+    try {
+        const list = JSON.parse(row.guestImages || '[]');
+        return Array.isArray(list) ? list.filter((u) => typeof u === 'string') : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+// คนนอกเคยติด blacklist ไหม: เบอร์ตรงกับผู้ใช้ที่ถูกระงับ หรือเลขบัตรตรงกับใบสมัครร้านของผู้ใช้ที่ถูกระงับ
+async function guestBlacklistHit(row) {
+    const phone = String(row.guestPhone || '');
+    const phones = phone.length === 10 ? [phone, `${phone.slice(0, 3)}-${phone.slice(3, 6)}-${phone.slice(6)}`] : [phone];
+    const [byPhone, byId] = await Promise.all([
+        phone ? prisma.user.count({ where: { isBlacklisted: true, phoneNumber: { in: phones } } }) : 0,
+        row.guestIdCard ? prisma.sellerApplication.count({ where: { idCardNumber: row.guestIdCard, user: { isBlacklisted: true } } }) : 0
+    ]);
+    return byPhone + byId > 0;
+}
+
 // เจ้าของแผงยกเลิกได้ก่อนถึงวันเริ่ม (ที่อนุมัติแล้วก็ยกเลิกได้ถ้ายังไม่ถึงวันเริ่ม)
 function canCancel(row, now = new Date()) {
     return ACTIVE_STATUSES.includes(row.status) && toStartOfDay(row.startDate) > businessDateOf(now);
@@ -390,7 +515,9 @@ function decorate(row, shopNames, now = new Date()) {
         kindLabel: KIND_LABEL[row.kind] || row.kind,
         statusLabel: STATUS_LABEL[row.status] || row.status,
         shopName: shopNames.get(row.shopId) || '-',
-        subShopName: row.subShopId ? (shopNames.get(row.subShopId) || '-') : null,
+        subShopName: row.subShopId ? (shopNames.get(row.subShopId) || '-') : (row.kind === 'SUBLET_GUEST' ? (row.guestName ? `${row.guestName} (นอกตลาด)` : 'รอคนนอกกรอกข้อมูล') : null),
+        guestImageList: row.kind === 'SUBLET_GUEST' ? guestImagesOf(row) : [],
+        guestProductTypeLabel: row.guestProductType ? (PRODUCT_TYPE_LABELS[row.guestProductType] || row.guestProductType) : null,
         rangeText: rangeText(row),
         days: dayCount(row.startDate, row.endDate),
         createdText: `${thaiDate(row.createdAt)} ${thaiTime(row.createdAt)}`,
@@ -555,6 +682,14 @@ module.exports = {
     createMemberSublet,
     respondAsSubtenant,
     listIncoming,
+    GUEST_LINK_HOURS,
+    GUEST_MAX_IMAGES,
+    PRODUCT_TYPE_LABELS,
+    createGuestSublet,
+    findGuestRequest,
+    submitGuestInfo,
+    guestBlacklistHit,
+    isValidThaiId,
     canCancel,
     cancelRequest,
     approveRequest,

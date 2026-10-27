@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
     <link rel="stylesheet" href="/stylesheets/admin/theme.css">
     <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
-    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-sublet">
+    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-guest">
 </head>
 <body class="eb-body">
     <script src="/js/common/tabSession.js"></script>
@@ -74,13 +74,19 @@
             <div class="sl-sub">
                 <% if (st.image) { %><a href="<%= st.image %>" target="_blank" rel="noopener"><img src="<%= st.image %>" alt=""></a><% } else { %><span class="sl-sub__ph"><i class="fa-solid fa-store"></i></span><% } %>
                 <div>
+                    <% if (st.isGuest) { %>
+                    <b>ผู้รับเช่าช่วง: <%= st.name %></b> (คนนอกตลาด กรอกเองผ่านลิงก์)
+                    <small>เลขบัตรประชาชน <%= st.idCard %></small>
+                    <% } else { %>
                     <b>ผู้รับเช่าช่วง: ร้าน <%= st.name %></b> (สมาชิก)<%= r.subtenantAcceptedAt ? ' · ตอบรับแล้ว' : '' %>
+                    <% } %>
                     <small>สินค้า <%= st.productType %> · <%= st.productSubtype %></small>
                     <small>ติดต่อ <%= st.contact %><% if (st.phone) { %> · <a href="tel:<%= st.phone %>"><%= st.phone %></a><% } %></small>
                     <% if (st.productDetail) { %><small><%= st.productDetail %></small><% } %>
+                    <% if (st.images && st.images.length > 1) { %><small><% st.images.forEach(function (url, i) { %><a href="<%= url %>" target="_blank" rel="noopener">รูป <%= i + 1 %></a> <% }) %></small><% } %>
                 </div>
             </div>
-            <% if (st.blacklisted) { %><p class="sl-warn sl-warn--bad"><i class="fa-solid fa-ban"></i> ผู้รับเช่าช่วงถูกระงับสิทธิ์ (blacklist) อยู่ — อนุมัติไม่ได้</p><% } %>
+            <% if (st.blacklisted) { %><p class="sl-warn sl-warn--bad"><i class="fa-solid fa-ban"></i> <%= st.isGuest ? 'เบอร์โทรหรือเลขบัตรตรงกับผู้ใช้ที่ถูกระงับสิทธิ์ (blacklist)' : 'ผู้รับเช่าช่วงถูกระงับสิทธิ์ (blacklist) อยู่ — อนุมัติไม่ได้' %></p><% } %>
             <% } %>
             <% if (r.kind !== 'LEAVE') { %>
                 <% if (r.conflicts && r.conflicts.length) { %>

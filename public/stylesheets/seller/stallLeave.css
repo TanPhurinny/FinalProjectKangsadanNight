@@ -35,3 +35,10 @@
 .sl-warn { margin: 0; padding: 10px 16px; border-top: 1px solid var(--eb-line-soft); font-size: 13px; color: var(--eb-warning); background: #fdf8ef; }
 .sl-warn--bad { color: var(--eb-danger); background: #fdf2f1; }
 .sl-ok { margin: 0; padding: 10px 16px; border-top: 1px solid var(--eb-line-soft); font-size: 13px; color: var(--eb-success); }
+
+/* ลิงก์ให้คนนอกกรอกข้อมูล + ติ๊กยอมรับกติกา */
+.sl-link { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--eb-line-soft); background: var(--eb-soft); }
+.sl-link small { color: var(--eb-sub); font-size: 12px; }
+.sl-link__btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.sl-terms { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.6; cursor: pointer; }
+.sl-terms input { margin-top: 5px; flex-shrink: 0; }

@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
     <link rel="stylesheet" href="/stylesheets/partials/shopSwitch.css?v=20261027">
     <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
-    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-sublet">
+    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-guest">
 </head>
 <body class="eb-body">
     <script src="/js/common/tabSession.js"></script>
@@ -28,7 +28,7 @@
             <a class="eb-zone-tag" href="/stall-leave"><i class="fa-solid fa-list"></i> คำขอของฉัน</a>
         </header>
 
-        <%- include('../partials/shopSwitch', { shops: shops, selectedShopId: shop && shop.id, href: function (id) { return '/stall-leave/new?shop=' + id + (kind === 'LEAVE' ? '' : '&kind=sublet'); }, label: 'ร้าน' }) %>
+        <%- include('../partials/shopSwitch', { shops: shops, selectedShopId: shop && shop.id, href: function (id) { return '/stall-leave/new?shop=' + id + ({ SUBLET_MEMBER: '&kind=sublet', SUBLET_GUEST: '&kind=guest' }[kind] || ''); }, label: 'ร้าน' }) %>
 
         <% if (error) { %>
         <div class="eb-notice eb-notice--danger" role="alert"><%= error %></div>
@@ -55,6 +55,11 @@
                         <input type="radio" name="kind" value="SUBLET_MEMBER" <%= kind === 'SUBLET_MEMBER' ? 'checked' : '' %>>
                         <b>ให้ร้านสมาชิกเช่าช่วง</b>
                         <small>ร้านอื่นในตลาดมาขายแทนชั่วคราว</small>
+                    </label>
+                    <label class="sl-stall">
+                        <input type="radio" name="kind" value="SUBLET_GUEST" <%= kind === 'SUBLET_GUEST' ? 'checked' : '' %>>
+                        <b>ให้คนนอกตลาดเช่าช่วง</b>
+                        <small>ได้ลิงก์ส่งให้เขากรอกข้อมูล/รูปสินค้าเอง</small>
                     </label>
                 </div>
             </section>
@@ -120,7 +125,7 @@
             </section>
 
             <div class="eb-actions">
-                <button type="submit" class="eb-btn" id="submitBtn"><i class="fa-solid fa-paper-plane"></i> <span><%= kind === 'SUBLET_MEMBER' ? 'ส่งคำขอเช่าช่วง' : 'ส่งคำขอลาหยุด' %></span></button>
+                <button type="submit" class="eb-btn" id="submitBtn"><i class="fa-solid fa-paper-plane"></i> <span><%= { LEAVE: 'ส่งคำขอลาหยุด', SUBLET_MEMBER: 'ส่งคำขอเช่าช่วง', SUBLET_GUEST: 'สร้างลิงก์ให้คนนอกกรอกข้อมูล' }[kind] %></span></button>
                 <span class="eb-actions-note">แอดมินจะพิจารณาและแจ้งผลในหน้าแจ้งเตือน</span>
             </div>
         </form>
@@ -149,11 +154,13 @@
             const stepNum = form.querySelector('[data-step-num]');
             const submitText = document.querySelector('#submitBtn span');
             const subId = document.getElementById('subShopId');
+            const SUBMIT_TEXT = { LEAVE: 'ส่งคำขอลาหยุด', SUBLET_MEMBER: 'ส่งคำขอเช่าช่วง', SUBLET_GUEST: 'สร้างลิงก์ให้คนนอกกรอกข้อมูล' };
             function syncKind() {
-                const sublet = form.querySelector('input[name="kind"]:checked').value === 'SUBLET_MEMBER';
+                const kind = form.querySelector('input[name="kind"]:checked').value;
+                const sublet = kind === 'SUBLET_MEMBER';
                 subSection.hidden = !sublet;
                 stepNum.textContent = sublet ? '4' : '3';
-                submitText.textContent = sublet ? 'ส่งคำขอเช่าช่วง' : 'ส่งคำขอลาหยุด';
+                submitText.textContent = SUBMIT_TEXT[kind];
             }
             form.querySelectorAll('input[name="kind"]').forEach((input) => input.addEventListener('change', syncKind));
             form.addEventListener('submit', (e) => {

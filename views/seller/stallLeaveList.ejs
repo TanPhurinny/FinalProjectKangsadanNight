@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
     <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
-    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-sublet">
+    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-guest">
 </head>
 <body class="eb-body">
     <script src="/js/common/tabSession.js"></script>
@@ -19,6 +19,7 @@
         const successMessages = {
             created: 'ส่งคำขอแล้ว รอแอดมินพิจารณา ผลจะแจ้งในหน้าแจ้งเตือน',
             sublet_sent: 'ส่งคำขอให้ร้านผู้รับเช่าช่วงแล้ว รอร้านนั้นตอบรับ แล้วคำขอจะส่งต่อให้แอดมิน',
+            guest_link: 'สร้างลิงก์แล้ว คัดลอกหรือแชร์ลิงก์ด้านล่างให้คนที่จะมาขายแทนกรอกข้อมูล (ใช้ได้ 72 ชม. และไม่เกินวันเริ่ม)',
             accepted: 'ตอบรับแล้ว คำขอส่งให้แอดมินพิจารณา',
             declined: 'ปฏิเสธการรับเช่าช่วงแล้ว ร้านเจ้าของแผงได้รับแจ้ง',
             cancelled: 'ยกเลิกคำขอแล้ว'
@@ -52,7 +53,7 @@
 
         <h2 class="eb-section-title" style="margin:8px 0 12px">คำขอของแผงร้านคุณ</h2>
         <% rows.forEach(function (r) { %>
-        <article class="eb-req" id="leave-<%= r.id %>">
+        <article class="eb-req <%= r.id === focusId ? 'is-focus' : '' %>" id="leave-<%= r.id %>">
             <div class="eb-req-head">
                 <div>
                     <h2 class="eb-req-title"><%= r.kindLabel %> · แผง <%= r.stallCode %></h2>
@@ -66,6 +67,19 @@
                 <% if (r.reviewedText) { %><div class="eb-req-cell"><small>พิจารณาเมื่อ</small><span><%= r.reviewedText %><%= r.reviewedByName ? ` · ${r.reviewedByName}` : '' %></span></div><% } %>
             </div>
             <div class="eb-req-desc">เหตุผล: <%= r.reason %></div>
+            <% if (r.kind === 'SUBLET_GUEST' && r.status === 'WAITING_SUBTENANT' && r.guestToken) { const link = guestBaseUrl + r.guestToken; %>
+            <div class="sl-link">
+                <small>ส่งลิงก์นี้ให้คนที่จะมาขายแทน กรอกข้อมูลและรูปสินค้า หมดอายุ <%= new Date(r.guestTokenExpiresAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %> น.</small>
+                <input class="eb-input" type="text" readonly value="<%= link %>" aria-label="ลิงก์ให้คนนอกกรอกข้อมูล" data-link-input>
+                <div class="sl-link__btns">
+                    <button type="button" class="eb-btn eb-btn--sm" data-copy-link><i class="fa-regular fa-copy"></i> คัดลอกลิงก์</button>
+                    <a class="eb-btn eb-btn--ghost eb-btn--sm" href="https://line.me/R/msg/text/?<%= encodeURIComponent(`กรอกข้อมูลขายแทนที่แผง ${r.stallCode} ตลาดกังสดาลไนท์ ${link}`) %>" target="_blank" rel="noopener"><i class="fa-brands fa-line"></i> แชร์ทาง LINE</a>
+                </div>
+            </div>
+            <% } %>
+            <% if (r.kind === 'SUBLET_GUEST' && r.guestName) { %>
+            <div class="eb-req-desc">ผู้มาขายแทน: <%= r.guestName %> · <%= r.guestProductTypeLabel || '-' %><%= r.guestProductSubtype ? ` (${r.guestProductSubtype})` : '' %></div>
+            <% } %>
             <% if (r.status === 'REJECTED' && r.rejectReason) { %>
             <div class="eb-req-desc" style="color:var(--eb-danger)">แอดมินไม่อนุมัติ: <%= r.rejectReason %></div>
             <% } %>
@@ -120,6 +134,21 @@
 
     <script src="/js/common/dialogs.js?v=20261023-input"></script>
     <script>
+        // คัดลอกลิงก์ให้คนนอก
+        document.querySelectorAll('[data-copy-link]').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const input = btn.closest('.sl-link').querySelector('[data-link-input]');
+                try {
+                    await navigator.clipboard.writeText(input.value);
+                } catch (error) {
+                    input.select();
+                    document.execCommand('copy');
+                }
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> คัดลอกแล้ว';
+            });
+        });
+        const focused = document.querySelector('.eb-req.is-focus');
+        if (focused) focused.scrollIntoView({ block: 'center' });
         document.querySelectorAll('form[data-confirm-title]').forEach((form) => {
             form.addEventListener('submit', (e) => {
                 if (form.dataset.confirmed === '1') return;

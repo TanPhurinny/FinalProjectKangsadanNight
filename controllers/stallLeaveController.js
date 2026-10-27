@@ -5,8 +5,14 @@ const stallLeave = require('../utils/stallLeave');
 const stallSpacing = require('../utils/stallSpacing');
 const stallOccupancy = require('../utils/stallOccupancy');
 const { getUserShops, resolveShopForUser } = require('../utils/shops');
+const { getProductSubtypeGroups, loadCustomSubtypes } = require('../utils/productSubtypes');
+const { deleteImage } = require('../utils/imageStorage');
 
-const KINDS = ['LEAVE', 'SUBLET_MEMBER'];
+const KINDS = ['LEAVE', 'SUBLET_MEMBER', 'SUBLET_GUEST'];
+
+function publicBaseUrl(req) {
+    return (process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+}
 
 function errorCodeOf(error) {
     if (error instanceof stallLeave.StallLeaveError) return error.code;
@@ -35,6 +41,8 @@ exports.getMyRequests = async (req, res) => {
     res.render('seller/stallLeaveList', {
         user: req.user,
         rows,
+        guestBaseUrl: `${publicBaseUrl(req)}/sublet/guest/`,
+        focusId: Number(req.query.focus) || null,
         incoming,
         success: req.query.success || null,
         error: req.query.error ? (stallLeave.ERROR_MESSAGES[req.query.error] || 'เกิดข้อผิดพลาด') : null
@@ -49,7 +57,7 @@ async function renderForm(req, res, { status = 200, error = null, values = {} } 
     ]);
     const stalls = shop ? await stallLeave.loadShopStalls(req.user.id, shop.id) : [];
     const earliest = stallLeave.earliestStartDate();
-    const kind = KINDS.includes(values.kind) ? values.kind : (req.query.kind === 'sublet' ? 'SUBLET_MEMBER' : 'LEAVE');
+    const kind = KINDS.includes(values.kind) ? values.kind : ({ sublet: 'SUBLET_MEMBER', guest: 'SUBLET_GUEST' }[req.query.kind] || 'LEAVE');
     // ร้านผู้รับเช่าช่วงที่เลือกไว้แล้ว (ส่งฟอร์มไม่ผ่านแล้วกลับมาหน้าเดิม)
     let subShop = null;
     if (values.subShopId) {
@@ -92,6 +100,10 @@ exports.submitForm = async (req, res) => {
         const shop = await resolveShopForUser(req.user.id, values.shopId, { select: { id: true, userId: true } });
         if (!shop) throw new stallLeave.StallLeaveError('invalid_stall');
         const input = { user: req.user, shop, stallCode: values.stallCode, startKey: values.startDate, endKey: values.endDate, reason: values.reason };
+        if (values.kind === 'SUBLET_GUEST') {
+            const row = await stallLeave.createGuestSublet(input);
+            return res.redirect(`/stall-leave?success=guest_link&focus=${row.id}#leave-${row.id}`);
+        }
         if (values.kind === 'SUBLET_MEMBER') {
             const row = await stallLeave.createMemberSublet({ ...input, subShopId: values.subShopId });
             refreshBell(req, await ownerOfShop(row.subShopId));
@@ -141,6 +153,45 @@ exports.searchMembers = async (req, res) => {
     }
 };
 
+// --- คนนอกกรอกข้อมูลเองผ่านลิงก์ (ไม่ต้อง login) ---
+
+async function renderGuest(req, res, row, { status = 200, error = null, values = {} } = {}) {
+    await loadCustomSubtypes();
+    return res.status(status).render('stallLeaveGuest', {
+        user: req.user || null,
+        row,
+        token: req.params.token,
+        productTypes: stallLeave.PRODUCT_TYPE_LABELS,
+        subtypeGroups: getProductSubtypeGroups(),
+        maxImages: stallLeave.GUEST_MAX_IMAGES,
+        values,
+        error,
+        submitted: req.query.submitted === '1'
+    });
+}
+
+exports.getGuestPage = async (req, res) => {
+    const row = await stallLeave.findGuestRequest(req.params.token);
+    const error = req.query.error ? (stallLeave.ERROR_MESSAGES[req.query.error] || null) : null;
+    return renderGuest(req, res, row, { status: row ? 200 : 404, error });
+};
+
+exports.submitGuest = async (req, res) => {
+    const imageUrls = (req.files || []).map((file) => file.url).filter(Boolean);
+    try {
+        const row = await stallLeave.submitGuestInfo(req.params.token, req.body || {}, imageUrls);
+        req.app.locals.clearAdminTodoCache?.();
+        refreshBell(req, row.userId);
+        return res.redirect(`/sublet/guest/${req.params.token}?submitted=1`);
+    } catch (error) {
+        // ส่งไม่ผ่าน: ลบรูปที่อัปโหลดมาแล้วทิ้ง (ให้แนบใหม่)
+        await Promise.all(imageUrls.map((url) => deleteImage(url).catch(() => null)));
+        const code = errorCodeOf(error);
+        const row = await stallLeave.findGuestRequest(req.params.token);
+        return renderGuest(req, res, row, { status: row ? 400 : 404, error: stallLeave.ERROR_MESSAGES[code] || 'เกิดข้อผิดพลาด', values: req.body || {} });
+    }
+};
+
 // --- แอดมิน/staff ---
 
 // ข้อมูลช่วยตัดสินคำขอเช่าช่วง: ร้านผู้รับ (ประเภท/ชนิดสินค้า/ติดต่อ) + ร้านใกล้ๆ ที่ขายของชนิดเดียวกันเกินระยะที่แนะนำ
@@ -165,13 +216,18 @@ async function attachSubletInsights(rows) {
         if (info.productSubtype) occupantSubtypeByCode[code] = info.productSubtype;
     });
 
+    const guestRows = sublets.filter((r) => r.kind === 'SUBLET_GUEST' && r.guestName);
+    const guestBlacklisted = new Map(await Promise.all(guestRows.map(async (r) => [r.id, await stallLeave.guestBlacklistHit(r)])));
+
     sublets.forEach((row) => {
         const sub = row.kind === 'SUBLET_MEMBER' ? subShopById.get(row.subShopId) : null;
         const productType = sub ? sub.productType : row.guestProductType;
         const productSubtype = sub ? sub.productSubtype : row.guestProductSubtype;
         row.subtenant = sub
             ? { name: sub.shopName || '-', contact: sub.user?.name || '-', phone: sub.user?.phoneNumber || '', productType: sub.productType || '-', productSubtype: sub.productSubtype || '-', productDetail: sub.productDetail || '', image: sub.logoImage || sub.productImage || null, blacklisted: !!sub.user?.isBlacklisted }
-            : null;
+            : row.guestName
+                ? { isGuest: true, name: row.guestName, contact: row.guestName, phone: row.guestPhone || '', idCard: row.guestIdCard || '', productType: row.guestProductTypeLabel || '-', productSubtype: row.guestProductSubtype || '-', productDetail: row.guestProductDetail || '', image: row.guestImageList[0] || null, images: row.guestImageList, blacklisted: guestBlacklisted.get(row.id) || false }
+                : null;
         const zone = zonesData.find((z) => z.columns.some((c) => c.stalls.some((s) => String(s.code).toUpperCase() === row.stallCode)));
         row.conflicts = zone && productSubtype
             ? stallSpacing.findConflicts({ zoneColumns: zone.columns, candidateCode: row.stallCode, productSubtype, productType, occupantSubtypeByCode })
