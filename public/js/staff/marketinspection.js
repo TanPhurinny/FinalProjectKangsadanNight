@@ -148,6 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const payload = await response.json();
 
             if (!response.ok || !payload.success) {
+                // 409 = ร้านนี้อยู่ในชุดเดินตรวจของพนักงานคนอื่น (ดู utils/inspectionAssignment.js) — บอกให้รู้ว่าทำไมติ๊กไม่ติด
+                if (payload.conflict && window.showAlertDialog) {
+                    window.showAlertDialog({ title: 'มีคนตรวจร้านนี้อยู่', message: payload.message, tone: 'warning' });
+                }
                 throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
             }
 
@@ -346,7 +350,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (window.showAlertDialog) {
                             window.showAlertDialog({
                                 title: 'ส่งงานสำเร็จ',
-                                message: `บันทึกงานตรวจวันนี้แล้ว: พบปัญหา ${payload.flaggedCount} จากทั้งหมด ${payload.totalCount} ร้าน`,
+                                message: `บันทึกงานตรวจวันนี้แล้ว: พบปัญหา ${payload.flaggedCount} จากทั้งหมด ${payload.totalCount} ร้าน`
+                                    + ((payload.unclaimedCount || payload.inProgressCount)
+                                        ? ` (ทีมยังตรวจไม่ครบ: กำลังตรวจ ${payload.inProgressCount || 0} ร้าน, ยังไม่มีคนรับ ${payload.unclaimedCount || 0} ร้าน)`
+                                        : ''),
                                 tone: 'success'
                             });
                         }
