@@ -81,14 +81,11 @@ exports.announce = async (req, res) => {
         }
         const percent = rain.clampPercent(req.body.percent);
 
-        // ฟอร์มส่ง include_<userId>=1 และ percent_<userId>=.. ของแต่ละร้าน
+        // ฟอร์มส่ง include_<userId>=1 ของร้านที่ติ๊กไว้ — ทุกร้านได้ % เดียวกันตามที่เลือกตอนแรก
         const selections = {};
         Object.keys(req.body).forEach((key) => {
             const match = /^include_(\d+)$/.exec(key);
-            if (match && req.body[key] === '1') {
-                const userId = Number(match[1]);
-                selections[userId] = { include: true, percent: req.body[`percent_${userId}`] };
-            }
+            if (match && req.body[key] === '1') selections[Number(match[1])] = { include: true };
         });
 
         const result = await rain.announceRainDay({

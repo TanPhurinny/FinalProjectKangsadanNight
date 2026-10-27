@@ -218,7 +218,7 @@ async function previewRainDay(date, percent, now = new Date()) {
     }));
 }
 
-// selections: { [userId]: { include: boolean, percent } } จากฟอร์มตัวอย่าง — คำนวณยอดใหม่ฝั่ง server เสมอ
+// selections: { [userId]: { include: boolean } } จากฟอร์มตัวอย่าง — ทุกร้านได้ % เดียวกันของวันนั้น คำนวณยอดใหม่ฝั่ง server เสมอ
 async function announceRainDay({ date, percent, note, announceAt, createdBy, selections }, now = new Date()) {
     await releaseCreditsOfRejectedRequests();
     const error = await validateRainDate(date, now);
@@ -235,7 +235,6 @@ async function announceRainDay({ date, percent, note, announceAt, createdBy, sel
             data: { date, percent, note: note || null, announceAt: at, createdBy: createdBy || null }
         });
         for (const shop of chosen) {
-            const shopPercent = clampPercent(selections[shop.userId].percent, percent);
             await tx.rainCredit.create({
                 data: {
                     dayId: created.id,
@@ -243,8 +242,8 @@ async function announceRainDay({ date, percent, note, announceAt, createdBy, sel
                     sourceRequestId: shop.sourceRequestId || null,
                     stallCodes: shop.stallCodes.join(',').slice(0, 191),
                     baseRent: shop.baseRent,
-                    percent: shopPercent,
-                    amount: creditAmount(shop.baseRent, shopPercent),
+                    percent,
+                    amount: creditAmount(shop.baseRent, percent),
                     status: shop.capped ? 'SKIPPED_CAP' : 'ACTIVE',
                     expiresAt
                 }

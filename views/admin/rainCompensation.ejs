@@ -120,7 +120,7 @@
 
                 <% if (preview) { %>
                 <div class="panel">
-                    <div class="panel-title">2. ตรวจรายชื่อแล้วประกาศ — <%= fmtDate(preview.date) %></div>
+                    <div class="panel-title">2. ตรวจรายชื่อแล้วประกาศ — <%= fmtDate(preview.date) %> · ชดเชย <%= preview.percent %>% ทุกร้าน</div>
                     <div class="panel-body">
                         <% if (preview.error) { %>
                         <div class="notice notice-danger mb-0"><%= preview.error %></div>
@@ -139,25 +139,17 @@
                                             <th>ร้าน</th>
                                             <th>ล็อก</th>
                                             <th class="num">ค่าเช่า/วัน</th>
-                                            <th class="num">%</th>
                                             <th class="num">ได้รับ (บาท)</th>
                                             <th>หมายเหตุ</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <% preview.shops.forEach(function (shop) { %>
-                                        <tr class="<%= shop.include ? '' : 'is-off' %>" data-rent="<%= shop.baseRent %>">
+                                        <tr class="<%= shop.include ? '' : 'is-off' %>" data-amount="<%= shop.capped ? 0 : shop.amount %>">
                                             <td class="cell-check"><input type="checkbox" name="include_<%= shop.userId %>" value="1" class="js-include" <%= shop.include ? 'checked' : '' %>></td>
                                             <td><strong><%= shop.shopName || shop.name %></strong><% if (shop.shopName) { %><div class="cell-sub"><%= shop.name %></div><% } %></td>
                                             <td class="mono"><%= shop.stallCodes.join(', ') %></td>
                                             <td class="num mono"><%= money(shop.baseRent) %></td>
-                                            <td class="num">
-                                                <select class="field-input pct-input js-pct" name="percent_<%= shop.userId %>">
-                                                    <% percentOptions.forEach(function (p) { %>
-                                                    <option value="<%= p %>" <%= shop.percent === p ? 'selected' : '' %>><%= p %>%</option>
-                                                    <% }) %>
-                                                </select>
-                                            </td>
                                             <td class="num mono js-amount"><%= money(shop.amount) %></td>
                                             <td class="cell-note">
                                                 <% if (shop.closed) { %><span class="state-badge state-revoked">กดปิดร้านวันนี้</span><% } %>
@@ -168,7 +160,7 @@
                                     </tbody>
                                     <tfoot>
                                         <tr>
-                                            <td colspan="5">รวม <span class="js-count">0</span> ร้าน</td>
+                                            <td colspan="4">รวม <span class="js-count">0</span> ร้าน</td>
                                             <td class="num mono"><strong class="js-total">0</strong></td>
                                             <td></td>
                                         </tr>
@@ -270,10 +262,8 @@
                         var count = 0;
                         rows.forEach(function (row) {
                             var include = row.querySelector('.js-include').checked;
-                            var pct = Math.min(100, Math.max(50, parseInt(row.querySelector('.js-pct').value, 10) || 100));
-                            // ปัดเศษขึ้นแบบเดียวกับ creditAmount ใน utils/rainCompensation.js
-                            var amount = Math.ceil(Number(row.dataset.rent) * pct / 100);
-                            row.querySelector('.js-amount').textContent = amount.toLocaleString('th-TH');
+                            // ยอดคำนวณฝั่ง server แล้ว (ทุกร้าน % เดียวกัน ปัดเศษขึ้น) ร้านที่ครบ 5 ครั้งเป็น 0
+                            var amount = Number(row.dataset.amount) || 0;
                             row.classList.toggle('is-off', !include);
                             if (include && !row.querySelector('.state-badge.state-past')) { total += amount; count += 1; }
                         });
