@@ -30,7 +30,6 @@ async function applyReadState(userId, notifications) {
     const list = (notifications || []).map((item) => {
         const at = item.at !== undefined ? item.at : (item.sortAt ? toIsoFromMs(item.sortAt) : null);
         const decorated = { ...item, at, category: categoryOf(item) };
-        if (item.type === 'shop-review' && !item.action) decorated.action = 'ตอบรีวิว';
         decorated.key = notificationKey(decorated);
         return decorated;
     });
