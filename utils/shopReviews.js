@@ -185,8 +185,8 @@ async function getSellerReviewPanel(shopUserId) {
 }
 
 // แจ้งเตือนผู้ขายเรื่องรีวิว (รวมเข้า loadSellerBookingStatus เหมือน utils/communityNotifications.js) — คำนวณสดจากรีวิว NOTIFY_DAYS วันล่าสุด
-// 1) รีวิวแต่ละอันเป็นแจ้งเตือนของตัวเองในหมวด "ร้านและชุมชน" (ตอบแล้วถือว่าอ่านแล้ว) — นับในเลขกระดิ่ง
-// 2) งาน "ตอบรีวิว" 1 ชิ้นรวมรีวิวที่ยังไม่ตอบ อยู่ในแถบต้องทำ — ตั้งเป็นอ่านแล้วไว้ ไม่ให้นับซ้ำกับข้อ 1 ตอบครบแล้วหายเอง
+// รีวิวแต่ละอันเป็นแจ้งเตือนของตัวเองในหมวด "ร้านและชุมชน" (ตอบแล้วถือว่าอ่านแล้ว) — นับในเลขกระดิ่ง
+// ไม่ขึ้นในแถบต้องทำ (แถบนั้นเก็บไว้เฉพาะงานสำคัญที่มีเส้นตาย เช่น ชำระเงิน/ต่อล็อก)
 const NOTIFY_DAYS = 14;
 const MAX_REVIEW_ITEMS = 30;
 const escapeNotificationHtml = (value) => String(value ?? '')
@@ -221,29 +221,7 @@ async function buildReviewNotifications(shopUserId) {
         };
     });
 
-    const reviews = recent.filter((r) => !r.sellerReply && r.createdAt >= since);
-    if (!reviews.length) return items;
-    const latest = reviews[0];
-    const latestAt = new Date(latest.updatedAt > latest.createdAt ? latest.updatedAt : latest.createdAt);
-    const preview = latest.comment
-        ? `"${String(latest.comment).replace(/\s+/g, ' ').trim().slice(0, 50)}${latest.comment.length > 50 ? '…' : ''}"`
-        : 'ให้คะแนนอย่างเดียว';
-    const stars = reviews.slice(0, 5).map((r) => `${r.rating}★`).join(' ');
-    return [{
-        id: `shop-review-${latest.id}-${reviews.length}`,
-        type: 'shop-review',
-        title: reviews.length > 1 ? `มีรีวิวร้านใหม่ ${reviews.length} รีวิวที่ยังไม่ได้ตอบ` : 'มีรีวิวร้านใหม่',
-        desc: escapeNotificationHtml(`ล่าสุดจาก ${displayName(latest.user?.name)} ${latest.rating} ดาว — ${preview} · คะแนนที่ได้: ${stars}`),
-        date: latestAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
-        time: latestAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
-        sortAt: latestAt.getTime(),
-        status: 'SUCCESS',
-        isRead: true,
-        isNew: false,
-        link: '/shop-profile#shop-reviews',
-        linkIcon: 'bi-star',
-        linkLabel: 'ดูและตอบรีวิว'
-    }, ...items];
+    return items;
 }
 
 // --- แอดมิน ---

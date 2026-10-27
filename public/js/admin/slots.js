@@ -620,14 +620,18 @@ window.releaseStall = releaseStall;
 
 // แจ้งเตือนร้านค้าทางอีเมลว่าล็อกใกล้หมดสัญญา (ดู notifyStallExpiring ใน approvalController.js) —
 // แอดมินกดเองเป็นครั้งๆ ไป ไม่มีระบบส่งอัตโนมัติ
-function notifyExpiring(code) {
+// sentCount/lastText = แจ้งไปแล้วกี่ครั้ง/ล่าสุดเมื่อไหร่ (หน้าล็อกใกล้หมดอายุส่งมา) — มีแล้วถือเป็นการย้ำเตือน
+function notifyExpiring(code, sentCount, lastText) {
     const stallCode = code || selectedStall;
     if (!stallCode) return;
+    const again = Number(sentCount) > 0;
     window.showConfirmDialog({
-        title: 'แจ้งเตือนร้านค้า?',
-        message: `ส่งอีเมลแจ้งร้านค้าที่เช่าล็อก ${stallCode} ว่าใกล้หมดสัญญา ให้มาต่อสัญญา?`,
+        title: again ? 'ย้ำเตือนร้านค้าอีกครั้ง?' : 'แจ้งเตือนร้านค้า?',
+        message: again
+            ? `แจ้งล็อก ${stallCode} ไปแล้ว ${sentCount} ครั้ง (ล่าสุด ${lastText} น.) ส่งย้ำอีกครั้งทั้งในระบบและอีเมล?\nการ์ดต่อล็อกของร้านจะกลับเป็นยังไม่อ่าน`
+            : `ส่งอีเมลแจ้งร้านค้าที่เช่าล็อก ${stallCode} ว่าใกล้หมดสัญญา ให้มาต่อสัญญา?`,
         tone: 'neutral',
-        confirmText: 'ส่งแจ้งเตือน',
+        confirmText: again ? 'ส่งย้ำเตือน' : 'ส่งแจ้งเตือน',
         onConfirm: () => submitStallActionForm('/admin/slots/notify-expiring', stallCode)
     });
 }

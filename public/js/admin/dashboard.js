@@ -546,16 +546,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }),
         notify: (btn) => {
             const codes = btn.dataset.codes.split(',').filter(Boolean);
+            const again = btn.dataset.again === '1';
             return {
                 dialog: {
-                    title: 'แจ้งเตือนร้านใกล้หมดสัญญา',
-                    message: `ส่งแจ้งเตือนในระบบและอีเมลให้ร้านที่เช่าล็อก ${codes.join(', ')} ให้มาต่อสัญญาก่อน 20:00 ของวันสุดท้าย?`,
+                    title: again ? 'ย้ำเตือนร้านที่ยังไม่ต่อ' : 'แจ้งเตือนร้านใกล้หมดสัญญา',
+                    message: again
+                        ? `ล็อก ${codes.join(', ')} ได้รับแจ้งเตือนไปแล้วแต่ยังไม่ต่อ ส่งย้ำอีกครั้งทั้งในระบบและอีเมล?\nการ์ดต่อล็อกของร้านจะกลับเป็นยังไม่อ่าน`
+                        : `ส่งแจ้งเตือนในระบบและอีเมลให้ร้านที่เช่าล็อก ${codes.join(', ')} ให้มาต่อสัญญาก่อน 20:00 ของวันสุดท้าย?`,
                     tone: 'neutral',
-                    confirmText: 'ส่งแจ้งเตือน'
+                    confirmText: again ? 'ส่งย้ำเตือน' : 'ส่งแจ้งเตือน'
                 },
                 run: async () => {
                     const result = await runBulkStallAction('notify', codes);
-                    return `ส่งแจ้งเตือนแล้ว ${result.okCount} ร้าน${result.failCount ? ` · ไม่สำเร็จ ${result.failCount} (ไม่พบผู้เช่า)` : ''}`;
+                    return `${again ? 'ย้ำเตือน' : 'ส่งแจ้งเตือน'}แล้ว ${result.okCount} ร้าน${result.failCount ? ` · ไม่สำเร็จ ${result.failCount} (ไม่พบผู้เช่า)` : ''}`;
                 }
             };
         },

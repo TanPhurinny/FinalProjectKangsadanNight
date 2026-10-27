@@ -131,7 +131,8 @@ async function buildQuotationData(requestId, printedByName, options = {}) {
         }
     });
 
-    const discount = 0;
+    // ส่วนลดท้ายบิล = ส่วนลดชดเชยฝนตกที่ผู้ขายใช้กับคำขอนี้ (utils/rainCompensation.js) ไม่เกินยอดรวม
+    const discount = Math.min(grandTotal, Number(bookingRequest.rainDiscount || 0));
     const totalBeforeDiscount = grandTotal;
     const amountAfterDiscount = totalBeforeDiscount - discount;
     const amountBeforeVat = amountAfterDiscount / (1 + VAT_RATE);

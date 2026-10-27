@@ -1,0 +1,160 @@
+/* ========================================
+   RAIN COMPENSATION PAGE — gridgeist
+   ต่อยอดจาก bookingHolidays.css (โครงหน้า/ตาราง/ปุ่มเดียวกัน) เพิ่มเฉพาะตารางรายชื่อร้านและประวัติรายวัน
+   ======================================== */
+
+.rain-announce-form { grid-template-columns: 180px 1fr auto; margin-top: 16px; }
+
+.mono { font-variant-numeric: tabular-nums; }
+.num { text-align: right !important; white-space: nowrap; }
+.mb-0 { margin-bottom: 0; }
+
+.rain-table-wrap { margin-bottom: 16px; }
+.rain-table { min-width: 720px; }
+.rain-table tfoot td {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: #f6f8f8;
+    font-weight: 600;
+}
+.rain-table tr.is-off td { color: #9aa8ad; }
+.rain-table tr.is-off .js-amount { text-decoration: line-through; }
+
+.cell-check { width: 36px; }
+.cell-sub { font-size: 12px; color: var(--sub); }
+.cell-note .state-badge { margin-right: 4px; }
+
+.rain-confirm {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: 4px;
+    padding: 12px 16px;
+    display: grid;
+    gap: 8px;
+    font-size: 14px;
+}
+.check-line { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check-line input { margin-top: 4px; }
+
+.section-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 8px 0 12px;
+}
+
+.rain-day {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+.rain-day > summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    list-style: none;
+}
+.rain-day > summary::-webkit-details-marker { display: none; }
+.rain-day[open] > summary { border-bottom: 1px solid var(--border); background: #f6f8f8; }
+.rain-day__meta { flex: 1; font-size: 13px; color: var(--sub); }
+.rain-day__note { font-size: 13px; color: var(--sub); margin: 12px 16px 0; }
+.rain-day .table-wrap { margin: 12px 16px; }
+.rain-day__delete { margin: 0 16px 12px; text-align: right; }
+
+.state-used { background: #e8f5ec; color: #1E8449; }
+.state-revoked { background: #fbeceb; color: #922B21; }
+
+@media (max-width: 700px) {
+    .rain-announce-form { grid-template-columns: 1fr; }
+}
+
+/* การ์ดระดับฝนตาม "ตารางประเมินชดเชยฝนตก" — สีแถบซ้ายตรงกับป้ายของตลาด (เหลือง/ส้ม/แดง/ฟ้า) */
+:root {
+    --rain-light: #d9a520;
+    --rain-moderate: #e07a5a;
+    --rain-heavy: #d0443a;
+    --rain-special: #1d9ad6;
+}
+.rain-levels {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.rain-level {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border: 1px solid var(--border);
+    border-left: 6px solid var(--lv);
+    border-radius: 4px;
+    padding: 12px 14px;
+    cursor: pointer;
+    background: #fff;
+    transition: 0.15s;
+}
+.rain-level--light { --lv: var(--rain-light); }
+.rain-level--moderate { --lv: var(--rain-moderate); }
+.rain-level--heavy { --lv: var(--rain-heavy); }
+.rain-level--special { --lv: var(--rain-special); }
+.rain-level input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+.rain-level:hover { border-color: var(--lv); }
+.rain-level:has(input:checked) {
+    border-color: var(--lv);
+    background: color-mix(in srgb, var(--lv) 8%, #fff);
+    outline: 2px solid var(--lv);
+    outline-offset: -2px;
+}
+.rain-level__head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.rain-level__name { font-size: 15px; font-weight: 700; color: var(--text); }
+.rain-level__pct { font-size: 22px; font-weight: 700; color: var(--lv); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rain-level--special .rain-level__pct { font-size: 13px; }
+.rain-level__scale { font-size: 12px; color: var(--sub); }
+.rain-level__criteria { margin: 0; padding-left: 18px; font-size: 12px; color: var(--text); line-height: 1.5; }
+.rain-level__select { margin-top: auto; padding: 6px 8px; }
+.rain-level__select:disabled { opacity: 0.5; }
+
+.rain-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--lv);
+}
+.rain-tag--light { --lv: var(--rain-light); }
+.rain-tag--moderate { --lv: var(--rain-moderate); }
+.rain-tag--heavy { --lv: var(--rain-heavy); }
+.rain-tag--special { --lv: var(--rain-special); }
+
+.rain-confirm__criteria { margin: 0 0 0 26px; padding-left: 16px; font-size: 13px; color: var(--sub); }
+
+@media (max-width: 1000px) {
+    .rain-levels { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+    .rain-levels { grid-template-columns: 1fr; }
+}
+.btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* แถวปุ่มยืนยันระดับฝน: ระดับที่เลือกอยู่ทางซ้าย ปุ่มชิดขวา */
+.rain-pick-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+}
+.rain-pick-current { font-size: 14px; color: var(--sub); }
+.rain-pick-current strong { color: var(--text); }
+.rain-pick-submit { margin-left: auto; }
+.rain-pick-submit i { margin-left: 6px; }
+@media (max-width: 560px) {
+    .rain-pick-submit { width: 100%; }
+}

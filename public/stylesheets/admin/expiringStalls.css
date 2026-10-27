@@ -220,6 +220,24 @@ body {
     color: #fff;
 }
 
+.btn-row-notify.is-again {
+    border-color: #c98a2e;
+    color: #a86f1c;
+}
+
+.btn-row-notify.is-again:hover {
+    background: #c98a2e;
+    color: #fff;
+}
+
+.notice-meta {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.72rem;
+    color: #6b7f86;
+    white-space: nowrap;
+}
+
 @media (max-width: 600px) {
     .summary-cards { flex-direction: column; }
 }

@@ -1,12 +1,29 @@
-// หน้าหลักผู้ขาย: นับถอยหลังสัญญาล็อก (เดินทุกวินาที), QR ร้าน, คัดลอกลิงก์ร้าน
+// หน้าหลักผู้ขาย: นาฬิกาสด, นับถอยหลังสัญญาล็อก, ส่วนต่างๆ เผยตอนเลื่อน + ตัวเลขนับขึ้น,
+// โปรวันนี้ (ไอเดียโปร + ตัวอย่างบนผังแบบสด), QR ร้าน, แชร์/คัดลอกลิงก์ร้าน
 // ปุ่มปิดร้านวันนี้อยู่ใน public/js/seller/openStatus.js
 (function () {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const pad = (n) => String(n).padStart(2, '0');
+
+    // ---------- นาฬิกาบนแถบหัว ----------
+    const clock = document.getElementById('liveClock');
+    if (clock) {
+        const tickClock = () => {
+            const now = new Date();
+            clock.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        };
+        tickClock();
+        setInterval(tickClock, 1000);
+    }
+
     // ---------- นับถอยหลังถึง 20:00 ของวันขายสุดท้าย ----------
     const cd = document.querySelector('.sh-countdown');
     if (cd) {
         const cutoff = new Date(cd.dataset.cutoff).getTime();
         const el = (k) => cd.querySelector(`[data-cd="${k}"]`);
-        const pad = (n) => String(n).padStart(2, '0');
+        const bar = cd.querySelector('[data-cd-bar]');
+        const WEEK = 7 * 24 * 3600 * 1000;
+        let timer = null;
         const tick = () => {
             const left = Math.max(0, cutoff - Date.now());
             const sec = Math.floor(left / 1000);
@@ -14,6 +31,8 @@
             el('h').textContent = pad(Math.floor((sec % 86400) / 3600));
             el('m').textContent = pad(Math.floor((sec % 3600) / 60));
             el('s').textContent = pad(sec % 60);
+            // แถบเวลาที่เหลือ เทียบกับ 7 วันสุดท้าย
+            if (bar) bar.style.transform = `scaleX(${Math.min(1, left / WEEK)})`;
             // เหลือไม่ถึง 1 วัน: เปลี่ยนเป็นโทนเตือน
             cd.classList.toggle('is-urgent', left < 24 * 3600 * 1000);
             if (left <= 0) {
@@ -21,8 +40,43 @@
                 clearInterval(timer);
             }
         };
-        const timer = setInterval(tick, 1000);
+        timer = setInterval(tick, 1000);
         tick();
+    }
+
+    // ---------- ตัวเลขนับขึ้นจาก 0 ----------
+    function countUp(node) {
+        const target = Number(node.dataset.count);
+        if (!Number.isFinite(target) || target <= 0 || reduceMotion) return;
+        const start = performance.now();
+        const duration = Math.min(1200, 400 + target * 20);
+        const step = (t) => {
+            const p = Math.min(1, (t - start) / duration);
+            const eased = 1 - Math.pow(1 - p, 3);
+            node.textContent = Math.round(target * eased).toLocaleString('th-TH');
+            if (p < 1) requestAnimationFrame(step);
+        };
+        node.textContent = '0';
+        requestAnimationFrame(step);
+    }
+
+    // ---------- เผยทีละส่วนตอนเลื่อนเข้าจอ ----------
+    const revealEls = document.querySelectorAll('.sh-reveal');
+    const reveal = (node) => {
+        node.classList.add('is-in');
+        node.querySelectorAll('[data-count]').forEach(countUp);
+    };
+    if (!('IntersectionObserver' in window) || reduceMotion) {
+        revealEls.forEach((node) => node.classList.add('is-in'));
+    } else {
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                reveal(entry.target);
+                io.unobserve(entry.target);
+            });
+        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+        revealEls.forEach((node) => io.observe(node));
     }
 
     // ---------- toast เล็กๆ ----------
@@ -66,9 +120,36 @@
         const input = document.getElementById('promoText');
         const clearBtn = document.getElementById('promoClear');
         const count = document.getElementById('promoCount');
+        const meter = document.getElementById('promoMeter');
         const status = document.getElementById('promoStatus');
+        const preview = document.getElementById('promoPreview');
         const saveBtn = promoForm.querySelector('button[type="submit"]');
-        input.addEventListener('input', () => { count.textContent = input.value.length; });
+        const max = Number(input.maxLength) || 80;
+        let saved = input.value.trim();
+
+        // ตัวนับตัวอักษร + ตัวอย่างการ์ดร้านบนผังเปลี่ยนตามที่พิมพ์
+        function syncDraft() {
+            const text = input.value.trim();
+            count.textContent = input.value.length;
+            meter.style.width = `${Math.round((input.value.length / max) * 100)}%`;
+            preview.querySelector('span').textContent = text || 'ยังไม่มีโปร';
+            preview.classList.toggle('is-empty', !text);
+            if (text !== saved) status.textContent = 'ยังไม่ได้บันทึก';
+            else status.textContent = saved ? 'กำลังแสดงบนผังตลาด' : '';
+        }
+        input.addEventListener('input', syncDraft);
+
+        // ไอเดียโปร: แตะแล้วใส่ข้อความให้ (ยังไม่บันทึกจนกด "บันทึกโปร")
+        promoForm.querySelectorAll('[data-promo-idea]').forEach((chip) => {
+            chip.addEventListener('click', () => {
+                input.value = chip.dataset.promoIdea.slice(0, max);
+                syncDraft();
+                input.focus();
+                preview.classList.remove('is-pop');
+                void preview.offsetWidth;
+                preview.classList.add('is-pop');
+            });
+        });
 
         async function savePromo(text) {
             saveBtn.disabled = true;
@@ -82,11 +163,11 @@
                 const payload = await response.json();
                 if (!response.ok || !payload.success) throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
                 const has = !!payload.text;
-                input.value = payload.text || '';
-                count.textContent = input.value.length;
+                saved = payload.text || '';
+                input.value = saved;
                 promoForm.classList.toggle('has-promo', has);
                 clearBtn.hidden = !has;
-                status.textContent = has ? '· กำลังแสดงบนผังตลาด' : '';
+                syncDraft();
                 toast(has ? 'บันทึกโปรแล้ว ลูกค้าเห็นบนผังตลาดทันที' : 'ลบโปรวันนี้แล้ว');
             } catch (error) {
                 if (window.showAlertDialog) window.showAlertDialog({ title: 'บันทึกไม่สำเร็จ', message: error.message, tone: 'danger' });

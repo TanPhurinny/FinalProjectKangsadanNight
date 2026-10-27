@@ -16,7 +16,7 @@
             rel="stylesheet">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
-        <link rel="stylesheet" href="/stylesheets/admin/dashboard.css?v=20261009-redesign">
+        <link rel="stylesheet" href="/stylesheets/admin/dashboard.css?v=20261027-renotify">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
     <body class="db-body">
@@ -75,7 +75,7 @@
 
         const qa = locals.quickActions || { verifiedSlips: [], unnotifiedCodes: [], noticedCodes: [] };
         const lapsedCodes = exp.lapsedCodes || [];
-        const hasQuickActions = qa.verifiedSlips.length || qa.unnotifiedCodes.length || lapsedCodes.length;
+        const hasQuickActions = qa.verifiedSlips.length || qa.unnotifiedCodes.length || qa.noticedCodes.length || lapsedCodes.length;
         const fc = locals.forecast || null;
         const hm = locals.heatmap || { days: [], rows: [], maxProblems: 0, hasData: false };
         const topShops = locals.topShops || [];
@@ -249,6 +249,12 @@
                         <% if (qa.unnotifiedCodes.length) { %>
                             <button type="button" class="qa-btn" data-action="notify" data-codes="<%= qa.unnotifiedCodes.join(',') %>">
                                 <i class="fas fa-paper-plane"></i>แจ้งเตือนร้านใกล้หมดสัญญา <strong class="mono"><%= qa.unnotifiedCodes.length %></strong> ร้าน
+                            </button>
+                        <% } %>
+                        <%# แจ้งไปแล้วแต่ยังไม่ต่อ (วันหมดสัญญายังเหมือนตอนแจ้ง) — ย้ำได้อีก %>
+                        <% if (qa.noticedCodes.length) { %>
+                            <button type="button" class="qa-btn qa-again" data-action="notify" data-again="1" data-codes="<%= qa.noticedCodes.join(',') %>">
+                                <i class="fas fa-rotate-right"></i>ย้ำเตือนร้านที่แจ้งแล้วแต่ยังไม่ต่อ <strong class="mono"><%= qa.noticedCodes.length %></strong> ร้าน
                             </button>
                         <% } %>
                         <% if (lapsedCodes.length) { %>
@@ -733,6 +739,6 @@
         <script
             src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
         <script src="/js/common/dialogs.js"></script>
-        <script src="/js/admin/dashboard.js?v=20261009-redesign"></script>
+        <script src="/js/admin/dashboard.js?v=20261027-renotify"></script>
     </body>
 </html>
