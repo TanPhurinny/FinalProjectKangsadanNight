@@ -48,7 +48,16 @@
     }
   }
 
-  function statusMeta(status, awaitingPaymentVerification) {
+  function statusMeta(status, awaitingPaymentVerification, isExtension) {
+    // คำขอต่อล็อก (ร้านเดิมต่อล็อกเดิม) ข้ามขั้นตรวจร้าน/จัดล็อก เริ่มที่รอชำระเงินเลย
+    if (isExtension && status === 'IN_PROGRESS') {
+      return awaitingPaymentVerification
+        ? { text: 'ต่อล็อก · ส่งสลิปแล้ว รอแอดมินยืนยัน', badge: 'bg-warning text-dark', icon: 'bi-hourglass-split' }
+        : { text: 'ต่อล็อกเดิมแล้ว รอชำระเงิน', badge: 'bg-info text-dark', icon: 'bi-arrow-repeat' };
+    }
+    if (isExtension && status === 'SUCCESS') {
+      return { text: 'ต่อล็อกสำเร็จ', badge: 'bg-success text-white', icon: 'bi-patch-check-fill' };
+    }
     switch (status) {
       case 'APPROVED':
         return { text: 'ร้านผ่านตรวจสอบ รอจัดล็อก', badge: 'bg-primary text-white', icon: 'bi-shop-window' };
@@ -119,7 +128,7 @@
       if (!booking) {
         badgeContainer.innerHTML = '<span class="badge bg-secondary text-white px-3 py-2">ยังไม่มีรายการจอง</span>';
       } else {
-        const meta = statusMeta(booking.status, booking.awaitingPaymentVerification);
+        const meta = statusMeta(booking.status, booking.awaitingPaymentVerification, booking.isExtension);
         badgeContainer.innerHTML = `<span class="badge ${meta.badge} px-3 py-2"><i class="bi ${meta.icon} me-1"></i>${meta.text}</span>`;
       }
     }
@@ -138,10 +147,20 @@
       return;
     }
 
+    // ร้านที่มีล็อกอยู่แล้ว (หรือรายการนี้เป็นการต่อล็อก) ไม่ใช่การจองแผงใหม่ — ปุ่มหลักคือต่อล็อก จองเพิ่มเป็นปุ่มรอง
     const step = bookingStep(booking.status);
-    const bookingActionButton = step >= 2
-      ? `<a href="/select-zone" class="btn btn-custom-primary btn-custom w-100 py-3 shadow-sm text-center"><i class="bi bi-grid me-2"></i>จองแผงใหม่</a>`
-      : `<a href="/select-zone" class="btn btn-outline-primary btn-custom w-100 py-3 text-center"><i class="bi bi-plus-circle me-2"></i>จองเพิ่ม</a>`;
+    const pageData = getPageData();
+    const isExistingShop = Boolean(pageData.hasActiveLock || booking.isExtension);
+    let bookingActionButton;
+    if (isExistingShop) {
+      bookingActionButton = `
+        ${pageData.canExtendLock ? `<a href="/booking-stall/extend" class="btn btn-custom-primary btn-custom w-100 py-3 shadow-sm text-center"><i class="bi bi-arrow-repeat me-2"></i>ต่อล็อก</a>` : ''}
+        <a href="/select-zone" class="btn btn-outline-primary btn-custom w-100 py-3 text-center"><i class="bi bi-plus-circle me-2"></i>จองล็อกเพิ่ม</a>`;
+    } else {
+      bookingActionButton = step >= 2
+        ? `<a href="/select-zone" class="btn btn-custom-primary btn-custom w-100 py-3 shadow-sm text-center"><i class="bi bi-grid me-2"></i>จองแผงใหม่</a>`
+        : `<a href="/select-zone" class="btn btn-outline-primary btn-custom w-100 py-3 text-center"><i class="bi bi-plus-circle me-2"></i>จองเพิ่ม</a>`;
+    }
 
     let paymentSection = '';
     if (booking.status === 'IN_PROGRESS' && booking.awaitingPaymentVerification) {
@@ -180,16 +199,43 @@
           ? (booking.paymentDeadlineOverdue ? 'เลยกำหนดชำระแล้ว (ขายวันนี้ต้องชำระก่อนตลาดเปิด)' : 'ขายวันนี้ ต้องชำระก่อนตลาดเปิด')
           : (booking.paymentDeadlineOverdue ? 'ใบเสนอราคาหมดอายุแล้ว (เลยกำหนดชำระ)' : 'กรุณาชำระเงินภายใน')}: <strong>${booking.paymentDeadline}</strong></span></div>`
         : '';
+      // ส่วนลดชดเชยฝนตก (utils/rainCompensation.js) — ต้องใช้ทั้งหมดในครั้งเดียว ส่วนที่เกินยอดจะหายไป
+      const wallet = booking.rainWallet || {};
+      const payable = typeof booking.payableTotal === 'number' ? booking.payableTotal : booking.grandTotal;
+      let rainBox = '';
+      if (booking.rainDiscount > 0) {
+        rainBox = `
+          <div class="rain-pay rain-pay--used">
+            <div><i class="bi bi-cloud-rain-fill me-1"></i>ใช้ส่วนลดชดเชยฝนตกแล้ว <strong>-${formatMoney(booking.rainDiscount)}</strong> เหลือโอน <strong>${formatMoney(payable)}</strong></div>
+            ${booking.rainDiscountForfeit > 0 ? `<div class="rain-pay__hint">ส่วนลดเกินยอด ${formatMoney(booking.rainDiscountForfeit)} ไม่ถูกเก็บไว้</div>` : ''}
+            <form action="/booking-payment/rain-discount/cancel" method="POST" class="rain-pay__form">
+              <button type="submit" class="btn btn-sm btn-outline-secondary">ยกเลิกใช้ส่วนลด</button>
+            </form>
+          </div>`;
+      } else if (wallet.canApply) {
+        const over = Math.max(0, Math.floor(wallet.total - booking.grandTotal));
+        rainBox = `
+          <div class="rain-pay">
+            <div><i class="bi bi-cloud-rain-fill me-1"></i>คุณมีส่วนลดชดเชยฝนตก <strong>${formatMoney(wallet.total)}</strong> (${wallet.count} ครั้ง)</div>
+            <div class="rain-pay__hint">ต้องใช้ทั้งหมดในครั้งเดียว แลกเป็นเงินสดไม่ได้${over > 0 ? ` — ส่วนลดมากกว่ายอดนี้ ส่วนต่าง ${formatMoney(over)} จะหายไป ไม่ถูกเก็บไว้` : ''}</div>
+            <form action="/booking-payment/rain-discount" method="POST" class="rain-pay__form js-rain-discount-form" data-over="${over}" data-payable="${Math.max(0, booking.grandTotal - wallet.total)}">
+              <button type="submit" class="btn btn-custom-primary btn-custom"><i class="bi bi-tag-fill me-1"></i>ใช้ส่วนลดทั้งหมด ${formatMoney(wallet.total)}</button>
+            </form>
+          </div>`;
+      }
       paymentSection = `
         <div class="pay-box">
           <div class="pay-box__title"><i class="bi bi-wallet2"></i>อัปโหลดสลิปโอนเงินเพื่อยืนยันการชำระเงิน</div>
           ${slipRejectedAlert}
           ${paymentDeadlineAlert}
-          <p class="pay-box__note">แอดมินจัดล็อกให้คุณแล้ว กรุณาชำระเงินและแนบสลิปโอนเงินเพื่อยืนยัน แอดมินจะตรวจสอบสลิปก่อนยืนยันล็อกให้เป็นของคุณ (เลขล็อกจะแจ้งให้ทราบหลังยืนยันการชำระเงิน)</p>
+          ${rainBox}
+          <p class="pay-box__note">${booking.isExtension
+            ? `ต่อ${lockMention(booking.slotLabel)}เดิมให้แล้ว ไม่ต้องรอแอดมินจัดล็อก กรุณาชำระเงินและแนบสลิปโอนเงินภายในกำหนด แอดมินตรวจสลิปแล้วล็อกก็เป็นของคุณต่อ`
+            : 'แอดมินจัดล็อกให้คุณแล้ว กรุณาชำระเงินและแนบสลิปโอนเงินเพื่อยืนยัน แอดมินจะตรวจสอบสลิปก่อนยืนยันล็อกให้เป็นของคุณ (เลขล็อกจะแจ้งให้ทราบหลังยืนยันการชำระเงิน)'}</p>
           <div class="pay-qr">
             ${booking.promptPayQr ? `<img src="${booking.promptPayQr}" alt="PromptPay QR" />` : ''}
             <div class="pay-qr__row"><span>พร้อมเพย์</span><strong>${booking.promptPayId || '-'}</strong></div>
-            <div class="pay-qr__total">${formatMoney(booking.grandTotal)}</div>
+            <div class="pay-qr__total">${formatMoney(payable)}</div>
           </div>
           <form action="/booking-payment/confirm" method="POST" enctype="multipart/form-data" class="pay-upload-form">
             <input type="file" name="paymentSlip" accept="image/*" required />
@@ -204,6 +250,13 @@
         <div class="pay-alert pay-alert--danger"><i class="bi bi-x-octagon-fill"></i><span>${reasonText
           ? `แอดมินปฏิเสธ/ยกเลิกคำขอนี้ — เหตุผล: <strong>${reasonText}</strong>`
           : 'แอดมินปฏิเสธ/ยกเลิกคำขอนี้ กรุณาติดต่อแอดมินหากต้องการทราบเหตุผล'}</span></div>
+      `;
+    } else if (booking.status === 'SUCCESS' && !booking.paymentSlipImage && booking.rainDiscount > 0) {
+      paymentSection = `
+        <div class="pay-box">
+          <div class="pay-box__title text-success-custom"><i class="bi bi-check-circle-fill"></i>ชำระด้วยส่วนลดชดเชยฝนตกครบแล้ว ${lockMention(booking.slotLabel)} เป็นของคุณเรียบร้อย</div>
+          <p class="pay-box__note">ใช้ส่วนลด ${formatMoney(booking.rainDiscount)} ครอบคลุมยอดทั้งหมด ไม่ต้องโอนเงิน${booking.rainDiscountForfeit > 0 ? ` (ส่วนลดเกินยอด ${formatMoney(booking.rainDiscountForfeit)} ไม่ถูกเก็บไว้)` : ''}</p>
+        </div>
       `;
     } else if (booking.status === 'SUCCESS' && booking.paymentSlipImage) {
       paymentSection = `
@@ -227,7 +280,7 @@
     scenarioContent.innerHTML = `
       <div class="quote-card">
         <div class="quote-card__head">
-          <span>ใบเสนอราคา</span>
+          <span>ใบเสนอราคา${booking.isExtension ? ' · ต่อล็อก' : ''}</span>
           <span>#BK-${String(booking.id).padStart(6, '0')}</span>
         </div>
         <div class="quote-card__round">${booking.roundNumber ? `รอบที่ ${booking.roundNumber}` : '-'} · ${booking.roundDateRangeText || '-'}</div>
@@ -250,9 +303,12 @@
         <div class="quote-card__row"><span>ค่าเช่าแผง</span><strong>${formatMoney(booking.rentTotal)}</strong></div>
         <div class="quote-card__row"><span>ค่าไฟสว่าง</span><strong>${formatMoney(booking.lightTotal)}</strong></div>
         <div class="quote-card__row"><span>ค่าเครื่องใช้ไฟฟ้า/พัดลม</span><strong>${formatMoney(booking.applianceTotal)}</strong></div>
+        ${booking.rainDiscount > 0 ? `
+        <div class="quote-card__row"><span>ยอดก่อนหักส่วนลด</span><strong>${formatMoney(booking.grandTotal)}</strong></div>
+        <div class="quote-card__row"><span><i class="bi bi-cloud-rain me-1"></i>ส่วนลดชดเชยฝนตก</span><strong>-${formatMoney(Math.min(booking.rainDiscount, booking.grandTotal))}</strong></div>` : ''}
         <div class="quote-card__total">
           <span>${booking.isFinalPrice ? 'ยอดชำระรวม (รวม VAT)' : 'ยอดประเมินรวม (รวม VAT)'}</span>
-          <strong>${formatMoney(booking.grandTotal)}</strong>
+          <strong>${formatMoney(booking.rainDiscount > 0 ? booking.payableTotal : booking.grandTotal)}</strong>
         </div>
       </div>
 
@@ -269,7 +325,15 @@
     if (!container) return;
 
     const step = booking ? bookingStep(booking.status) : 0;
-    const items = [
+    const items = booking && booking.isExtension ? [
+      { title: 'ต่อล็อกเดิม', desc: `ร้านเดิมต่อ${lockMention(booking.slotLabel)} ไม่ต้องรอแอดมินตรวจร้านหรือจัดล็อกใหม่`, stage: 1 },
+      { title: 'ชำระเงิน', desc: booking.status === 'IN_PROGRESS'
+        ? (booking.awaitingPaymentVerification
+          ? 'ส่งสลิปโอนเงินแล้ว รอแอดมินตรวจสอบและยืนยัน'
+          : 'กรุณาชำระเงินและอัปโหลดสลิปโอนเงินภายในกำหนด ถ้าไม่ชำระ ล็อกจะกลับไปสิ้นสุดวันเดิม')
+        : 'ชำระค่าต่อล็อกและแนบสลิปโอนเงิน', stage: 2 },
+      { title: 'ต่อล็อกสำเร็จ', desc: 'ขยายสัญญาล็อกเดิมของคุณเรียบร้อยในระบบ', stage: 3 }
+    ] : [
       { title: 'รอการตรวจสอบร้านค้า', desc: 'ระบบได้รับคำขอจองและแอดมินกำลังตรวจสอบร้านค้า', stage: 1 },
       { title: 'ได้รับล็อก / ชำระเงิน', desc: booking && booking.status === 'IN_PROGRESS'
         ? (booking.awaitingPaymentVerification
@@ -326,6 +390,30 @@
       tone: 'danger',
       icon: 'fa-solid fa-rotate',
       confirmText: 'ลบสลิป',
+      cancelText: 'ยกเลิก',
+      onConfirm: () => {
+        form.dataset.confirmed = '1';
+        form.requestSubmit();
+      }
+    });
+  });
+
+  // ปุ่ม "ใช้ส่วนลดทั้งหมด" — ใช้แล้วยกเลิกได้จนกว่าจะส่งสลิป แต่ถ้าส่วนลดครอบคลุมยอดทั้งหมด ระบบยืนยันการชำระเงินทันที
+  document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (!form.classList || !form.classList.contains('js-rain-discount-form') || form.dataset.confirmed === '1') return;
+    if (!window.showConfirmDialog) return;
+    event.preventDefault();
+    const over = Number(form.dataset.over || 0);
+    const payable = Number(form.dataset.payable || 0);
+    const lines = ['ส่วนลดชดเชยฝนตกต้องใช้ทั้งหมดในครั้งเดียว'];
+    if (over > 0) lines.push(`ส่วนลดมากกว่ายอดที่ต้องจ่าย ส่วนต่าง ${formatMoney(over)} จะหายไป ไม่ถูกเก็บไว้ใช้ครั้งหน้า`);
+    lines.push(payable > 0 ? `หักแล้วเหลือโอน ${formatMoney(payable)}` : 'ส่วนลดครอบคลุมยอดทั้งหมด ไม่ต้องโอนเงิน ระบบยืนยันการชำระเงินให้ทันที');
+    window.showConfirmDialog({
+      title: 'ใช้ส่วนลดชดเชยฝนตก?',
+      message: lines.join('\n'),
+      icon: 'fa-solid fa-cloud-rain',
+      confirmText: 'ใช้ส่วนลด',
       cancelText: 'ยกเลิก',
       onConfirm: () => {
         form.dataset.confirmed = '1';

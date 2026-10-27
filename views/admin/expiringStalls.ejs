@@ -15,7 +15,7 @@
             rel="stylesheet" />
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
-        <link rel="stylesheet" href="/stylesheets/admin/expiringStalls.css">
+        <link rel="stylesheet" href="/stylesheets/admin/expiringStalls.css?v=20261027-renotify">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
     <body class="bg-light">
@@ -107,10 +107,15 @@
                                                 <i class="fa-solid fa-door-open"></i> ปล่อยล็อก
                                             </button>
                                         <% } else { %>
-                                            <button type="button" class="btn-row-action btn-row-notify"
-                                                onclick="notifyExpiring('<%= row.code %>')">
-                                                <i class="fa-solid fa-envelope"></i> แจ้งเตือน
+                                            <%# แจ้งไปแล้วก็ย้ำได้อีก — ผู้ขายเห็นการ์ดเด้งกลับเป็นยังไม่อ่านพร้อม "ย้ำเตือนครั้งที่ N" %>
+                                            <% const lastNoticeText = row.notice ? new Date(row.notice.lastAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''; %>
+                                            <button type="button" class="btn-row-action btn-row-notify<%= row.notice ? ' is-again' : '' %>"
+                                                onclick="notifyExpiring('<%= row.code %>', <%= row.notice ? row.notice.count : 0 %>, '<%= lastNoticeText %>')">
+                                                <i class="fa-solid <%= row.notice ? 'fa-rotate-right' : 'fa-envelope' %>"></i> <%= row.notice ? 'ย้ำอีกครั้ง' : 'แจ้งเตือน' %>
                                             </button>
+                                            <% if (row.notice) { %>
+                                                <small class="notice-meta">แจ้งแล้ว <%= row.notice.count %> ครั้ง · ล่าสุด <%= lastNoticeText %> น.</small>
+                                            <% } %>
                                         <% } %>
                                     </td>
                                 </tr>
@@ -123,7 +128,7 @@
         </div>
 
         <script src="/js/common/dialogs.js"></script>
-        <script src="/js/admin/slots.js"></script>
+        <script src="/js/admin/slots.js?v=20261027-renotify"></script>
         <script>
             // แจ้งผลลัพธ์ปุ่ม "ปล่อยล็อก"/"แจ้งเตือนร้านค้า" หลัง redirect กลับมาที่หน้านี้ แล้วล้าง query ทิ้ง
             // (ใช้ error/success code เดียวกับหน้า /admin/slots — ดู resolveReturnPath ใน approvalController.js)

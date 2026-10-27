@@ -34,6 +34,7 @@ const {
 const { getPaymentDeadline, getPaymentSettings, computePaymentDueAt } = require('../utils/paymentDeadline');
 const { getRenewalOptions, validateRenewal, isUnpaidPastDeadline } = require('../utils/stallRenewal');
 const { getBillableDays, getHolidaysInRange } = require('../utils/bookingHolidays');
+const { getNextRoundPlan } = require('../utils/autoRoundAnnouncement');
 const { buildBookingRequestTag, stripBookingRequestTag, extractBookingRequestId, stripInternalTags } = require('../utils/bookingRequestTag');
 const { buildQuotationData, COMPANY_INFO } = require('../controllers/quotationController');
 const rentalStatement = require('../utils/rentalStatement');
@@ -55,6 +56,7 @@ const { buildCommunityNotifications } = require('../utils/communityNotifications
 const { applyReadState, markRead, markUnread } = require('../utils/notificationReads');
 const { EVENT_ZONE_CODE } = require('../utils/eventBooth');
 const { SHOP_ORDER, shopsRelation, primaryShop, getPrimaryShop, getUserShops, resolveShopForUser } = require('../utils/shops');
+const rainCompensation = require('../utils/rainCompensation');
 
 // รูปแจ้งซ่อม (เก็บที่ Cloudinary หรือดิสก์ตาม utils/imageStorage.js)
 const storage = createImageStorage({ folder: 'repairs' });
@@ -443,6 +445,133 @@ async function buildRenewQuote(extendInfo) {
         dailyTotal,
         total: dailyTotal * days
     };
+}
+
+// ประกาศต่อล็อกรอบถัดไป เฉพาะร้านล็อกเต็ง (Stall.extraPrice > 0) และร้านที่จองเต็มรอบ 14 วัน ที่ล็อกขายถึงวันสิ้นรอบนี้
+// วันที่ทั้งหมดมาจาก getNextRoundPlan (utils/autoRoundAnnouncement.js) ชุดเดียวกับประกาศเปิดจองรอบใหม่ —
+// ขึ้นตั้งแต่วันประกาศ (อาทิตย์) จนถึงกำหนดชำระของกลุ่มจอง 14 วัน (อังคาร 13:00) แล้วหายไปเอง
+// ระบบยังต่อข้ามรอบให้อัตโนมัติไม่ได้ (utils/stallRenewal.js) ปุ่มเลยพาไปจองรอบถัดไปแบบ 14 วันตามปกติ
+// preview = ทดสอบหน้าตาการ์ดนอกช่วงเวลาจริง (?previewNotice=1 นอก production ดู isNoticePreview) ข้ามเงื่อนไขช่วงเวลา/สิทธิ์ทั้งหมด
+const NEXT_ROUND_PAYMENT_HOUR = 13;
+async function buildNextRoundRenewEntry(userId, extendInfo, now = new Date(), { preview = false } = {}) {
+    if (!extendInfo?.currentBooking?.rentalEndDate || !extendInfo.latestRequest) return [];
+    const { currentBooking, latestRequest, roundMeta } = extendInfo;
+    // ล็อกที่ยังต่อในรอบนี้ได้ ใช้การ์ด "ต่อล็อกไหม?" เดิม
+    if (!preview && toStartOfDay(currentBooking.rentalEndDate).getTime() !== toStartOfDay(roundMeta.cycleEnd).getTime()) return [];
+
+    const plan = getNextRoundPlan(now);
+    if (!preview && plan.roundNumber !== roundMeta.roundNumber + 1) return [];
+    const announceAt = addDays(plan.fullBookingOpen, -1);
+    const deadline = new Date(plan.paymentDeadline);
+    deadline.setHours(NEXT_ROUND_PAYMENT_HOUR, 0, 0, 0);
+    if (!preview && (now.getTime() < announceAt.getTime() || now.getTime() >= deadline.getTime())) return [];
+
+    const codes = String(latestRequest.assignedStallCode || '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
+    if (!codes.length) return [];
+    const [cornerCount, fullRoundBooking, nextRoundBooking] = await Promise.all([
+        prisma.stall.count({ where: { stallCode: { in: codes }, extraPrice: { gt: 0 } } }),
+        // จองตั้งแต่วันแรกของรอบ + ขายถึงวันสิ้นรอบ = จองเต็มรอบ — นับเฉพาะล็อกที่จะต่อ ร้านหลายล็อกไม่ได้สิทธิ์จากล็อกอื่น
+        prisma.booking.findFirst({
+            where: { userId, status: 'SUCCESS', slot: { slotNumber: { in: codes } }, rentalStartDate: { lt: addDays(roundMeta.cycleStart, 1) }, rentalEndDate: { gte: roundMeta.cycleStart } },
+            select: { id: true }
+        }),
+        // จองรอบถัดไปไว้แล้ว ไม่ต้องเตือน
+        prisma.booking.findFirst({
+            where: { userId, status: { not: 'REJECTED' }, rentalStartDate: { gte: plan.cycleStart } },
+            select: { id: true }
+        })
+    ]);
+    const isCorner = cornerCount > 0;
+    if (!preview && ((!isCorner && !fullRoundBooking) || nextRoundBooking)) return [];
+
+    const stallText = codes.join(', ');
+    const rangeText = `${formatDateThai(plan.cycleStart)} – ${formatDateThai(plan.cycleEnd)}`;
+    const deadlineDay = deadline.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    const deadlineText = `${deadlineDay} เวลา ${formatTimeThai(deadline)} น.`;
+    const audience = isCorner ? 'ร้านค้าล็อกเต็ง' : 'ร้านค้าที่จองเต็มรอบ 14 วัน';
+
+    return [{
+        id: `next-round-renew-${plan.roundNumber}`,
+        type: 'pending-review',
+        title: 'ต่อล็อกรอบถัดไป',
+        desc: `เรียน ${audience} ตลาดเปิดให้จองรอบถัดไป ${rangeText} หากต้องการต่อล็อกเดิม (${stallText}) ให้จองครบทั้งรอบ 14 วันและชำระค่าล็อกภายใน ${deadlineText}`,
+        date: formatDateThai(announceAt),
+        time: formatTimeThai(announceAt),
+        at: toIso(preview ? now : announceAt),
+        deadline: toIso(deadline),
+        status: 'IN_PROGRESS',
+        isRead: false,
+        isNew: true,
+        action: `ต่อล็อกรอบที่ ${plan.roundNumber} · ชำระก่อน ${formatTimeThai(deadline)} น.`,
+        summary: `ล็อก ${stallText} · รอบ ${rangeText}`,
+        link: '/select-zone',
+        linkLabel: 'จองรอบถัดไป 14 วัน',
+        linkIcon: 'bi-arrow-repeat',
+        notice: {
+            audience,
+            isCorner,
+            roundNumber: plan.roundNumber,
+            stallCodes: codes,
+            startText: formatDateThai(plan.cycleStart),
+            endText: formatDateThai(plan.cycleEnd),
+            days: BOOKING_ROUND_LENGTH_DAYS,
+            deadlineDay,
+            deadlineTime: `${formatTimeThai(deadline)} น.`,
+            shortOpenText: formatDateThai(plan.shortBookingOpen),
+            currentEndText: formatDateThai(currentBooking.rentalEndDate)
+        }
+    }];
+}
+
+// ประกาศเปิดจองรอบถัดไปให้ร้านค้าที่เหลือ — ตั้งแต่พุธ 13:00 (ช่วงจองสั้น ขั้นต่ำ 3 วัน / รายวัน) จนถึงวันเริ่มขายรอบถัดไป
+// ร้านล็อกเต็ง/จองเต็มรอบได้การ์ด buildNextRoundRenewEntry ไปก่อนแล้ว (อาทิตย์–อังคาร 13:00) การ์ดนี้จึงไม่ซ้อนกัน
+// ร้านที่จองรอบถัดไปไว้แล้วไม่ต้องเห็น
+const SHORT_BOOKING_OPEN_HOUR = 13;
+async function buildNextRoundOpenEntry(userRecord, now = new Date(), { preview = false } = {}) {
+    if (!userRecord?.id || userRecord.role !== 'SELLER') return [];
+    const plan = getNextRoundPlan(now);
+    const opensAt = new Date(plan.shortBookingOpen);
+    opensAt.setHours(SHORT_BOOKING_OPEN_HOUR, 0, 0, 0);
+    const sellStart = toStartOfDay(plan.cycleStart);
+    if (!preview && (now.getTime() < opensAt.getTime() || now.getTime() >= sellStart.getTime())) return [];
+
+    const nextRoundBooking = await prisma.booking.findFirst({
+        where: { userId: userRecord.id, status: { not: 'REJECTED' }, rentalStartDate: { gte: sellStart } },
+        select: { id: true }
+    });
+    if (!preview && nextRoundBooking) return [];
+
+    const rangeText = `${formatDateThai(plan.cycleStart)} – ${formatDateThai(plan.cycleEnd)}`;
+    const sellStartDay = sellStart.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+    return [{
+        id: `next-round-open-${plan.roundNumber}`,
+        type: 'info',
+        title: 'เปิดจองรอบถัดไป',
+        desc: `เรียน ร้านค้าทุกท่าน ตลาดเปิดให้จองรอบถัดไป ${rangeText} สำหรับร้านที่จองตั้งแต่ 3 วันขึ้นไปหรือจองรายวัน`,
+        date: formatDateThai(opensAt),
+        time: formatTimeThai(opensAt),
+        at: toIso(preview ? now : opensAt),
+        deadline: toIso(sellStart),
+        status: 'PENDING',
+        isRead: false,
+        isNew: true,
+        action: `จองรอบที่ ${plan.roundNumber} · เริ่มขาย ${formatDateThai(plan.cycleStart)}`,
+        summary: `รอบ ${rangeText}`,
+        link: '/select-zone',
+        linkLabel: 'จองรอบถัดไป',
+        linkIcon: 'bi-calendar-plus',
+        notice: {
+            kind: 'open',
+            audience: 'ร้านค้าทุกท่าน',
+            roundNumber: plan.roundNumber,
+            stallCodes: [],
+            startText: formatDateThai(plan.cycleStart),
+            endText: formatDateThai(plan.cycleEnd),
+            days: BOOKING_ROUND_LENGTH_DAYS,
+            sellStartDay
+        }
+    }];
 }
 
 // PENDING = ยื่นคำขอแล้ว รอแอดมินตรวจสอบร้าน
@@ -1279,14 +1408,15 @@ router.get('/market-map/print', isStaffOrAdmin, marketMapCtrl.getPrintableMap);
 router.post('/market-map/track', shopViewLimiter, marketMapCtrl.trackShopView);
 
 // --- หน้าประกาศ (แยกประกาศสำคัญ / ข่าวสารทั่วไป) ---
-router.get('/announcements', isAuthenticated, async (req, res) => {
-    const roleToFetch = req.user.role === 'SELLER' ? 'SELLER' : 'CUSTOMER';
+// ไม่ต้องล็อกอิน: คนทั่วไปเห็นเฉพาะประกาศที่แอดมินตั้งกลุ่ม "ผู้เยี่ยมชม" (GUEST) เหมือนหน้าแรก
+router.get('/announcements', async (req, res) => {
+    const roleToFetch = !req.user ? 'GUEST' : (req.user.role === 'SELLER' ? 'SELLER' : 'CUSTOMER');
     const announcements = await getAnnouncementsForUser(roleToFetch);
     const importantAnnouncements = announcements.filter((a) => a.isImportant);
     const generalAnnouncements = announcements.filter((a) => !a.isImportant);
 
     res.render('announcements', {
-        user: req.user,
+        user: req.user || null,
         importantAnnouncements,
         generalAnnouncements
     });
@@ -2377,17 +2507,24 @@ async function loadAdminRenewalNotices(userId) {
         const stallByCode = new Map(stalls.map((s) => [s.stallCode, s]));
         const seen = new Set();
         const entries = [];
+        // แอดมินกดย้ำได้หลายครั้ง — ใช้แถวล่าสุด (id/เวลาใหม่ การ์ดจึงกลับเป็นยังไม่อ่าน) และนับจำนวนครั้งของสัญญาเดียวกัน
+        const sameContract = (notice, stall) => toStartOfDay(stall.bookingEndDate)?.getTime() === toStartOfDay(notice.bookingEndDate)?.getTime();
         notices.forEach((notice) => {
             const stall = stallByCode.get(notice.stallCode);
             if (!stall || seen.has(notice.stallCode)) return;
-            if (toStartOfDay(stall.bookingEndDate)?.getTime() !== toStartOfDay(notice.bookingEndDate)?.getTime()) return;
+            if (!sameContract(notice, stall)) return;
             seen.add(notice.stallCode);
+            const nudgeCount = notices.filter((n) => n.stallCode === notice.stallCode && sameContract(n, stall)).length;
             const renewal = getRenewalOptions(stall.bookingEndDate, new Date());
             const closed = !renewal || !renewal.isOpen;
             entries.push({
                 id: `renewal-notice-${notice.id}`,
                 type: 'pending-review',
-                title: `ผู้ดูแลตลาดแจ้ง: ต่อล็อก ${notice.stallCode} ไหม?`,
+                title: nudgeCount > 1
+                    ? `ผู้ดูแลตลาดย้ำเตือนครั้งที่ ${nudgeCount}: ต่อล็อก ${notice.stallCode} ไหม?`
+                    : `ผู้ดูแลตลาดแจ้ง: ต่อล็อก ${notice.stallCode} ไหม?`,
+                nudgeCount,
+                stallCode: notice.stallCode,
                 desc: closed
                     ? `ล็อก ${notice.stallCode} เลยเวลา 20:00 น. วันที่ ${formatDateThai(stall.bookingEndDate)} แล้ว หมดสิทธิ์ต่อและถูกเปิดให้คนอื่นจอง`
                     : `ล็อก ${notice.stallCode} ขายวันสุดท้ายวันที่ ${formatDateThai(stall.bookingEndDate)} กด "ต่อล็อก" แล้วชำระเงิน ล็อกเดิมเป็นของคุณต่อทันที ไม่ต้องรอแอดมินจัดล็อกใหม่ ต้องต่อก่อน 20:00 น. ของวันนั้น เลยเวลาแล้วล็อกจะถูกเปิดให้คนอื่นจอง`,
@@ -2415,7 +2552,16 @@ async function loadAdminRenewalNotices(userId) {
 // รวม logic การหาคำขอ/รายการจองล่าสุดของผู้ขาย ให้ /booking-status และ /notifications
 // ใช้สถานะเดียวกัน (อิง BookingRequest.status เป็นหลัก ไม่ใช่ Booking.status แบบเดิม
 // ซึ่งไม่มีสถานะ IN_PROGRESS/SUCCESS ตามความหมายใหม่)
-async function loadSellerBookingStatus(userId) {
+// ?previewNotice=1 บังคับโชว์การ์ดต่อล็อกรอบถัดไปไว้ดูหน้าตา — ใช้ได้เฉพาะเครื่อง dev
+// ?previewNotice=open บังคับโชว์การ์ดเปิดจองวันพุธแทน
+function isNoticePreview(req) {
+    if (process.env.NODE_ENV === 'production') return false;
+    if (req.query.previewNotice === '1') return 'priority';
+    if (req.query.previewNotice === 'open') return 'open';
+    return false;
+}
+
+async function loadSellerBookingStatus(userId, { previewNotice = false } = {}) {
     const userRecord = await prisma.user.findUnique({
         where: { id: userId },
         include: { shops: shopsRelation() }
@@ -2518,6 +2664,12 @@ async function loadSellerBookingStatus(userId) {
         // ป้องกันไม่ให้ลูกค้าเห็นตำแหน่งล็อกก่อนจ่ายเงินจริง
         bookingView.zoneLabel = latestRequest.paymentConfirmedAt ? (latestRequest.zone ? `โซน ${latestRequest.zone}` : bookingView.zoneLabel) : null;
         bookingView.slotLabel = latestRequest.paymentConfirmedAt ? (latestRequest.assignedStallCode || null) : null;
+        // คำขอต่อล็อก = ร้านเดิมต่อล็อกเดิม ไม่ใช่การจองแผงใหม่ — ผู้ขายรู้เลขล็อกอยู่แล้ว เลยแสดงได้ตั้งแต่ก่อนชำระเงิน
+        bookingView.isExtension = isExtendRequest(latestRequest);
+        if (bookingView.isExtension && latestRequest.assignedStallCode) {
+            bookingView.slotLabel = latestRequest.assignedStallCode;
+            bookingView.zoneLabel = latestRequest.zone ? `โซน ${latestRequest.zone}` : (bookingView.zoneLabel || '-');
+        }
         bookingView.paymentSlipImage = latestRequest.paymentSlipImage || null;
         bookingView.awaitingPaymentVerification = awaitingPaymentVerification;
         // ชื่อร้าน/ประเภทสินค้า สำหรับการ์ดใบเสนอราคา — เอาจากโปรไฟล์ร้าน ถ้าไม่มีใช้ชื่อจากคำขอจองแทน
@@ -2569,10 +2721,31 @@ async function loadSellerBookingStatus(userId) {
 
         // สร้าง QR พร้อมเพย์ให้จ่ายได้เลย เฉพาะตอนที่รู้ราคาจริงแล้วและยังไม่ได้ส่งสลิป
         // (จัดล็อกแล้ว รอชำระเงิน — ตรงกับตอนที่หน้า booking_status โชว์ช่องอัปโหลดสลิป)
+        // ส่วนลดชดเชยฝนตกที่ใช้กับคำขอนี้ (utils/rainCompensation.js) — ยอดที่ต้องโอน = grandTotal - rainDiscount
+        bookingView.rainDiscount = Number(latestRequest.rainDiscount || 0);
+        bookingView.rainDiscountForfeit = Number(latestRequest.rainDiscountForfeit || 0);
+        bookingView.payableTotal = rainCompensation.getPayableAmount(latestRequest, bookingView.grandTotal);
+
         if (normalizedRequestStatus === 'IN_PROGRESS' && bookingView.isFinalPrice && !awaitingPaymentVerification) {
             bookingView.promptPayId = PROMPTPAY_ID;
-            bookingView.promptPayQr = await buildPromptPayQrDataUrl(bookingView.grandTotal);
+            bookingView.promptPayQr = bookingView.payableTotal > 0 ? await buildPromptPayQrDataUrl(bookingView.payableTotal) : null;
         }
+    }
+
+    // กระเป๋าส่วนลดชดเชยฝนตก (เครดิตที่ยังใช้ได้) — โชว์ในหน้าสถานะการจอง และให้กดใช้ตอนรอชำระเงิน
+    const rainWallet = await rainCompensation.getAvailableCredits(userId);
+    if (bookingView) {
+        bookingView.rainWallet = {
+            total: rainWallet.total,
+            count: rainWallet.count,
+            maxCount: rainCompensation.MAX_ACTIVE_CREDITS,
+            nextExpiry: rainWallet.nextExpiry ? formatDateThai(rainWallet.nextExpiry) : null,
+            canApply: rainWallet.total > 0
+                && String(latestRequest?.status || '').toUpperCase() === 'IN_PROGRESS'
+                && Boolean(latestRequest?.assignedStallCode)
+                && !latestRequest?.paymentSlipImage
+                && !latestRequest?.rainDiscount
+        };
     }
 
     const notificationBooking = latestRequest
@@ -2635,9 +2808,13 @@ async function loadSellerBookingStatus(userId) {
         orderBy: { requestedAt: 'desc' }
     });
 
-    // การ์ดที่แอดมินกดแจ้งเตือน ก็ต่อล็อกจากการ์ดได้เลยเหมือนการ์ด "ต่อล็อกไหม?"
+    // การ์ดที่แอดมินกดแจ้งเตือน ก็ต่อล็อกจากการ์ดได้เลยเหมือนการ์ด "ต่อล็อกไหม?" — เฉพาะล็อกที่ตรงกับยอดต่อล็อก (renewQuote คิดจากคำขอล่าสุด)
+    // ร้านหลายล็อกที่แอดมินแจ้งล็อกอื่น ไม่แปะยอดของล็อกผิดตัว การ์ดนั้นเหลือปุ่มไปหน้าต่อล็อกตามปกติ
+    const quoteCodes = String(extendInfo?.renewQuote?.stallCode || '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
     const renewalNotices = (await loadAdminRenewalNotices(userId)).map((entry) => (
-        entry.link === '/booking-stall/extend' && extendInfo?.renewQuote ? { ...entry, renew: extendInfo.renewQuote } : entry
+        entry.link === '/booking-stall/extend' && extendInfo?.renewQuote && quoteCodes.includes(String(entry.stallCode).toUpperCase())
+            ? { ...entry, renew: extendInfo.renewQuote }
+            : entry
     ));
     const communityNotifications = await buildCommunityNotifications(userId);
     // รีวิวร้านใหม่ที่ยังไม่ได้ตอบ (utils/shopReviews.js)
@@ -2657,8 +2834,11 @@ async function loadSellerBookingStatus(userId) {
     const notifications = await applyReadState(userId, [
         ...buildEventBoothNotifications(eventBoothRequests),
         ...renewalNotices,
+        ...(await buildNextRoundRenewEntry(userId, extendInfo, new Date(), { preview: previewNotice === 'priority' })),
+        ...(await buildNextRoundOpenEntry(userRecord, new Date(), { preview: previewNotice === 'open' })),
         ...communityNotifications,
         ...reviewNotifications,
+        ...(await rainCompensation.buildRainNotifications(userId)),
         ...buildRepairNotifications(repairReports),
         ...buildTaxInvoiceNotifications(taxInvoiceRequests),
         ...leaseContractCtrl.buildLeaseContractNotifications(leaseContractRequests, formatDateThai, formatTimeThai),
@@ -2670,13 +2850,14 @@ async function loadSellerBookingStatus(userId) {
         userRecord,
         bookingView,
         eventBoothRequests,
+        rainWallet,
         notifications
     };
 }
 
 // --- 4. หน้าสถานะการจอง ---
 router.get('/booking-status', isAuthenticated, async (req, res) => {
-    const { userRecord, bookingView, notifications, eventBoothRequests } = await loadSellerBookingStatus(req.user.id);
+    const { userRecord, bookingView, notifications, eventBoothRequests, rainWallet } = await loadSellerBookingStatus(req.user.id);
     const activeLockForExtension = userRecord ? await findActiveLockForExtension(userRecord) : null;
 
     return res.render('seller/booking_status', {
@@ -2684,7 +2865,9 @@ router.get('/booking-status', isAuthenticated, async (req, res) => {
         booking: bookingView,
         notifications,
         eventBoothRequests,
+        rainWallet,
         canExtendLock: Boolean(activeLockForExtension && !activeLockForExtension.pendingExtension),
+        hasActiveLock: Boolean(activeLockForExtension),
         error: req.query.error || null,
         success: req.query.success || null,
         slipCheck: ['no_qr', 'service'].includes(req.query.slipCheck) ? req.query.slipCheck : null
@@ -2736,7 +2919,7 @@ router.post('/booking-payment/confirm', isSellerOrApplicant, (req, res) => {
             const linkedBooking = requestTag
                 ? await prisma.booking.findFirst({ where: { storeDetailSnapshot: { startsWith: requestTag } } })
                 : null;
-            const verifyResult = await verifySlip(slipPath, linkedBooking ? Number(linkedBooking.grandTotal || 0) : null);
+            const verifyResult = await verifySlip(slipPath, linkedBooking ? rainCompensation.getPayableAmount(latestRequest, linkedBooking.grandTotal) : null);
 
             // เก็บสลิปไว้รอแอดมินตรวจสอบขั้นสุดท้ายก่อน ไม่เปลี่ยนสถานะเป็น SUCCESS ทันที
             // (แอดมินต้องกดยืนยันที่หน้า /admin/approvals ก่อน ระบบถึงจะแจ้งผู้ขายว่าล็อกเป็นของตนแล้ว)
@@ -2758,6 +2941,51 @@ router.post('/booking-payment/confirm', isSellerOrApplicant, (req, res) => {
             return backToStatus('error=payment_confirm_failed');
         }
     });
+});
+
+// --- 5.0 ใช้ส่วนลดชดเชยฝนตก (ต้องใช้ทั้งหมดในครั้งเดียว ส่วนที่เกินยอดหายไป) — กติกาใน utils/rainCompensation.js ---
+// ส่วนลดครอบคลุมยอดทั้งหมด (ไม่ต้องโอน) ยืนยันการชำระเงินให้เลยโดยไม่ต้องรอแอดมินตรวจสลิป เพราะไม่มีเงินให้ตรวจ
+router.post('/booking-payment/rain-discount', isSellerOrApplicant, async (req, res) => {
+    const tabToken = String(req.body.tabToken || req.query.tabToken || '');
+    const backToStatus = (query) => res.redirect(`/booking-status?${query}${tabToken ? `&tabToken=${encodeURIComponent(tabToken)}` : ''}`);
+
+    try {
+        const latestRequest = await findLatestSellerBookingRequest(req.user.id);
+        const requestTag = latestRequest ? buildBookingRequestTag(latestRequest.id) : '';
+        const linkedBooking = requestTag
+            ? await prisma.booking.findFirst({ where: { storeDetailSnapshot: { startsWith: requestTag } } })
+            : null;
+        if (!latestRequest || !linkedBooking) return backToStatus('error=not_awaiting_payment');
+
+        const result = await rainCompensation.applyCreditsToRequest(req.user.id, latestRequest, linkedBooking.grandTotal);
+        if (result.error) return backToStatus(`error=${result.error}`);
+
+        if (result.payable <= 0) {
+            const { markPaymentConfirmed } = require('../controllers/approvalController');
+            const fresh = await prisma.bookingRequest.findUnique({ where: { id: latestRequest.id } });
+            await markPaymentConfirmed(fresh, 'ระบบ (ส่วนลดชดเชยฝนตก)', `ใช้ส่วนลดชดเชยฝนตก ${result.discount} บาท ครอบคลุมยอดทั้งหมด`);
+            return backToStatus('success=rain_discount_paid');
+        }
+        return backToStatus('success=rain_discount_applied');
+    } catch (error) {
+        console.error('booking-payment rain discount error', error);
+        return backToStatus('error=rain_discount_failed');
+    }
+});
+
+router.post('/booking-payment/rain-discount/cancel', isSellerOrApplicant, async (req, res) => {
+    const tabToken = String(req.body.tabToken || req.query.tabToken || '');
+    const backToStatus = (query) => res.redirect(`/booking-status?${query}${tabToken ? `&tabToken=${encodeURIComponent(tabToken)}` : ''}`);
+
+    try {
+        const latestRequest = await findLatestSellerBookingRequest(req.user.id);
+        const result = await rainCompensation.cancelCreditsOnRequest(req.user.id, latestRequest);
+        if (result.error) return backToStatus(`error=${result.error}`);
+        return backToStatus('success=rain_discount_cancelled');
+    } catch (error) {
+        console.error('booking-payment rain discount cancel error', error);
+        return backToStatus('error=rain_discount_failed');
+    }
 });
 
 // --- 5.1 ผู้ขายลบสลิปที่ส่งไปแล้วเพื่ออัปโหลดใหม่ (ส่งผิดใบ / ตอนส่งระบบตรวจสลิปอัตโนมัติใช้ไม่ได้) ---
@@ -2787,7 +3015,7 @@ router.post('/booking-payment/remove-slip', isSellerOrApplicant, async (req, res
 
 // หน้าแจ้งเตือน (views/seller/notifications.ejs + public/js/seller/notifications.js)
 router.get('/notifications', isAuthenticated, async (req, res) => {
-    const { userRecord, bookingView, notifications } = await loadSellerBookingStatus(req.user.id);
+    const { userRecord, bookingView, notifications } = await loadSellerBookingStatus(req.user.id, { previewNotice: isNoticePreview(req) });
 
     return res.render('seller/notifications', {
         user: userRecord || req.user,
@@ -2799,7 +3027,7 @@ router.get('/notifications', isAuthenticated, async (req, res) => {
 // ชุดแจ้งเตือนล่าสุดแบบ JSON — หน้าแจ้งเตือนดึงซ้ำทุก 60 วินาทีเพื่อขึ้นแถบ "มีแจ้งเตือนใหม่"
 router.get('/notifications/feed', isAuthenticated, async (req, res) => {
     try {
-        const { notifications } = await loadSellerBookingStatus(req.user.id);
+        const { notifications } = await loadSellerBookingStatus(req.user.id, { previewNotice: isNoticePreview(req) });
         return res.json({ notifications });
     } catch (error) {
         console.error('notifications feed error', error);

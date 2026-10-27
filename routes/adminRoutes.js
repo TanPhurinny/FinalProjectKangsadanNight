@@ -22,6 +22,7 @@ const eventBoothCtrl = require('../controllers/eventBoothController');
 const rentalStatementCtrl = require('../controllers/rentalStatementController');
 const leaseContractCtrl = require('../controllers/leaseContractController');
 const shopReviewCtrl = require('../controllers/shopReviewController');
+const rainCompensationCtrl = require('../controllers/rainCompensationController');
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
 const storage = createImageStorage({ folder: 'announcements', prefix: 'ann' });
@@ -105,6 +106,12 @@ router.post('/sellers/blacklist', isAdminOnly, scoreReportCtrl.toggleBlacklist);
 router.get('/booking-holidays', isAdminOnly, bookingHolidayCtrl.getAdminHolidays);
 router.post('/booking-holidays', isAdminOnly, bookingHolidayCtrl.createHoliday);
 router.post('/booking-holidays/:id/delete', isAdminOnly, bookingHolidayCtrl.deleteHoliday);
+
+// --- 6.3 ชดเชยฝนตก (เฉพาะ Admin เพราะเป็นส่วนลดค่าเช่า) — กติกาอยู่ใน utils/rainCompensation.js ---
+router.get('/rain-compensation', isAdminOnly, rainCompensationCtrl.getPage);
+router.post('/rain-compensation', isAdminOnly, rainCompensationCtrl.announce);
+router.post('/rain-compensation/credits/:id/revoke', isAdminOnly, rainCompensationCtrl.revokeCredit);
+router.post('/rain-compensation/:id/delete', isAdminOnly, rainCompensationCtrl.deleteDay);
 
 // รายการ "ขายอะไรบ้าง" ที่แอดมินเพิ่มเองจากคำที่ผู้ขายพิมพ์ในช่อง "อื่นๆ (ระบุเอง)"
 router.get('/product-subtypes', isAdminOnly, productSubtypeCtrl.getProductSubtypesPage);

@@ -4,7 +4,8 @@
     const currentPath = locals.path || '';
     const navUser = (typeof user !== 'undefined' && user) ? user : null;
     const isStaffOrAdmin = navUser && (navUser.role === 'ADMIN' || navUser.role === 'STAFF');
-    const homePath = isStaffOrAdmin ? '/admin/dashboard' : '/community';
+    // ยังไม่ล็อกอิน: หน้าแรกคือหน้าต้อนรับ / (ฟีดคอมมูนิตี้ต้องล็อกอิน)
+    const homePath = isStaffOrAdmin ? '/admin/dashboard' : (navUser ? '/community' : '/');
     const isCommunityPath = currentPath.includes('community') || currentPath.includes('comunity');
     const notificationList = (typeof notifications !== 'undefined' && Array.isArray(notifications)) ? notifications : [];
     // กติกาเดียวกับ isReal ในหน้าแจ้งเตือน (public/js/seller/notifications.js) และ navbarSeller.ejs
@@ -15,7 +16,7 @@
 
     // ยังไม่ล็อกอิน: เหลือเฉพาะเมนูที่ไม่ต้องใช้บัญชี
     const links = [
-        { href: '/community', icon: 'fa-home', label: 'หน้าหลัก', active: isCommunityPath },
+        { href: navUser ? '/community' : '/', icon: 'fa-home', label: 'หน้าหลัก', active: navUser ? isCommunityPath : currentPath === '/' },
         { href: '/market-map', icon: 'fa-map', label: 'ผังตลาด', active: currentPath.includes('market-map') },
         { href: '/announcements', icon: 'fa-bullhorn', label: 'ประกาศ', active: currentPath.includes('announcements') },
         { href: '/shop-application', icon: 'fa-store', label: 'สมัครเปิดร้านค้า', active: currentPath.includes('shop-application'), needsLogin: true },

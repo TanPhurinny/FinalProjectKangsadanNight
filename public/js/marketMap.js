@@ -2485,6 +2485,17 @@ if (stallParam) {
     }
 }
 
+// ลิงก์จากหน้าแรก (/): ?q=คำค้น — ค้นร้าน/เมนูให้เลย, ?open=1 — เปิดตัวกรอง "เปิดอยู่ตอนนี้"
+const landingParams = new URLSearchParams(window.location.search);
+if (!stallParam && landingParams.get('q')) {
+    const query = landingParams.get('q').slice(0, 80);
+    document.getElementById('searchInput').value = query;
+    doSearch(query);
+} else if (!stallParam && landingParams.get('open') === '1') {
+    const openBtn = document.querySelector('.qtag-open');
+    if (openBtn) quickStatusFilter(openBtn, 'OPEN');
+}
+
 // ==========================================
 // แถบหมวดสินค้า (สี+กรอง), ปุ่มไปล็อกของฉัน (ผู้ขาย), ปุ่มสุ่มร้านอาหาร
 // ==========================================

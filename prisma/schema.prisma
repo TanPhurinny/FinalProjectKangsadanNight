@@ -252,6 +252,10 @@ model BookingRequest {
   slipVerifyReason   String?  @db.Text
   slipVerifiedAmount Float?
   confirmedByName    String?
+  // ส่วนลดชดเชยฝนตกที่ผู้ขายกดใช้กับคำขอนี้ (utils/rainCompensation.js) — ยอดที่ต้องจ่าย = grandTotal - rainDiscount
+  // rainDiscountForfeit = ส่วนที่เกินยอดแล้วหายไป (ส่วนลดเกินค่าเช่าไม่สะสม)
+  rainDiscount        Int?
+  rainDiscountForfeit Int?
   seller       Seller?  @relation(fields: [sellerId], references: [id], onDelete: SetNull)
   user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   shop         ShopDetail? @relation(fields: [shopId], references: [id], onDelete: SetNull)
@@ -953,4 +957,52 @@ model NotificationRead {
   readAt DateTime @default(now())
 
   @@unique([userId, key])
+}
+
+// วันฝนตกที่แอดมินประกาศชดเชย (ฝนตกต่อเนื่องช่วง 17:00–20:00 จนค้าขายไม่ได้ — แอดมินใช้ดุลยพินิจ ระบบไม่ตัดสินเอง)
+// date = วันขาย (เที่ยงคืน), level = ระดับฝนตามตารางประเมิน (LIGHT/MODERATE/HEAVY/SPECIAL ดู RAIN_LEVELS)
+// percent = % ชดเชยของวันนั้น ทุกร้านได้เท่ากัน (50/75/100 ตามระดับ หรือแอดมินเลือกเองถ้าเป็น SPECIAL)
+// announceAt = เวลาที่ผู้ขายเริ่มเห็นผล (ค่าเริ่มต้น 21:30 ของวันนั้น) — ดู utils/rainCompensation.js
+model RainCompensationDay {
+  id         Int          @id @default(autoincrement())
+  date       DateTime     @unique
+  level      String?      @db.VarChar(16)
+  percent    Int
+  note       String?      @db.Text
+  announceAt DateTime
+  createdBy  Int?
+  createdAt  DateTime     @default(now())
+  credits    RainCredit[]
+}
+
+// เครดิตชดเชยของแต่ละร้านต่อ 1 วันฝนตก — ผูกกับบัญชีผู้ขาย (userId) โอนให้คนอื่นไม่ได้
+// amount = ceil(baseRent x percent / 100) เป็นบาทเต็ม, หมดอายุ 45 วันนับจากวันที่ได้รับ
+// status: ACTIVE ใช้ได้ / USED ใช้กับคำขอ usedOnRequestId แล้ว / REVOKED แอดมินเพิกถอน / SKIPPED_CAP ไม่ได้เพราะสะสมครบ 5 ครั้งแล้ว
+model RainCredit {
+  id              Int                 @id @default(autoincrement())
+  dayId           Int
+  userId          Int
+  sourceRequestId Int?
+  stallCodes      String              @db.VarChar(191)
+  baseRent        Float
+  percent         Int
+  amount          Int
+  status          RainCreditStatus    @default(ACTIVE)
+  expiresAt       DateTime
+  usedOnRequestId Int?
+  usedAt          DateTime?
+  revokeReason    String?             @db.Text
+  createdAt       DateTime            @default(now())
+  day             RainCompensationDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+
+  @@unique([dayId, userId])
+  @@index([userId, status])
+  @@index([usedOnRequestId])
+}
+
+enum RainCreditStatus {
+  ACTIVE
+  USED
+  REVOKED
+  SKIPPED_CAP
 }

@@ -6,9 +6,11 @@
 <% const accountName = navUser ? (navUser.name || navUser.username || 'ผู้ใช้งาน') : null; %>
 <% const profileActive = navPath.includes('/profile'); %>
 <% if (!navUser) { %>
-<a href="/login" class="nav-v2__login nav-v2__desktop-only"><i class="fas fa-right-to-bracket"></i> เข้าสู่ระบบ</a>
+<%# ล็อกอินแล้วกลับมาหน้าเดิม (?next= ผ่าน safeNextPath ใน authController.js) — หน้าแรกไม่ต้องส่ง %>
+<% const loginHref = navPath && navPath !== '/' ? `/login?next=${encodeURIComponent(navPath)}` : '/login'; %>
+<a href="<%= loginHref %>" class="nav-v2__login nav-v2__desktop-only"><i class="fas fa-right-to-bracket"></i> เข้าสู่ระบบ</a>
 <div class="nav-actions nav-v2__mobile-only">
-    <a href="/login" class="nav-v2__login-mobile"><i class="fas fa-right-to-bracket me-1"></i> เข้าสู่ระบบ</a>
+    <a href="<%= loginHref %>" class="nav-v2__login-mobile"><i class="fas fa-right-to-bracket me-1"></i> เข้าสู่ระบบ</a>
 </div>
 <% } else { %>
 <details class="nav-dropdown nav-v2__account nav-v2__desktop-only">

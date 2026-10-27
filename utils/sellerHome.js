@@ -10,6 +10,8 @@ const { getPromo, PROMO_MAX_LENGTH } = require('./shopPromo');
 const { buildProfileChecks } = require('./shopCompleteness');
 const { getAnnouncementsForUser } = require('../controllers/announcementController');
 const { shopsRelation, primaryShop } = require('./shops');
+const { getAvailableCredits } = require('./rainCompensation');
+const { getSellerReviewPanel } = require('./shopReviews');
 
 // ข้อมูลหน้าแรกผู้ขาย (/seller): สถานะร้านคืนนี้, สิ่งที่ต้องทำ (เรียงตามความด่วน), ล็อกของฉัน,
 // ตัวเลขสรุป และความเคลื่อนไหวล่าสุด — รวมไว้ที่เดียวให้ route บางลง
@@ -58,7 +60,7 @@ async function buildSellerHome(userId, now = new Date()) {
     const requests = await prisma.bookingRequest.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        select: { id: true, status: true, zone: true, assignedStallCode: true, createdAt: true, lockAssignedAt: true, paymentDueAt: true, paymentConfirmedAt: true }
+        select: { id: true, status: true, zone: true, assignedStallCode: true, createdAt: true, lockAssignedAt: true, paymentDueAt: true, paymentConfirmedAt: true, paymentSlipImage: true }
     });
 
     // ล็อกของฉัน: คำขอล่าสุดที่ได้ล็อกแล้วเป็นตัวกำหนดสถานะของล็อกนั้น
@@ -88,7 +90,7 @@ async function buildSellerHome(userId, now = new Date()) {
         buildMyStallHealth(userId, codes),
         getOpenStatus(userId, now),
         getShopViewStats(userId),
-        prisma.stallRenewalNotice.findMany({ where: { userId, createdAt: { gte: new Date(now.getTime() - 7 * DAY_MS) } }, orderBy: { createdAt: 'desc' }, take: 3 }),
+        prisma.stallRenewalNotice.findMany({ where: { userId, createdAt: { gte: new Date(now.getTime() - 7 * DAY_MS) } }, orderBy: { createdAt: 'desc' }, take: 20 }),
         prisma.maintenanceReport.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 3, select: { id: true, category: true, location: true, status: true, createdAt: true } }),
         getAnnouncementsForUser('SELLER').then((list) => list[0] || null)
     ]);
@@ -105,6 +107,7 @@ async function buildSellerHome(userId, now = new Date()) {
         const released = stall.status && stall.status !== 'BOOKED';
         return {
             code,
+            requestId: request.id,
             zone: stall.row?.zone?.code || code.charAt(0),
             requestStatus: request.status,
             requestText: REQUEST_STATUS[request.status]?.text || request.status,
@@ -115,7 +118,8 @@ async function buildSellerHome(userId, now = new Date()) {
             cutoffAt: renewal ? renewal.cutoffAt : null,
             canExtend: !!(renewal && renewal.isOpen && renewal.fullRoundDays > 0),
             renewalOpen: !!(renewal && renewal.isOpen && now >= renewal.opensAt),
-            paymentDeadline: request.status === 'IN_PROGRESS' ? getPaymentDeadline(request, startByRequestId.get(request.id) || null) : null,
+            // แนบสลิปแล้ว = รอแอดมินตรวจ ไม่ต้องเตือนชำระ/ใช้ส่วนลดอีก (ส่วนลดฝนตกใช้ได้เฉพาะก่อนแนบสลิป)
+            paymentDeadline: request.status === 'IN_PROGRESS' && !request.paymentSlipImage ? getPaymentDeadline(request, startByRequestId.get(request.id) || null) : null,
             health: health[code] || {},
             // ล็อกที่ยังใช้งาน = ชำระแล้วและสัญญายังไม่หมด / ที่เหลือพับไว้ใน "ล็อกที่หมดสัญญา/ถูกปล่อย"
             isCurrent: !released && phase !== 'lapsed'
@@ -127,18 +131,25 @@ async function buildSellerHome(userId, now = new Date()) {
 
     const profile = buildProfileChecks(shop);
     const currentZones = stalls.filter((s) => s.isCurrent).map((s) => s.zone);
-    const [viewInsights, promo] = await Promise.all([
+    const [viewInsights, promo, rain, reviewPanel] = await Promise.all([
         getShopViewInsights(userId, currentZones.length ? currentZones : stalls.map((s) => s.zone), now),
-        getPromo(userId, now)
+        getPromo(userId, now),
+        getAvailableCredits(userId, now),
+        getSellerReviewPanel(userId)
     ]);
 
     // ---------- สิ่งที่ต้องทำ เรียงจากด่วนสุด ----------
     const todo = [];
-    // เตือนชำระเงินเฉพาะล็อกที่ยังไม่ถูกปล่อยและเส้นตายยังไม่ผ่าน
-    stalls.filter((s) => s.paymentDeadline && new Date(s.paymentDeadline) > now && s.phase !== 'released').forEach((s) => todo.push({
+    // เตือนชำระเงินเฉพาะล็อกที่ยังไม่ถูกปล่อยและเส้นตายยังไม่ผ่าน — 1 คำขอ = 1 บิล รวมทุกล็อกของคำขอเป็นงานเดียว
+    const unpaidByRequest = new Map();
+    stalls.filter((s) => s.paymentDeadline && new Date(s.paymentDeadline) > now && s.phase !== 'released').forEach((s) => {
+        if (!unpaidByRequest.has(s.requestId)) unpaidByRequest.set(s.requestId, { codes: [], deadline: s.paymentDeadline });
+        unpaidByRequest.get(s.requestId).codes.push(s.code);
+    });
+    unpaidByRequest.forEach(({ codes: unpaidCodes, deadline }) => todo.push({
         tone: 'bad', icon: 'bi-cash-coin',
-        title: `ชำระเงินล็อก ${s.code}`,
-        desc: `ภายใน ${fmtDate(s.paymentDeadline)} ${fmtTime(s.paymentDeadline)} น. ไม่งั้นล็อกอาจถูกปล่อยให้คนอื่น`,
+        title: `ชำระเงินล็อก ${unpaidCodes.join(', ')}`,
+        desc: `ภายใน ${fmtDate(deadline)} ${fmtTime(deadline)} น. ไม่งั้นล็อกอาจถูกปล่อยให้คนอื่น`,
         href: '/booking-status', cta: 'ชำระเงิน'
     }));
     stalls.filter((s) => s.phase === 'grace').forEach((s) => todo.push({
@@ -168,6 +179,13 @@ async function buildSellerHome(userId, now = new Date()) {
         href: `/market-map?stall=${s.code}`, cta: 'ดูรายละเอียด'
     }));
     const pendingReq = requests.find((r) => r.status === 'PENDING' || r.status === 'APPROVED');
+    // มีเครดิตชดเชยฝนตก + มีบิลรอชำระ: ใช้เป็นส่วนลดได้ในหน้าสถานะการจอง
+    if (rain.count && stalls.some((s) => s.paymentDeadline && new Date(s.paymentDeadline) > now && s.phase !== 'released')) todo.push({
+        tone: 'good', icon: 'bi-cloud-rain',
+        title: `ใช้ส่วนลดชดเชยฝนตก ฿${rain.total.toLocaleString('th-TH')}`,
+        desc: `มีเครดิต ${rain.count} ใบ หักจากบิลที่รอชำระได้ก่อนแนบสลิป`,
+        href: '/booking-status', cta: 'ใช้ส่วนลด'
+    });
     if (pendingReq) todo.push({
         tone: 'info', icon: 'bi-hourglass-split',
         title: REQUEST_STATUS[pendingReq.status].text,
@@ -204,9 +222,15 @@ async function buildSellerHome(userId, now = new Date()) {
             at: r.createdAt, icon: 'bi-tools', tone: r.status === 'SUCCESS' ? 'good' : 'info',
             title: `แจ้งซ่อม ${r.category} · ${r.location}`, sub: REPAIR_STATUS[r.status] || r.status, href: '/repair'
         })),
-        ...notices.map((n) => ({
+        // แอดมินกดย้ำได้หลายครั้ง — รวมเป็นแถวเดียวต่อล็อก+สัญญา (notices เรียงใหม่สุดก่อน แถวที่เหลือคือครั้งล่าสุด) บอกจำนวนครั้ง
+        ...[...notices.reduce((groups, n) => {
+            const key = `${n.stallCode}@${new Date(n.bookingEndDate).toDateString()}`;
+            if (groups.has(key)) groups.get(key).count += 1;
+            else groups.set(key, { n, count: 1 });
+            return groups;
+        }, new Map()).values()].slice(0, 3).map(({ n, count }) => ({
             at: n.createdAt, icon: 'bi-bell', tone: 'warn',
-            title: `แอดมินเตือนต่อล็อก ${n.stallCode}`, sub: `สัญญาถึง ${fmtDate(n.bookingEndDate)}`, href: '/notifications'
+            title: `แอดมินเตือนต่อล็อก ${n.stallCode}${count > 1 ? ` (${count} ครั้ง)` : ''}`, sub: `สัญญาถึง ${fmtDate(n.bookingEndDate)}`, href: '/notifications'
         }))
     ].sort((a, b) => new Date(b.at) - new Date(a.at))
         .map((a) => ({ ...a, when: `${fmtDate(a.at)} ${fmtTime(a.at)}` }))
@@ -246,6 +270,25 @@ async function buildSellerHome(userId, now = new Date()) {
         promo: stalls.some((st) => st.isCurrent) ? { text: promo ? promo.text : '', maxLength: PROMO_MAX_LENGTH } : null,
         profile,
         roundTimeline: getRoundTimeline(now),
+        // กระเป๋าเครดิตชดเชยฝนตก (utils/rainCompensation.js) — เรียงจากใบที่หมดอายุก่อน
+        rain: {
+            total: rain.total,
+            count: rain.count,
+            nextExpiryLabel: rain.nextExpiry ? fmtDate(rain.nextExpiry) : null,
+            daysToExpiry: rain.nextExpiry ? Math.max(0, Math.ceil((new Date(rain.nextExpiry) - now) / DAY_MS)) : null,
+            credits: rain.credits.slice(0, 5).map((c) => ({ amount: c.amount, dayLabel: fmtDate(c.day.date), expiresLabel: fmtDate(c.expiresAt) }))
+        },
+        // สรุปรีวิวร้าน (utils/shopReviews.js) + รีวิวล่าสุดที่มีข้อความ
+        reviews: {
+            avg: reviewPanel.avg,
+            count: reviewPanel.count,
+            newThisWeek: reviewPanel.newThisWeek,
+            unanswered: reviewPanel.unanswered,
+            latest: (() => {
+                const r = reviewPanel.reviews.find((x) => !x.isHidden && x.comment);
+                return r ? { rating: r.rating, comment: r.comment, author: r.author, when: fmtDate(r.createdAt), replied: !!r.reply } : null;
+            })()
+        },
         announcement: announcement ? { ...announcement, when: fmtDate(announcement.createdAt) } : null,
         activity
     };

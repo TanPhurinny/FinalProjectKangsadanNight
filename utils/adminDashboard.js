@@ -24,11 +24,18 @@ function firstBookingByRequest(bookings) {
 }
 
 // แยกยอดเป็น ค่าเช่า / ค่าไฟแสงสว่าง / เครื่องใช้ไฟฟ้า / อื่นๆ (ส่วนต่างจาก grandTotal เช่นค่าต่อสัญญา)
-function splitAmount(booking) {
-    const grand = Number(booking?.grandTotal || 0);
-    const rent = Number(booking?.rentTotal || 0);
-    const light = Number(booking?.lightTotal || 0);
-    const appliance = Number(booking?.applianceTotal || 0);
+// rainDiscount = ส่วนลดชดเชยฝนตกที่ใช้กับคำขอนี้ (utils/rainCompensation.js) — รายได้จริงหักออก เริ่มหักจากค่าเช่าก่อน
+function splitAmount(booking, rainDiscount = 0) {
+    let left = Math.max(0, Number(rainDiscount || 0));
+    const take = (value) => {
+        const cut = Math.min(value, left);
+        left -= cut;
+        return value - cut;
+    };
+    const grand = Math.max(0, Number(booking?.grandTotal || 0) - Number(rainDiscount || 0));
+    const rent = take(Number(booking?.rentTotal || 0));
+    const light = take(Number(booking?.lightTotal || 0));
+    const appliance = take(Number(booking?.applianceTotal || 0));
     const other = Math.max(0, grand - rent - light - appliance);
     return { grand, rent, light, appliance, other };
 }
@@ -40,7 +47,7 @@ async function buildRevenue(today) {
     const currentFrom = addDays(today, -13);
     const paid = await prisma.bookingRequest.findMany({
         where: { status: 'SUCCESS', paymentConfirmedAt: { gte: from } },
-        select: { id: true, paymentConfirmedAt: true, zone: true }
+        select: { id: true, paymentConfirmedAt: true, zone: true, rainDiscount: true }
     });
     const bookings = paid.length
         ? await prisma.booking.findMany({
@@ -62,7 +69,7 @@ async function buildRevenue(today) {
 
     paid.forEach((request) => {
         const booking = bookingByRequest.get(request.id);
-        const parts = splitAmount(booking);
+        const parts = splitAmount(booking, request.rainDiscount);
         const index = dayIndex.get(dayKey(request.paymentConfirmedAt));
         if (index !== undefined) {
             days[index].amount += parts.grand;
@@ -118,7 +125,7 @@ async function buildRoundForecast(now) {
     const requests = bookingByRequest.size
         ? await prisma.bookingRequest.findMany({
             where: { id: { in: [...bookingByRequest.keys()] } },
-            select: { id: true, status: true }
+            select: { id: true, status: true, rainDiscount: true }
         })
         : [];
 
@@ -128,7 +135,7 @@ async function buildRoundForecast(now) {
         unassigned: { amount: 0, count: 0 }
     };
     requests.forEach((request) => {
-        const amount = Number(bookingByRequest.get(request.id)?.grandTotal || 0);
+        const amount = Math.max(0, Number(bookingByRequest.get(request.id)?.grandTotal || 0) - Number(request.rainDiscount || 0));
         let key = null;
         if (request.status === 'SUCCESS') key = 'confirmed';
         else if (request.status === 'IN_PROGRESS') key = 'awaiting';

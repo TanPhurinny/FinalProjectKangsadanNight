@@ -15,6 +15,7 @@ const { sendStallExpiringSoonEmail } = require('../config/mailer');
 const { describeBookingAppliances } = require('../utils/bookingAppliances');
 const { isEventBoothCode } = require('../utils/eventBooth');
 const { shopsRelation, primaryShop, getPrimaryShop } = require('../utils/shops');
+const { getPayableAmount } = require('../utils/rainCompensation');
 
 function normalizeZone(zone) {
     return String(zone || '').trim().toUpperCase();
@@ -645,7 +646,10 @@ exports.getApprovalsPage = async (req, res) => {
                         billableDays: linkedBooking.billableDays ?? linkedBooking.rentalDays,
                         stallCount: linkedBooking.stallCount,
                         dailyStallPrice: Number(linkedBooking.dailyStallPrice || 0),
-                        grandTotal: Number(linkedBooking.grandTotal || 0),
+                        // ยอดที่ต้องโอนจริง (หักส่วนลดชดเชยฝนตกแล้ว) — ใช้เทียบยอดสลิป; ยอดเต็มอยู่ที่ fullTotal
+                        grandTotal: getPayableAmount(request, linkedBooking.grandTotal),
+                        fullTotal: Number(linkedBooking.grandTotal || 0),
+                        rainDiscount: Number(request.rainDiscount || 0),
                         smallApplianceCount: linkedBooking.smallApplianceCount || 0,
                         largeApplianceCount: linkedBooking.largeApplianceCount || 0,
                         applianceText: describeBookingAppliances(linkedBooking)
@@ -963,7 +967,7 @@ exports.confirmPayment = async (req, res) => {
             const linkedBooking = requestTag
                 ? await prisma.booking.findFirst({ where: { storeDetailSnapshot: { startsWith: requestTag } } })
                 : null;
-            const expectedAmount = linkedBooking ? Number(linkedBooking.grandTotal || 0) : null;
+            const expectedAmount = linkedBooking ? getPayableAmount(requestRecord, linkedBooking.grandTotal) : null;
 
             if (verifyResult === null) {
                 verifyResult = await verifySlip(requestRecord.paymentSlipImage, expectedAmount);
@@ -985,6 +989,9 @@ exports.confirmPayment = async (req, res) => {
         return res.redirect(approvalsUrl(req, 'error=confirm_payment_failed'));
     }
 };
+
+// ใช้ซ้ำตอนส่วนลดชดเชยฝนตกครอบคลุมยอดทั้งหมด (ไม่ต้องโอน) ฝั่งผู้ขายยืนยันเองได้เลย — ดู routes/sellerRoute.js
+exports.markPaymentConfirmed = markPaymentConfirmed;
 
 // แอดมินตรวจแล้วพบว่าสลิปที่ผู้ขายส่งมาไม่ถูกต้อง (ยอดผิด/สลิปคนละคน/รูปไม่ชัด ฯลฯ)
 // ต่างจาก rejectBookingStall (ปฏิเสธทั้งคำขอ ปล่อยล็อกคืน) ตรงนี้แค่ล้างสลิปเดิมทิ้ง

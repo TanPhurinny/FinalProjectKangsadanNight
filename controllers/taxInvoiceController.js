@@ -136,6 +136,7 @@ async function buildTaxInvoiceData(taxInvoiceRequestId, options = {}) {
     const vatAmount = quotations.reduce((sum, q) => sum + q.vatAmount, 0);
     const netTotal = quotations.reduce((sum, q) => sum + q.netTotal, 0);
     const totalBeforeDiscount = quotations.reduce((sum, q) => sum + q.totalBeforeDiscount, 0);
+    const discount = quotations.reduce((sum, q) => sum + (q.discount || 0), 0);
 
     return {
         company: quotations[0].company,
@@ -156,7 +157,7 @@ async function buildTaxInvoiceData(taxInvoiceRequestId, options = {}) {
         items,
         shopNames,
         totalBeforeDiscount,
-        discount: 0,
+        discount,
         amountBeforeVat,
         vatAmount,
         vatRate: quotations[0].vatRate,

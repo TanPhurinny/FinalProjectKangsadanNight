@@ -592,6 +592,22 @@ exports.getExpiringStallsPage = async (req, res) => {
             });
         });
 
+        // แจ้งเตือนที่แอดมินกดไปแล้ว (StallRenewalNotice) นับเฉพาะของสัญญาปัจจุบัน (วันหมดสัญญาตรงกัน) — ต่อแล้ววันเปลี่ยน นับใหม่
+        const notices = rows.length
+            ? await prisma.stallRenewalNotice.findMany({
+                where: { stallCode: { in: rows.map((r) => r.code) } },
+                select: { stallCode: true, bookingEndDate: true, createdAt: true }
+            })
+            : [];
+        rows.forEach((row) => {
+            const endDay = row.renewal ? row.renewal.currentEnd.getTime() : null;
+            const matched = notices.filter((n) => n.stallCode === row.code && endDay !== null
+                && toStartOfDay(n.bookingEndDate).getTime() === endDay);
+            row.notice = matched.length
+                ? { count: matched.length, lastAt: matched.reduce((max, n) => (n.createdAt > max ? n.createdAt : max), matched[0].createdAt) }
+                : null;
+        });
+
         rows.sort((a, b) => {
             const orderDiff = EXPIRY_URGENCY_ORDER[a.expiryState] - EXPIRY_URGENCY_ORDER[b.expiryState];
             if (orderDiff !== 0) return orderDiff;

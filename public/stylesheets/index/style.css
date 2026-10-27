@@ -909,3 +909,288 @@ body {
     max-width: 100% !important;
     object-fit: contain;
 }
+
+/* ── หาร้านคืนนี้ (ลูกค้า ไม่ต้องล็อกอิน) — ลิงก์เข้า /market-map?q= และ ?open=1 ── */
+.find-section {
+    padding: 3rem 0 0;
+}
+
+.find-card {
+    border: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+}
+
+.find-main {
+    padding: 2rem;
+    border-right: 1px solid var(--line);
+}
+
+.find-kicker {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--primary-dark);
+}
+
+.find-search {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--navy);
+    background: #fff;
+}
+
+.find-search > i {
+    align-self: center;
+    padding: 0 0.2rem 0 0.9rem;
+    color: var(--ink-soft);
+}
+
+.find-search input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    padding: 0.85rem 0.75rem;
+    font-size: 1rem;
+    color: var(--ink);
+    background: transparent;
+}
+
+.find-search input:focus {
+    outline: none;
+}
+
+.find-search:focus-within {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.find-search .btn {
+    border-radius: 0;
+    margin: -1px -1px -1px 0;
+}
+
+.find-perks {
+    list-style: none;
+    padding: 0;
+    margin: 1.1rem 0 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border: 1px solid var(--line);
+}
+
+.find-perks li {
+    padding: 0.75rem 0.9rem;
+    font-size: 0.84rem;
+    color: var(--ink);
+    border-right: 1px solid var(--line);
+}
+
+.find-perks li:last-child {
+    border-right: none;
+}
+
+.find-perks i {
+    color: var(--primary-dark);
+    margin-right: 0.45rem;
+}
+
+.find-side {
+    padding: 1.5rem;
+    background: var(--soft-bg);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.find-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.find-stat__dot {
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #27ae60;
+    box-shadow: 0 0 0 4px rgba(39, 174, 96, 0.18);
+}
+
+.find-stat strong {
+    display: block;
+    font-size: 2.2rem;
+    line-height: 1.05;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+}
+
+.find-stat small {
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+}
+
+.find-side__note {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+}
+
+.find-side__link {
+    color: var(--primary-dark);
+    font-size: 0.86rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.find-side__link:hover {
+    color: var(--navy);
+    text-decoration: underline;
+}
+
+.btn-outline-kangsadan {
+    background: #fff;
+    color: var(--navy);
+    border: 1px solid var(--navy);
+    font-weight: 600;
+}
+
+.btn-outline-kangsadan:hover {
+    background: var(--navy);
+    color: #fff;
+}
+
+/* ── รอบจองถัดไป (คนอยากเปิดร้าน) — getRoundTimeline ── */
+.round-strip {
+    margin-top: 1.3rem;
+    border: 1px solid var(--line);
+}
+
+.round-strip__head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.25rem 1rem;
+    padding: 0.8rem 1.1rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.round-strip__head strong {
+    color: var(--navy);
+    font-size: 0.95rem;
+}
+
+.round-strip__head small {
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+}
+
+.round-strip__steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.round-strip__steps li {
+    padding: 0.75rem 1.1rem;
+    border-right: 1px solid var(--line);
+    border-top: 3px solid transparent;
+}
+
+.round-strip__steps li:last-child {
+    border-right: none;
+}
+
+.round-strip__steps li.is-active {
+    border-top-color: var(--primary);
+    background: #eaf5f7;
+}
+
+.round-strip__steps small {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 0.74rem;
+}
+
+.round-strip__steps li.is-active small {
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+.round-strip__steps strong {
+    color: var(--navy);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.round-strip__note {
+    margin: 0;
+    padding: 0.7rem 1.1rem;
+    border-top: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+}
+
+@media (max-width: 991.98px) {
+    .find-card {
+        grid-template-columns: 1fr;
+    }
+
+    .find-main {
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+    }
+}
+
+@media (max-width: 575.98px) {
+    .find-section {
+        padding-top: 2rem;
+    }
+
+    .find-main,
+    .find-side {
+        padding: 1.2rem;
+    }
+
+    .find-perks {
+        grid-template-columns: 1fr;
+    }
+
+    .find-perks li {
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .find-perks li:last-child {
+        border-bottom: none;
+    }
+
+    .round-strip__steps {
+        grid-template-columns: 1fr;
+    }
+
+    .round-strip__steps li {
+        border-right: none;
+        border-top: none;
+        border-left: 3px solid transparent;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .round-strip__steps li:last-child {
+        border-bottom: none;
+    }
+
+    .round-strip__steps li.is-active {
+        border-left-color: var(--primary);
+    }
+}

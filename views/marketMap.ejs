@@ -25,7 +25,7 @@
         <!-- ลูกค้าที่สแกน QR เข้ามาโดยไม่ได้ล็อกอิน: แถบบนแบบเบาๆ ไม่มีเมนูที่ต้องใช้บัญชี -->
         <header class="guest-bar">
             <a href="/" class="guest-brand"><img src="/img/favicon.png" alt="กังสดาลไนท์"><span>ตลาดกังสดาลไนท์</span></a>
-            <a href="/login" class="guest-login"><i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ</a>
+            <a href="/login?next=%2Fmarket-map" class="guest-login"><i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ</a>
         </header>
         <% } else if (user.role === 'SELLER' && !locals.viewAsCustomer) { %>
         <%- include('partials/navbarSeller') %>
@@ -446,7 +446,7 @@
         <script src="/js/common/searchSuggest.js?v=20261002"></script>
         <script src="/js/eventZonePlan.js?v=20261026"></script>
         <script src="/js/zoneContext.js?v=20261026"></script>
-        <script src="/js/marketMap.js?v=20261026-review2"></script>
+        <script src="/js/marketMap.js?v=20261027-landing"></script>
         <script src="/js/marketNav.js?v=20261026-event"></script>
     </body>
 </html>
