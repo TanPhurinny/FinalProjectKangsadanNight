@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
-  <link rel="stylesheet" href="/stylesheets/seller/sellerHome.css?v=20261027-v3">
+  <link rel="stylesheet" href="/stylesheets/seller/sellerHome.css?v=20261027-v7">
 </head>
 <body>
 <script src="/js/common/tabSession.js"></script>
@@ -65,12 +65,10 @@
   %>
 
   <main class="sh">
-    <!-- 01 หัวหน้า "คืนนี้": พื้นมืดแบบตลาดกลางคืน ทั้งแถบเปลี่ยนโทนตามสถานะร้าน (public/js/seller/openStatus.js) -->
+    <!-- 01 หัวหน้า "คืนนี้": พื้นขาว ช่องสถานะร้านอมสีตามสถานะ ทั้งแถบเปลี่ยนโทนตามสถานะร้าน (public/js/seller/openStatus.js) -->
     <% const os = h.openStatus; %>
     <section class="sh-mast <%= os ? (os.isOpen ? 'is-open' : 'is-closed') : 'is-empty' %>"
       <% if (os) { %>id="openCheckin" data-open="<%= os.isOpen ? '1' : '0' %>"<% } %> aria-labelledby="mastTitle">
-      <div class="sh-mast__lights" aria-hidden="true"><% for (let i = 0; i < 28; i++) { %><i></i><% } %></div>
-
       <div class="sh-mast__bar">
         <span><%= h.todayLabel %></span>
         <span class="sh-mast__clock" id="liveClock" aria-label="เวลาตอนนี้">--:--:--</span>

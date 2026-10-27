@@ -1,6 +1,6 @@
 /* ========================================
    หน้าหลักผู้ขาย (/seller) — gridgeist
-   แนวคิด: "แผงควบคุมคืนนี้ของแม่ค้า" หัวหน้าเป็นแถบมืดแบบตลาดกลางคืน (ไฟประดับ + ป้ายเปิด/ปิดร้าน + ตั๋วล็อก)
+   แนวคิด: "แผงควบคุมคืนนี้ของแม่ค้า" หัวหน้าพื้นขาวแบบเดียวกับส่วนอื่น (ป้ายเปิด/ปิดร้านอมสีตามสถานะ + ตั๋วล็อก)
    ส่วนที่เหลือเป็นกระดาษสว่างบนกริด 12 คอลัมน์ คั่นด้วยเส้นบาง ส้มเป็นสีเน้นสีเดียว เริ่มออกแบบที่มือถือ
    ======================================== */
 :root {
@@ -15,11 +15,11 @@
     --sh-warn: #a0620f;
     --sh-bad: #c0392b;
     --sh-info: #1f6f80;
-    --sh-night: #0d2530;
-    --sh-night-2: #143845;
-    --sh-night-line: rgba(255, 255, 255, .12);
-    --sh-night-soft: #9db7bf;
-    --sh-neon: #3ee083;
+    /* แถบหัว: พื้นขาวแบบเดียวกับส่วนอื่นของหน้า (ชื่อตัวแปร night เหลือจากเวอร์ชันพื้นมืด) */
+    --sh-night: #fff;
+    --sh-night-2: #eaf5f7;
+    --sh-night-line: #d7e3e6;
+    --sh-night-soft: #5b7a84;
     --sh-font: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
     --sh-gap: 14px;
     --sh-ease: cubic-bezier(.2, .7, .2, 1);
@@ -88,48 +88,21 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 .sh-tone--info { --tone: var(--sh-info); }
 .sh-tone--neutral, .sh-tone--muted { --tone: var(--sh-soft); }
 
-/* ---------- 01 หัวหน้า "คืนนี้" (แถบมืด) ---------- */
+/* ---------- 01 หัวหน้า "คืนนี้" ---------- */
 .sh-mast {
-    --state: var(--sh-neon);
+    --state: var(--sh-good);
+    --state-tint: rgba(30, 122, 69, .06);
     position: relative;
     overflow: hidden;
-    color: #fff;
-    background-color: var(--sh-night);
-    /* กริดจางๆ แบบพิมพ์เขียว ให้รู้สึกเป็นผังตลาด */
-    background-image:
-        linear-gradient(var(--sh-night-line) 1px, transparent 1px),
-        linear-gradient(90deg, var(--sh-night-line) 1px, transparent 1px);
-    background-size: 40px 40px;
-    background-position: -1px -1px;
-    border: 1px solid var(--sh-night);
+    color: var(--sh-ink);
+    /* พื้นเรียบสีเดียว — โครงสร้างมาจากเส้นคั่น 1px ระหว่างช่อง ไม่ใช้ลายตกแต่ง */
+    background: var(--sh-night);
+    border: 1px solid var(--sh-line);
     border-bottom: 4px solid var(--state);
     transition: border-color .3s;
 }
-.sh-mast.is-closed { --state: #7f98a0; }
-.sh-mast.is-empty { --state: var(--sh-accent); }
-
-/* ไฟประดับตลาดนัด (ตกแต่ง) */
-.sh-mast__lights {
-    display: flex;
-    justify-content: space-between;
-    padding: 0 10px;
-    height: 18px;
-    background: linear-gradient(transparent 5px, rgba(255, 255, 255, .25) 5px, rgba(255, 255, 255, .25) 6px, transparent 6px);
-}
-.sh-mast__lights i {
-    width: 8px;
-    height: 8px;
-    margin-top: 6px;
-    border-radius: 50%;
-    background: #ffd27a;
-    box-shadow: 0 0 8px 1px rgba(255, 210, 122, .65);
-    animation: shTwinkle 2.4s ease-in-out infinite;
-}
-.sh-mast__lights i:nth-child(3n + 2) { background: #ff9f5a; box-shadow: 0 0 8px 1px rgba(255, 159, 90, .6); animation-delay: .8s; }
-.sh-mast__lights i:nth-child(3n) { background: #8de8b0; box-shadow: 0 0 8px 1px rgba(141, 232, 176, .55); animation-delay: 1.6s; }
-.sh-mast__lights i:nth-child(n + 15) { display: none; }
-.sh-mast.is-closed .sh-mast__lights i { animation: none; opacity: .3; box-shadow: none; }
-@keyframes shTwinkle { 50% { opacity: .35; } }
+.sh-mast.is-closed { --state: var(--sh-soft); --state-tint: var(--sh-bg); }
+.sh-mast.is-empty { --state: var(--sh-accent-ink); --state-tint: #fff8ee; }
 
 .sh-mast__bar {
     display: flex;
@@ -140,7 +113,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
     font-size: 12px;
     color: var(--sh-night-soft);
 }
-.sh-mast__clock { margin-left: auto; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.sh-mast__clock { margin-left: auto; font-weight: 600; color: var(--sh-ink); font-variant-numeric: tabular-nums; letter-spacing: .04em; }
 .sh-mast__round { padding: 1px 8px; border: 1px solid var(--sh-night-line); }
 
 .sh-mast__grid { display: grid; }
@@ -155,28 +128,30 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
     justify-content: center;
     overflow: hidden;
     background: var(--sh-night-2);
-    border: 1px solid rgba(255, 255, 255, .35);
+    border: 1px solid var(--sh-line);
 }
-.sh-avatar span { font-size: 28px; font-weight: 700; color: var(--sh-night-soft); }
+.sh-avatar span { font-size: 28px; font-weight: 700; color: var(--sh-info); }
 .sh-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .sh-mast__text { min-width: 0; }
 .sh-mast__greet { margin: 0; font-size: 13px; color: var(--sh-night-soft); }
 .sh-mast__title { margin: 0 0 4px; font-size: 26px; font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; }
 .sh-mast__shop { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 14px; }
-.sh-mast__shop .bi-patch-check-fill { color: #7fd3e4; }
+.sh-mast__shop .bi-patch-check-fill { color: var(--sh-info); }
 .sh-mast__type { font-size: 11px; padding: 1px 6px; border: 1px solid var(--sh-night-line); color: var(--sh-night-soft); }
-.sh-mast__rate { color: #ffd27a; font-weight: 700; text-decoration: none; font-size: 13px; }
+.sh-mast__rate { color: var(--sh-accent-ink); font-weight: 700; text-decoration: none; font-size: 13px; }
 .sh-mast__rate small { color: var(--sh-night-soft); font-weight: 400; }
-.sh-mast__rate:hover { color: #ffe3a8; text-decoration: underline; }
+.sh-mast__rate:hover { color: var(--sh-ink); text-decoration: underline; }
 
-/* ป้ายสถานะร้าน */
+/* ป้ายสถานะร้าน — พื้นอมสีตามสถานะ + แถบสีด้านซ้าย ให้ช่องนี้เด่นสุดในแถบหัว */
 .sh-sign {
     display: grid;
     grid-template-columns: 1fr;
     gap: 6px;
     padding: 16px;
     border-top: 1px solid var(--sh-night-line);
-    background: rgba(255, 255, 255, .03);
+    border-left: 4px solid var(--state);
+    background: var(--state-tint);
+    transition: background-color .3s, border-color .3s;
 }
 .sh-sign__kicker { margin: 0; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--sh-night-soft); }
 .sh-sign__state { display: flex; align-items: center; gap: 12px; }
@@ -191,13 +166,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 }
 @keyframes shRing { from { transform: scale(.5); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
 .sh-sign__label { margin: 0; font-size: 28px; font-weight: 700; line-height: 1.1; color: var(--state); }
-.sh-mast.is-open .sh-sign__label { text-shadow: 0 0 18px rgba(62, 224, 131, .35); }
 .sh-sign__sub { margin: 0; font-size: 13px; color: var(--sh-night-soft); }
 .sh-sign__btn {
     margin-top: 6px;
     min-height: 48px;
     padding: 10px 20px;
-    border: 1px solid #e3584a;
+    border: 1px solid #8e2a1f;
     background: var(--sh-bad);
     color: #fff;
     font-family: inherit;
@@ -210,17 +184,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 }
 .sh-sign__btn:hover { background: #a93226; color: #fff; }
 .sh-sign__btn:disabled { opacity: .6; cursor: wait; }
-.sh-mast.is-closed .sh-sign__btn { background: transparent; border-color: rgba(255, 255, 255, .6); }
-.sh-mast.is-closed .sh-sign__btn:hover { background: rgba(255, 255, 255, .1); }
-.sh-sign__btn--go { background: var(--sh-accent); border-color: #ffb066; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.sh-mast.is-closed .sh-sign__btn { background: #fff; border-color: var(--sh-ink); color: var(--sh-ink); }
+.sh-mast.is-closed .sh-sign__btn:hover { background: var(--sh-ink); color: #fff; }
+.sh-sign__btn--go { background: var(--sh-accent); border-color: var(--sh-accent-ink); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .sh-sign__btn--go:hover { background: #cf6d16; }
 
 /* แถบล่าง: ตั๋วล็อก + นับถอยหลัง */
 .sh-mast__strip { display: grid; border-top: 1px solid var(--sh-night-line); }
 .sh-mast__strip > * { padding: 14px 16px; min-width: 0; }
 .sh-mast__label { margin: 0; font-size: 11px; letter-spacing: .04em; color: var(--sh-night-soft); }
-.sh-mast__link { color: #ffd27a; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
-.sh-mast__link:hover { color: #ffe3a8; text-decoration: underline; }
+.sh-mast__link { color: var(--sh-info); font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.sh-mast__link:hover { color: var(--sh-ink); text-decoration: underline; }
 
 .sh-tickets { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 .sh-tickets::-webkit-scrollbar { display: none; }
@@ -231,9 +205,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
     flex-direction: column;
     min-width: 116px;
     padding: 8px 14px 8px 12px;
-    background: #fff;
+    background: var(--sh-bg);
     color: var(--sh-ink);
     text-decoration: none;
+    border: 1px solid var(--sh-line);
     border-left: 5px solid var(--tone, var(--sh-good));
     transition: transform .15s var(--sh-ease);
 }
@@ -253,14 +228,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 
 .sh-countdown__head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .sh-countdown__digits { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
-.sh-countdown__digits span { display: flex; flex-direction: column; align-items: center; padding: 6px 4px; background: rgba(255, 255, 255, .06); border: 1px solid var(--sh-night-line); }
+.sh-countdown__digits span { display: flex; flex-direction: column; align-items: center; padding: 6px 4px; background: var(--sh-bg); border: 1px solid var(--sh-line); }
 .sh-countdown__digits b { font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .sh-countdown__digits small { font-size: 11px; color: var(--sh-night-soft); }
 .sh-countdown__track { height: 3px; margin-top: 8px; background: var(--sh-night-line); }
-.sh-countdown__track i { display: block; height: 100%; width: 100%; background: #ffd27a; transform-origin: left; transition: transform 1s linear; }
-.sh-countdown.is-urgent .sh-countdown__digits span { border-color: rgba(255, 120, 100, .6); background: rgba(192, 57, 43, .18); }
-.sh-countdown.is-urgent b { color: #ff9b8f; }
-.sh-countdown.is-urgent .sh-countdown__track i { background: #ff7b6b; }
+.sh-countdown__track i { display: block; height: 100%; width: 100%; background: var(--sh-accent); transform-origin: left; transition: transform 1s linear; }
+.sh-countdown.is-urgent .sh-countdown__digits span { border-color: rgba(192, 57, 43, .45); background: #fdf0ee; }
+.sh-countdown.is-urgent b { color: var(--sh-bad); }
+.sh-countdown.is-urgent .sh-countdown__track i { background: var(--sh-bad); }
 .sh-countdown.is-over .sh-countdown__digits { opacity: .45; }
 
 .sh-nextround__row { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 8px; border: 1px solid var(--sh-night-line); }
@@ -632,13 +607,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 /* ---------- แท็บเล็ตขึ้นไป ---------- */
 @media (min-width: 768px) {
     .sh { padding: 20px 20px 64px; gap: 18px; }
-    .sh-mast__lights i:nth-child(n + 15) { display: block; }
     .sh-mast__bar { padding: 8px 20px; }
     .sh-mast__grid { grid-template-columns: 7fr 5fr; }
     .sh-mast__who { padding: 26px 20px; gap: 18px; }
     .sh-avatar { width: 84px; height: 84px; }
     .sh-mast__title { font-size: 34px; }
-    .sh-sign { border-top: 0; border-left: 1px solid var(--sh-night-line); padding: 20px; align-content: center; }
+    .sh-sign { border-top: 0; border-left: 4px solid var(--state); padding: 20px; align-content: center; }
     .sh-sign__label { font-size: 32px; }
     .sh-mast__strip { grid-template-columns: 7fr 5fr; }
     .sh-mast__strip > * { padding: 14px 20px; }
@@ -683,7 +657,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .sh-mast__lights i, .sh-mast.is-open .sh-sign__dot::after, .sh-quick__item.is-hot i, .sh-dialog[open], .sh-mapcard__promo.is-pop { animation: none; }
+    .sh-mast.is-open .sh-sign__dot::after, .sh-quick__item.is-hot i, .sh-dialog[open], .sh-mapcard__promo.is-pop { animation: none; }
     .sh-js .sh-reveal, .sh-js .sh-reveal .sh-hours__bar, .sh-js .sh-reveal .sh-spark__bar, .sh-js .sh-reveal .sh-compare i { opacity: 1; transform: none; transition: none; }
     .sh-toast, .sh-ticket, .sh-countdown__track i { transition: none; }
 }
