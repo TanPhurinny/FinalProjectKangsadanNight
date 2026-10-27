@@ -469,9 +469,9 @@ async function buildNextRoundRenewEntry(userId, extendInfo, now = new Date(), { 
     if (!codes.length) return [];
     const [cornerCount, fullRoundBooking, nextRoundBooking] = await Promise.all([
         prisma.stall.count({ where: { stallCode: { in: codes }, extraPrice: { gt: 0 } } }),
-        // จองตั้งแต่วันแรกของรอบ + ขายถึงวันสิ้นรอบ = จองเต็มรอบ
+        // จองตั้งแต่วันแรกของรอบ + ขายถึงวันสิ้นรอบ = จองเต็มรอบ — นับเฉพาะล็อกที่จะต่อ ร้านหลายล็อกไม่ได้สิทธิ์จากล็อกอื่น
         prisma.booking.findFirst({
-            where: { userId, status: 'SUCCESS', rentalStartDate: { lt: addDays(roundMeta.cycleStart, 1) }, rentalEndDate: { gte: roundMeta.cycleStart } },
+            where: { userId, status: 'SUCCESS', slot: { slotNumber: { in: codes } }, rentalStartDate: { lt: addDays(roundMeta.cycleStart, 1) }, rentalEndDate: { gte: roundMeta.cycleStart } },
             select: { id: true }
         }),
         // จองรอบถัดไปไว้แล้ว ไม่ต้องเตือน
