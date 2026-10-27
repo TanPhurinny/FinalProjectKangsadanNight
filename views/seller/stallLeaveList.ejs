@@ -9,127 +9,145 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
-    <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
-    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-guest">
+    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-ledger2">
 </head>
-<body class="eb-body">
+<body class="sl-body">
     <script src="/js/common/tabSession.js"></script>
     <%- include('../partials/navbarSeller') %>
     <%
         const successMessages = {
-            created: 'ส่งคำขอแล้ว รอแอดมินพิจารณา ผลจะแจ้งในหน้าแจ้งเตือน',
+            created: 'ส่งคำขอลาหยุดแล้ว รอแอดมินพิจารณา ผลจะแจ้งในหน้าแจ้งเตือน',
             sublet_sent: 'ส่งคำขอให้ร้านผู้รับเช่าช่วงแล้ว รอร้านนั้นตอบรับ แล้วคำขอจะส่งต่อให้แอดมิน',
-            guest_link: 'สร้างลิงก์แล้ว คัดลอกหรือแชร์ลิงก์ด้านล่างให้คนที่จะมาขายแทนกรอกข้อมูล (ใช้ได้ 72 ชม. และไม่เกินวันเริ่ม)',
+            guest_link: 'สร้างลิงก์แล้ว คัดลอกหรือแชร์ลิงก์ในแถวด้านล่างให้คนที่จะมาขายแทนกรอกข้อมูล (ใช้ได้ 72 ชม. และไม่เกินวันเริ่ม)',
             accepted: 'ตอบรับแล้ว คำขอส่งให้แอดมินพิจารณา',
             declined: 'ปฏิเสธการรับเช่าช่วงแล้ว ร้านเจ้าของแผงได้รับแจ้ง',
             cancelled: 'ยกเลิกคำขอแล้ว'
         };
-        const pillClass = { WAITING_SUBTENANT: 'eb-pill--pending', PENDING: 'eb-pill--pending', APPROVED: 'eb-pill--success', REJECTED: 'eb-pill--danger' };
+        const toneOf = { WAITING_SUBTENANT: 'tone-wait', PENDING: 'tone-wait', APPROVED: 'tone-ok', REJECTED: 'tone-bad' };
+        const kindShort = { LEAVE: 'ลาหยุด', SUBLET_MEMBER: 'เช่าช่วง · สมาชิก', SUBLET_GUEST: 'เช่าช่วง · คนนอก' };
+        const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
+        const waiting = rows.filter((r) => r.status === 'WAITING_SUBTENANT' || r.status === 'PENDING').length;
+        const approvedUpcoming = rows.filter((r) => r.status === 'APPROVED' && new Date(r.endDate) >= todayStart).length;
+        const needReply = incoming.filter((r) => r.canRespond).length;
     %>
 
-    <main class="eb-page">
-        <header class="eb-head">
+    <main class="sl-page">
+        <header class="sl-head">
             <div>
-                <p class="eb-kicker">จัดการร้าน · แผงของฉัน</p>
-                <h1 class="eb-title">ลาหยุด / เช่าช่วงแผง</h1>
-                <p class="eb-lead">คำขอของแผงที่ร้านคุณเช่าอยู่ ยกเลิกได้ก่อนถึงวันเริ่ม</p>
+                <p class="sl-kicker">จัดการร้าน · แผงของฉัน</p>
+                <h1 class="sl-title">ลาหยุด / เช่าช่วงแผง</h1>
+                <p class="sl-lead">ไม่สะดวกมาขายบางวันในช่วงสัญญา แจ้งลาหยุด หรือให้ร้านอื่นมาขายแทนชั่วคราว ทุกคำขอต้องผ่านแอดมิน และยกเลิกได้ก่อนถึงวันเริ่ม</p>
             </div>
-            <div class="eb-req-actions" style="border:0;padding:0">
-                <a class="eb-btn" href="/stall-leave/new"><i class="fa-solid fa-plus"></i> แจ้งลาหยุด</a>
-                <a class="eb-btn eb-btn--ghost" href="/stall-leave/new?kind=sublet"><i class="fa-solid fa-handshake"></i> ปล่อยเช่าช่วง</a>
+            <div class="sl-head__actions">
+                <a class="sl-btn" href="/stall-leave/new"><i class="fa-solid fa-calendar-minus" aria-hidden="true"></i> แจ้งลาหยุด</a>
+                <a class="sl-btn sl-btn--line" href="/stall-leave/new?kind=sublet"><i class="fa-solid fa-handshake" aria-hidden="true"></i> ปล่อยเช่าช่วง</a>
             </div>
         </header>
 
         <% if (success && successMessages[success]) { %>
-        <div class="eb-notice eb-notice--success" role="status"><%= successMessages[success] %></div>
+        <div class="sl-notice" role="status"><%= successMessages[success] %></div>
         <% } %>
         <% if (error) { %>
-        <div class="eb-notice eb-notice--danger" role="alert"><%= error %></div>
+        <div class="sl-notice sl-notice--bad" role="alert"><%= error %></div>
         <% } %>
 
-        <% if (!rows.length) { %>
-        <div class="eb-empty">ยังไม่มีคำขอ</div>
-        <% } %>
+        <div class="sl-stats" aria-label="สรุปคำขอ">
+            <div class="sl-stat"><small>กำลังดำเนินการ</small><b><%= waiting %></b></div>
+            <div class="sl-stat"><small>อนุมัติแล้ว ยังไม่จบ</small><b><%= approvedUpcoming %></b></div>
+            <div class="sl-stat"><small>คำขอทั้งหมด</small><b><%= rows.length %></b></div>
+            <a class="sl-stat<%= needReply ? ' is-active' : '' %>" href="#incoming"><small>รอคุณตอบรับเช่าช่วง</small><b><%= needReply %></b></a>
+        </div>
 
-        <h2 class="eb-section-title" style="margin:8px 0 12px">คำขอของแผงร้านคุณ</h2>
-        <% rows.forEach(function (r) { %>
-        <article class="eb-req <%= r.id === focusId ? 'is-focus' : '' %>" id="leave-<%= r.id %>">
-            <div class="eb-req-head">
-                <div>
-                    <h2 class="eb-req-title"><%= r.kindLabel %> · แผง <%= r.stallCode %></h2>
-                    <div class="eb-req-sub">#<%= r.id %> · ร้าน <%= r.shopName %> · ส่งเมื่อ <%= r.createdText %></div>
-                </div>
-                <span class="eb-pill <%= pillClass[r.status] || '' %>"><%= r.statusLabel %></span>
+        <section class="sl-section sl-section--first" aria-labelledby="mineTitle">
+            <div class="sl-section__head">
+                <h2 class="sl-section__title" id="mineTitle">คำขอของแผงร้านคุณ</h2>
+                <p class="sl-section__hint">เรียงจากล่าสุด</p>
             </div>
-            <div class="eb-req-body">
-                <div class="eb-req-cell"><small>วันที่</small><span><%= r.rangeText %></span></div>
-                <% if (r.subShopName) { %><div class="eb-req-cell"><small>ผู้รับเช่าช่วง</small><span><%= r.subShopName %></span></div><% } %>
-                <% if (r.reviewedText) { %><div class="eb-req-cell"><small>พิจารณาเมื่อ</small><span><%= r.reviewedText %><%= r.reviewedByName ? ` · ${r.reviewedByName}` : '' %></span></div><% } %>
-            </div>
-            <div class="eb-req-desc">เหตุผล: <%= r.reason %></div>
-            <% if (r.kind === 'SUBLET_GUEST' && r.status === 'WAITING_SUBTENANT' && r.guestToken) { const link = guestBaseUrl + r.guestToken; %>
-            <div class="sl-link">
-                <small>ส่งลิงก์นี้ให้คนที่จะมาขายแทน กรอกข้อมูลและรูปสินค้า หมดอายุ <%= new Date(r.guestTokenExpiresAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %> น.</small>
-                <input class="eb-input" type="text" readonly value="<%= link %>" aria-label="ลิงก์ให้คนนอกกรอกข้อมูล" data-link-input>
-                <div class="sl-link__btns">
-                    <button type="button" class="eb-btn eb-btn--sm" data-copy-link><i class="fa-regular fa-copy"></i> คัดลอกลิงก์</button>
-                    <a class="eb-btn eb-btn--ghost eb-btn--sm" href="https://line.me/R/msg/text/?<%= encodeURIComponent(`กรอกข้อมูลขายแทนที่แผง ${r.stallCode} ตลาดกังสดาลไนท์ ${link}`) %>" target="_blank" rel="noopener"><i class="fa-brands fa-line"></i> แชร์ทาง LINE</a>
-                </div>
-            </div>
+            <% if (!rows.length) { %>
+            <div class="sl-empty"><b>ยังไม่มีคำขอ</b>กด "แจ้งลาหยุด" หรือ "ปล่อยเช่าช่วง" ด้านบนเมื่อไม่สะดวกมาขาย</div>
             <% } %>
-            <% if (r.kind === 'SUBLET_GUEST' && r.guestName) { %>
-            <div class="eb-req-desc">ผู้มาขายแทน: <%= r.guestName %> · <%= r.guestProductTypeLabel || '-' %><%= r.guestProductSubtype ? ` (${r.guestProductSubtype})` : '' %></div>
-            <% } %>
-            <% if (r.status === 'REJECTED' && r.rejectReason) { %>
-            <div class="eb-req-desc" style="color:var(--eb-danger)">แอดมินไม่อนุมัติ: <%= r.rejectReason %></div>
-            <% } %>
-            <% if (r.canCancel) { %>
-            <div class="eb-req-actions">
-                <form method="POST" action="/stall-leave/<%= r.id %>/cancel" data-confirm-title="ยกเลิกคำขอนี้?" data-confirm-message="<%= r.kindLabel %> แผง <%= r.stallCode %> · <%= r.rangeText %>">
-                    <button type="submit" class="eb-btn eb-btn--danger eb-btn--sm">ยกเลิกคำขอ</button>
-                </form>
-            </div>
-            <% } %>
-        </article>
-        <% }) %>
-
-        <% if (incoming.length) { %>
-        <section class="sl-incoming" id="incoming" aria-labelledby="incomingTitle">
-            <h2 id="incomingTitle">คำขอให้ร้านคุณเช่าช่วง</h2>
-            <p>ร้านอื่นขอให้ร้านคุณไปขายที่แผงของเขาชั่วคราว ตอบรับแล้วคำขอจะส่งให้แอดมินพิจารณา (เงินค่าเช่าช่วงตกลงกับร้านเจ้าของแผงเอง)</p>
-            <% incoming.forEach(function (r) { %>
-            <article class="eb-req" id="incoming-<%= r.id %>">
-                <div class="eb-req-head">
-                    <div>
-                        <h2 class="eb-req-title">แผง <%= r.stallCode %> · จากร้าน <%= r.shopName %></h2>
-                        <div class="eb-req-sub">#<%= r.id %> · ให้ร้าน <%= r.subShopName %> · ส่งเมื่อ <%= r.createdText %></div>
+            <ul class="sl-ledger">
+                <% rows.forEach(function (r) { %>
+                <li class="sl-row <%= toneOf[r.status] || '' %> <%= r.id === focusId ? 'is-focus' : '' %>" id="leave-<%= r.id %>">
+                    <div class="sl-row__stall">
+                        <span class="sl-row__kind"><%= kindShort[r.kind] %></span>
+                        <span class="sl-row__code"><%= r.stallCode %></span>
+                        <span class="sl-row__id">#<%= r.id %></span>
                     </div>
-                    <span class="eb-pill <%= pillClass[r.status] || '' %>"><%= r.status === 'WAITING_SUBTENANT' ? 'รอคุณตอบรับ' : r.statusLabel %></span>
-                </div>
-                <div class="eb-req-body">
-                    <div class="eb-req-cell"><small>วันที่</small><span><%= r.rangeText %></span></div>
-                    <div class="eb-req-cell"><small>ดูตำแหน่ง</small><span><a href="/market-map?stall=<%= r.stallCode %>">แผง <%= r.stallCode %> บนผัง</a></span></div>
-                </div>
-                <div class="eb-req-desc">ข้อความจากเจ้าของแผง: <%= r.reason %></div>
-                <% if (r.status === 'REJECTED' && r.rejectReason) { %>
-                <div class="eb-req-desc" style="color:var(--eb-danger)"><%= r.rejectReason %></div>
-                <% } %>
-                <% if (r.canRespond) { %>
-                <div class="eb-req-actions">
-                    <form method="POST" action="/stall-leave/<%= r.id %>/respond">
-                        <input type="hidden" name="accept" value="1">
-                        <button type="submit" class="eb-btn eb-btn--sm"><i class="fa-solid fa-check"></i> ตอบรับ</button>
-                    </form>
-                    <form method="POST" action="/stall-leave/<%= r.id %>/respond" data-confirm-title="ปฏิเสธการรับเช่าช่วง?" data-confirm-message="แผง <%= r.stallCode %> · <%= r.rangeText %>&#10;ร้าน <%= r.shopName %> จะได้รับแจ้ง">
-                        <input type="hidden" name="accept" value="0">
-                        <button type="submit" class="eb-btn eb-btn--danger eb-btn--sm">ปฏิเสธ</button>
-                    </form>
-                </div>
-                <% } %>
-            </article>
-            <% }) %>
+                    <div class="sl-row__body">
+                        <span class="sl-row__date"><%= r.rangeText %></span>
+                        <p class="sl-row__meta">ร้าน <b><%= r.shopName %></b><% if (r.subShopName) { %> · ผู้มาขายแทน <b><%= r.subShopName %></b><% } %> · ส่งเมื่อ <%= r.createdText %></p>
+                        <p class="sl-quote"><%= r.reason %></p>
+                        <% if (r.kind === 'SUBLET_GUEST' && r.guestName) { %>
+                        <p class="sl-row__meta">สินค้าที่จะขาย <b><%= r.guestProductTypeLabel || '-' %><%= r.guestProductSubtype ? ` · ${r.guestProductSubtype}` : '' %></b></p>
+                        <% } %>
+                        <% if (r.status === 'REJECTED' && r.rejectReason) { %>
+                        <p class="sl-quote sl-quote--bad"><%= r.rejectReason %></p>
+                        <% } %>
+                    </div>
+                    <div class="sl-row__side">
+                        <span class="sl-status"><%= r.statusLabel %></span>
+                        <% if (r.reviewedText) { %><small>พิจารณา <%= r.reviewedText %><%= r.reviewedByName ? ` · ${r.reviewedByName}` : '' %></small><% } %>
+                        <% if (r.canCancel) { %>
+                        <form method="POST" action="/stall-leave/<%= r.id %>/cancel" data-confirm-title="ยกเลิกคำขอนี้?" data-confirm-message="<%= r.kindLabel %> แผง <%= r.stallCode %> · <%= r.rangeText %>" data-confirm-text="ยกเลิกคำขอ">
+                            <button type="submit" class="sl-btn sl-btn--danger sl-btn--sm">ยกเลิกคำขอ</button>
+                        </form>
+                        <% } %>
+                    </div>
+                    <% if (r.kind === 'SUBLET_GUEST' && r.status === 'WAITING_SUBTENANT' && r.guestToken) { const link = guestBaseUrl + r.guestToken; %>
+                    <div class="sl-row__extra">
+                        <div class="sl-link">
+                            <span class="sl-link__label">ส่งลิงก์นี้ให้คนที่จะมาขายแทนกรอกข้อมูลและรูปสินค้า · หมดอายุ <%= new Date(r.guestTokenExpiresAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %> น.</span>
+                            <input type="text" readonly value="<%= link %>" aria-label="ลิงก์ให้คนนอกกรอกข้อมูล" data-link-input>
+                            <button type="button" class="sl-btn sl-btn--sm" data-copy-link><i class="fa-regular fa-copy" aria-hidden="true"></i> คัดลอก</button>
+                            <a class="sl-btn sl-btn--line sl-btn--sm" href="https://line.me/R/msg/text/?<%= encodeURIComponent(`กรอกข้อมูลขายแทนที่แผง ${r.stallCode} ตลาดกังสดาลไนท์ ${link}`) %>" target="_blank" rel="noopener"><i class="fa-brands fa-line" aria-hidden="true"></i> แชร์ LINE</a>
+                        </div>
+                    </div>
+                    <% } %>
+                </li>
+                <% }) %>
+            </ul>
         </section>
-        <% } %>
+
+        <section class="sl-section" id="incoming" aria-labelledby="incomingTitle">
+            <div class="sl-section__head">
+                <h2 class="sl-section__title" id="incomingTitle">คำขอให้ร้านคุณเช่าช่วง</h2>
+                <p class="sl-section__hint">ตอบรับแล้วคำขอจะส่งให้แอดมิน · เงินค่าเช่าช่วงตกลงกับร้านเจ้าของแผงเอง</p>
+            </div>
+            <% if (!incoming.length) { %>
+            <div class="sl-empty"><b>ยังไม่มีร้านไหนขอให้คุณไปขายแทน</b>ร้านอื่นในตลาดค้นหาร้านคุณได้จากชื่อร้าน หรือเบอร์โทรเต็ม</div>
+            <% } %>
+            <ul class="sl-ledger">
+                <% incoming.forEach(function (r) { %>
+                <li class="sl-row <%= toneOf[r.status] || '' %>" id="incoming-<%= r.id %>">
+                    <div class="sl-row__stall">
+                        <span class="sl-row__kind">ขายแทนที่แผง</span>
+                        <span class="sl-row__code"><%= r.stallCode %></span>
+                        <span class="sl-row__id">#<%= r.id %></span>
+                    </div>
+                    <div class="sl-row__body">
+                        <span class="sl-row__date"><%= r.rangeText %></span>
+                        <p class="sl-row__meta">จากร้าน <b><%= r.shopName %></b> · ให้ร้าน <b><%= r.subShopName %></b> · <a href="/market-map?stall=<%= r.stallCode %>">ดูตำแหน่งบนผัง</a></p>
+                        <p class="sl-quote"><%= r.reason %></p>
+                        <% if (r.status === 'REJECTED' && r.rejectReason) { %><p class="sl-quote sl-quote--bad"><%= r.rejectReason %></p><% } %>
+                    </div>
+                    <div class="sl-row__side">
+                        <span class="sl-status"><%= r.status === 'WAITING_SUBTENANT' ? 'รอคุณตอบรับ' : r.statusLabel %></span>
+                        <% if (r.canRespond) { %>
+                        <form method="POST" action="/stall-leave/<%= r.id %>/respond">
+                            <input type="hidden" name="accept" value="1">
+                            <button type="submit" class="sl-btn sl-btn--sm"><i class="fa-solid fa-check" aria-hidden="true"></i> ตอบรับ</button>
+                        </form>
+                        <form method="POST" action="/stall-leave/<%= r.id %>/respond" data-confirm-title="ปฏิเสธการรับเช่าช่วง?" data-confirm-message="แผง <%= r.stallCode %> · <%= r.rangeText %>&#10;ร้าน <%= r.shopName %> จะได้รับแจ้ง" data-confirm-text="ปฏิเสธ">
+                            <input type="hidden" name="accept" value="0">
+                            <button type="submit" class="sl-btn sl-btn--danger sl-btn--sm">ปฏิเสธ</button>
+                        </form>
+                        <% } %>
+                    </div>
+                </li>
+                <% }) %>
+            </ul>
+        </section>
     </main>
 
     <script src="/js/common/dialogs.js?v=20261023-input"></script>
@@ -144,11 +162,12 @@
                     input.select();
                     document.execCommand('copy');
                 }
-                btn.innerHTML = '<i class="fa-solid fa-check"></i> คัดลอกแล้ว';
+                btn.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> คัดลอกแล้ว';
             });
         });
-        const focused = document.querySelector('.eb-req.is-focus');
+        const focused = document.querySelector('.sl-row.is-focus');
         if (focused) focused.scrollIntoView({ block: 'center' });
+        // ยืนยันก่อนยกเลิก/ปฏิเสธ
         document.querySelectorAll('form[data-confirm-title]').forEach((form) => {
             form.addEventListener('submit', (e) => {
                 if (form.dataset.confirmed === '1') return;
@@ -157,7 +176,7 @@
                     title: form.dataset.confirmTitle,
                     message: form.dataset.confirmMessage,
                     tone: 'danger',
-                    confirmText: form.querySelector('[name="accept"]') ? 'ปฏิเสธ' : 'ยกเลิกคำขอ',
+                    confirmText: form.dataset.confirmText,
                     onConfirm: () => { form.dataset.confirmed = '1'; form.submit(); }
                 });
             });

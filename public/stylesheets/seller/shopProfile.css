@@ -469,27 +469,40 @@
 .sr-btn-report { border-color: var(--line); color: var(--ink-soft); }
 
 
-/* ── แผงของร้านนี้: ปิดร้านวันนี้ + แจ้งลาหยุดรายแผง ── */
+/* ── แผงของร้านนี้: ปิดร้านวันนี้ + แจ้งลาหยุด/เช่าช่วงรายแผง ──
+   แถวละแผง: [รหัสแผง + สัญญา | ปุ่ม] แล้วคำขอที่ยังมีผลเต็มความกว้างด้านล่าง (สถานะเป็นจุดสี) */
 .my-stalls { margin: 18px 0 0; border: 1px solid var(--navy); }
 .ms-open { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--navy); font-size: 0.88rem; font-weight: 600; color: #1e7a45; }
+.ms-open span::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: currentColor; vertical-align: middle; }
 .my-stalls[data-open="0"] .ms-open { color: #a93226; background: #fdf2f1; }
 .ms-list { list-style: none; margin: 0; padding: 0; }
-.ms-item { display: grid; grid-template-columns: 150px 1fr auto; gap: 6px 14px; align-items: center; padding: 10px 14px; border-bottom: 1px dashed var(--line); }
+.ms-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "code actions" "leaves leaves";
+    gap: 8px 14px;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px dashed var(--line);
+}
 .ms-item:last-child { border-bottom: 0; }
-.ms-code { display: flex; flex-direction: column; }
-.ms-code b { font-family: var(--mono); font-size: 1.1rem; color: var(--navy); }
-.ms-code small, .ms-leaves small { color: var(--ink-soft); font-size: 0.78rem; }
-.ms-leaves { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ms-code { grid-area: code; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; min-width: 0; }
+.ms-code b { font-family: var(--mono); font-size: 1.35rem; line-height: 1.1; color: var(--navy); }
+.ms-code small { color: var(--ink-soft); font-size: 0.8rem; white-space: nowrap; }
+.ms-leaves { grid-area: leaves; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ms-leaves small { display: flex; align-items: baseline; gap: 6px; color: var(--ink-soft); font-size: 0.8rem; }
+.ms-leave::before { content: ''; flex-shrink: 0; width: 7px; height: 7px; border-radius: 50%; background: currentColor; transform: translateY(-1px); }
 .ms-leave--approved { color: #1e7a45 !important; }
 .ms-leave--pending, .ms-leave--waiting_subtenant { color: #a06c1f !important; }
-.ms-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
-.ms-btn { display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid var(--navy); background: var(--navy); color: #fff; font: inherit; font-size: 0.82rem; font-weight: 600; text-decoration: none; border-radius: 0; cursor: pointer; }
+.ms-actions { grid-area: actions; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.ms-btn { display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border: 1px solid var(--navy); background: var(--navy); color: #fff; font: inherit; font-size: 0.82rem; font-weight: 600; text-decoration: none; border-radius: 0; cursor: pointer; white-space: nowrap; }
 .ms-btn:hover { background: #fff; color: var(--navy); }
 .ms-btn--ghost, .ms-open .ms-btn { background: #fff; color: var(--navy); }
 .ms-btn--ghost:hover, .ms-open .ms-btn:hover { background: var(--navy); color: #fff; }
 .ms-btn:disabled { opacity: .6; cursor: wait; }
 .ms-empty a { color: var(--navy); }
 @media (max-width: 640px) {
-    .ms-item { grid-template-columns: 1fr; }
-    .ms-actions { justify-content: flex-start; }
+    .ms-item { grid-template-columns: 1fr; grid-template-areas: "code" "leaves" "actions"; }
+    .ms-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .ms-btn { justify-content: center; padding: 0 6px; }
 }

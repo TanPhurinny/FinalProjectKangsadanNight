@@ -10,128 +10,131 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
     <link rel="stylesheet" href="/stylesheets/partials/shopSwitch.css?v=20261027">
-    <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
-    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-guest">
+    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-ledger2">
 </head>
-<body class="eb-body">
+<body class="sl-body">
     <script src="/js/common/tabSession.js"></script>
     <%- include('../partials/navbarSeller') %>
+    <% const SUBMIT_TEXT = { LEAVE: 'ส่งคำขอลาหยุด', SUBLET_MEMBER: 'ส่งคำขอเช่าช่วง', SUBLET_GUEST: 'สร้างลิงก์ให้คนนอกกรอกข้อมูล' }; %>
 
-    <main class="eb-page">
-        <header class="eb-head">
+    <main class="sl-page">
+        <header class="sl-head">
             <div>
-                <p class="eb-kicker">จัดการร้าน · แผงของฉัน</p>
-                <h1 class="eb-title">ลาหยุด / ปล่อยเช่าช่วง</h1>
-                <p class="eb-lead">ไม่สะดวกมาขายบางวันในช่วงสัญญา แจ้งลาหยุด หรือให้ร้านอื่นที่เป็นสมาชิกตลาดมาขายแทนชั่วคราว
-                    แอดมินพิจารณาก่อนทุกครั้ง ไม่มีการคืนค่าเช่าผ่านระบบ (เงินค่าเช่าช่วงตกลงกันเองระหว่างร้าน) แผงยังเป็นของร้านคุณตามสัญญาเดิม</p>
+                <p class="sl-kicker">จัดการร้าน · แผงของฉัน</p>
+                <h1 class="sl-title">ลาหยุด / ปล่อยเช่าช่วง</h1>
+                <p class="sl-lead">แผงยังเป็นของร้านคุณตามสัญญาเดิม ไม่มีการคืนค่าเช่าผ่านระบบ ค่าเช่าช่วงตกลงกันเองระหว่างร้าน แอดมินพิจารณาทุกคำขอก่อนมีผล</p>
             </div>
-            <a class="eb-zone-tag" href="/stall-leave"><i class="fa-solid fa-list"></i> คำขอของฉัน</a>
+            <div class="sl-head__actions">
+                <a class="sl-btn sl-btn--line" href="/stall-leave"><i class="fa-solid fa-list" aria-hidden="true"></i> คำขอของฉัน</a>
+            </div>
         </header>
 
         <%- include('../partials/shopSwitch', { shops: shops, selectedShopId: shop && shop.id, href: function (id) { return '/stall-leave/new?shop=' + id + ({ SUBLET_MEMBER: '&kind=sublet', SUBLET_GUEST: '&kind=guest' }[kind] || ''); }, label: 'ร้าน' }) %>
 
         <% if (error) { %>
-        <div class="eb-notice eb-notice--danger" role="alert"><%= error %></div>
+        <div class="sl-notice sl-notice--bad" role="alert"><%= error %></div>
         <% } %>
 
         <% if (!stalls.length) { %>
-        <div class="eb-empty">ร้าน<%= shop && shop.shopName ? ` ${shop.shopName}` : '' %>ยังไม่มีแผงที่ชำระเงินแล้วและสัญญายังไม่หมด จึงยังแจ้งลาหยุดไม่ได้</div>
+        <div class="sl-empty" style="margin-top:24px"><b>ร้าน<%= shop && shop.shopName ? ` ${shop.shopName}` : '' %>ยังไม่มีแผงที่ใช้ได้</b>ต้องมีแผงที่ชำระเงินแล้วและสัญญายังไม่หมด ถึงจะแจ้งลาหยุดหรือปล่อยเช่าช่วงได้ · <a href="/select-zone<%= shop ? `?shop=${shop.id}` : '' %>">จองแผง</a></div>
         <% } else { %>
-        <form method="POST" action="/stall-leave" class="eb-form sl-form" id="stallLeaveForm">
+        <form method="POST" action="/stall-leave" class="sl-form" id="stallLeaveForm">
             <input type="hidden" name="shopId" value="<%= shop.id %>">
-            <section class="eb-section">
-                <div class="eb-section-head">
-                    <div>
-                        <h2 class="eb-section-title">1. ต้องการทำอะไร</h2>
-                    </div>
-                </div>
-                <div class="sl-kinds" role="radiogroup" aria-label="ประเภทคำขอ">
-                    <label class="sl-stall">
-                        <input type="radio" name="kind" value="LEAVE" <%= kind === 'LEAVE' ? 'checked' : '' %>>
-                        <b>ลาหยุด</b>
-                        <small>ไม่มาขาย แผงว่างในวันนั้น</small>
-                    </label>
-                    <label class="sl-stall">
-                        <input type="radio" name="kind" value="SUBLET_MEMBER" <%= kind === 'SUBLET_MEMBER' ? 'checked' : '' %>>
-                        <b>ให้ร้านสมาชิกเช่าช่วง</b>
-                        <small>ร้านอื่นในตลาดมาขายแทนชั่วคราว</small>
-                    </label>
-                    <label class="sl-stall">
-                        <input type="radio" name="kind" value="SUBLET_GUEST" <%= kind === 'SUBLET_GUEST' ? 'checked' : '' %>>
-                        <b>ให้คนนอกตลาดเช่าช่วง</b>
-                        <small>ได้ลิงก์ส่งให้เขากรอกข้อมูล/รูปสินค้าเอง</small>
-                    </label>
-                </div>
-            </section>
 
-            <section class="eb-section">
-                <div class="eb-section-head">
-                    <div>
-                        <h2 class="eb-section-title">2. เลือกแผง</h2>
-                        <p class="eb-section-hint">แผงของร้าน <b><%= shop.shopName || 'ร้านยังไม่ตั้งชื่อ' %></b> ที่ชำระเงินแล้ว</p>
-                    </div>
-                </div>
-                <div class="sl-stalls" role="radiogroup" aria-label="แผง">
-                    <% stalls.forEach(function (s, i) { const checked = values.stallCode ? values.stallCode === s.code : i === 0; %>
-                    <label class="sl-stall">
-                        <input type="radio" name="stallCode" value="<%= s.code %>" required <%= checked ? 'checked' : '' %>
-                               data-min="<%= s.contractStartKey > earliestKey ? s.contractStartKey : earliestKey %>" data-max="<%= s.contractEndKey %>">
-                        <b><%= s.code %></b>
-                        <small>สัญญา <%= s.contractText %></small>
-                    </label>
-                    <% }) %>
-                </div>
-            </section>
-
-            <section class="eb-section" id="subtenantSection" <%= kind === 'SUBLET_MEMBER' ? '' : 'hidden' %>>
-                <div class="eb-section-head">
-                    <div>
-                        <h2 class="eb-section-title">3. ร้านที่จะมาขายแทน</h2>
-                        <p class="eb-section-hint">ค้นจากชื่อร้าน หรือเบอร์โทรเต็ม 10 หลักของเจ้าของร้าน · ร้านนั้นต้องกดตอบรับก่อน คำขอถึงจะส่งให้แอดมิน</p>
-                    </div>
-                </div>
-                <input type="hidden" name="subShopId" id="subShopId" value="<%= subShop ? subShop.id : '' %>">
-                <div class="sl-picked" id="subPicked" <%= subShop ? '' : 'hidden' %>>
-                    <span id="subPickedText"><% if (subShop) { %><b><%= subShop.shopName %></b> · <%= subShop.productType || '-' %><%= subShop.productSubtype ? ` (${subShop.productSubtype})` : '' %><% } %></span>
-                    <button type="button" class="eb-btn eb-btn--ghost eb-btn--sm" id="subClear">เปลี่ยนร้าน</button>
-                </div>
-                <div class="sl-search" id="subSearchBox" <%= subShop ? 'hidden' : '' %>>
-                    <input class="eb-input" id="subSearch" type="search" maxlength="60" autocomplete="off" placeholder="ชื่อร้าน หรือ 08xxxxxxxx" aria-label="ค้นหาร้านสมาชิก">
-                    <ul class="sl-results" id="subResults" aria-live="polite"></ul>
-                </div>
-            </section>
-
-            <section class="eb-section">
-                <div class="eb-section-head">
-                    <div>
-                        <h2 class="eb-section-title"><span data-step-num><%= kind === 'SUBLET_MEMBER' ? '4' : '3' %></span>. วันที่ และเหตุผล</h2>
-                        <p class="eb-section-hint">แจ้งวันนี้ได้ถึง <%= cutoffHour %>:00 น. · ครั้งละไม่เกิน <%= maxDays %> วัน · ลาวันเดียวเลือกวันเริ่มกับวันสิ้นสุดเป็นวันเดียวกัน</p>
-                    </div>
-                </div>
-                <div class="eb-fields">
-                    <div class="eb-field">
-                        <label for="startDate">วันเริ่ม <span class="eb-must">*</span></label>
-                        <input class="eb-input" id="startDate" name="startDate" type="date" required min="<%= earliestKey %>" value="<%= values.startDate || '' %>">
-                    </div>
-                    <div class="eb-field">
-                        <label for="endDate">วันสิ้นสุด <span class="eb-must">*</span></label>
-                        <input class="eb-input" id="endDate" name="endDate" type="date" required min="<%= earliestKey %>" value="<%= values.endDate || '' %>">
-                    </div>
-                    <div class="eb-field eb-field--full">
-                        <label for="reason">เหตุผล <span class="eb-must">*</span></label>
-                        <textarea class="eb-input" id="reason" name="reason" maxlength="1000" required placeholder="เช่น ป่วย, ติดธุระต่างจังหวัด, ซ่อมอุปกรณ์ร้าน"><%= values.reason || '' %></textarea>
+            <section class="sl-step" aria-labelledby="stepKind">
+                <span class="sl-step__num">1</span>
+                <div>
+                    <h2 class="sl-step__title" id="stepKind">ต้องการทำอะไร</h2>
+                    <p class="sl-step__hint">วันที่ได้รับอนุมัติ ผังตลาดจะแสดงสถานะของแผงให้ลูกค้าและเจ้าหน้าที่เห็น</p>
+                    <div class="sl-choices" role="radiogroup" aria-labelledby="stepKind">
+                        <label class="sl-choice">
+                            <input type="radio" name="kind" value="LEAVE" <%= kind === 'LEAVE' ? 'checked' : '' %>>
+                            <i class="fa-solid fa-calendar-minus" aria-hidden="true"></i>
+                            <b>ลาหยุด</b>
+                            <small>ไม่มาขาย ผังขึ้นว่าร้านลาหยุด และไม่ต้องตรวจตลาดวันนั้น</small>
+                        </label>
+                        <label class="sl-choice">
+                            <input type="radio" name="kind" value="SUBLET_MEMBER" <%= kind === 'SUBLET_MEMBER' ? 'checked' : '' %>>
+                            <i class="fa-solid fa-handshake" aria-hidden="true"></i>
+                            <b>ให้ร้านสมาชิกเช่าช่วง</b>
+                            <small>ร้านอื่นในตลาดมาขายแทน ร้านนั้นต้องกดตอบรับก่อน</small>
+                        </label>
+                        <label class="sl-choice">
+                            <input type="radio" name="kind" value="SUBLET_GUEST" <%= kind === 'SUBLET_GUEST' ? 'checked' : '' %>>
+                            <i class="fa-solid fa-link" aria-hidden="true"></i>
+                            <b>ให้คนนอกตลาดเช่าช่วง</b>
+                            <small>ได้ลิงก์ส่งให้เขากรอกข้อมูลและรูปสินค้าเอง</small>
+                        </label>
                     </div>
                 </div>
             </section>
 
-            <div class="eb-actions">
-                <button type="submit" class="eb-btn" id="submitBtn"><i class="fa-solid fa-paper-plane"></i> <span><%= { LEAVE: 'ส่งคำขอลาหยุด', SUBLET_MEMBER: 'ส่งคำขอเช่าช่วง', SUBLET_GUEST: 'สร้างลิงก์ให้คนนอกกรอกข้อมูล' }[kind] %></span></button>
-                <span class="eb-actions-note">แอดมินจะพิจารณาและแจ้งผลในหน้าแจ้งเตือน</span>
+            <section class="sl-step" aria-labelledby="stepStall">
+                <span class="sl-step__num">2</span>
+                <div>
+                    <h2 class="sl-step__title" id="stepStall">เลือกแผง</h2>
+                    <p class="sl-step__hint">แผงของร้าน <b><%= shop.shopName || 'ร้านยังไม่ตั้งชื่อ' %></b> ที่ชำระเงินแล้ว เลือกวันได้เฉพาะในช่วงสัญญา</p>
+                    <div class="sl-choices sl-choices--stalls" role="radiogroup" aria-labelledby="stepStall">
+                        <% stalls.forEach(function (s, i) { const checked = values.stallCode ? values.stallCode === s.code : i === 0; %>
+                        <label class="sl-choice">
+                            <input type="radio" name="stallCode" value="<%= s.code %>" required <%= checked ? 'checked' : '' %>
+                                   data-min="<%= s.contractStartKey > earliestKey ? s.contractStartKey : earliestKey %>" data-max="<%= s.contractEndKey %>">
+                            <b class="sl-choice__code"><%= s.code %></b>
+                            <small>สัญญา <%= s.contractText %></small>
+                        </label>
+                        <% }) %>
+                    </div>
+                </div>
+            </section>
+
+            <section class="sl-step" id="subtenantSection" aria-labelledby="stepSub" <%= kind === 'SUBLET_MEMBER' ? '' : 'hidden' %>>
+                <span class="sl-step__num">3</span>
+                <div>
+                    <h2 class="sl-step__title" id="stepSub">ร้านที่จะมาขายแทน</h2>
+                    <p class="sl-step__hint">ค้นจากชื่อร้าน หรือเบอร์โทรเต็ม 10 หลักของเจ้าของร้าน</p>
+                    <input type="hidden" name="subShopId" id="subShopId" value="<%= subShop ? subShop.id : '' %>">
+                    <div class="sl-picked" id="subPicked" <%= subShop ? '' : 'hidden' %>>
+                        <span id="subPickedText"><% if (subShop) { %><b><%= subShop.shopName %> · <%= subShop.productType || '-' %><%= subShop.productSubtype ? ` (${subShop.productSubtype})` : '' %></b><% } %></span>
+                        <button type="button" class="sl-btn sl-btn--line sl-btn--sm" id="subClear">เปลี่ยนร้าน</button>
+                    </div>
+                    <div class="sl-search" id="subSearchBox" <%= subShop ? 'hidden' : '' %>>
+                        <input class="sl-input" id="subSearch" type="search" maxlength="60" autocomplete="off" placeholder="ชื่อร้าน หรือ 08xxxxxxxx" aria-label="ค้นหาร้านสมาชิก">
+                        <ul class="sl-results" id="subResults" aria-live="polite"></ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="sl-step" aria-labelledby="stepDate">
+                <span class="sl-step__num" data-step-num><%= kind === 'SUBLET_MEMBER' ? '4' : '3' %></span>
+                <div>
+                    <h2 class="sl-step__title" id="stepDate">วันที่ และเหตุผล</h2>
+                    <p class="sl-step__hint">แจ้งวันนี้ได้ถึง <%= cutoffHour %>:00 น. · ครั้งละไม่เกิน <%= maxDays %> วัน · วันเดียวให้เลือกวันเริ่มกับวันสิ้นสุดเป็นวันเดียวกัน</p>
+                    <div class="sl-fields">
+                        <div class="sl-field">
+                            <label for="startDate">วันเริ่ม <em>*</em></label>
+                            <input class="sl-input" id="startDate" name="startDate" type="date" required min="<%= earliestKey %>" value="<%= values.startDate || '' %>">
+                        </div>
+                        <div class="sl-field">
+                            <label for="endDate">วันสิ้นสุด <em>*</em></label>
+                            <input class="sl-input" id="endDate" name="endDate" type="date" required min="<%= earliestKey %>" value="<%= values.endDate || '' %>">
+                        </div>
+                        <div class="sl-field sl-field--full">
+                            <label for="reason">เหตุผล <em>*</em> <span>แอดมินใช้ประกอบการพิจารณา</span></label>
+                            <textarea class="sl-input" id="reason" name="reason" maxlength="1000" required placeholder="เช่น ป่วย ติดธุระต่างจังหวัด ซ่อมอุปกรณ์ร้าน"><%= values.reason || '' %></textarea>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="sl-submit">
+                <button type="submit" class="sl-btn" id="submitBtn"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> <span><%= SUBMIT_TEXT[kind] %></span></button>
+                <small>ผลการพิจารณาจะแจ้งในหน้าแจ้งเตือน</small>
             </div>
         </form>
         <% } %>
     </main>
 
+    <script src="/js/common/dialogs.js?v=20261023-input"></script>
     <script>
         // ช่วงวันที่เลือกได้ตามสัญญาของแผงที่เลือก (ตรวจซ้ำฝั่ง server เสมอ — utils/stallLeave.js)
         (function () {
@@ -149,12 +152,12 @@
             form.addEventListener('change', sync);
             sync();
 
-            // ประเภทคำขอ: เช่าช่วงต้องเลือกร้านผู้รับ
+            // ประเภทคำขอ: เช่าช่วงให้สมาชิกต้องเลือกร้านผู้รับ (ขั้นที่ 3)
             const subSection = document.getElementById('subtenantSection');
             const stepNum = form.querySelector('[data-step-num]');
             const submitText = document.querySelector('#submitBtn span');
             const subId = document.getElementById('subShopId');
-            const SUBMIT_TEXT = { LEAVE: 'ส่งคำขอลาหยุด', SUBLET_MEMBER: 'ส่งคำขอเช่าช่วง', SUBLET_GUEST: 'สร้างลิงก์ให้คนนอกกรอกข้อมูล' };
+            const SUBMIT_TEXT = <%- JSON.stringify(SUBMIT_TEXT) %>;
             function syncKind() {
                 const kind = form.querySelector('input[name="kind"]:checked').value;
                 const sublet = kind === 'SUBLET_MEMBER';
@@ -197,7 +200,7 @@
                     results.innerHTML = payload.shops.length
                         ? payload.shops.map((shop) => `
                             <li><button type="button" class="sl-result" data-id="${shop.id}" data-label="${esc(`${shop.shopName} · ${shop.productType || '-'}${shop.productSubtype ? ` (${shop.productSubtype})` : ''}`)}">
-                                ${shop.image ? `<img src="${esc(shop.image)}" alt="">` : '<span class="sl-result__ph"><i class="fa-solid fa-store"></i></span>'}
+                                ${shop.image ? `<img src="${esc(shop.image)}" alt="">` : '<span class="sl-result__ph"><i class="fa-solid fa-store" aria-hidden="true"></i></span>'}
                                 <span><b>${esc(shop.shopName)}</b><small>${esc(shop.productType || '-')}${shop.productSubtype ? ` · ${esc(shop.productSubtype)}` : ''}${shop.phoneMasked ? ` · ${esc(shop.phoneMasked)}` : ''}</small></span>
                             </button></li>`).join('')
                         : '<li class="sl-results__empty">ไม่พบร้าน (ชื่อร้าน หรือเบอร์โทรต้องครบ 10 หลัก)</li>';
@@ -223,6 +226,5 @@
             });
         })();
     </script>
-    <script src="/js/common/dialogs.js?v=20261023-input"></script>
 </body>
 </html>

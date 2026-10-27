@@ -263,7 +263,7 @@ async function searchMemberShops(query, excludeUserId) {
     return shops.map((shop) => ({
         id: shop.id,
         shopName: shop.shopName || 'ร้านไม่มีชื่อ',
-        productType: shop.productType || '',
+        productType: PRODUCT_TYPE_LABELS[shop.productType] || shop.productType || '',
         productSubtype: shop.productSubtype || '',
         image: shop.logoImage || shop.productImage || null,
         phoneMasked: maskPhone(shop.user?.phoneNumber)
@@ -282,7 +282,7 @@ async function searchMemberShopById(subShopId, excludeUserId) {
     return {
         id: shop.id,
         shopName: shop.shopName || 'ร้านไม่มีชื่อ',
-        productType: shop.productType || '',
+        productType: PRODUCT_TYPE_LABELS[shop.productType] || shop.productType || '',
         productSubtype: shop.productSubtype || '',
         image: shop.logoImage || shop.productImage || null,
         phoneMasked: maskPhone(shop.user?.phoneNumber)

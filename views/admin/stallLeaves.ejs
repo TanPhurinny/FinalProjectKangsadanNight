@@ -9,11 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
-    <link rel="stylesheet" href="/stylesheets/admin/theme.css">
-    <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
-    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-guest">
+    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-ledger2">
 </head>
-<body class="eb-body">
+<body class="sl-body">
     <script src="/js/common/tabSession.js"></script>
     <%- include('../partials/navbar') %>
     <%
@@ -21,116 +19,135 @@
             approved: 'อนุมัติแล้ว ร้านได้รับแจ้งในหน้าแจ้งเตือน',
             rejected: 'บันทึกไม่อนุมัติแล้ว ร้านได้รับแจ้งพร้อมเหตุผล'
         };
-        const pillClass = { WAITING_SUBTENANT: 'eb-pill--pending', PENDING: 'eb-pill--pending', APPROVED: 'eb-pill--success', REJECTED: 'eb-pill--danger' };
+        const toneOf = { WAITING_SUBTENANT: 'tone-wait', PENDING: 'tone-wait', APPROVED: 'tone-ok', REJECTED: 'tone-bad' };
+        const kindShort = { LEAVE: 'ลาหยุด', SUBLET_MEMBER: 'เช่าช่วง · สมาชิก', SUBLET_GUEST: 'เช่าช่วง · คนนอก' };
+        const emptyText = { pending: 'ไม่มีคำขอรอพิจารณา', approved: 'ไม่มีคำขอที่อนุมัติแล้วและยังไม่จบ', closed: 'ยังไม่มีคำขอที่ปิดแล้ว' };
     %>
 
-    <main class="eb-page">
-        <header class="eb-head">
+    <main class="sl-page">
+        <header class="sl-head">
             <div>
-                <p class="eb-kicker">แผงที่ร้านเช่าอยู่</p>
-                <h1 class="eb-title">ลาหยุด / เช่าช่วงแผง</h1>
-                <p class="eb-lead">ร้านแจ้งไม่มาขายบางวันในช่วงสัญญา หรือขอให้ร้านอื่นมาขายแทนชั่วคราว ไม่มีการคืนหรือเก็บเงินเพิ่มผ่านระบบ
-                    อนุมัติแล้วผังตลาดจะแสดงสถานะของแผงในวันนั้น</p>
+                <p class="sl-kicker">แผงที่ร้านเช่าอยู่</p>
+                <h1 class="sl-title">ลาหยุด / เช่าช่วงแผง</h1>
+                <p class="sl-lead">ร้านแจ้งไม่มาขายบางวันในช่วงสัญญา หรือขอให้คนอื่นมาขายแทนชั่วคราว ไม่มีการคืนหรือเก็บเงินเพิ่มผ่านระบบ อนุมัติแล้วผังตลาด งานตรวจตลาด และสัญญาเช่าจะแสดงสถานะของแผงในวันนั้น</p>
             </div>
-            <a class="eb-zone-tag" href="/admin/slots"><i class="fa-solid fa-map"></i> ผังจัดแผง</a>
+            <div class="sl-head__actions">
+                <a class="sl-btn sl-btn--line" href="/admin/slots"><i class="fa-solid fa-map" aria-hidden="true"></i> ผังจัดแผง</a>
+            </div>
         </header>
 
         <% if (success && successMessages[success]) { %>
-        <div class="eb-notice eb-notice--success" role="status"><%= successMessages[success] %></div>
+        <div class="sl-notice" role="status"><%= successMessages[success] %></div>
         <% } %>
         <% if (error) { %>
-        <div class="eb-notice eb-notice--danger" role="alert"><%= error %></div>
+        <div class="sl-notice sl-notice--bad" role="alert"><%= error %></div>
         <% } %>
 
-        <nav class="eb-tabs" aria-label="สถานะคำขอ">
+        <nav class="sl-stats sl-stats--3" aria-label="สถานะคำขอ">
             <% tabs.forEach((tab) => { %>
-            <a class="eb-tab <%= tab.key === activeTab ? 'is-active' : '' %>" href="/admin/stall-leaves?tab=<%= tab.key %>" <%= tab.key === activeTab ? 'aria-current="page"' : '' %>>
-                <span><%= tab.label %></span><b><%= tab.count %></b>
+            <a class="sl-stat <%= tab.key === activeTab ? 'is-active' : '' %>" href="/admin/stall-leaves?tab=<%= tab.key %>" <%= tab.key === activeTab ? 'aria-current="page"' : '' %>>
+                <small><%= tab.label %></small><b><%= tab.count %></b>
             </a>
             <% }) %>
         </nav>
 
-        <% if (!rows.length) { %>
-        <div class="eb-empty">ไม่มีคำขอในสถานะนี้</div>
-        <% } %>
+        <section class="sl-section sl-section--first" aria-label="รายการคำขอ">
+            <% if (!rows.length) { %>
+            <div class="sl-empty"><b><%= emptyText[activeTab] || 'ไม่มีคำขอ' %></b>คำขอใหม่จะขึ้นที่แท็บ "รอพิจารณา" และมีตัวเลขบนเมนู</div>
+            <% } %>
+            <ul class="sl-ledger">
+                <% rows.forEach((r) => { %>
+                <li class="sl-row <%= toneOf[r.status] || '' %> <%= r.id === focusId ? 'is-focus' : '' %>" id="req-<%= r.id %>">
+                    <div class="sl-row__stall">
+                        <span class="sl-row__kind"><%= kindShort[r.kind] %></span>
+                        <span class="sl-row__code"><%= r.stallCode %></span>
+                        <span class="sl-row__id">#<%= r.id %></span>
+                    </div>
+                    <div class="sl-row__body">
+                        <span class="sl-row__date"><%= r.rangeText %></span>
+                        <p class="sl-row__meta">ร้าน <b><%= r.shopName %></b> · ส่งเมื่อ <%= r.createdText %></p>
+                        <p class="sl-quote"><%= r.reason %></p>
+                        <% if (r.status === 'REJECTED' && r.rejectReason) { %><p class="sl-quote sl-quote--bad"><%= r.rejectReason %></p><% } %>
+                    </div>
+                    <div class="sl-row__side">
+                        <span class="sl-status"><%= r.statusLabel %></span>
+                        <% if (r.reviewedText) { %><small>พิจารณา <%= r.reviewedText %><%= r.reviewedByName ? ` · ${r.reviewedByName}` : '' %></small><% } %>
+                    </div>
+                    <div class="sl-row__extra">
+                        <div class="sl-facts">
+                            <div class="sl-fact"><small>เจ้าของแผง</small><span><%= r.ownerName %></span></div>
+                            <div class="sl-fact"><small>เบอร์โทร</small><span><% if (r.ownerPhone) { %><a href="tel:<%= r.ownerPhone %>"><%= r.ownerPhone %></a><% } else { %>-<% } %></span></div>
+                            <div class="sl-fact"><small>แผงนี้ลา/เช่าช่วงที่อนุมัติแล้ว (60 วัน)</small><span><%= r.approvedDays %> วัน</span></div>
+                        </div>
 
-        <% rows.forEach((r) => { %>
-        <article class="eb-req <%= r.id === focusId ? 'is-focus' : '' %>" id="req-<%= r.id %>">
-            <div class="eb-req-head">
-                <div>
-                    <h2 class="eb-req-title"><%= r.kindLabel %> · แผง <%= r.stallCode %></h2>
-                    <div class="eb-req-sub">#<%= r.id %> · ร้าน <%= r.shopName %> · ส่งเมื่อ <%= r.createdText %></div>
-                </div>
-                <span class="eb-pill <%= pillClass[r.status] || '' %>"><%= r.statusLabel %></span>
-            </div>
-            <div class="eb-req-body">
-                <div class="eb-req-cell"><small>เจ้าของแผง</small><span><%= r.ownerName %><% if (r.ownerPhone) { %><br><a href="tel:<%= r.ownerPhone %>"><%= r.ownerPhone %></a><% } %></span></div>
-                <div class="eb-req-cell"><small>วันที่</small><span><%= r.rangeText %></span></div>
-                <div class="eb-req-cell"><small>แผงนี้ลา/เช่าช่วงที่อนุมัติแล้ว (60 วัน)</small><span><%= r.approvedDays %> วัน</span></div>
-                <% if (r.reviewedText) { %><div class="eb-req-cell"><small>พิจารณาเมื่อ</small><span><%= r.reviewedText %><%= r.reviewedByName ? ` · ${r.reviewedByName}` : '' %></span></div><% } %>
-            </div>
-            <div class="eb-req-desc">เหตุผลของร้าน: <%= r.reason %></div>
-            <% if (r.subtenant) { const st = r.subtenant; %>
-            <div class="sl-sub">
-                <% if (st.image) { %><a href="<%= st.image %>" target="_blank" rel="noopener"><img src="<%= st.image %>" alt=""></a><% } else { %><span class="sl-sub__ph"><i class="fa-solid fa-store"></i></span><% } %>
-                <div>
-                    <% if (st.isGuest) { %>
-                    <b>ผู้รับเช่าช่วง: <%= st.name %></b> (คนนอกตลาด กรอกเองผ่านลิงก์)
-                    <small>เลขบัตรประชาชน <%= st.idCard %></small>
-                    <% } else { %>
-                    <b>ผู้รับเช่าช่วง: ร้าน <%= st.name %></b> (สมาชิก)<%= r.subtenantAcceptedAt ? ' · ตอบรับแล้ว' : '' %>
-                    <% } %>
-                    <small>สินค้า <%= st.productType %> · <%= st.productSubtype %></small>
-                    <small>ติดต่อ <%= st.contact %><% if (st.phone) { %> · <a href="tel:<%= st.phone %>"><%= st.phone %></a><% } %></small>
-                    <% if (st.productDetail) { %><small><%= st.productDetail %></small><% } %>
-                    <% if (st.images && st.images.length > 1) { %><small><% st.images.forEach(function (url, i) { %><a href="<%= url %>" target="_blank" rel="noopener">รูป <%= i + 1 %></a> <% }) %></small><% } %>
-                </div>
-            </div>
-            <% if (st.blacklisted) { %><p class="sl-warn sl-warn--bad"><i class="fa-solid fa-ban"></i> <%= st.isGuest ? 'เบอร์โทรหรือเลขบัตรตรงกับผู้ใช้ที่ถูกระงับสิทธิ์ (blacklist)' : 'ผู้รับเช่าช่วงถูกระงับสิทธิ์ (blacklist) อยู่ — อนุมัติไม่ได้' %></p><% } %>
-            <% } %>
-            <% if (r.kind !== 'LEAVE') { %>
-                <% if (r.conflicts && r.conflicts.length) { %>
-                <p class="sl-warn"><i class="fa-solid fa-triangle-exclamation"></i> ขายของชนิดเดียวกับร้านใกล้ๆ:
-                    <% r.conflicts.forEach(function (c, i) { %><%= i ? ', ' : '' %>แผง <b><%= c.code %></b><%= c.shopName ? ` (${c.shopName})` : '' %> ห่าง <%= c.distance %> ล็อก ซ้ำ "<%= c.shared %>"<% }) %>
-                </p>
-                <% } else if (r.conflictChecked) { %>
-                <p class="sl-ok"><i class="fa-solid fa-check"></i> ไม่พบร้านใกล้ๆ ที่ขายของชนิดเดียวกัน</p>
-                <% } else { %>
-                <p class="sl-warn"><i class="fa-solid fa-circle-info"></i> ผู้รับเช่าช่วงไม่ได้ระบุชนิดสินค้า ตรวจสินค้าซ้ำกับร้านข้างๆ เอง</p>
-                <% } %>
-            <% } %>
-            <% if (r.status === 'REJECTED' && r.rejectReason) { %>
-            <div class="eb-req-desc" style="color:var(--eb-danger)">ไม่อนุมัติ: <%= r.rejectReason %></div>
-            <% } %>
+                        <% if (r.subtenant) { const st = r.subtenant; %>
+                        <div class="sl-sub">
+                            <% if (st.image) { %><a href="<%= st.image %>" target="_blank" rel="noopener"><img class="sl-sub__img" src="<%= st.image %>" alt="รูปสินค้าของผู้รับเช่าช่วง"></a><% } else { %><span class="sl-sub__img"><i class="fa-solid fa-store" aria-hidden="true"></i></span><% } %>
+                            <div>
+                                <p class="sl-sub__name"><%= st.isGuest ? st.name : `ร้าน ${st.name}` %> <small><%= st.isGuest ? '· คนนอกตลาด กรอกเองผ่านลิงก์' : `· สมาชิกตลาด${r.subtenantAcceptedAt ? ' ตอบรับแล้ว' : ''}` %></small></p>
+                                <dl>
+                                    <dt>สินค้า</dt><dd><%= st.productType %> · <%= st.productSubtype %></dd>
+                                    <% if (st.productDetail) { %><dt>รายละเอียด</dt><dd><%= st.productDetail %></dd><% } %>
+                                    <dt>ติดต่อ</dt><dd><%= st.contact %><% if (st.phone) { %> · <a href="tel:<%= st.phone %>"><%= st.phone %></a><% } %></dd>
+                                    <% if (st.isGuest) { %><dt>เลขบัตร</dt><dd><%= st.idCard %></dd><% } %>
+                                </dl>
+                                <% if (st.images && st.images.length > 1) { %>
+                                <div class="sl-sub__photos">
+                                    <% st.images.slice(1).forEach(function (url, i) { %><a href="<%= url %>" target="_blank" rel="noopener"><img src="<%= url %>" alt="รูปสินค้า <%= i + 2 %>"></a><% }) %>
+                                </div>
+                                <% } %>
+                            </div>
+                        </div>
+                        <% if (st.blacklisted) { %>
+                        <p class="sl-check sl-check--bad"><i class="fa-solid fa-ban" aria-hidden="true"></i> <%= st.isGuest ? 'เบอร์โทรหรือเลขบัตรตรงกับผู้ใช้ที่ถูกระงับสิทธิ์ (blacklist)' : 'ผู้รับเช่าช่วงถูกระงับสิทธิ์ (blacklist) อยู่ อนุมัติไม่ได้' %></p>
+                        <% } %>
+                        <% } else if (r.kind === 'SUBLET_GUEST') { %>
+                        <p class="sl-check sl-check--warn"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> คนนอกยังไม่ได้กรอกข้อมูลผ่านลิงก์</p>
+                        <% } %>
 
-            <% if (r.status === 'PENDING') { %>
-            <div class="eb-req-actions">
-                <form method="POST" action="/admin/stall-leaves/approve"
-                      data-confirm-title="อนุมัติคำขอนี้?"
-                      data-confirm-message="<%= r.kindLabel %> แผง <%= r.stallCode %> · <%= r.rangeText %>"
-                      data-confirm-tone="success"
-                      data-confirm-text="อนุมัติ">
-                    <input type="hidden" name="requestId" value="<%= r.id %>">
-                    <button type="submit" class="eb-btn eb-btn--sm"><i class="fa-solid fa-check"></i> อนุมัติ</button>
-                </form>
-                <form method="POST" action="/admin/stall-leaves/reject"
-                      data-confirm-title="ไม่อนุมัติคำขอนี้?"
-                      data-confirm-message="<%= r.kindLabel %> แผง <%= r.stallCode %> · <%= r.rangeText %>&#10;ร้านจะได้รับแจ้งพร้อมเหตุผล"
-                      data-confirm-tone="danger"
-                      data-confirm-text="ไม่อนุมัติ">
-                    <input type="hidden" name="requestId" value="<%= r.id %>">
-                    <input type="text" name="reason" maxlength="500" required placeholder="เหตุผลที่ไม่อนุมัติ" aria-label="เหตุผลที่ไม่อนุมัติ">
-                    <button type="submit" class="eb-btn eb-btn--danger eb-btn--sm">ไม่อนุมัติ</button>
-                </form>
-            </div>
-            <% } %>
-        </article>
-        <% }) %>
+                        <% if (r.kind !== 'LEAVE' && r.subtenant) { %>
+                            <% if (r.conflicts && r.conflicts.length) { %>
+                            <p class="sl-check sl-check--warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                                <span>ขายของชนิดเดียวกับร้านใกล้ๆ: <% r.conflicts.forEach(function (c, i) { %><%= i ? ', ' : '' %>แผง <b><%= c.code %></b><%= c.shopName ? ` (${c.shopName})` : '' %> ห่าง <%= c.distance %> ล็อก ซ้ำ "<%= c.shared %>"<% }) %></span>
+                            </p>
+                            <% } else if (r.conflictChecked) { %>
+                            <p class="sl-check sl-check--ok"><i class="fa-solid fa-check" aria-hidden="true"></i> ไม่พบร้านใกล้ๆ ที่ขายของชนิดเดียวกัน</p>
+                            <% } else { %>
+                            <p class="sl-check sl-check--warn"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> ผู้รับเช่าช่วงไม่ได้ระบุชนิดสินค้า ตรวจสินค้าซ้ำกับร้านข้างๆ เอง</p>
+                            <% } %>
+                        <% } %>
+
+                        <% if (r.status === 'PENDING') { %>
+                        <div class="sl-adminbar">
+                            <form method="POST" action="/admin/stall-leaves/approve" id="approve-<%= r.id %>"
+                                  data-confirm-title="อนุมัติคำขอนี้?"
+                                  data-confirm-message="<%= r.kindLabel %> แผง <%= r.stallCode %> · <%= r.rangeText %>"
+                                  data-confirm-tone="success"
+                                  data-confirm-text="อนุมัติ">
+                                <input type="hidden" name="requestId" value="<%= r.id %>">
+                            </form>
+                            <form method="POST" action="/admin/stall-leaves/reject" id="reject-<%= r.id %>"
+                                  data-confirm-title="ไม่อนุมัติคำขอนี้?"
+                                  data-confirm-message="<%= r.kindLabel %> แผง <%= r.stallCode %> · <%= r.rangeText %>&#10;ร้านจะได้รับแจ้งพร้อมเหตุผล"
+                                  data-confirm-tone="danger"
+                                  data-confirm-text="ไม่อนุมัติ">
+                                <input type="hidden" name="requestId" value="<%= r.id %>">
+                            </form>
+                            <button type="submit" form="approve-<%= r.id %>" class="sl-btn sl-btn--sm"><i class="fa-solid fa-check" aria-hidden="true"></i> อนุมัติ</button>
+                            <input class="sl-input" type="text" name="reason" form="reject-<%= r.id %>" maxlength="500" required placeholder="เหตุผลที่ไม่อนุมัติ (แจ้งร้าน)" aria-label="เหตุผลที่ไม่อนุมัติ คำขอ #<%= r.id %>">
+                            <button type="submit" form="reject-<%= r.id %>" class="sl-btn sl-btn--danger sl-btn--sm">ไม่อนุมัติ</button>
+                        </div>
+                        <% } %>
+                    </div>
+                </li>
+                <% }) %>
+            </ul>
+        </section>
     </main>
 
     <script src="/js/common/dialogs.js?v=20261023-input"></script>
     <script>
-        // ยืนยันก่อนกดปุ่มที่ย้อนไม่ได้ + เลื่อนไปที่คำขอที่ลิงก์มา (?focus=) — แบบเดียวกับหน้าบูธกิจกรรม
+        // ยืนยันก่อนกดปุ่มที่ย้อนไม่ได้ + เลื่อนไปที่คำขอที่ลิงก์มา (?focus=)
         document.querySelectorAll('form[data-confirm-title]').forEach((form) => {
             form.addEventListener('submit', (e) => {
                 if (form.dataset.confirmed === '1') return;
@@ -148,7 +165,7 @@
                 });
             });
         });
-        const focused = document.querySelector('.eb-req.is-focus');
+        const focused = document.querySelector('.sl-row.is-focus');
         if (focused) focused.scrollIntoView({ block: 'center' });
     </script>
 </body>

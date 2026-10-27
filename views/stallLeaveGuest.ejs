@@ -4,125 +4,160 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
-    <title>ขอเช่าช่วงแผง — ตลาดกังสดาลไนท์</title>
+    <title>ขายแทนชั่วคราว — ตลาดกังสดาลไนท์</title>
     <link rel="icon" type="image/png" href="/img/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
-    <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
-    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-guest">
+    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-ledger2">
 </head>
-<body class="eb-body">
-    <%- include('eventBooth/_topbar') %>
+<body class="sl-body">
+    <% if (!user) { %>
+    <header class="sl-guestbar">
+        <a href="/"><img src="/img/favicon.png" alt=""><span>ตลาดกังสดาลไนท์</span></a>
+        <a href="/login"><i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> เข้าสู่ระบบ</a>
+    </header>
+    <% } else if (user.role === 'ADMIN' || user.role === 'STAFF') { %>
+    <%- include('partials/navbar') %>
+    <% } else if (user.role === 'SELLER') { %>
+    <%- include('partials/navbarSeller') %>
+    <% } else { %>
+    <%- include('partials/navbarCustomer') %>
+    <% } %>
+    <%
+        const toneOf = { PENDING: 'tone-wait', APPROVED: 'tone-ok', REJECTED: 'tone-bad' };
+        const resultText = row ? {
+            PENDING: 'ตลาดได้รับข้อมูลแล้ว รอแอดมินพิจารณา ร้านเจ้าของแผงจะได้รับแจ้งผล',
+            APPROVED: `อนุมัติแล้ว มาขายที่แผง ${row.stallCode} ได้ตามวันที่ระบุ ปฏิบัติตามกติกาตลาดและคำแนะนำของเจ้าหน้าที่หน้างาน`,
+            REJECTED: `ไม่อนุมัติ${row.rejectReason ? ` — ${row.rejectReason}` : ''}`,
+            CANCELLED: 'ร้านเจ้าของแผงยกเลิกคำขอนี้แล้ว',
+            EXPIRED: 'ลิงก์หมดอายุแล้ว ขอลิงก์ใหม่จากร้านเจ้าของแผง'
+        }[row.status] : null;
+    %>
 
-    <main class="eb-page">
-        <header class="eb-head">
+    <main class="sl-page">
+        <header class="sl-head">
             <div>
-                <p class="eb-kicker">ขายแทนชั่วคราว · เช่าช่วงแผง</p>
-                <h1 class="eb-title">ข้อมูลผู้มาขายแทน</h1>
-                <% if (row) { %>
-                <p class="eb-lead">ร้าน <b><%= row.shopName %></b> ขอให้คุณมาขายที่แผง <b><%= row.stallCode %></b> วันที่ <b><%= row.rangeText %></b>
-                    ตลาดต้องรู้ว่าใครมาขายและขายอะไร เพื่อไม่ให้สินค้าซ้ำกับร้านข้างๆ และเป็นไปตามกติกาตลาด
-                    กรอกข้อมูลแล้วแอดมินตลาดจะพิจารณา (เงินค่าเช่าช่วงตกลงกับร้านเจ้าของแผงเอง ไม่ต้องชำระผ่านระบบ)</p>
-                <% } %>
+                <p class="sl-kicker">ขายแทนชั่วคราว · เช่าช่วงแผง</p>
+                <h1 class="sl-title">ข้อมูลผู้มาขายแทน</h1>
+                <p class="sl-lead">ตลาดต้องรู้ว่าใครมาขายและขายอะไร เพื่อไม่ให้สินค้าซ้ำกับร้านข้างๆ และเป็นไปตามกติกาตลาด ค่าเช่าช่วงตกลงกับร้านเจ้าของแผงเอง ไม่ต้องชำระผ่านระบบ</p>
             </div>
-            <% if (row) { %><a class="eb-zone-tag" href="/market-map?stall=<%= row.stallCode %>"><i class="fa-solid fa-map-location-dot"></i> ดูตำแหน่งแผง</a><% } %>
+            <% if (row) { %>
+            <div class="sl-head__actions">
+                <a class="sl-btn sl-btn--line" href="/market-map?stall=<%= row.stallCode %>"><i class="fa-solid fa-map-location-dot" aria-hidden="true"></i> ดูตำแหน่งแผง</a>
+            </div>
+            <% } %>
         </header>
 
         <% if (!row) { %>
-        <div class="eb-notice eb-notice--danger" role="alert">ไม่พบคำขอ ลิงก์อาจพิมพ์ไม่ครบ ติดต่อร้านที่ส่งลิงก์ให้คุณ</div>
-        <% } else if (row.status !== 'WAITING_SUBTENANT') { %>
-            <% if (submitted) { %>
-            <div class="eb-notice eb-notice--success" role="status">ส่งข้อมูลแล้ว แอดมินตลาดจะพิจารณา ร้าน <%= row.shopName %> จะได้รับแจ้งผล เก็บลิงก์นี้ไว้ดูสถานะได้</div>
-            <% } %>
-            <div class="eb-req">
-                <div class="eb-req-head">
-                    <div>
-                        <h2 class="eb-req-title">แผง <%= row.stallCode %> · <%= row.rangeText %></h2>
-                        <div class="eb-req-sub">ร้านเจ้าของแผง <%= row.shopName %><%= row.guestName ? ` · ผู้มาขายแทน ${row.guestName}` : '' %></div>
-                    </div>
-                    <span class="eb-pill <%= { PENDING: 'eb-pill--pending', APPROVED: 'eb-pill--success', REJECTED: 'eb-pill--danger' }[row.status] || '' %>"><%= row.status === 'EXPIRED' ? 'ลิงก์หมดอายุ' : row.statusLabel %></span>
-                </div>
-                <div class="eb-req-desc">
-                    <% if (row.status === 'PENDING') { %>รอแอดมินพิจารณา<% } %>
-                    <% if (row.status === 'APPROVED') { %>อนุมัติแล้ว มาขายที่แผง <%= row.stallCode %> ได้ตามวันที่ระบุ ปฏิบัติตามกติกาตลาดและเจ้าหน้าที่หน้างาน<% } %>
-                    <% if (row.status === 'REJECTED') { %>ไม่อนุมัติ<%= row.rejectReason ? ` — ${row.rejectReason}` : '' %><% } %>
-                    <% if (row.status === 'CANCELLED') { %>ร้านเจ้าของแผงยกเลิกคำขอนี้แล้ว<% } %>
-                    <% if (row.status === 'EXPIRED') { %>ลิงก์หมดอายุแล้ว ขอลิงก์ใหม่จากร้านเจ้าของแผง<% } %>
-                </div>
-            </div>
+        <div class="sl-notice sl-notice--bad" role="alert">ไม่พบคำขอ ลิงก์อาจพิมพ์ไม่ครบ ติดต่อร้านที่ส่งลิงก์ให้คุณ</div>
         <% } else { %>
-            <% if (error) { %>
-            <div class="eb-notice eb-notice--danger" role="alert"><%= error %></div>
-            <% } %>
-            <form method="POST" action="/sublet/guest/<%= token %>" enctype="multipart/form-data" class="eb-form" id="guestForm">
-                <section class="eb-section">
-                    <div class="eb-section-head"><div><h2 class="eb-section-title">1. ผู้มาขายแทน</h2>
-                        <p class="eb-section-hint">ใช้ยืนยันตัวตนและติดต่อกรณีมีปัญหาหน้างาน ตลาดไม่เปิดเผยข้อมูลนี้ให้ร้านอื่น</p></div></div>
-                    <div class="eb-fields">
-                        <div class="eb-field eb-field--full">
-                            <label for="guestName">ชื่อ-นามสกุล <span class="eb-must">*</span></label>
-                            <input class="eb-input" id="guestName" name="guestName" maxlength="100" required autocomplete="name" value="<%= values.guestName || '' %>">
-                        </div>
-                        <div class="eb-field">
-                            <label for="guestPhone">เบอร์โทร <span class="eb-must">*</span></label>
-                            <input class="eb-input" id="guestPhone" name="guestPhone" type="tel" inputmode="tel" maxlength="12" required autocomplete="tel" value="<%= values.guestPhone || '' %>">
-                        </div>
-                        <div class="eb-field">
-                            <label for="guestIdCard">เลขบัตรประชาชน <span class="eb-must">*</span></label>
-                            <input class="eb-input" id="guestIdCard" name="guestIdCard" inputmode="numeric" maxlength="17" required autocomplete="off" value="<%= values.guestIdCard || '' %>">
+        <div class="sl-brief" aria-label="รายละเอียดคำขอ">
+            <div><small>แผง</small><b><%= row.stallCode %></b></div>
+            <div><small>วันที่ขายแทน</small><b><%= row.rangeText %></b></div>
+            <div><small>ร้านเจ้าของแผง</small><b><%= row.shopName %></b></div>
+        </div>
+
+        <% if (row.status !== 'WAITING_SUBTENANT') { %>
+            <% if (submitted) { %><div class="sl-notice" role="status">ส่งข้อมูลแล้ว เก็บลิงก์นี้ไว้เปิดดูผลการพิจารณาได้</div><% } %>
+            <ul class="sl-ledger" style="margin-top:32px">
+                <li class="sl-row <%= toneOf[row.status] || '' %>">
+                    <div class="sl-row__stall">
+                        <span class="sl-row__kind">ผลการพิจารณา</span>
+                        <span class="sl-row__code"><%= row.stallCode %></span>
+                    </div>
+                    <div class="sl-row__body">
+                        <span class="sl-row__date"><%= row.rangeText %></span>
+                        <% if (row.guestName) { %><p class="sl-row__meta">ผู้มาขายแทน <b><%= row.guestName %></b> · สินค้า <b><%= row.guestProductTypeLabel || '-' %><%= row.guestProductSubtype ? ` · ${row.guestProductSubtype}` : '' %></b></p><% } %>
+                        <p class="sl-quote<%= row.status === 'REJECTED' ? ' sl-quote--bad' : '' %>"><%= resultText %></p>
+                    </div>
+                    <div class="sl-row__side">
+                        <span class="sl-status"><%= row.status === 'EXPIRED' ? 'ลิงก์หมดอายุ' : row.statusLabel %></span>
+                    </div>
+                </li>
+            </ul>
+        <% } else { %>
+            <% if (error) { %><div class="sl-notice sl-notice--bad" role="alert"><%= error %></div><% } %>
+            <form method="POST" action="/sublet/guest/<%= token %>" enctype="multipart/form-data" class="sl-form" id="guestForm" style="margin-top:8px">
+                <section class="sl-step" aria-labelledby="gStep1">
+                    <span class="sl-step__num">1</span>
+                    <div>
+                        <h2 class="sl-step__title" id="gStep1">ผู้มาขายแทน</h2>
+                        <p class="sl-step__hint">ใช้ยืนยันตัวตนและติดต่อกรณีมีปัญหาหน้างาน ตลาดไม่เปิดเผยข้อมูลนี้ให้ร้านอื่นหรือลูกค้า</p>
+                        <div class="sl-fields">
+                            <div class="sl-field sl-field--full">
+                                <label for="guestName">ชื่อ-นามสกุล <em>*</em></label>
+                                <input class="sl-input" id="guestName" name="guestName" maxlength="100" required autocomplete="name" value="<%= values.guestName || '' %>">
+                            </div>
+                            <div class="sl-field">
+                                <label for="guestPhone">เบอร์โทร <em>*</em></label>
+                                <input class="sl-input" id="guestPhone" name="guestPhone" type="tel" inputmode="tel" maxlength="12" required autocomplete="tel" placeholder="08xxxxxxxx" value="<%= values.guestPhone || '' %>">
+                            </div>
+                            <div class="sl-field">
+                                <label for="guestIdCard">เลขบัตรประชาชน <em>*</em> <span>13 หลัก</span></label>
+                                <input class="sl-input" id="guestIdCard" name="guestIdCard" inputmode="numeric" maxlength="17" required autocomplete="off" value="<%= values.guestIdCard || '' %>">
+                            </div>
                         </div>
                     </div>
                 </section>
 
-                <section class="eb-section">
-                    <div class="eb-section-head"><div><h2 class="eb-section-title">2. สินค้าที่จะขาย</h2>
-                        <p class="eb-section-hint">แอดมินใช้เทียบกับร้านข้างๆ ไม่ให้ขายของชนิดเดียวกันติดกัน</p></div></div>
-                    <div class="eb-fields">
-                        <div class="eb-field">
-                            <label for="guestProductType">ประเภทสินค้า <span class="eb-must">*</span></label>
-                            <select class="eb-input" id="guestProductType" name="guestProductType" required>
-                                <option value="">เลือกประเภท</option>
-                                <% Object.entries(productTypes).forEach(function ([code, label]) { %>
-                                <option value="<%= code %>" <%= values.guestProductType === code ? 'selected' : '' %>><%= label %></option>
-                                <% }) %>
-                            </select>
-                        </div>
-                        <div class="eb-field">
-                            <label for="guestProductSubtype">ชนิดสินค้าหลัก <span class="eb-must" id="subtypeMust">*</span></label>
-                            <select class="eb-input" id="guestProductSubtype" name="guestProductSubtype">
-                                <option value="">เลือกประเภทก่อน</option>
-                                <% Object.entries(subtypeGroups).forEach(function ([code, groups]) { groups.forEach(function (g) { %>
-                                <optgroup label="<%= g.group %>" data-type="<%= code %>">
-                                    <% g.items.forEach(function (item) { %><option value="<%= item %>" <%= values.guestProductSubtype === item ? 'selected' : '' %>><%= item %></option><% }) %>
-                                </optgroup>
-                                <% }) }) %>
-                            </select>
-                        </div>
-                        <div class="eb-field eb-field--full">
-                            <label for="guestProductDetail">รายละเอียดสินค้า/เมนู <span class="eb-must">*</span></label>
-                            <textarea class="eb-input" id="guestProductDetail" name="guestProductDetail" maxlength="1000" required placeholder="ขายอะไรบ้าง ราคาประมาณเท่าไร ใช้เครื่องใช้ไฟฟ้าอะไร"><%= values.guestProductDetail || '' %></textarea>
-                        </div>
-                        <div class="eb-field eb-field--full">
-                            <label for="productImages">รูปสินค้า <span class="eb-must">*</span> <span class="eb-opt">1–<%= maxImages %> รูป ไม่เกินรูปละ 5MB</span></label>
-                            <input class="eb-input" id="productImages" name="productImages" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple required>
+                <section class="sl-step" aria-labelledby="gStep2">
+                    <span class="sl-step__num">2</span>
+                    <div>
+                        <h2 class="sl-step__title" id="gStep2">สินค้าที่จะขาย</h2>
+                        <p class="sl-step__hint">แอดมินใช้เทียบกับร้านข้างๆ ไม่ให้ขายของชนิดเดียวกันติดกัน ขายได้เฉพาะสินค้าที่แจ้งไว้</p>
+                        <div class="sl-fields">
+                            <div class="sl-field">
+                                <label for="guestProductType">ประเภทสินค้า <em>*</em></label>
+                                <select class="sl-input" id="guestProductType" name="guestProductType" required>
+                                    <option value="">เลือกประเภท</option>
+                                    <% Object.entries(productTypes).forEach(function ([code, label]) { %>
+                                    <option value="<%= code %>" <%= values.guestProductType === code ? 'selected' : '' %>><%= label %></option>
+                                    <% }) %>
+                                </select>
+                            </div>
+                            <div class="sl-field">
+                                <label for="guestProductSubtype">ชนิดสินค้าหลัก <em id="subtypeMust">*</em></label>
+                                <select class="sl-input" id="guestProductSubtype" name="guestProductSubtype">
+                                    <option value="">เลือกประเภทก่อน</option>
+                                    <% Object.entries(subtypeGroups).forEach(function ([code, groups]) { groups.forEach(function (g) { %>
+                                    <optgroup label="<%= g.group %>" data-type="<%= code %>">
+                                        <% g.items.forEach(function (item) { %><option value="<%= item %>" <%= values.guestProductSubtype === item ? 'selected' : '' %>><%= item %></option><% }) %>
+                                    </optgroup>
+                                    <% }) }) %>
+                                </select>
+                            </div>
+                            <div class="sl-field sl-field--full">
+                                <label for="guestProductDetail">รายละเอียดสินค้า/เมนู <em>*</em></label>
+                                <textarea class="sl-input" id="guestProductDetail" name="guestProductDetail" maxlength="1000" required placeholder="ขายอะไรบ้าง ราคาประมาณเท่าไร ใช้เครื่องใช้ไฟฟ้าอะไร"><%= values.guestProductDetail || '' %></textarea>
+                            </div>
+                            <div class="sl-field sl-field--full">
+                                <label for="productImages">รูปสินค้า <em>*</em> <span>1–<%= maxImages %> รูป ไม่เกินรูปละ 5MB</span></label>
+                                <input class="sl-input" id="productImages" name="productImages" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple required>
+                            </div>
                         </div>
                     </div>
                 </section>
 
-                <section class="eb-section">
-                    <label class="sl-terms">
-                        <input type="checkbox" name="acceptTerms" value="1" required>
-                        <span>ฉันจะขายเฉพาะสินค้าที่แจ้งไว้ ปฏิบัติตามกติกาตลาดและคำแนะนำของเจ้าหน้าที่ รักษาความสะอาดแผง
-                            และเข้าใจว่าแผงยังเป็นสิทธิ์ของร้านเจ้าของแผง ตลาดยกเลิกการขายแทนได้หากไม่ปฏิบัติตาม</span>
-                    </label>
+                <section class="sl-step" aria-labelledby="gStep3">
+                    <span class="sl-step__num">3</span>
+                    <div>
+                        <h2 class="sl-step__title" id="gStep3">ยอมรับกติกา</h2>
+                        <p class="sl-step__hint">แผงยังเป็นสิทธิ์ของร้านเจ้าของแผง ตลาดยกเลิกการขายแทนได้หากไม่ปฏิบัติตาม</p>
+                        <label class="sl-terms">
+                            <input type="checkbox" name="acceptTerms" value="1" required>
+                            <span>ฉันจะขายเฉพาะสินค้าที่แจ้งไว้ ปฏิบัติตามกติกาตลาดและคำแนะนำของเจ้าหน้าที่ และรักษาความสะอาดแผง</span>
+                        </label>
+                    </div>
                 </section>
 
-                <div class="eb-actions">
-                    <button type="submit" class="eb-btn"><i class="fa-solid fa-paper-plane"></i> ส่งข้อมูลให้ตลาดพิจารณา</button>
+                <div class="sl-submit">
+                    <button type="submit" class="sl-btn"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> ส่งข้อมูลให้ตลาดพิจารณา</button>
+                    <small>ส่งแล้วเปิดลิงก์เดิมเพื่อดูผลได้</small>
                 </div>
             </form>
+        <% } %>
         <% } %>
     </main>
 

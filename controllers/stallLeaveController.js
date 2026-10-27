@@ -224,7 +224,7 @@ async function attachSubletInsights(rows) {
         const productType = sub ? sub.productType : row.guestProductType;
         const productSubtype = sub ? sub.productSubtype : row.guestProductSubtype;
         row.subtenant = sub
-            ? { name: sub.shopName || '-', contact: sub.user?.name || '-', phone: sub.user?.phoneNumber || '', productType: sub.productType || '-', productSubtype: sub.productSubtype || '-', productDetail: sub.productDetail || '', image: sub.logoImage || sub.productImage || null, blacklisted: !!sub.user?.isBlacklisted }
+            ? { name: sub.shopName || '-', contact: sub.user?.name || '-', phone: sub.user?.phoneNumber || '', productType: stallLeave.PRODUCT_TYPE_LABELS[sub.productType] || sub.productType || '-', productSubtype: sub.productSubtype || '-', productDetail: sub.productDetail || '', image: sub.logoImage || sub.productImage || null, blacklisted: !!sub.user?.isBlacklisted }
             : row.guestName
                 ? { isGuest: true, name: row.guestName, contact: row.guestName, phone: row.guestPhone || '', idCard: row.guestIdCard || '', productType: row.guestProductTypeLabel || '-', productSubtype: row.guestProductSubtype || '-', productDetail: row.guestProductDetail || '', image: row.guestImageList[0] || null, images: row.guestImageList, blacklisted: guestBlacklisted.get(row.id) || false }
                 : null;
