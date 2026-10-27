@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ลาหยุด / เช่าช่วงแผง — ตลาดกังสดาลไนท์</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+    <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
+    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028">
+</head>
+<body class="eb-body">
+    <script src="/js/common/tabSession.js"></script>
+    <%- include('../partials/navbarSeller') %>
+    <%
+        const successMessages = {
+            created: 'ส่งคำขอแล้ว รอแอดมินพิจารณา ผลจะแจ้งในหน้าแจ้งเตือน',
+            cancelled: 'ยกเลิกคำขอแล้ว'
+        };
+        const pillClass = { WAITING_SUBTENANT: 'eb-pill--pending', PENDING: 'eb-pill--pending', APPROVED: 'eb-pill--success', REJECTED: 'eb-pill--danger' };
+    %>
+
+    <main class="eb-page">
+        <header class="eb-head">
+            <div>
+                <p class="eb-kicker">จัดการร้าน · แผงของฉัน</p>
+                <h1 class="eb-title">ลาหยุด / เช่าช่วงแผง</h1>
+                <p class="eb-lead">คำขอของแผงที่ร้านคุณเช่าอยู่ ยกเลิกได้ก่อนถึงวันเริ่ม</p>
+            </div>
+            <a class="eb-btn" href="/stall-leave/new"><i class="fa-solid fa-plus"></i> แจ้งลาหยุด</a>
+        </header>
+
+        <% if (success && successMessages[success]) { %>
+        <div class="eb-notice eb-notice--success" role="status"><%= successMessages[success] %></div>
+        <% } %>
+        <% if (error) { %>
+        <div class="eb-notice eb-notice--danger" role="alert"><%= error %></div>
+        <% } %>
+
+        <% if (!rows.length) { %>
+        <div class="eb-empty">ยังไม่มีคำขอ</div>
+        <% } %>
+
+        <% rows.forEach(function (r) { %>
+        <article class="eb-req" id="leave-<%= r.id %>">
+            <div class="eb-req-head">
+                <div>
+                    <h2 class="eb-req-title"><%= r.kindLabel %> · แผง <%= r.stallCode %></h2>
+                    <div class="eb-req-sub">#<%= r.id %> · ร้าน <%= r.shopName %> · ส่งเมื่อ <%= r.createdText %></div>
+                </div>
+                <span class="eb-pill <%= pillClass[r.status] || '' %>"><%= r.statusLabel %></span>
+            </div>
+            <div class="eb-req-body">
+                <div class="eb-req-cell"><small>วันที่</small><span><%= r.rangeText %></span></div>
+                <% if (r.subShopName) { %><div class="eb-req-cell"><small>ผู้รับเช่าช่วง</small><span><%= r.subShopName %></span></div><% } %>
+                <% if (r.reviewedText) { %><div class="eb-req-cell"><small>พิจารณาเมื่อ</small><span><%= r.reviewedText %><%= r.reviewedByName ? ` · ${r.reviewedByName}` : '' %></span></div><% } %>
+            </div>
+            <div class="eb-req-desc">เหตุผล: <%= r.reason %></div>
+            <% if (r.status === 'REJECTED' && r.rejectReason) { %>
+            <div class="eb-req-desc" style="color:var(--eb-danger)">แอดมินไม่อนุมัติ: <%= r.rejectReason %></div>
+            <% } %>
+            <% if (r.canCancel) { %>
+            <div class="eb-req-actions">
+                <form method="POST" action="/stall-leave/<%= r.id %>/cancel" data-confirm-title="ยกเลิกคำขอนี้?" data-confirm-message="<%= r.kindLabel %> แผง <%= r.stallCode %> · <%= r.rangeText %>">
+                    <button type="submit" class="eb-btn eb-btn--danger eb-btn--sm">ยกเลิกคำขอ</button>
+                </form>
+            </div>
+            <% } %>
+        </article>
+        <% }) %>
+    </main>
+
+    <script src="/js/common/dialogs.js?v=20261023-input"></script>
+    <script>
+        document.querySelectorAll('form[data-confirm-title]').forEach((form) => {
+            form.addEventListener('submit', (e) => {
+                if (form.dataset.confirmed === '1') return;
+                e.preventDefault();
+                window.showConfirmDialog({
+                    title: form.dataset.confirmTitle,
+                    message: form.dataset.confirmMessage,
+                    tone: 'danger',
+                    confirmText: 'ยกเลิกคำขอ',
+                    onConfirm: () => { form.dataset.confirmed = '1'; form.submit(); }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

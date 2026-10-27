@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>แจ้งลาหยุด — ตลาดกังสดาลไนท์</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+    <link rel="stylesheet" href="/stylesheets/partials/shopSwitch.css?v=20261027">
+    <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
+    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028">
+</head>
+<body class="eb-body">
+    <script src="/js/common/tabSession.js"></script>
+    <%- include('../partials/navbarSeller') %>
+
+    <main class="eb-page">
+        <header class="eb-head">
+            <div>
+                <p class="eb-kicker">จัดการร้าน · แผงของฉัน</p>
+                <h1 class="eb-title">แจ้งลาหยุด</h1>
+                <p class="eb-lead">ไม่สะดวกมาขายบางวันในช่วงสัญญา แจ้งแอดมินพร้อมเหตุผล อนุมัติแล้วบนผังจะแสดงว่าแผงนี้ลาหยุด
+                    ไม่มีการคืนค่าเช่า แผงยังเป็นของร้านคุณตามสัญญาเดิม</p>
+            </div>
+            <a class="eb-zone-tag" href="/stall-leave"><i class="fa-solid fa-list"></i> คำขอของฉัน</a>
+        </header>
+
+        <%- include('../partials/shopSwitch', { shops: shops, selectedShopId: shop && shop.id, href: function (id) { return '/stall-leave/new?shop=' + id; }, label: 'ร้าน' }) %>
+
+        <% if (error) { %>
+        <div class="eb-notice eb-notice--danger" role="alert"><%= error %></div>
+        <% } %>
+
+        <% if (!stalls.length) { %>
+        <div class="eb-empty">ร้าน<%= shop && shop.shopName ? ` ${shop.shopName}` : '' %>ยังไม่มีแผงที่ชำระเงินแล้วและสัญญายังไม่หมด จึงยังแจ้งลาหยุดไม่ได้</div>
+        <% } else { %>
+        <form method="POST" action="/stall-leave" class="eb-form sl-form" id="stallLeaveForm">
+            <input type="hidden" name="shopId" value="<%= shop.id %>">
+            <section class="eb-section">
+                <div class="eb-section-head">
+                    <div>
+                        <h2 class="eb-section-title">1. เลือกแผง</h2>
+                        <p class="eb-section-hint">แผงของร้าน <b><%= shop.shopName || 'ร้านยังไม่ตั้งชื่อ' %></b> ที่ชำระเงินแล้ว</p>
+                    </div>
+                </div>
+                <div class="sl-stalls" role="radiogroup" aria-label="แผง">
+                    <% stalls.forEach(function (s, i) { const checked = values.stallCode ? values.stallCode === s.code : i === 0; %>
+                    <label class="sl-stall">
+                        <input type="radio" name="stallCode" value="<%= s.code %>" required <%= checked ? 'checked' : '' %>
+                               data-min="<%= s.contractStartKey > earliestKey ? s.contractStartKey : earliestKey %>" data-max="<%= s.contractEndKey %>">
+                        <b><%= s.code %></b>
+                        <small>สัญญา <%= s.contractText %></small>
+                    </label>
+                    <% }) %>
+                </div>
+            </section>
+
+            <section class="eb-section">
+                <div class="eb-section-head">
+                    <div>
+                        <h2 class="eb-section-title">2. วันที่ลา และเหตุผล</h2>
+                        <p class="eb-section-hint">แจ้งวันนี้ได้ถึง <%= cutoffHour %>:00 น. · ครั้งละไม่เกิน <%= maxDays %> วัน · ลาวันเดียวเลือกวันเริ่มกับวันสิ้นสุดเป็นวันเดียวกัน</p>
+                    </div>
+                </div>
+                <div class="eb-fields">
+                    <div class="eb-field">
+                        <label for="startDate">วันเริ่ม <span class="eb-must">*</span></label>
+                        <input class="eb-input" id="startDate" name="startDate" type="date" required min="<%= earliestKey %>" value="<%= values.startDate || '' %>">
+                    </div>
+                    <div class="eb-field">
+                        <label for="endDate">วันสิ้นสุด <span class="eb-must">*</span></label>
+                        <input class="eb-input" id="endDate" name="endDate" type="date" required min="<%= earliestKey %>" value="<%= values.endDate || '' %>">
+                    </div>
+                    <div class="eb-field eb-field--full">
+                        <label for="reason">เหตุผล <span class="eb-must">*</span></label>
+                        <textarea class="eb-input" id="reason" name="reason" maxlength="1000" required placeholder="เช่น ป่วย, ติดธุระต่างจังหวัด, ซ่อมอุปกรณ์ร้าน"><%= values.reason || '' %></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <div class="eb-actions">
+                <button type="submit" class="eb-btn"><i class="fa-solid fa-paper-plane"></i> ส่งคำขอลาหยุด</button>
+                <span class="eb-actions-note">แอดมินจะพิจารณาและแจ้งผลในหน้าแจ้งเตือน</span>
+            </div>
+        </form>
+        <% } %>
+    </main>
+
+    <script>
+        // ช่วงวันที่เลือกได้ตามสัญญาของแผงที่เลือก (ตรวจซ้ำฝั่ง server เสมอ — utils/stallLeave.js)
+        (function () {
+            const form = document.getElementById('stallLeaveForm');
+            if (!form) return;
+            const start = document.getElementById('startDate');
+            const end = document.getElementById('endDate');
+            function sync() {
+                const picked = form.querySelector('input[name="stallCode"]:checked');
+                if (!picked) return;
+                [start, end].forEach((input) => { input.min = picked.dataset.min; input.max = picked.dataset.max; });
+                if (start.value) end.min = start.value > picked.dataset.min ? start.value : picked.dataset.min;
+                if (start.value && !end.value) end.value = start.value;
+            }
+            form.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
+</body>
+</html>

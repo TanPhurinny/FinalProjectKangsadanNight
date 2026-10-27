@@ -19,6 +19,7 @@ const bannerCtrl = require('../controllers/communityBannerController');
 const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
 const bookingHolidayCtrl = require('../controllers/bookingHolidayController');
 const eventBoothCtrl = require('../controllers/eventBoothController');
+const stallLeaveCtrl = require('../controllers/stallLeaveController');
 const rentalStatementCtrl = require('../controllers/rentalStatementController');
 const leaseContractCtrl = require('../controllers/leaseContractController');
 const shopReviewCtrl = require('../controllers/shopReviewController');
@@ -125,6 +126,11 @@ router.post('/event-booths/approve', eventBoothCtrl.approve);
 router.post('/event-booths/reject', eventBoothCtrl.reject);
 router.post('/event-booths/confirm-payment', eventBoothCtrl.confirmPayment);
 router.post('/event-booths/reject-slip', eventBoothCtrl.rejectSlip);
+
+// --- 6.6 คำขอลาหยุด / ปล่อยเช่าช่วงแผง ดู utils/stallLeave.js ---
+router.get('/stall-leaves', stallLeaveCtrl.getAdminPage);
+router.post('/stall-leaves/approve', stallLeaveCtrl.approve);
+router.post('/stall-leaves/reject', stallLeaveCtrl.reject);
 
 // --- 6.6 ดูแลรีวิวร้านค้า — รีวิวที่ร้านรายงาน / ซ่อน-เลิกซ่อน (ดู controllers/shopReviewController.js) ---
 router.get('/shop-reviews', shopReviewCtrl.getAdminPage);

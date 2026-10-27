@@ -1,0 +1,379 @@
+// ลาหยุด / ปล่อยเช่าช่วงแผง (ตาราง StallLeaveRequest) — กติกาทั้งหมดอยู่ที่ไฟล์นี้
+// - ทำได้เฉพาะแผงที่ร้านเช่าและชำระแล้ว (Booking SUCCESS ครอบทุกวันในช่วงที่ขอ) และแผงยังไม่ถูกปล่อย (Stall.status = BOOKED)
+// - วันแรกต้องยังไม่เลยเส้นตาย: แจ้งวันนี้ได้ถึง NOTICE_CUTOFF_HOUR:00 ของวันขายนั้น เลยแล้วเริ่มได้พรุ่งนี้ (วันขายตัดตี 5 เหมือน shopOpenStatus)
+// - ช่วงวันห้ามซ้อนกับคำขอที่ยังมีผล (รอ/อนุมัติแล้ว) ของแผงเดียวกัน
+// - ไม่มีเงินเข้าออก: ลาหยุดไม่คืนค่าเช่า, เช่าช่วงร้านตกลงเงินกันเอง ใบกำกับภาษียังเป็นของเจ้าของแผง
+// - ไม่ใช้กับบูธกิจกรรมโซน G
+const prisma = require('../config/prismaClient');
+const { toStartOfDay, addDays } = require('./bookingRound');
+const { businessDateOf } = require('./shopOpenStatus');
+const { extractBookingRequestId } = require('./bookingRequestTag');
+const { shopsOfRequests } = require('./shops');
+const { isEventBoothCode } = require('./eventBooth');
+
+const NOTICE_CUTOFF_HOUR = 12;
+const MAX_RANGE_DAYS = 60;
+const DAY_MS = 24 * 60 * 60 * 1000;
+// สถานะที่ยังกันช่วงวันของแผงไว้ (ห้ามขอซ้อน)
+const ACTIVE_STATUSES = ['WAITING_SUBTENANT', 'PENDING', 'APPROVED'];
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const KIND_LABEL = {
+    LEAVE: 'ลาหยุด',
+    SUBLET_MEMBER: 'เช่าช่วง (ร้านสมาชิก)',
+    SUBLET_GUEST: 'เช่าช่วง (ร้านนอกตลาด)'
+};
+const STATUS_LABEL = {
+    WAITING_SUBTENANT: 'รอผู้รับเช่าช่วง',
+    PENDING: 'รอแอดมินพิจารณา',
+    APPROVED: 'อนุมัติแล้ว',
+    REJECTED: 'ไม่อนุมัติ',
+    CANCELLED: 'ยกเลิกแล้ว',
+    EXPIRED: 'ลิงก์หมดอายุ'
+};
+const ERROR_MESSAGES = {
+    invalid_stall: 'ไม่พบแผงนี้ในร้านของคุณ',
+    invalid_dates: 'กรุณาเลือกวันเริ่มและวันสิ้นสุดให้ถูกต้อง',
+    range_too_long: `ขอได้ครั้งละไม่เกิน ${MAX_RANGE_DAYS} วัน`,
+    too_late: `เลยเวลาแจ้งของวันนี้แล้ว (ต้องแจ้งก่อน ${NOTICE_CUTOFF_HOUR}:00 น. ของวันนั้น) เลือกวันเริ่มเป็นพรุ่งนี้ขึ้นไป`,
+    not_covered: 'ช่วงวันที่เลือกต้องอยู่ในสัญญาเช่าที่ชำระเงินแล้วของแผงนี้',
+    overlap: 'แผงนี้มีคำขอลาหยุด/เช่าช่วงในช่วงวันนี้อยู่แล้ว',
+    event_booth: 'บูธกิจกรรมโซน G ลาหยุด/ให้เช่าช่วงไม่ได้',
+    missing_reason: 'กรุณากรอกเหตุผล',
+    not_found: 'ไม่พบคำขอ',
+    cannot_cancel: 'คำขอนี้ยกเลิกไม่ได้แล้ว (ถึงวันเริ่มแล้วหรือปิดไปแล้ว)',
+    not_pending: 'คำขอนี้ไม่ได้อยู่ในขั้นรอแอดมินแล้ว',
+    stall_released: 'แผงนี้ถูกปล่อย/สัญญาหมดแล้ว อนุมัติไม่ได้',
+    action_failed: 'บันทึกไม่สำเร็จ กรุณาลองใหม่'
+};
+
+class StallLeaveError extends Error {
+    constructor(code) {
+        super(ERROR_MESSAGES[code] || code);
+        this.code = code;
+    }
+}
+
+function toDateKey(date) {
+    const d = new Date(date);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function parseDateKey(value) {
+    if (typeof value !== 'string' || !DATE_KEY_PATTERN.test(value)) return null;
+    const date = toStartOfDay(`${value}T00:00:00`);
+    return date && toDateKey(date) === value ? date : null;
+}
+
+function thaiDate(value) {
+    if (!value) return '-';
+    return new Date(value).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+}
+
+function thaiTime(value) {
+    return new Date(value).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+}
+
+function dayCount(start, end) {
+    return Math.round((toStartOfDay(end) - toStartOfDay(start)) / DAY_MS) + 1;
+}
+
+function rangeText(row) {
+    const days = dayCount(row.startDate, row.endDate);
+    return days === 1 ? thaiDate(row.startDate) : `${thaiDate(row.startDate)} – ${thaiDate(row.endDate)} (${days} วัน)`;
+}
+
+// วันแรกสุดที่ยังขอได้: วันขายนี้ถ้ายังไม่เลยเที่ยง ไม่งั้นพรุ่งนี้
+function earliestStartDate(now = new Date()) {
+    const today = businessDateOf(now);
+    const cutoff = new Date(today.getTime() + NOTICE_CUTOFF_HOUR * 60 * 60 * 1000);
+    return now < cutoff ? today : addDays(today, 1);
+}
+
+// แผงที่ร้านนี้ถืออยู่และชำระแล้ว (สัญญายังไม่หมด) — แต่ละแผงมีช่วงสัญญา (อาจหลายช่วงต่อกันจากการต่อล็อก)
+// shopId = ร้านของคำขอจอง (คำขอเก่าที่ไม่มี shopId = ร้านหลัก)
+async function loadShopStalls(userId, shopId, now = new Date()) {
+    const today = businessDateOf(now);
+    const bookings = await prisma.booking.findMany({
+        where: { userId, status: 'SUCCESS', rentalEndDate: { gte: today } },
+        select: { rentalStartDate: true, rentalEndDate: true, storeDetailSnapshot: true, slot: { select: { slotNumber: true } } }
+    });
+    const requestIds = [...new Set(bookings.map((b) => extractBookingRequestId(b.storeDetailSnapshot)).filter(Boolean))];
+    const requests = requestIds.length
+        ? await prisma.bookingRequest.findMany({ where: { id: { in: requestIds } }, select: { id: true, userId: true, shopId: true } })
+        : [];
+    const shopOf = await shopsOfRequests(requests);
+
+    const byCode = new Map();
+    bookings.forEach((booking) => {
+        const code = String(booking.slot?.slotNumber || '').trim().toUpperCase();
+        const requestId = extractBookingRequestId(booking.storeDetailSnapshot);
+        if (!code || isEventBoothCode(code) || !booking.rentalStartDate || !booking.rentalEndDate) return;
+        const shop = requestId ? shopOf.get(requestId) : null;
+        if (!shop || shop.id !== Number(shopId)) return;
+        if (!byCode.has(code)) byCode.set(code, { code, ranges: [] });
+        byCode.get(code).ranges.push({ start: toStartOfDay(booking.rentalStartDate), end: toStartOfDay(booking.rentalEndDate), requestId });
+    });
+    if (!byCode.size) return [];
+
+    // แผงที่ถูกปล่อยแล้ว (คำขอ SUCCESS ค้างไว้ตามตั้งใจ ดู utils/stallRenewal.js) ไม่นับ
+    const stalls = await prisma.stall.findMany({ where: { stallCode: { in: [...byCode.keys()] } }, select: { stallCode: true, status: true } });
+    const booked = new Set(stalls.filter((s) => s.status === 'BOOKED').map((s) => s.stallCode.toUpperCase()));
+    return [...byCode.values()]
+        .filter((stall) => booked.has(stall.code))
+        .map((stall) => {
+            stall.ranges.sort((a, b) => a.start - b.start);
+            return {
+                ...stall,
+                contractStart: stall.ranges[0].start,
+                contractEnd: stall.ranges.reduce((max, r) => (r.end > max ? r.end : max), stall.ranges[0].end)
+            };
+        })
+        .sort((a, b) => a.code.localeCompare(b.code));
+}
+
+// ตรวจช่วงวันที่ขอ — คืน bookingRequestId ของสัญญาที่ครอบวันแรก
+function checkCoverage(stall, start, end) {
+    let requestId = null;
+    for (let day = start; day <= end; day = addDays(day, 1)) {
+        const range = stall.ranges.find((r) => r.start <= day && r.end >= day);
+        if (!range) throw new StallLeaveError('not_covered');
+        if (!requestId) requestId = range.requestId;
+    }
+    return requestId;
+}
+
+async function assertNoOverlap(stallCode, start, end, excludeId = null, statuses = ACTIVE_STATUSES) {
+    const clash = await prisma.stallLeaveRequest.findFirst({
+        where: {
+            stallCode,
+            status: { in: statuses },
+            startDate: { lte: end },
+            endDate: { gte: start },
+            ...(excludeId ? { id: { not: excludeId } } : {})
+        },
+        select: { id: true }
+    });
+    if (clash) throw new StallLeaveError('overlap');
+}
+
+// ตรวจทุกเงื่อนไขของคำขอใหม่ — คืน { stall, start, end, bookingRequestId }
+async function validateRequest({ userId, shopId, stallCode, startKey, endKey, now = new Date() }) {
+    const code = String(stallCode || '').trim().toUpperCase();
+    if (isEventBoothCode(code)) throw new StallLeaveError('event_booth');
+    const start = parseDateKey(startKey);
+    const end = parseDateKey(endKey || startKey);
+    if (!start || !end || end < start) throw new StallLeaveError('invalid_dates');
+    if (dayCount(start, end) > MAX_RANGE_DAYS) throw new StallLeaveError('range_too_long');
+    if (start < earliestStartDate(now)) throw new StallLeaveError('too_late');
+    const stall = (await loadShopStalls(userId, shopId, now)).find((s) => s.code === code);
+    if (!stall) throw new StallLeaveError('invalid_stall');
+    const bookingRequestId = checkCoverage(stall, start, end);
+    await assertNoOverlap(code, start, end);
+    return { stall, start, end, bookingRequestId };
+}
+
+function cleanReason(value) {
+    const reason = String(value || '').trim().slice(0, 1000);
+    if (!reason) throw new StallLeaveError('missing_reason');
+    return reason;
+}
+
+// ลาหยุด: ร้านเลือกแผง/วัน/เหตุผล → รอแอดมิน
+async function createLeave({ user, shop, stallCode, startKey, endKey, reason, now = new Date() }) {
+    const text = cleanReason(reason);
+    const checked = await validateRequest({ userId: user.id, shopId: shop.id, stallCode, startKey, endKey, now });
+    return prisma.stallLeaveRequest.create({
+        data: {
+            kind: 'LEAVE',
+            status: 'PENDING',
+            userId: user.id,
+            shopId: shop.id,
+            bookingRequestId: checked.bookingRequestId,
+            stallCode: checked.stall.code,
+            startDate: checked.start,
+            endDate: checked.end,
+            reason: text
+        }
+    });
+}
+
+// เจ้าของแผงยกเลิกได้ก่อนถึงวันเริ่ม (ที่อนุมัติแล้วก็ยกเลิกได้ถ้ายังไม่ถึงวันเริ่ม)
+function canCancel(row, now = new Date()) {
+    return ACTIVE_STATUSES.includes(row.status) && toStartOfDay(row.startDate) > businessDateOf(now);
+}
+
+async function cancelRequest(userId, id, now = new Date()) {
+    const row = await prisma.stallLeaveRequest.findFirst({ where: { id: Number(id) || 0, userId } });
+    if (!row) throw new StallLeaveError('not_found');
+    if (!canCancel(row, now)) throw new StallLeaveError('cannot_cancel');
+    return prisma.stallLeaveRequest.update({ where: { id: row.id }, data: { status: 'CANCELLED', cancelledAt: now } });
+}
+
+// แอดมินอนุมัติ: ตรวจซ้ำว่าแผงยังเป็นของร้านนี้ครบทุกวัน และไม่ชนคำขอที่อนุมัติไปแล้ว
+async function approveRequest(id, admin, now = new Date()) {
+    const row = await prisma.stallLeaveRequest.findUnique({ where: { id: Number(id) || 0 } });
+    if (!row) throw new StallLeaveError('not_found');
+    if (row.status !== 'PENDING') throw new StallLeaveError('not_pending');
+    const stall = (await loadShopStalls(row.userId, row.shopId, now)).find((s) => s.code === row.stallCode);
+    if (!stall) throw new StallLeaveError('stall_released');
+    checkCoverage(stall, toStartOfDay(row.startDate), toStartOfDay(row.endDate));
+    await assertNoOverlap(row.stallCode, row.startDate, row.endDate, row.id, ['APPROVED']);
+    return prisma.stallLeaveRequest.update({
+        where: { id: row.id },
+        data: { status: 'APPROVED', reviewedById: admin.id, reviewedByName: admin.name || admin.username || null, reviewedAt: now, rejectReason: null }
+    });
+}
+
+async function rejectRequest(id, admin, reason, now = new Date()) {
+    const text = String(reason || '').trim().slice(0, 1000);
+    if (!text) throw new StallLeaveError('missing_reason');
+    const row = await prisma.stallLeaveRequest.findUnique({ where: { id: Number(id) || 0 } });
+    if (!row) throw new StallLeaveError('not_found');
+    if (row.status !== 'PENDING') throw new StallLeaveError('not_pending');
+    return prisma.stallLeaveRequest.update({
+        where: { id: row.id },
+        data: { status: 'REJECTED', rejectReason: text, reviewedById: admin.id, reviewedByName: admin.name || admin.username || null, reviewedAt: now }
+    });
+}
+
+function countPendingLeaves() {
+    return prisma.stallLeaveRequest.count({ where: { status: 'PENDING' } });
+}
+
+// ชื่อร้านของคำขอ (ร้านเจ้าของแผง + ร้านผู้รับเช่าช่วง) — โหลดเป็นชุดเดียว
+async function shopNamesOf(rows) {
+    const ids = [...new Set(rows.flatMap((r) => [r.shopId, r.subShopId]).filter(Boolean))];
+    const shops = ids.length ? await prisma.shopDetail.findMany({ where: { id: { in: ids } }, select: { id: true, shopName: true } }) : [];
+    return new Map(shops.map((s) => [s.id, s.shopName || 'ร้านไม่มีชื่อ']));
+}
+
+function decorate(row, shopNames, now = new Date()) {
+    return {
+        ...row,
+        kindLabel: KIND_LABEL[row.kind] || row.kind,
+        statusLabel: STATUS_LABEL[row.status] || row.status,
+        shopName: shopNames.get(row.shopId) || '-',
+        subShopName: row.subShopId ? (shopNames.get(row.subShopId) || '-') : null,
+        rangeText: rangeText(row),
+        days: dayCount(row.startDate, row.endDate),
+        createdText: `${thaiDate(row.createdAt)} ${thaiTime(row.createdAt)}`,
+        reviewedText: row.reviewedAt ? `${thaiDate(row.reviewedAt)} ${thaiTime(row.reviewedAt)}` : null,
+        canCancel: canCancel(row, now)
+    };
+}
+
+async function listForOwner(userId, now = new Date()) {
+    const rows = await prisma.stallLeaveRequest.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 100 });
+    const names = await shopNamesOf(rows);
+    return rows.map((row) => decorate(row, names, now));
+}
+
+// หน้าแอดมิน: แท็บ รอพิจารณา / อนุมัติแล้ว (ยังไม่จบ) / ปิดแล้ว
+const ADMIN_TABS = [
+    { key: 'pending', label: 'รอพิจารณา', where: () => ({ status: 'PENDING' }) },
+    { key: 'approved', label: 'อนุมัติแล้ว', where: (today) => ({ status: 'APPROVED', endDate: { gte: today } }) },
+    { key: 'closed', label: 'ปิดแล้ว', where: (today) => ({ OR: [{ status: { in: ['REJECTED', 'CANCELLED', 'EXPIRED'] } }, { status: 'APPROVED', endDate: { lt: today } }] }) }
+];
+
+async function loadAdminPage(tabKey, now = new Date()) {
+    const today = businessDateOf(now);
+    const active = ADMIN_TABS.find((t) => t.key === tabKey) || ADMIN_TABS[0];
+    const [counts, rows] = await Promise.all([
+        Promise.all(ADMIN_TABS.map((t) => prisma.stallLeaveRequest.count({ where: t.where(today) }))),
+        prisma.stallLeaveRequest.findMany({ where: active.where(today), orderBy: active.key === 'pending' ? { startDate: 'asc' } : { updatedAt: 'desc' }, take: 200 })
+    ]);
+    const names = await shopNamesOf(rows);
+    const owners = rows.length
+        ? await prisma.user.findMany({ where: { id: { in: [...new Set(rows.map((r) => r.userId))] } }, select: { id: true, name: true, phoneNumber: true } })
+        : [];
+    const ownerById = new Map(owners.map((u) => [u.id, u]));
+    // จำนวนวันที่แผงนี้ลา/เช่าช่วง (อนุมัติแล้ว) ใน 60 วันที่ผ่านมาถึงอนาคต — ช่วยแอดมินดูว่าร้านลาบ่อยไหม
+    const codes = [...new Set(rows.map((r) => r.stallCode))];
+    const history = codes.length
+        ? await prisma.stallLeaveRequest.findMany({ where: { stallCode: { in: codes }, status: 'APPROVED', endDate: { gte: addDays(today, -60) } }, select: { id: true, stallCode: true, startDate: true, endDate: true } })
+        : [];
+    const approvedDaysByCode = new Map();
+    history.forEach((h) => approvedDaysByCode.set(h.stallCode, (approvedDaysByCode.get(h.stallCode) || 0) + dayCount(h.startDate, h.endDate)));
+
+    return {
+        tabs: ADMIN_TABS.map((t, i) => ({ key: t.key, label: t.label, count: counts[i] })),
+        activeTab: active.key,
+        rows: rows.map((row) => {
+            const owner = ownerById.get(row.userId) || {};
+            return {
+                ...decorate(row, names, now),
+                ownerName: owner.name || '-',
+                ownerPhone: owner.phoneNumber || '',
+                approvedDays: approvedDaysByCode.get(row.stallCode) || 0
+            };
+        })
+    };
+}
+
+// คำขอที่อนุมัติแล้วและครอบวันนั้น: Map stallCode → แถว (ผังตลาด/ผังแอดมิน/ตรวจตลาดใช้ต่อ)
+async function getApprovedOnDay(day = businessDateOf(new Date())) {
+    const date = toStartOfDay(day);
+    const rows = await prisma.stallLeaveRequest.findMany({
+        where: { status: 'APPROVED', startDate: { lte: date }, endDate: { gte: date } }
+    });
+    return new Map(rows.map((row) => [row.stallCode, row]));
+}
+
+// แจ้งเตือนเจ้าของแผงเมื่อแอดมินตัดสินแล้ว (หน้า /notifications) — 30 วันล่าสุด
+async function buildLeaveNotifications(userId, now = new Date()) {
+    if (!userId) return [];
+    const rows = await prisma.stallLeaveRequest.findMany({
+        where: { userId, status: { in: ['APPROVED', 'REJECTED'] }, reviewedAt: { gte: addDays(now, -30) } },
+        orderBy: { reviewedAt: 'desc' }
+    });
+    return rows.map((row) => {
+        const approved = row.status === 'APPROVED';
+        const kind = KIND_LABEL[row.kind] || 'ลาหยุด';
+        return {
+            id: `stall-leave-${row.id}`,
+            type: approved ? 'stall-leave-approved' : 'stall-leave-rejected',
+            title: approved ? `อนุมัติ${kind}แผง ${row.stallCode} แล้ว` : `ไม่อนุมัติ${kind}แผง ${row.stallCode}`,
+            desc: approved
+                ? `วันที่ ${rangeText(row)}`
+                : `วันที่ ${rangeText(row)} — เหตุผล: ${row.rejectReason || '-'}`,
+            date: thaiDate(row.reviewedAt),
+            time: thaiTime(row.reviewedAt),
+            at: row.reviewedAt.toISOString(),
+            status: approved ? 'SUCCESS' : 'REJECTED',
+            isRead: false,
+            isNew: true,
+            link: '/stall-leave',
+            linkIcon: 'bi-calendar2-x',
+            linkLabel: 'ดูคำขอลาหยุด/เช่าช่วง'
+        };
+    });
+}
+
+module.exports = {
+    NOTICE_CUTOFF_HOUR,
+    MAX_RANGE_DAYS,
+    ACTIVE_STATUSES,
+    KIND_LABEL,
+    STATUS_LABEL,
+    ERROR_MESSAGES,
+    StallLeaveError,
+    toDateKey,
+    parseDateKey,
+    thaiDate,
+    rangeText,
+    earliestStartDate,
+    loadShopStalls,
+    validateRequest,
+    createLeave,
+    canCancel,
+    cancelRequest,
+    approveRequest,
+    rejectRequest,
+    countPendingLeaves,
+    listForOwner,
+    loadAdminPage,
+    getApprovedOnDay,
+    buildLeaveNotifications
+};

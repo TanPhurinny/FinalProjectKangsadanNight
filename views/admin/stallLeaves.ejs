@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ลาหยุด / เช่าช่วงแผง — Admin</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+    <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+    <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
+</head>
+<body class="eb-body">
+    <script src="/js/common/tabSession.js"></script>
+    <%- include('../partials/navbar') %>
+    <%
+        const successMessages = {
+            approved: 'อนุมัติแล้ว ร้านได้รับแจ้งในหน้าแจ้งเตือน',
+            rejected: 'บันทึกไม่อนุมัติแล้ว ร้านได้รับแจ้งพร้อมเหตุผล'
+        };
+        const pillClass = { WAITING_SUBTENANT: 'eb-pill--pending', PENDING: 'eb-pill--pending', APPROVED: 'eb-pill--success', REJECTED: 'eb-pill--danger' };
+    %>
+
+    <main class="eb-page">
+        <header class="eb-head">
+            <div>
+                <p class="eb-kicker">แผงที่ร้านเช่าอยู่</p>
+                <h1 class="eb-title">ลาหยุด / เช่าช่วงแผง</h1>
+                <p class="eb-lead">ร้านแจ้งไม่มาขายบางวันในช่วงสัญญา หรือขอให้ร้านอื่นมาขายแทนชั่วคราว ไม่มีการคืนหรือเก็บเงินเพิ่มผ่านระบบ
+                    อนุมัติแล้วผังตลาดจะแสดงสถานะของแผงในวันนั้น</p>
+            </div>
+            <a class="eb-zone-tag" href="/admin/slots"><i class="fa-solid fa-map"></i> ผังจัดแผง</a>
+        </header>
+
+        <% if (success && successMessages[success]) { %>
+        <div class="eb-notice eb-notice--success" role="status"><%= successMessages[success] %></div>
+        <% } %>
+        <% if (error) { %>
+        <div class="eb-notice eb-notice--danger" role="alert"><%= error %></div>
+        <% } %>
+
+        <nav class="eb-tabs" aria-label="สถานะคำขอ">
+            <% tabs.forEach((tab) => { %>
+            <a class="eb-tab <%= tab.key === activeTab ? 'is-active' : '' %>" href="/admin/stall-leaves?tab=<%= tab.key %>" <%= tab.key === activeTab ? 'aria-current="page"' : '' %>>
+                <span><%= tab.label %></span><b><%= tab.count %></b>
+            </a>
+            <% }) %>
+        </nav>
+
+        <% if (!rows.length) { %>
+        <div class="eb-empty">ไม่มีคำขอในสถานะนี้</div>
+        <% } %>
+
+        <% rows.forEach((r) => { %>
+        <article class="eb-req <%= r.id === focusId ? 'is-focus' : '' %>" id="req-<%= r.id %>">
+            <div class="eb-req-head">
+                <div>
+                    <h2 class="eb-req-title"><%= r.kindLabel %> · แผง <%= r.stallCode %></h2>
+                    <div class="eb-req-sub">#<%= r.id %> · ร้าน <%= r.shopName %> · ส่งเมื่อ <%= r.createdText %></div>
+                </div>
+                <span class="eb-pill <%= pillClass[r.status] || '' %>"><%= r.statusLabel %></span>
+            </div>
+            <div class="eb-req-body">
+                <div class="eb-req-cell"><small>เจ้าของแผง</small><span><%= r.ownerName %><% if (r.ownerPhone) { %><br><a href="tel:<%= r.ownerPhone %>"><%= r.ownerPhone %></a><% } %></span></div>
+                <div class="eb-req-cell"><small>วันที่</small><span><%= r.rangeText %></span></div>
+                <div class="eb-req-cell"><small>แผงนี้ลา/เช่าช่วงที่อนุมัติแล้ว (60 วัน)</small><span><%= r.approvedDays %> วัน</span></div>
+                <% if (r.reviewedText) { %><div class="eb-req-cell"><small>พิจารณาเมื่อ</small><span><%= r.reviewedText %><%= r.reviewedByName ? ` · ${r.reviewedByName}` : '' %></span></div><% } %>
+            </div>
+            <div class="eb-req-desc">เหตุผลของร้าน: <%= r.reason %></div>
+            <% if (r.status === 'REJECTED' && r.rejectReason) { %>
+            <div class="eb-req-desc" style="color:var(--eb-danger)">ไม่อนุมัติ: <%= r.rejectReason %></div>
+            <% } %>
+
+            <% if (r.status === 'PENDING') { %>
+            <div class="eb-req-actions">
+                <form method="POST" action="/admin/stall-leaves/approve"
+                      data-confirm-title="อนุมัติคำขอนี้?"
+                      data-confirm-message="<%= r.kindLabel %> แผง <%= r.stallCode %> · <%= r.rangeText %>"
+                      data-confirm-tone="success"
+                      data-confirm-text="อนุมัติ">
+                    <input type="hidden" name="requestId" value="<%= r.id %>">
+                    <button type="submit" class="eb-btn eb-btn--sm"><i class="fa-solid fa-check"></i> อนุมัติ</button>
+                </form>
+                <form method="POST" action="/admin/stall-leaves/reject"
+                      data-confirm-title="ไม่อนุมัติคำขอนี้?"
+                      data-confirm-message="<%= r.kindLabel %> แผง <%= r.stallCode %> · <%= r.rangeText %>&#10;ร้านจะได้รับแจ้งพร้อมเหตุผล"
+                      data-confirm-tone="danger"
+                      data-confirm-text="ไม่อนุมัติ">
+                    <input type="hidden" name="requestId" value="<%= r.id %>">
+                    <input type="text" name="reason" maxlength="500" required placeholder="เหตุผลที่ไม่อนุมัติ" aria-label="เหตุผลที่ไม่อนุมัติ">
+                    <button type="submit" class="eb-btn eb-btn--danger eb-btn--sm">ไม่อนุมัติ</button>
+                </form>
+            </div>
+            <% } %>
+        </article>
+        <% }) %>
+    </main>
+
+    <script src="/js/common/dialogs.js?v=20261023-input"></script>
+    <script>
+        // ยืนยันก่อนกดปุ่มที่ย้อนไม่ได้ + เลื่อนไปที่คำขอที่ลิงก์มา (?focus=) — แบบเดียวกับหน้าบูธกิจกรรม
+        document.querySelectorAll('form[data-confirm-title]').forEach((form) => {
+            form.addEventListener('submit', (e) => {
+                if (form.dataset.confirmed === '1') return;
+                e.preventDefault();
+                if (!form.reportValidity()) return;
+                window.showConfirmDialog({
+                    title: form.dataset.confirmTitle,
+                    message: form.dataset.confirmMessage,
+                    tone: form.dataset.confirmTone,
+                    confirmText: form.dataset.confirmText,
+                    onConfirm: () => {
+                        form.dataset.confirmed = '1';
+                        form.requestSubmit ? form.requestSubmit() : form.submit();
+                    }
+                });
+            });
+        });
+        const focused = document.querySelector('.eb-req.is-focus');
+        if (focused) focused.scrollIntoView({ block: 'center' });
+    </script>
+</body>
+</html>

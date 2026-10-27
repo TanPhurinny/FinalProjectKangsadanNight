@@ -13,7 +13,7 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/seller/repair.css">
-        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261026-reviewtabs">
+        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261028-stalls">
         <link rel="stylesheet" href="/stylesheets/partials/shopSwitch.css?v=20261027">
     </head>
 
@@ -101,6 +101,41 @@
                 </div>
                 <p class="text-muted small">ชื่อร้านและประเภทสินค้ามาจากใบสมัครที่ผ่านการอนุมัติแล้ว แก้ไขไม่ได้ที่นี่
                     เพื่อให้ตรงกับข้อมูลที่แอดมินตรวจสอบไว้เสมอ — หากต้องการเปลี่ยน ติดต่อแอดมิน</p>
+
+                <% if (locals.myStalls) { const ms = locals.myStalls; const os = ms.openStatus; %>
+                <!-- แผงของร้านนี้: ปิดร้านวันนี้ (แยกต่อร้าน) + แจ้งลาหยุดรายแผง (utils/stallLeave.js) -->
+                <section class="my-stalls" id="my-stalls" aria-labelledby="myStallsTitle" data-shop-id="<%= ms.shopId %>" data-open="<%= os.isOpen ? '1' : '0' %>">
+                    <div class="pm-head">
+                        <span class="pm-title" id="myStallsTitle">แผงของร้านนี้</span>
+                        <span class="pm-score"><b><%= ms.stalls.length %></b> แผง</span>
+                    </div>
+                    <% if (ms.stalls.length) { %>
+                    <div class="ms-open">
+                        <span data-ms-open-text><%= os.isOpen ? 'วันนี้ร้านเปิดอยู่' : 'ปิดร้านแล้ววันนี้' %></span>
+                        <button type="button" class="ms-btn" data-ms-open-btn><%= os.isOpen ? 'ปิดร้านวันนี้' : 'ยกเลิกการปิด' %></button>
+                    </div>
+                    <ul class="ms-list">
+                        <% ms.stalls.forEach(function (s) { %>
+                        <li class="ms-item">
+                            <div class="ms-code"><b><%= s.code %></b><small>สัญญา <%= s.contractText %></small></div>
+                            <div class="ms-leaves">
+                                <% if (!s.leaves.length) { %><small>ไม่มีคำขอลาหยุด/เช่าช่วง</small><% } %>
+                                <% s.leaves.forEach(function (l) { %>
+                                <small class="ms-leave ms-leave--<%= l.status.toLowerCase() %>"><%= l.kindLabel %> <%= l.rangeText %> · <%= l.statusLabel %></small>
+                                <% }) %>
+                            </div>
+                            <div class="ms-actions">
+                                <a class="ms-btn" href="/stall-leave/new?shop=<%= ms.shopId %>&stall=<%= s.code %>">แจ้งลาหยุด</a>
+                                <a class="ms-btn ms-btn--ghost" href="/market-map?stall=<%= s.code %>">ดูบนผัง</a>
+                            </div>
+                        </li>
+                        <% }) %>
+                    </ul>
+                    <% } else { %>
+                    <p class="pm-done ms-empty">ร้านนี้ยังไม่มีแผงที่ชำระเงินแล้วและสัญญายังไม่หมด <a href="/select-zone?shop=<%= ms.shopId %>">จองแผง</a></p>
+                    <% } %>
+                </section>
+                <% } %>
 
                 <%
                 // ความครบของโปรไฟล์ร้าน — นับจากข้อมูลที่บันทึกแล้วเท่านั้น (ไม่ใช่ค่าที่ค้างในฟอร์มตอน error)
@@ -368,5 +403,43 @@
         <script src="/js/seller/shopProfile.js?v=20261023-logo"></script>
         <script src="/js/common/dialogs.js"></script>
         <script src="/js/seller/shopReviews.js?v=20261026-tabs"></script>
+        <script>
+            // ปิดร้านวันนี้ของร้านที่กำลังดู (ร้านอื่นของผู้ใช้ไม่โดน) — endpoint เดียวกับหน้าแรกผู้ขาย
+            (function () {
+                const box = document.getElementById('my-stalls');
+                const btn = box && box.querySelector('[data-ms-open-btn]');
+                if (!btn) return;
+                const text = box.querySelector('[data-ms-open-text]');
+                async function save(open) {
+                    btn.disabled = true;
+                    try {
+                        const response = await fetch('/shop-status', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                            body: JSON.stringify({ open, shopId: box.dataset.shopId })
+                        });
+                        const payload = await response.json();
+                        if (!response.ok || !payload.success) throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
+                        box.dataset.open = payload.isOpen ? '1' : '0';
+                        text.textContent = payload.isOpen ? 'วันนี้ร้านเปิดอยู่' : 'ปิดร้านแล้ววันนี้';
+                        btn.textContent = payload.isOpen ? 'ปิดร้านวันนี้' : 'ยกเลิกการปิด';
+                    } catch (error) {
+                        window.showAlertDialog({ title: 'บันทึกไม่สำเร็จ', message: error.message, tone: 'danger' });
+                    } finally {
+                        btn.disabled = false;
+                    }
+                }
+                btn.addEventListener('click', () => {
+                    if (box.dataset.open !== '1') { save(true); return; }
+                    window.showConfirmDialog({
+                        title: 'ปิดร้านวันนี้?',
+                        message: 'ลูกค้าจะเห็นบนผังตลาดว่าร้านนี้ปิดแล้ว ร้านจะกลับมาเปิดเองในวันขายถัดไป',
+                        tone: 'warning',
+                        confirmText: 'ปิดร้าน',
+                        onConfirm: () => save(false)
+                    });
+                });
+            })();
+        </script>
     </body>
 </html>

@@ -12,6 +12,7 @@ const boothSlips = typeof eventBoothTodo !== 'undefined' && eventBoothTodo ? cou
 const reviewCount = typeof reportedReviews !== 'undefined' ? count(reportedReviews) : 0;
 const leaseCount = typeof leaseContractTodo !== 'undefined' ? count(leaseContractTodo) : 0;
 const taxCount = typeof taxInvoiceTodo !== 'undefined' ? count(taxInvoiceTodo) : 0;
+const leaveCount = typeof stallLeaveTodo !== 'undefined' ? count(stallLeaveTodo) : 0;
 const documentCount = leaseCount + taxCount;
 // badge แยกประเภท ให้รู้ว่าคำขอที่เข้ามาเป็นใบกำกับภาษีหรือสัญญาเช่า (แสดงเฉพาะที่มีค้าง)
 const documentBadges = [
@@ -43,6 +44,7 @@ const moreLinks = isStaff ? [] : [
     { href: '/admin/rental-statements', icon: 'fa-file-invoice-dollar', label: 'รายงานการชำระค่าเช่า', match: '/rental-statements' },
     // ใบกำกับภาษี + สัญญาเช่า รวมเป็นเมนูเดียว เข้าแล้วเลือกได้ว่าจะจัดการอะไร (/admin/documents)
     { href: '/admin/documents', icon: 'fa-folder-open', label: 'คำขอเอกสาร (ใบกำกับภาษี / สัญญาเช่า)', match: ['/admin/documents', 'tax-invoice', '/lease-contracts'], badge: documentCount, badges: documentBadges },
+    { href: '/admin/stall-leaves', icon: 'fa-calendar-minus', label: 'ลาหยุด / เช่าช่วงแผง', match: '/admin/stall-leaves', badge: leaveCount, title: `คำขอรอพิจารณา ${leaveCount}` },
     { href: '/admin/announcements', icon: 'fa-bullhorn', label: 'จัดการประกาศ', match: 'announcements' },
     { href: '/admin/shop-reviews', icon: 'fa-star-half-stroke', label: 'รีวิวร้านค้า', match: '/shop-reviews', badge: reviewCount, title: `รีวิวที่ร้านรายงานรอตรวจ ${reviewCount}` },
     { href: '/admin/community-banners', icon: 'fa-images', label: 'แบนเนอร์คอมมูนิตี้', match: '/community-banners' },

@@ -10,7 +10,8 @@ const { shopViewLimiter } = require('../middlewares/authRateLimit');
 const { isStaffOrAdmin } = require('../middlewares/auth');
 const { getShopViewStats } = require('../utils/shopViews');
 const { getSellerReviewPanel, buildReviewNotifications } = require('../utils/shopReviews');
-const { setOpenStatus } = require('../utils/shopOpenStatus');
+const { setOpenStatus, getOpenStatus, businessDateOf } = require('../utils/shopOpenStatus');
+const stallLeave = require('../utils/stallLeave');
 const { setPromo } = require('../utils/shopPromo');
 const { buildProfileChecks } = require('../utils/shopCompleteness');
 const { buildSellerHome } = require('../utils/sellerHome');
@@ -1210,15 +1211,47 @@ async function loadProfileShop(req) {
     return { shops, shop: shop || await getPrimaryShop(req.user.id, { include: SHOP_GALLERY_INCLUDE }) };
 }
 
+// ส่วน "แผงของร้านนี้" ในหน้าร้านค้าของฉัน: แผงที่ชำระแล้ว สัญญายังไม่หมด + คำขอลาหยุด/เช่าช่วงที่ยังไม่จบ
+async function loadShopStallPanel(userId, shop) {
+    if (!shop) return null;
+    const [stalls, openStatus] = await Promise.all([
+        stallLeave.loadShopStalls(userId, shop.id),
+        getOpenStatus(shop.id)
+    ]);
+    const codes = stalls.map((s) => s.code);
+    const leaves = codes.length
+        ? await prisma.stallLeaveRequest.findMany({
+            where: { stallCode: { in: codes }, shopId: shop.id, status: { in: stallLeave.ACTIVE_STATUSES }, endDate: { gte: businessDateOf() } },
+            orderBy: { startDate: 'asc' }
+        })
+        : [];
+    return {
+        shopId: shop.id,
+        openStatus,
+        stalls: stalls.map((s) => ({
+            code: s.code,
+            contractText: `${stallLeave.thaiDate(s.contractStart)} – ${stallLeave.thaiDate(s.contractEnd)}`,
+            leaves: leaves.filter((l) => l.stallCode === s.code).map((l) => ({
+                kindLabel: stallLeave.KIND_LABEL[l.kind],
+                statusLabel: stallLeave.STATUS_LABEL[l.status],
+                status: l.status,
+                rangeText: stallLeave.rangeText(l)
+            }))
+        }))
+    };
+}
+
 // --- หน้าแก้ไขโปรไฟล์ร้านค้า (เฉพาะผู้ขายที่ได้รับอนุมัติเป็น SELLER แล้ว) ---
 router.get('/shop-profile', isSellerOnly, async (req, res) => {
     const { shops, shop } = await loadProfileShop(req);
 
     // ขอใบกำกับภาษีย้ายไปอยู่หน้า /documents/tax-invoice (รวมกับขอสัญญาเช่าที่ /documents)
-    const [viewStats, reviewPanel] = await Promise.all([
+    const [viewStats, reviewPanel, myStalls] = await Promise.all([
         getShopViewStats(req.user.id),
         // รีวิวร้านจากสมาชิก — ผู้ขายตอบ/รายงานรีวิวได้ (public/js/seller/shopReviews.js)
-        getSellerReviewPanel(req.user.id)
+        getSellerReviewPanel(req.user.id),
+        // แผงของร้านนี้ + สถานะเปิด/ปิดวันนี้ + คำขอลาหยุดที่ยังมีผล
+        loadShopStallPanel(req.user.id, shop)
     ]);
 
     res.render('seller/shopProfile', {
@@ -1230,6 +1263,7 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
         maxMenuImages: MAX_SHOP_MENU_IMAGES,
         viewStats,
         reviewPanel,
+        myStalls,
         error: req.query.error || null,
         success: req.query.success || null
     });
@@ -2842,6 +2876,8 @@ async function loadSellerBookingStatus(userId, { previewNotice = false } = {}) {
         ...communityNotifications,
         ...reviewNotifications,
         ...(await rainCompensation.buildRainNotifications(userId)),
+        // ผลคำขอลาหยุด/เช่าช่วงแผง (utils/stallLeave.js)
+        ...(await stallLeave.buildLeaveNotifications(userId)),
         ...buildRepairNotifications(repairReports),
         ...buildTaxInvoiceNotifications(taxInvoiceRequests),
         ...leaseContractCtrl.buildLeaseContractNotifications(leaseContractRequests, formatDateThai, formatTimeThai),

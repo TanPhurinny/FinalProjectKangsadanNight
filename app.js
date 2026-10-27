@@ -111,6 +111,7 @@ const staffRoutes = require('./routes/staffRoutes');
 const communityRoutes = require('./routes/communityRoutes');
 const sellerRoute = require('./routes/sellerRoute');
 const eventBoothRoutes = require('./routes/eventBoothRoutes');
+const stallLeaveRoutes = require('./routes/stallLeaveRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const announceCtrl = require('./controllers/announcementController');
 const { buildPublicHome } = require('./utils/publicHome');
@@ -144,7 +145,10 @@ const approvalCtrl = require('./controllers/approvalController');
 const { countEventBoothTodo } = require('./utils/eventBooth');
 const { countPendingLeaseContracts } = require('./controllers/leaseContractController');
 const { countReportedReviews } = require('./utils/shopReviews');
+const { countPendingLeaves } = require('./utils/stallLeave');
 let approvalTodoCache = null;
+// ร้านส่ง/ยกเลิกคำขอลาหยุด/เช่าช่วง → badge แอดมินขึ้นทันที (controllers/stallLeaveController.js)
+app.locals.clearAdminTodoCache = () => { approvalTodoCache = null; };
 app.use(async (req, res, next) => {
   try {
     // ผู้ขายกดรายงานรีวิว → ล้าง cache ให้ badge "รีวิวร้านค้า" ของแอดมิน/staff ขึ้นทันที
@@ -154,17 +158,17 @@ app.use(async (req, res, next) => {
     }
     // staff ใช้แค่ badge รีวิวร้านค้า (เมนูอื่นของ staff ไม่มี badge) — คำนวณจาก cache ชุดเดียวกับแอดมิน
     if (req.user?.role !== 'ADMIN' && req.user?.role !== 'STAFF') return next();
-    if (req.method === 'POST' && /^\/admin\/(approvals|booking-stall|event-booths|lease-contracts|tax-invoice-requests|shop-reviews)/.test(req.path)) {
+    if (req.method === 'POST' && /^\/admin\/(approvals|booking-stall|event-booths|lease-contracts|tax-invoice-requests|shop-reviews|stall-leaves)/.test(req.path)) {
       approvalTodoCache = null;
       return next();
     }
     if (req.method !== 'GET' || !String(req.headers.accept || '').includes('text/html')) return next();
     if (!approvalTodoCache || Date.now() - approvalTodoCache.at > 60 * 1000) {
-      const [approvalTodo, eventBoothTodo, leaseContractTodo, taxInvoiceTodo, reportedReviews] = await Promise.all([
+      const [approvalTodo, eventBoothTodo, leaseContractTodo, taxInvoiceTodo, reportedReviews, stallLeaveTodo] = await Promise.all([
         approvalCtrl.countApprovalTodo(), countEventBoothTodo(), countPendingLeaseContracts(),
-        prisma.taxInvoiceRequest.count({ where: { status: 'PENDING' } }), countReportedReviews()
+        prisma.taxInvoiceRequest.count({ where: { status: 'PENDING' } }), countReportedReviews(), countPendingLeaves()
       ]);
-      approvalTodoCache = { at: Date.now(), value: approvalTodo, eventBoothTodo, leaseContractTodo, taxInvoiceTodo, reportedReviews };
+      approvalTodoCache = { at: Date.now(), value: approvalTodo, eventBoothTodo, leaseContractTodo, taxInvoiceTodo, reportedReviews, stallLeaveTodo };
     }
     res.locals.approvalTodo = approvalTodoCache.value;
     // คำขอบูธกิจกรรมที่รอแอดมิน (ใหม่ + สลิปรอยืนยัน) — badge แยกบนเมนู "บูธกิจกรรม"
@@ -174,6 +178,8 @@ app.use(async (req, res, next) => {
     res.locals.taxInvoiceTodo = approvalTodoCache.taxInvoiceTodo;
     // รีวิวร้านที่ร้านกดรายงานและยังไม่ตัดสิน — badge บนเมนู "รีวิวร้านค้า" (แอดมิน: ในเมนูเพิ่มเติม / staff: เมนูหลัก)
     res.locals.reportedReviews = approvalTodoCache.reportedReviews;
+    // คำขอลาหยุด/เช่าช่วงแผงที่รอแอดมิน — badge เมนู "ลาหยุด / เช่าช่วงแผง" ในเมนูเพิ่มเติม
+    res.locals.stallLeaveTodo = approvalTodoCache.stallLeaveTodo;
   } catch (error) {
     logger.error({ error: error.message }, 'count approval todo failed');
   }
@@ -232,6 +238,7 @@ app.use('/staff', staffRoutes); // Staff pages
 app.use('/', communityRoutes); // Community Feed APIs + Pages
 app.use('/', sellerRoute); // เลือกโซน, แจ้งซ่อม, จองแผง
 app.use('/', eventBoothRoutes); // ขอจัดบูธกิจกรรม (โซน G) ไม่ต้อง login
+app.use('/', stallLeaveRoutes); // ลาหยุด / ปล่อยเช่าช่วงแผง (ร้าน)
 app.use('/', reviewRoutes); // รีวิวร้านค้า (อ่านได้ทุกคน เขียนได้เฉพาะสมาชิก)
 
 // --- 6. Error Handling 404 (ต้องอยู่ท้ายสุดเสมอ) ---

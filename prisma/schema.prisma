@@ -1010,3 +1010,59 @@ enum RainCreditStatus {
   REVOKED
   SKIPPED_CAP
 }
+
+// คำขอ "ลาหยุด" และ "ปล่อยเช่าช่วง" ของแผงที่ร้านเช่า (ชำระแล้ว) อยู่ — ตารางเดียวกันเพราะกติกาวันซ้อน/การอนุมัติ/การแสดงบนผังเหมือนกัน
+// ไม่มีเงินเข้าออกผ่านระบบ (ร้านเจ้าของแผงกับผู้รับเช่าช่วงตกลงกันเอง) — กติกาทั้งหมดอยู่ใน utils/stallLeave.js
+// kind: LEAVE = ลาหยุด / SUBLET_MEMBER = ให้ร้านสมาชิกเช่าช่วง (subShopId) / SUBLET_GUEST = ให้คนนอกเช่าช่วง (กรอกเองผ่าน guestToken)
+// status: WAITING_SUBTENANT (รอผู้รับเช่าช่วงยอมรับ/กรอกข้อมูล) → PENDING (รอแอดมิน) → APPROVED / REJECTED, CANCELLED (เจ้าของยกเลิก), EXPIRED (ลิงก์คนนอกหมดอายุ)
+model StallLeaveRequest {
+  id                   Int              @id @default(autoincrement())
+  kind                 StallLeaveKind   @default(LEAVE)
+  status               StallLeaveStatus @default(PENDING)
+  userId               Int
+  shopId               Int
+  bookingRequestId     Int?
+  stallCode            String           @db.VarChar(20)
+  startDate            DateTime
+  endDate              DateTime
+  reason               String           @db.Text
+  subShopId            Int?
+  subtenantAcceptedAt  DateTime?
+  guestToken           String?          @unique @db.VarChar(64)
+  guestTokenExpiresAt  DateTime?
+  guestName            String?
+  guestPhone           String?          @db.VarChar(20)
+  guestIdCard          String?          @db.VarChar(20)
+  guestProductType     String?
+  guestProductSubtype  String?
+  guestProductDetail   String?          @db.Text
+  guestImages          String?          @db.Text
+  guestTermsAcceptedAt DateTime?
+  rejectReason         String?          @db.Text
+  reviewedById         Int?
+  reviewedByName       String?
+  reviewedAt           DateTime?
+  cancelledAt          DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([stallCode, startDate])
+  @@index([userId])
+  @@index([subShopId])
+  @@index([status])
+}
+
+enum StallLeaveKind {
+  LEAVE
+  SUBLET_MEMBER
+  SUBLET_GUEST
+}
+
+enum StallLeaveStatus {
+  WAITING_SUBTENANT
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}

@@ -468,3 +468,28 @@
 .sr-btn-ghost:hover { background: #f6f8f8; }
 .sr-btn-report { border-color: var(--line); color: var(--ink-soft); }
 
+
+/* ── แผงของร้านนี้: ปิดร้านวันนี้ + แจ้งลาหยุดรายแผง ── */
+.my-stalls { margin: 18px 0 0; border: 1px solid var(--navy); }
+.ms-open { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--navy); font-size: 0.88rem; font-weight: 600; color: #1e7a45; }
+.my-stalls[data-open="0"] .ms-open { color: #a93226; background: #fdf2f1; }
+.ms-list { list-style: none; margin: 0; padding: 0; }
+.ms-item { display: grid; grid-template-columns: 150px 1fr auto; gap: 6px 14px; align-items: center; padding: 10px 14px; border-bottom: 1px dashed var(--line); }
+.ms-item:last-child { border-bottom: 0; }
+.ms-code { display: flex; flex-direction: column; }
+.ms-code b { font-family: var(--mono); font-size: 1.1rem; color: var(--navy); }
+.ms-code small, .ms-leaves small { color: var(--ink-soft); font-size: 0.78rem; }
+.ms-leaves { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ms-leave--approved { color: #1e7a45 !important; }
+.ms-leave--pending, .ms-leave--waiting_subtenant { color: #a06c1f !important; }
+.ms-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.ms-btn { display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid var(--navy); background: var(--navy); color: #fff; font: inherit; font-size: 0.82rem; font-weight: 600; text-decoration: none; border-radius: 0; cursor: pointer; }
+.ms-btn:hover { background: #fff; color: var(--navy); }
+.ms-btn--ghost, .ms-open .ms-btn { background: #fff; color: var(--navy); }
+.ms-btn--ghost:hover, .ms-open .ms-btn:hover { background: var(--navy); color: #fff; }
+.ms-btn:disabled { opacity: .6; cursor: wait; }
+.ms-empty a { color: var(--navy); }
+@media (max-width: 640px) {
+    .ms-item { grid-template-columns: 1fr; }
+    .ms-actions { justify-content: flex-start; }
+}

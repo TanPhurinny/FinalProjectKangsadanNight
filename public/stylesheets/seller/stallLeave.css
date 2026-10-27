@@ -1,0 +1,9 @@
+/* ลาหยุด / เช่าช่วงแผง — ต่อยอดจาก eventBooth.css (gridgeist: เส้น 1px มุมเหลี่ยม) */
+.sl-stalls { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); border-top: 1px solid var(--eb-line); border-left: 1px solid var(--eb-line); }
+.sl-stall { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-right: 1px solid var(--eb-line); border-bottom: 1px solid var(--eb-line); cursor: pointer; background: #fff; }
+.sl-stall input { position: absolute; opacity: 0; pointer-events: none; }
+.sl-stall b { font-size: 18px; color: var(--eb-navy); font-variant-numeric: tabular-nums; }
+.sl-stall small { font-size: 12px; color: var(--eb-sub); }
+.sl-stall:has(input:checked) { background: var(--eb-soft); box-shadow: inset 3px 0 0 var(--eb-primary); }
+.sl-stall:has(input:focus-visible) { outline: 2px solid var(--eb-primary); outline-offset: -2px; }
+.eb-page > .shop-switch { margin-bottom: 16px; }
