@@ -176,7 +176,13 @@
                             <div class="holiday-form rain-announce-form">
                                 <div>
                                     <label class="field-label">ประกาศผลให้ผู้ขายเห็นเวลา</label>
-                                    <input type="time" class="field-input" name="announceTime" value="<%= preview.announceTime %>">
+                                    <%# เลือกเวลาแบบ 24 ชม. (ช่อง type="time" ขึ้น AM/PM ตามภาษาเครื่อง อ่านยาก) — ทุก 30 นาที 17:00–23:30 %>
+                                    <select class="field-input" name="announceTime">
+                                        <option value="now">ทันทีที่กดประกาศ</option>
+                                        <% for (let h = 17; h <= 23; h += 1) { ['00', '30'].forEach(function (m) { const t = `${h}:${m}`; %>
+                                        <option value="<%= t %>" <%= preview.announceTime === t ? 'selected' : '' %>><%= t %> น.</option>
+                                        <% }) } %>
+                                    </select>
                                 </div>
                                 <div class="rain-note-field">
                                     <label class="field-label">หมายเหตุ <span>(ไม่บังคับ)</span></label>

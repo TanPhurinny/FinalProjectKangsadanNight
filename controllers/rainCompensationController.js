@@ -14,8 +14,9 @@ function toTimeValue(date) {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-// "21:30" + วันฝนตก → Date — ว่าง/รูปแบบผิด = 21:30 ของวันนั้น
+// "21:30" + วันฝนตก → Date — "now" = ประกาศทันที, ว่าง/รูปแบบผิด = 21:30 ของวันนั้น
 function parseAnnounceAt(date, raw) {
+    if (String(raw || '').trim() === 'now') return new Date();
     const match = /^(\d{2}):(\d{2})$/.exec(String(raw || '').trim());
     if (!match) return rain.defaultAnnounceAt(date);
     const at = new Date(date);
