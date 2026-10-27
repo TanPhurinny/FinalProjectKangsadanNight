@@ -330,8 +330,9 @@
     const groups = new Map();
     items.filter((i) => !i.notice).sort(byDeadline).forEach((item) => {
       const code = (item.renew && item.renew.stallCode) || item.stallCode || item.id;
-      if (!groups.has(code)) groups.set(code, { main: item, nudged: 0 });
+      if (!groups.has(code)) groups.set(code, { main: item, nudged: 0, keys: [] });
       const g = groups.get(code);
+      g.keys.push(item.key);
       if (String(item.id).startsWith('renewal-notice-')) g.nudged = Math.max(g.nudged, Number(item.nudgeCount) || 1);
       if (!g.main.renew && item.renew) g.main = item;
     });
@@ -344,6 +345,8 @@
     const item = group.main;
     const r = item.renew;
     const cd = countdown(item.deadline);
+    // กดปุ่มในการ์ดรวม = อ่านแล้วทุกแจ้งเตือนที่รวมอยู่ในการ์ด (ไม่งั้นการ์ดที่แอดมินแจ้งค้างเป็นยังไม่อ่านในกระดิ่ง)
+    const goKeys = esc(group.keys.join(' '));
     const code = r ? r.stallCode : (item.stallCode || plain(item.summary || '').split('·')[0].replace('ล็อก', '').trim() || 'ล็อก');
     const flag = group.nudged
       ? `<div class="nt-rn__flag"><i class="bi bi-megaphone-fill"></i>${group.nudged > 1 ? `ผู้ดูแลตลาดย้ำเตือนครั้งที่ ${group.nudged} ให้ต่อล็อกนี้` : 'ผู้ดูแลตลาดแจ้งเตือนให้ต่อล็อกนี้'}</div>`
@@ -359,7 +362,7 @@
     if (!r) {
       const link = safeLink(item.link);
       return `<article class="nt-rn" data-key="${esc(item.key)}">${head}${flag}
-        ${link ? `<div class="nt-rn__actions"><a class="nt-cta" href="${esc(link)}" data-go="${esc(item.key)}"><i class="bi ${esc(item.linkIcon || 'bi-arrow-right')}"></i>${esc(item.linkLabel || 'ไปที่หน้านี้')}</a></div>` : ''}
+        ${link ? `<div class="nt-rn__actions"><a class="nt-cta" href="${esc(link)}" data-go="${goKeys}"><i class="bi ${esc(item.linkIcon || 'bi-arrow-right')}"></i>${esc(item.linkLabel || 'ไปที่หน้านี้')}</a></div>` : ''}
       </article>`;
     }
     return `<article class="nt-rn" data-key="${esc(item.key)}">${head}${flag}
@@ -371,8 +374,8 @@
       </dl>
       <form class="nt-rn__actions" method="POST" action="/booking-stall/extend">
         <input type="hidden" name="newEndDate" value="${esc(r.newEndDate)}">
-        <button type="submit" class="nt-cta nt-renew__btn" data-go="${esc(item.key)}"><i class="bi bi-arrow-repeat"></i>ต่อล็อกจนจบรอบ</button>
-        <a class="nt-renew__alt" href="/booking-stall/extend" data-go="${esc(item.key)}">เลือกวันเอง</a>
+        <button type="submit" class="nt-cta nt-renew__btn" data-go="${goKeys}"><i class="bi bi-arrow-repeat"></i>ต่อล็อกจนจบรอบ</button>
+        <a class="nt-renew__alt" href="/booking-stall/extend" data-go="${goKeys}">เลือกวันเอง</a>
         <small>กดแล้วได้ล็อกเดิมทันที ไปหน้าชำระเงิน แนบสลิปภายในกำหนด</small>
       </form>
     </article>`;
@@ -687,10 +690,11 @@
     const go = event.target.closest('[data-go]');
     if (go) {
       // กดไปหน้าที่เกี่ยวข้อง = อ่านแล้ว (keepalive ให้ส่งทันแม้เปลี่ยนหน้า)
-      const item = findItem(go.dataset.go);
-      if (item && !item.isRead) {
-        item.isRead = true;
-        persist([item.key], true);
+      // data-go อาจมีหลาย key คั่นด้วยช่องว่าง (การ์ดต่อล็อกที่รวมหลายแจ้งเตือน)
+      const unread = go.dataset.go.split(' ').map(findItem).filter((item) => item && !item.isRead);
+      if (unread.length) {
+        unread.forEach((item) => { item.isRead = true; });
+        persist(unread.map((item) => item.key), true);
       }
       return;
     }
