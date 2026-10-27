@@ -59,7 +59,7 @@ async function buildSellerHome(userId, now = new Date()) {
     const requests = await prisma.bookingRequest.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        select: { id: true, status: true, zone: true, assignedStallCode: true, createdAt: true, lockAssignedAt: true, paymentDueAt: true, paymentConfirmedAt: true }
+        select: { id: true, status: true, zone: true, assignedStallCode: true, createdAt: true, lockAssignedAt: true, paymentDueAt: true, paymentConfirmedAt: true, paymentSlipImage: true }
     });
 
     // ล็อกของฉัน: คำขอล่าสุดที่ได้ล็อกแล้วเป็นตัวกำหนดสถานะของล็อกนั้น
@@ -116,7 +116,8 @@ async function buildSellerHome(userId, now = new Date()) {
             cutoffAt: renewal ? renewal.cutoffAt : null,
             canExtend: !!(renewal && renewal.isOpen && renewal.fullRoundDays > 0),
             renewalOpen: !!(renewal && renewal.isOpen && now >= renewal.opensAt),
-            paymentDeadline: request.status === 'IN_PROGRESS' ? getPaymentDeadline(request, startByRequestId.get(request.id) || null) : null,
+            // แนบสลิปแล้ว = รอแอดมินตรวจ ไม่ต้องเตือนชำระ/ใช้ส่วนลดอีก (ส่วนลดฝนตกใช้ได้เฉพาะก่อนแนบสลิป)
+            paymentDeadline: request.status === 'IN_PROGRESS' && !request.paymentSlipImage ? getPaymentDeadline(request, startByRequestId.get(request.id) || null) : null,
             health: health[code] || {},
             // ล็อกที่ยังใช้งาน = ชำระแล้วและสัญญายังไม่หมด / ที่เหลือพับไว้ใน "ล็อกที่หมดสัญญา/ถูกปล่อย"
             isCurrent: !released && phase !== 'lapsed'
@@ -172,7 +173,7 @@ async function buildSellerHome(userId, now = new Date()) {
     }));
     const pendingReq = requests.find((r) => r.status === 'PENDING' || r.status === 'APPROVED');
     // มีเครดิตชดเชยฝนตก + มีบิลรอชำระ: ใช้เป็นส่วนลดได้ในหน้าสถานะการจอง
-    if (rain.count && stalls.some((s) => s.paymentDeadline && new Date(s.paymentDeadline) > now)) todo.push({
+    if (rain.count && stalls.some((s) => s.paymentDeadline && new Date(s.paymentDeadline) > now && s.phase !== 'released')) todo.push({
         tone: 'good', icon: 'bi-cloud-rain',
         title: `ใช้ส่วนลดชดเชยฝนตก ฿${rain.total.toLocaleString('th-TH')}`,
         desc: `มีเครดิต ${rain.count} ใบ หักจากบิลที่รอชำระได้ก่อนแนบสลิป`,
