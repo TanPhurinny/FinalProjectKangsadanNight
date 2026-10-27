@@ -14,7 +14,7 @@
 
     // สร้างผังตลาดแบบเลือกโซน + กริดล็อก — ใช้ร่วมกันทั้งโหมดงานตรวจปัญหาและงานตรวจความสะอาด
     // cfg: ids (id ของ element), resolveStatus(code) → ชื่อสถานะ (ใช้เป็น class status-xxx),
-    //      statusLabel(status), tooltipMeta(status), isClickable(status), onCellClick(code, api)
+    //      statusLabel(status), tooltipMeta(status, code), isClickable(status), onCellClick(code, api)
     function createInspectionMap(cfg) {
     const ids = cfg.ids;
     const toggleTableBtn = document.getElementById(ids.toggleTable);
@@ -54,7 +54,7 @@
         tooltip.innerHTML = `
             <div class="imt-code">${code}</div>
             <div class="imt-status">${statusLabel(status)}</div>
-            <div class="imt-meta">${cfg.tooltipMeta(status)}</div>
+            <div class="imt-meta">${cfg.tooltipMeta(status, code)}</div>
         `;
         tooltip.style.display = 'block';
         moveTooltip(e);
