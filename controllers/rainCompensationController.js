@@ -29,16 +29,18 @@ exports.getPage = async (req, res) => {
         const now = new Date();
         const today = businessDateOf(now);
         const days = await rain.listRainDays();
-        const selectableDays = (await rain.listSelectableDays(now)).map((day) => ({ ...day, dateKey: toDateKey(day.date) }));
 
-        // ขั้นดูรายชื่อก่อนประกาศ (?date=YYYY-MM-DD&level=LIGHT|MODERATE|HEAVY|SPECIAL[&percent=.. เฉพาะ SPECIAL])
-        // มีแค่วัน (กดปุ่มวันก่อนเลือกระดับ) = เติมวันในฟอร์มให้ แต่ยังไม่ดูรายชื่อ
+        // ประกาศได้เฉพาะวันขายวันนี้ (ตัดวันตอนตี 5) — ไม่ให้เลือกวัน
+        const todayError = await rain.validateRainDate(today, now);
+        const todayShops = todayError ? [] : await rain.previewRainDay(today, 100, now);
+
+        // ขั้นดูรายชื่อก่อนประกาศ (?level=LIGHT|MODERATE|HEAVY|SPECIAL[&percent=.. เฉพาะ SPECIAL])
         let preview = null;
-        const previewDate = rain.parseDateKey(req.query.date);
+        const previewDate = today;
         const picked = rain.resolveRainLevel(req.query.level, req.query.percent);
-        if (previewDate && picked) {
+        if (picked) {
             const { level, percent } = picked;
-            const error = await rain.validateRainDate(previewDate, now);
+            const error = todayError;
             preview = {
                 dateKey: toDateKey(previewDate),
                 date: previewDate,
@@ -61,17 +63,15 @@ exports.getPage = async (req, res) => {
         return res.render('admin/rainCompensation', {
             user: req.user,
             days,
-            selectableDays,
             preview,
+            today: { date: today, error: todayError, shopCount: todayShops.length },
             pick: {
-                dateKey: previewDate ? toDateKey(previewDate) : null,
                 level: picked ? picked.level.code : String(req.query.level || '').toUpperCase(),
                 percent: picked ? picked.percent : null
             },
             levels: rain.RAIN_LEVELS,
             specialPercents: rain.SPECIAL_PERCENTS,
             now,
-            todayKey: toDateKey(today),
             limits: { min: rain.MIN_PERCENT, max: rain.MAX_PERCENT, expiryDays: rain.EXPIRY_DAYS, maxActive: rain.MAX_ACTIVE_CREDITS },
             counts: { days: days.length, activeTotal, usedTotal },
             success: req.query.success || null,
@@ -85,8 +85,11 @@ exports.getPage = async (req, res) => {
 
 exports.announce = async (req, res) => {
     try {
-        const date = rain.parseDateKey(req.body.date);
-        if (!date) return redirectWith(res, 'error', 'กรุณาเลือกวันที่ฝนตก');
+        // ประกาศได้เฉพาะวันขายวันนี้ — หน้าที่เปิดค้างไว้ข้ามวัน (เลยตี 5) ต้องโหลดใหม่ก่อน กันประกาศผิดวัน
+        const date = businessDateOf(new Date());
+        if (req.body.date !== toDateKey(date)) {
+            return redirectWith(res, 'error', 'หน้านี้เปิดค้างไว้จากวันขายก่อน กรุณาตรวจรายชื่อใหม่อีกครั้ง');
+        }
         const picked = rain.resolveRainLevel(req.body.level, req.body.percent);
         if (!picked) return redirectWith(res, 'error', 'กรุณาเลือกระดับฝนตามตารางประเมิน');
         if (req.body.confirmLevel !== '1') {

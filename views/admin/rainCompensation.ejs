@@ -16,7 +16,7 @@
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/admin/bookingHolidays.css">
-        <link rel="stylesheet" href="/stylesheets/admin/rainCompensation.css?v=20261027-levels">
+        <link rel="stylesheet" href="/stylesheets/admin/rainCompensation.css?v=20261027-today">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
     <%
@@ -25,10 +25,6 @@
         const fmtTime = (d) => new Date(d).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
         const money = (n) => Number(n || 0).toLocaleString('th-TH');
         const levelOf = (code) => levels.find((l) => l.code === code) || null;
-        // query ของระดับที่เลือกอยู่ — ใช้ต่อท้ายลิงก์ปุ่มวัน ให้เปลี่ยนวันแล้วไม่ต้องเลือกระดับใหม่
-        const levelQuery = pick.level && levelOf(pick.level)
-            ? `&level=${pick.level}${pick.level === 'SPECIAL' && pick.percent ? `&percent=${pick.percent}` : ''}`
-            : '';
         const STATUS = {
             ACTIVE: ['ใช้ได้', 'state-upcoming'],
             USED: ['ใช้แล้ว', 'state-used'],
@@ -78,13 +74,17 @@
                 </div>
 
                 <div class="panel">
-                    <div class="panel-title">1. เลือกวันและระดับฝน</div>
+                    <div class="panel-title">1. เลือกระดับฝน — วันขายวันนี้ <%= fmtDate(today.date) %></div>
                     <div class="panel-body">
+                        <%# ประกาศได้เฉพาะวันขายวันนี้ (ตัดวันตอนตี 5 เหมือน utils/shopOpenStatus.js) ไม่ต้องเลือกวัน %>
+                        <% if (today.error) { %>
+                        <div class="notice notice-danger"><%= today.error %></div>
+                        <% } else if (!today.shopCount) { %>
+                        <div class="notice notice-danger">วันนี้ไม่มีร้านที่ชำระเงินแล้วและมีล็อก จึงไม่มีร้านให้ชดเชย (ร้านที่ยังไม่จ่ายเงินหรือสัญญาหมดแล้วไม่นับ)</div>
+                        <% } else { %>
+                        <div class="notice">วันนี้มีร้านที่ชำระเงินแล้วและมีล็อก <strong><%= today.shopCount %> ร้าน</strong> — เลือกระดับฝนแล้วกด "ดูรายชื่อร้าน"</div>
+                        <% } %>
                         <form method="GET" action="/admin/rain-compensation" class="js-pick-form">
-                            <div class="rain-date-field">
-                                <label class="field-label">วันขายที่ฝนตก</label>
-                                <input type="date" class="field-input" name="date" max="<%= todayKey %>" value="<%= pick.dateKey || todayKey %>" required>
-                            </div>
 
                             <%# ตารางประเมินชดเชยฝนตก (RAIN_LEVELS ใน utils/rainCompensation.js) — กดการ์ดเพื่อเลือกระดับ % ตามระดับ %>
                             <span class="field-label">ระดับฝน (ตามตารางประเมินชดเชยฝนตก)</span>
@@ -110,33 +110,9 @@
                                 </label>
                                 <% }) %>
                             </div>
-                            <button type="submit" class="btn-submit rain-pick-submit">ดูรายชื่อร้าน</button>
-                            <% if (pick.dateKey && !preview) { %>
-                            <span class="rain-pick-hint">เลือกระดับฝนแล้วกด "ดูรายชื่อร้าน"</span>
-                            <% } %>
+                            <button type="submit" class="btn-submit rain-pick-submit" <%= today.error || !today.shopCount ? 'disabled' : '' %>>ดูรายชื่อร้าน</button>
                         </form>
 
-                        <%# วันที่ประกาศได้ (ย้อนหลัง 7 วัน) พร้อมจำนวนร้านที่ชำระเงินแล้วและมีล็อกวันนั้น — กดเพื่อดูรายชื่อได้เลย %>
-                        <div class="rain-days">
-                            <span class="field-label">หรือกดเลือกวัน (จำนวนร้านที่มีสิทธิ์)</span>
-                            <div class="rain-days__list">
-                                <% selectableDays.forEach(function (d) {
-                                    const isCurrent = pick.dateKey === d.dateKey;
-                                    const label = new Date(d.date).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
-                                    const state = d.announced ? 'ประกาศแล้ว' : d.holiday ? 'วันหยุด' : `${d.shopCount} ร้าน`;
-                                    const disabled = d.announced || d.holiday || !d.shopCount;
-                                %>
-                                <% if (disabled) { %>
-                                <span class="rain-day-chip is-disabled"><%= label %><small><%= state %></small></span>
-                                <% } else { %>
-                                <a class="rain-day-chip <%= isCurrent ? 'is-current' : '' %>" href="/admin/rain-compensation?date=<%= d.dateKey %><%= levelQuery %>"><%= label %><small><%= state %></small></a>
-                                <% } %>
-                                <% }) %>
-                            </div>
-                            <% if (!selectableDays.some(function (d) { return d.shopCount && !d.announced && !d.holiday; })) { %>
-                            <p class="rain-days__empty">7 วันที่ผ่านมาไม่มีร้านที่ชำระเงินแล้วและมีล็อกเลย (ตรงกับผังตลาด) จึงยังไม่มีร้านให้ชดเชย</p>
-                            <% } %>
-                        </div>
                     </div>
                 </div>
 
@@ -147,7 +123,7 @@
                         <% if (preview.error) { %>
                         <div class="notice notice-danger mb-0"><%= preview.error %></div>
                         <% } else if (!preview.shops.length) { %>
-                        <div class="notice notice-danger mb-0">วันนี้ไม่มีร้านที่ชำระเงินแล้วและมีล็อก จึงไม่มีร้านให้ชดเชย (ร้านที่ยังไม่จ่ายเงินหรือสัญญาหมดแล้วไม่นับ) — เลือกวันอื่นจากปุ่มด้านบน</div>
+                        <div class="notice notice-danger mb-0">วันนี้ไม่มีร้านที่ชำระเงินแล้วและมีล็อก จึงไม่มีร้านให้ชดเชย (ร้านที่ยังไม่จ่ายเงินหรือสัญญาหมดแล้วไม่นับ)</div>
                         <% } else { %>
                         <form method="POST" action="/admin/rain-compensation" class="js-announce-form">
                             <input type="hidden" name="date" value="<%= preview.dateKey %>">
