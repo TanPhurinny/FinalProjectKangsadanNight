@@ -335,6 +335,79 @@ kbd {
 .nt-fresh[hidden] { display: none; }
 
 /* ── ต้องทำ: งานที่มีเส้นตาย เรียงตามเวลาที่เหลือ ── */
+/* ── ต่อล็อก (แยกจากต้องทำ) ── */
+.nt-rnw {
+    margin-top: 20px;
+    border: 1px solid var(--primary-dark);
+}
+.nt-rnw__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding: 10px 14px;
+    background: var(--primary-dark);
+}
+.nt-rnw .nt-label { color: #fff; }
+.nt-rnw__notice { padding: 14px; border-top: 1px solid var(--line); }
+.nt-rnw__notice:first-child { border-top: none; }
+.nt-rnw__notice .nt-notice { grid-column: auto; }
+.nt-rn { border-top: 1px solid var(--line); }
+.nt-rn:first-child { border-top: none; }
+.nt-rn__top {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+}
+.nt-rn__code {
+    padding: 8px 12px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+}
+.nt-rn__head b { display: block; font-size: 0.98rem; font-weight: 600; color: var(--navy); }
+.nt-rn__head small { display: block; margin-top: 2px; font-size: 0.8rem; color: var(--ink-soft); line-height: 1.5; }
+.nt-rn__flag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 14px 12px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--warning);
+    background: #fdf7ee;
+    border: 1px solid #efd9b4;
+}
+.nt-rn__span {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+}
+.nt-rn__span > div { padding: 10px 14px; }
+.nt-rn__span > div + div { border-left: 1px solid var(--line); }
+.nt-rn__span dt { font-size: 0.72rem; font-weight: 600; color: var(--ink-soft); }
+.nt-rn__span dd { margin: 2px 0 0; font-size: 1rem; font-weight: 600; color: var(--navy); }
+.nt-rn__span small { font-size: 0.74rem; color: var(--ink-soft); }
+.nt-rn__to { background: var(--primary-tint); }
+.nt-rn__to dd { color: var(--primary-dark); }
+.nt-rn__total dd { font-size: 1.15rem; }
+.nt-rn__actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    padding: 12px 14px;
+}
+.nt-rn__actions small { font-size: 0.78rem; color: var(--ink-soft); }
+
 .nt-todo {
     margin-top: 20px;
     border: 1px solid var(--navy);
@@ -407,6 +480,93 @@ kbd {
 .nt-renew__alt { font-size: 0.85rem; color: var(--primary-dark); text-decoration: underline; }
 .nt-renew__note { font-size: 0.8rem; color: var(--ink-soft, #555); line-height: 1.5; }
 .nt-row__actions .nt-renew { grid-column: auto; }
+
+/* ── ประกาศต่อล็อกรอบถัดไป (ล็อกเต็ง / จองเต็มรอบ) ── */
+.nt-notice {
+    grid-column: 2 / -1;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--line-strong);
+    border-left: 3px solid var(--primary);
+    background: #fff;
+}
+.nt-notice__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--primary-tint);
+}
+.nt-notice__kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--primary-dark);
+}
+.nt-notice__codes { display: flex; flex-wrap: wrap; gap: 4px; }
+.nt-notice__greet { margin: 14px 14px 0; font-size: 0.95rem; color: var(--navy); }
+.nt-notice__greet b { font-weight: 600; }
+.nt-notice__lead { margin: 4px 14px 14px; font-size: 0.88rem; line-height: 1.6; color: var(--ink-soft); }
+.nt-notice__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+}
+.nt-notice__cell {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 12px 14px;
+}
+.nt-notice__cell + .nt-notice__cell { border-left: 1px solid var(--line); }
+.nt-notice__cell b { font-size: 1.05rem; font-weight: 600; color: var(--navy); }
+.nt-notice__cell small { font-size: 0.78rem; color: var(--ink-soft); }
+.nt-notice__cell--due { background: #fdf7ee; }
+.nt-notice__cell--due b { color: var(--warning); }
+.nt-notice__cell .nt-countdown { align-self: flex-start; }
+.nt-notice--open { border-left-color: var(--navy); }
+.nt-notice__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+.nt-notice__rules {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.nt-notice__rules li {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 8px;
+    padding: 9px 14px;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: var(--ink);
+    border-bottom: 1px solid var(--line);
+}
+.nt-notice__rules i { color: var(--primary); }
+.nt-notice__rules li:last-child i { color: var(--danger); }
+.nt-notice__rules b { font-weight: 600; }
+.nt-notice__actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 14px;
+}
+.nt-notice__actions small { font-size: 0.78rem; color: var(--ink-soft); }
 
 /* ── รายการตามวัน ── */
 .nt-group { margin-top: 24px; }
@@ -675,6 +835,17 @@ kbd {
 
     .nt-todo-item { grid-template-columns: 32px minmax(0, 1fr); }
     .nt-todo-item__right { grid-column: 2; justify-content: space-between; }
+    .nt-notice { grid-column: 1 / -1; }
+    .nt-rn__top { grid-template-columns: auto minmax(0, 1fr); }
+    .nt-rn__top .nt-countdown { grid-column: 1 / -1; justify-self: start; }
+    .nt-rn__span { grid-template-columns: 1fr 1fr; }
+    .nt-rn__span > div:nth-child(3) { border-left: none; }
+    .nt-rn__span > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+    .nt-rn__actions .nt-cta { flex: 1 1 100%; justify-content: center; }
+    .nt-rnw__notice { padding: 10px; }
+    .nt-notice__grid { grid-template-columns: 1fr; }
+    .nt-notice__cell + .nt-notice__cell { border-left: none; border-top: 1px solid var(--line); }
+    .nt-notice__actions .nt-cta { flex: 1 1 100%; justify-content: center; }
     .nt-row__body { grid-template-columns: 32px minmax(0, 1fr); padding: 12px 10px; }
     .nt-ico { width: 32px; height: 32px; font-size: 0.95rem; }
     .nt-row__meta { grid-column: 2; grid-row: 2; text-align: left; }
