@@ -7,6 +7,8 @@ const { normalizeProductType } = require('../utils/zoneAccess');
 const { CLEANLINESS_CHECKLIST, CLEANLINESS_ITEM_IDS } = require('../utils/cleanlinessChecklist');
 const { buildPreferredWalkOrder } = require('../utils/inspectionWalkOrder');
 const { stripInternalTags } = require('../utils/bookingRequestTag');
+const inspectionAssignment = require('../utils/inspectionAssignment');
+const { businessDateOf } = require('../utils/shopOpenStatus');
 
 // ใช้แกะ requestId จาก Booking.storeDetailSnapshot เหมือน scoreReportController.js เพื่อย้อนกลับไปหา
 // BookingRequest.assignedStallCode จริงของรอบที่ดูอยู่ (Booking มีช่วงวันเช่า แต่ไม่มีล็อคที่ได้จริง)
@@ -150,6 +152,18 @@ function isWithinEditWindow(latestRecordCreatedAt) {
     const sameDay = toDateKey(new Date(latestRecordCreatedAt)) === toDateKey(new Date());
     if (!sameDay) return true;
     return (Date.now() - new Date(latestRecordCreatedAt).getTime()) < 24 * 60 * 60 * 1000;
+}
+
+// หลายคนเดินตรวจพร้อมกัน: ร้านที่อยู่ในใบงานของคนอื่นและยังตรวจไม่เสร็จ ห้ามบันทึกทับ (ตอบ 409)
+// เว้นแต่ส่ง force: true มา (ตั้งใจตรวจแทน เช่น หัวหน้าตรวจซ้ำ) — ดู utils/inspectionAssignment.js
+async function respondIfHeldByOther(req, res, stallId) {
+    const conflict = await inspectionAssignment.checkAssignmentConflict(stallId, req.user.id, { force: req.body?.force === true });
+    if (!conflict) return null;
+    return res.status(409).json({
+        success: false,
+        conflict: true,
+        message: `ร้านนี้ ${conflict.holderName} กำลังตรวจอยู่`
+    });
 }
 
 function parseStallNumber(stallCode) {
@@ -455,6 +469,9 @@ exports.saveElectricExcess = async (req, res) => {
             return res.status(400).json({ success: false, message: 'บันทึกได้เฉพาะล็อคที่มีการจองอยู่เท่านั้น' });
         }
 
+        const conflictResponse = await respondIfHeldByOther(req, res, stall.id);
+        if (conflictResponse) return conflictResponse;
+
         const latestExcess = await prisma.stallElectricExcessRecord.findFirst({
             where: { stallId: stall.id },
             orderBy: { createdAt: 'desc' },
@@ -479,6 +496,8 @@ exports.saveElectricExcess = async (req, res) => {
                 recordedById: req.user.id
             }
         });
+        // บันทึกไฟเกินมักทำกลางทางระหว่างตรวจร้าน — แค่จองร้านไว้ให้ตัวเอง ยังไม่ปิดงานร้านนี้
+        await inspectionAssignment.recordInspected(stall, req.user.id, { complete: false });
 
         return res.json({
             success: true,
@@ -570,6 +589,9 @@ exports.saveStallIssue = async (req, res) => {
             return res.status(400).json({ success: false, message: 'บันทึกได้เฉพาะล็อคที่มีการจองอยู่เท่านั้น' });
         }
 
+        const conflictResponse = await respondIfHeldByOther(req, res, stall.id);
+        if (conflictResponse) return conflictResponse;
+
         const latestIssue = await prisma.stallIssueRecord.findFirst({
             where: { stallId: stall.id },
             orderBy: { createdAt: 'desc' },
@@ -591,6 +613,7 @@ exports.saveStallIssue = async (req, res) => {
                 recordedById: req.user.id
             }
         });
+        await inspectionAssignment.recordInspected(stall, req.user.id);
 
         return res.json({
             success: true,
@@ -638,6 +661,9 @@ exports.saveCleanlinessInspection = async (req, res) => {
             return res.status(400).json({ success: false, message: 'ตรวจความสะอาดได้เฉพาะร้านค้าประเภทอาหารเท่านั้น' });
         }
 
+        const conflictResponse = await respondIfHeldByOther(req, res, stall.id);
+        if (conflictResponse) return conflictResponse;
+
         const latestCleanliness = await prisma.stallCleanlinessInspection.findFirst({
             where: { stallId: stall.id },
             orderBy: { createdAt: 'desc' },
@@ -664,6 +690,7 @@ exports.saveCleanlinessInspection = async (req, res) => {
                 recordedById: req.user.id
             }
         });
+        await inspectionAssignment.recordInspected(stall, req.user.id);
 
         return res.json({
             success: true,
@@ -715,7 +742,37 @@ exports.submitDay = async (req, res) => {
             });
 
             const todayKey = toDateKey(new Date());
+            // หลายคนเดินตรวจพร้อมกัน: auto-mark เฉพาะร้านที่คนกดส่งงานตรวจเสร็จในใบงานของตัวเอง เครดิตจะได้ไม่ไปตกกับ
+            // คนที่กดส่งงานก่อน — ถ้าวันนี้ไม่มีคนอื่นรับร้านเลย (ตรวจคนเดียว) ร้านที่ยังไม่มีใครรับนับเป็นของคนส่งงาน
+            // เหมือนเดิม (บันทึกเฉพาะร้านที่พบปัญหาแล้วส่งงาน) และสร้างใบงานเสร็จให้ด้วย ทีมจะได้เห็นว่าตรวจครบแล้ว
+            const businessDate = businessDateOf(new Date());
+            const assignmentRows = await prisma.inspectionAssignment.findMany({
+                where: { businessDate },
+                select: { stallId: true, assignedToId: true, completedAt: true }
+            });
+            const assignmentByStallId = new Map(assignmentRows.map((row) => [row.stallId, row]));
+            const isTeamDay = assignmentRows.some((row) => row.assignedToId !== req.user.id);
+            const unclaimedStallIds = isTeamDay ? [] : bookedStallIds.filter((stallId) => !assignmentByStallId.has(stallId));
+            if (unclaimedStallIds.length) {
+                await prisma.inspectionAssignment.createMany({
+                    data: unclaimedStallIds.map((stallId) => ({
+                        businessDate,
+                        stallId,
+                        stallCode: bookedStallByCode.get(stallId),
+                        assignedToId: req.user.id,
+                        batchNo: 0,
+                        completedAt: new Date()
+                    })),
+                    skipDuplicates: true
+                });
+                unclaimedStallIds.forEach((stallId) => {
+                    assignmentByStallId.set(stallId, { stallId, assignedToId: req.user.id, completedAt: new Date() });
+                });
+            }
+
             const stallIdsMissingTodayCheck = bookedStallIds.filter((stallId) => {
+                const assignment = assignmentByStallId.get(stallId);
+                if (!assignment || assignment.assignedToId !== req.user.id || !assignment.completedAt) return false;
                 const latest = latestCheckByStallId.get(stallId);
                 return !latest || toDateKey(new Date(latest.createdAt)) !== todayKey;
             });
@@ -773,9 +830,56 @@ exports.submitDay = async (req, res) => {
             create: { submissionDate, submittedById: req.user.id, inspectedCount, totalCount }
         });
 
-        return res.json({ success: true, inspectedCount, totalCount, flaggedCount });
+        // บอกทีมว่ายังเหลือร้านที่ไม่มีใครรับ/ยังตรวจไม่เสร็จอีกกี่ร้าน (ส่งงานแล้วไม่ได้แปลว่าทั้งตลาดตรวจครบ)
+        const walk = await inspectionAssignment.getWalkStatus(req.user.id);
+
+        return res.json({
+            success: true,
+            inspectedCount,
+            totalCount,
+            flaggedCount,
+            unclaimedCount: walk.unclaimedCount,
+            inProgressCount: walk.inProgressCount
+        });
     } catch (error) {
         console.error('Submit inspection day error:', error);
         return res.status(500).json({ success: false, message: 'ส่งงานไม่สำเร็จ กรุณาลองใหม่' });
+    }
+};
+
+// --- โหมดเดินตรวจหลายคน: รับร้าน / คืนร้าน / ดึงสถานะทีม (ดู utils/inspectionAssignment.js) ---
+exports.getWalkStatus = async (req, res) => {
+    try {
+        const status = await inspectionAssignment.getWalkStatus(req.user.id);
+        return res.json({ success: true, ...status });
+    } catch (error) {
+        console.error('Walk status error:', error);
+        return res.status(500).json({ success: false, message: 'โหลดสถานะการเดินตรวจไม่สำเร็จ' });
+    }
+};
+
+exports.claimWalkBatch = async (req, res) => {
+    try {
+        const zone = String(req.body?.zone || 'ALL').trim().toUpperCase().slice(0, 4) || 'ALL';
+        const result = await inspectionAssignment.claimBatch(req.user.id, { zone });
+        const status = await inspectionAssignment.getWalkStatus(req.user.id);
+        let message = '';
+        if (result.hasPending) message = 'ตรวจร้านในมือให้ครบก่อนรับร้านเพิ่ม';
+        else if (!result.claimedCount) message = zone === 'ALL' ? 'ไม่มีร้านเหลือให้รับแล้ว' : `โซน ${zone} ไม่มีร้านเหลือให้รับแล้ว`;
+        return res.json({ success: true, claimedCount: result.claimedCount, message, ...status });
+    } catch (error) {
+        console.error('Claim walk batch error:', error);
+        return res.status(500).json({ success: false, message: 'รับร้านไม่สำเร็จ กรุณาลองใหม่' });
+    }
+};
+
+exports.releaseWalkBatch = async (req, res) => {
+    try {
+        const releasedCount = await inspectionAssignment.releaseMine(req.user.id);
+        const status = await inspectionAssignment.getWalkStatus(req.user.id);
+        return res.json({ success: true, releasedCount, ...status });
+    } catch (error) {
+        console.error('Release walk batch error:', error);
+        return res.status(500).json({ success: false, message: 'คืนร้านไม่สำเร็จ กรุณาลองใหม่' });
     }
 };

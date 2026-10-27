@@ -18,6 +18,72 @@
     min-width: 0;
 }
 
+/* แถบทีม — หลายคนเดินตรวจพร้อมกัน (ยอดทั้งตลาด + ยอดแต่ละคน + คืนร้านที่ยังไม่ตรวจ) */
+.walk-team {
+    border: 1px solid var(--line);
+    background: var(--soft-bg);
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    font-size: 0.8rem;
+}
+
+.walk-team:empty {
+    display: none;
+}
+
+.walk-team-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    font-family: var(--mono);
+    color: var(--ink);
+}
+
+.walk-team-muted {
+    color: var(--ink-soft);
+}
+
+.walk-team-members {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.walk-team-member {
+    border: 1px solid var(--line);
+    background: #fff;
+    padding: 1px 6px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+}
+
+.walk-team-member.is-me {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.walk-team .walk-btn-sm {
+    min-height: 36px;
+    margin-top: 8px;
+    width: 100%;
+    font-size: 0.8rem;
+}
+
+/* ป้ายในตารางงานตรวจปัญหา: ร้านนี้อยู่ในชุดของพนักงานคนอื่น */
+.walk-holder-badge {
+    display: inline-block;
+    margin: 2px 0;
+    border: 1px solid var(--warning-color, #e0a800);
+    color: #8a6100;
+    background: rgba(224, 168, 0, 0.12);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 1px 6px;
+}
+
 .walk-progress {
     margin-bottom: 10px;
 }

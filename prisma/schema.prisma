@@ -789,6 +789,24 @@ model ShopViewEvent {
 
 // "ปิดร้านวันนี้" ของผู้ขาย ต่อ 1 วันขาย (ตัดวันตอนตี 5 เพราะตลาดกลางคืนขายเลยเที่ยงคืน — ดู utils/shopOpenStatus.js)
 // ทุกร้านเปิดเป็นค่าเริ่มต้น แถวถูกสร้างเฉพาะตอนผู้ขายกดปิด (closedAt) / openedAt = เวลาสร้างแถว ไม่ได้ใช้แสดงผล
+// ใบงานเดินตรวจตลาด ต่อ 1 วันขาย (ตัดวันตี 5 เหมือน ShopOpenStatus) — แจกร้านให้พนักงานหลายคนตรวจพร้อมกันไม่ซ้ำกัน
+// unique (businessDate, stallId) กันแจกร้านเดียวให้สองคนที่ระดับ DB / heartbeatAt ขยับทุกครั้งที่หน้าเดินตรวจยังเปิดอยู่
+// ร้านที่ยังไม่ตรวจของคนที่ heartbeat ขาดเกินกำหนดจะถูกคืนเข้ากองกลาง (ดู utils/inspectionAssignment.js)
+model InspectionAssignment {
+  id           Int       @id @default(autoincrement())
+  businessDate DateTime
+  stallId      Int
+  stallCode    String
+  assignedToId Int
+  batchNo      Int       @default(1)
+  assignedAt   DateTime  @default(now())
+  heartbeatAt  DateTime  @default(now())
+  completedAt  DateTime?
+
+  @@unique([businessDate, stallId])
+  @@index([businessDate, assignedToId])
+}
+
 model ShopOpenStatus {
   id           Int       @id @default(autoincrement())
   userId       Int
