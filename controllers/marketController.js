@@ -6,14 +6,14 @@ const { getRenewalPhase, getRenewalOptions } = require('../utils/stallRenewal');
 const { buildTodayInspectionLayer } = require('../utils/inspectionToday');
 const { buildStallHistory } = require('../utils/stallHistory');
 const { resolveViewDate, buildStallStatusForDate, buildDayStrip } = require('../utils/stallDayStatus');
-const { getClosedShopsToday, getOpenStatus, businessDateOf } = require('../utils/shopOpenStatus');
+const { getClosedShopsToday, businessDateOf } = require('../utils/shopOpenStatus');
 const { getPromosToday } = require('../utils/shopPromo');
 const { getRatingSummaries } = require('../utils/shopReviews');
 const { stripInternalTags } = require('../utils/bookingRequestTag');
 const { toStartOfDay, addDays, getBookingRoundMetaForDate, getRoundTimeline, BOOKING_ROUND_LENGTH_DAYS } = require('../utils/bookingRound');
 const adminDashboard = require('../utils/adminDashboard');
 const eventBooth = require('../utils/eventBooth');
-const { shopsRelation, primaryShop } = require('../utils/shops');
+const { shopsRelation, primaryShop, shopsOfRequests } = require('../utils/shops');
 
 const ZONE_CATEGORY_META = {
     FASHION: { icon: 'fa-shirt', description: 'โซนแฟชั่น' },
@@ -514,6 +514,8 @@ async function loadSlotsView(rawDate, { withStrip = true } = {}) {
             assignedStallCode: true,
             createdAt: true,
             productImage: true,
+            // ร้านของคำขอ (คำขอเก่าที่ไม่มี shopId ใช้ร้านหลักของเจ้าของ)
+            shop: { select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true } },
             user: { select: { shops: shopsRelation({ select: { productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true } }) } }
         }
     });
@@ -528,7 +530,7 @@ async function loadSlotsView(rawDate, { withStrip = true } = {}) {
             .filter(Boolean);
         if (!stallCodes.length) return;
 
-        const shopInfo = primaryShop(request.user) || {};
+        const shopInfo = request.shop || primaryShop(request.user) || {};
         const product = shopInfo.productType
             || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
         const productDetail = shopInfo.productDetail || stripInternalTags(request.description) || '-';
@@ -789,45 +791,45 @@ exports.getMarketMapPage = async (req, res) => {
         const approvedRequests = await prisma.bookingRequest.findMany({
             where: { status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] }, assignedStallCode: { not: null } },
             select: {
+                id: true,
                 productName: true,
                 description: true,
                 sellerName: true,
                 zone: true,
                 assignedStallCode: true,
                 userId: true,
+                shopId: true,
                 productImage: true
             }
         });
 
-        // ข้อมูลร้าน (ประเภท/รายละเอียด/รูป/shopTags ฯลฯ) อยู่ที่ ShopDetail ของเจ้าของคำขอ
+        // ข้อมูลร้าน (ประเภท/รายละเอียด/รูป/shopTags ฯลฯ) อยู่ที่ ShopDetail ของคำขอ — ผู้ใช้ 1 คนมีหลายร้านได้
+        // คำขอเก่าที่ไม่มี shopId ใช้ร้านหลักของเจ้าของ (shopsOfRequests)
         const allSellerUserIds = [...new Set(approvedRequests.map((r) => r.userId).filter(Boolean))];
-        const shopInfoByUserId = {};
-        if (allSellerUserIds.length) {
-            const sellerUsers = await prisma.user.findMany({
-                where: { role: 'SELLER', id: { in: allSellerUserIds } },
+        const shopOfRequest = await shopsOfRequests(approvedRequests);
+        const shopIdOfRequest = new Map([...shopOfRequest].map(([requestId, shop]) => [requestId, shop ? shop.id : null]));
+        const shopInfoById = {};
+        const requestShopIds = [...new Set([...shopIdOfRequest.values()].filter(Boolean))];
+        if (requestShopIds.length) {
+            const shops = await prisma.shopDetail.findMany({
+                where: { id: { in: requestShopIds }, user: { role: 'SELLER' } },
                 select: {
-                    id: true,
-                    shops: shopsRelation({
-                        select: {
-                            productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true, shopTags: true, shopSummary: true,
-                            productSubtype: true,
-                            // ปุ่ม "ดูเมนูร้าน" ในการ์ดร้าน — รูปเมนู + แกลเลอรีรูปสินค้า
-                            menuImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } },
-                            productImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } }
-                        }
-                    })
+                    id: true, userId: true,
+                    productType: true, productDetail: true, productImage: true, shopCoverImage: true, logoImage: true, shopTags: true, shopSummary: true,
+                    productSubtype: true,
+                    // ปุ่ม "ดูเมนูร้าน" ในการ์ดร้าน — รูปเมนู + แกลเลอรีรูปสินค้า
+                    menuImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } },
+                    productImages: { select: { imageUrl: true }, orderBy: { createdAt: 'asc' } }
                 }
             });
-            sellerUsers.forEach((u) => {
-                const shop = primaryShop(u);
-                if (shop) shopInfoByUserId[u.id] = { ...shop, userId: u.id };
-            });
+            shops.forEach((shop) => { shopInfoById[shop.id] = shop; });
         }
 
-        // ร้านที่ผู้ขายกด "ปิดร้านวันนี้" (ทุกร้านเปิดเป็นค่าเริ่มต้น) — ลูกค้าเห็นร้านนั้นจางลงพร้อมป้ายปิด
-        const shopUserIdList = Object.values(shopInfoByUserId).map((shop) => shop.userId);
-        const [closedAtByUserId, promoByUserId, ratingByUserId] = await Promise.all([
-            getClosedShopsToday(shopUserIdList),
+        // ร้านที่ผู้ขายกด "ปิดร้านวันนี้" (แยกต่อร้าน ทุกร้านเปิดเป็นค่าเริ่มต้น) — ลูกค้าเห็นร้านนั้นจางลงพร้อมป้ายปิด
+        // โปร/รีวิว/โพสต์ยังผูกกับผู้ใช้ (รวมทุกร้านของผู้ใช้)
+        const shopUserIdList = [...new Set(Object.values(shopInfoById).map((shop) => shop.userId))];
+        const [closedAtByShopId, promoByUserId, ratingByUserId] = await Promise.all([
+            getClosedShopsToday(Object.keys(shopInfoById).map(Number)),
             // โปรวันนี้ที่ผู้ขายตั้งจากหน้าหลักผู้ขาย
             getPromosToday(shopUserIdList),
             // คะแนนรีวิวเฉลี่ย (ตัวรีวิวเต็มๆ โหลดตอนเปิดหน้าต่างรีวิว — GET /shop-reviews/:code)
@@ -835,7 +837,7 @@ exports.getMarketMapPage = async (req, res) => {
         ]);
 
         // โพสต์คอมมูนิตี้ล่าสุดของแต่ละร้าน โชว์ในการ์ดร้าน (ตัดข้อความสั้นๆ พอให้รู้ว่าร้านมีอะไรใหม่)
-        const shopUserIds = Object.values(shopInfoByUserId).map((shop) => shop.userId);
+        const shopUserIds = shopUserIdList;
         const latestPostByUserId = new Map();
         if (shopUserIds.length) {
             const posts = await prisma.communityPost.findMany({
@@ -877,7 +879,7 @@ exports.getMarketMapPage = async (req, res) => {
                 .filter(Boolean);
             if (!stallCodes.length) return;
 
-            const fallbackShop = shopInfoByUserId[request.userId] || {};
+            const fallbackShop = shopInfoById[shopIdOfRequest.get(request.id)] || {};
             const product = fallbackShop.productType
                 || (request.zone ? `โซน ${String(request.zone).toUpperCase()}` : '-');
             const productDetail = fallbackShop.productDetail || stripInternalTags(request.description) || '-';
@@ -900,7 +902,7 @@ exports.getMarketMapPage = async (req, res) => {
                     photos: (fallbackShop.productImages || []).map((img) => img.imageUrl),
                     isNew: newShopUserIds.has(request.userId),
                     subtype: fallbackShop.productSubtype || '',
-                    closedAt: closedAtByUserId.get(fallbackShop.userId) || null,
+                    closedAt: closedAtByShopId.get(fallbackShop.id) || null,
                     promo: promoByUserId.get(fallbackShop.userId) || null,
                     post: latestPostByUserId.get(fallbackShop.userId) || null,
                     rating: ratingByUserId.get(fallbackShop.userId) || { avg: 0, count: 0 }
@@ -940,7 +942,22 @@ exports.getMarketMapPage = async (req, res) => {
             viewer.myStalls = [...new Set(myRequests.flatMap((r) => String(r.assignedStallCode || '')
                 .split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)))];
             viewer.stallHealth = await buildMyStallHealth(req.user.id, viewer.myStalls);
-            viewer.openStatus = await getOpenStatus(req.user.id);
+            // ล็อกของฉันเป็นของร้านไหน (ปุ่มปิดร้านวันนี้บนการ์ดล็อกปิดเฉพาะร้านนั้น) + สถานะเปิด/ปิดของแต่ละร้าน
+            viewer.myStallShop = {};
+            const myShopIds = new Set();
+            myRequests.forEach((r) => {
+                const shopId = shopIdOfRequest.get(r.id);
+                if (!shopId) return;
+                myShopIds.add(shopId);
+                String(r.assignedStallCode || '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)
+                    .forEach((code) => { viewer.myStallShop[code] = shopId; });
+            });
+            const myClosed = await getClosedShopsToday([...myShopIds]);
+            viewer.openStatusByShop = {};
+            myShopIds.forEach((shopId) => {
+                const closedAt = myClosed.get(shopId) || null;
+                viewer.openStatusByShop[shopId] = { isOpen: !closedAt, closedAt };
+            });
         }
 
         // วันหมดสัญญา/ระดับเตือน และสถานะล็อกว่าง เป็นข้อมูลภายใน — วันหมดสัญญาส่งให้เฉพาะแอดมิน/staff และเจ้าของล็อก, ล็อกว่างเห็นเฉพาะแอดมิน/staff

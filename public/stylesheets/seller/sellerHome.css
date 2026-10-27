@@ -188,6 +188,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 .sh-mast.is-closed .sh-sign__btn:hover { background: var(--sh-ink); color: #fff; }
 .sh-sign__btn--go { background: var(--sh-accent); border-color: var(--sh-accent-ink); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .sh-sign__btn--go:hover { background: #cf6d16; }
+/* ร้านอื่นของผู้ใช้ที่มีล็อกใช้งาน — ปิดร้านแยกทีละร้าน */
+.sh-sign__shops { list-style: none; margin: 4px 0 0; padding: 0; border-top: 1px solid var(--sh-line, #d9d9d9); }
+.sh-sign__shop { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--sh-line, #d9d9d9); }
+.sh-sign__shopname { font-size: 14px; min-width: 0; overflow-wrap: anywhere; }
+.sh-sign__shopname small { color: var(--sh-night-soft); }
+.sh-sign__shopstate { grid-column: 1; font-size: 12px; color: #1e8449; }
+.sh-sign__shop.is-closed .sh-sign__shopstate { color: #a93226; }
+.sh-sign__shopbtn { grid-column: 2; grid-row: 1 / span 2; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 600; border: 1px solid var(--sh-ink); background: #fff; color: var(--sh-ink); border-radius: 0; cursor: pointer; }
+.sh-sign__shopbtn:hover { background: var(--sh-ink); color: #fff; }
+.sh-sign__shopbtn:disabled { opacity: .6; cursor: wait; }
 
 /* แถบล่าง: ตั๋วล็อก + นับถอยหลัง */
 .sh-mast__strip { display: grid; border-top: 1px solid var(--sh-night-line); }

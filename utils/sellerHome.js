@@ -3,13 +3,13 @@ const { buildMyStallHealth } = require('../controllers/marketController');
 const { getRenewalPhase, getRenewalOptions } = require('./stallRenewal');
 const { getRoundTimeline, toStartOfDay } = require('./bookingRound');
 const { getPaymentDeadline } = require('./paymentDeadline');
-const { getOpenStatus } = require('./shopOpenStatus');
+const { getClosedShopsToday } = require('./shopOpenStatus');
 const { buildBookingRequestTag, extractBookingRequestId } = require('./bookingRequestTag');
 const { getShopViewStats, getShopViewInsights } = require('./shopViews');
 const { getPromo, PROMO_MAX_LENGTH } = require('./shopPromo');
 const { buildProfileChecks } = require('./shopCompleteness');
 const { getAnnouncementsForUser } = require('../controllers/announcementController');
-const { shopsRelation, primaryShop } = require('./shops');
+const { shopsRelation, primaryShop, getUserShops } = require('./shops');
 const { getAvailableCredits } = require('./rainCompensation');
 const { getSellerReviewPanel } = require('./shopReviews');
 
@@ -60,8 +60,11 @@ async function buildSellerHome(userId, now = new Date()) {
     const requests = await prisma.bookingRequest.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        select: { id: true, status: true, zone: true, assignedStallCode: true, createdAt: true, lockAssignedAt: true, paymentDueAt: true, paymentConfirmedAt: true, paymentSlipImage: true }
+        select: { id: true, shopId: true, status: true, zone: true, assignedStallCode: true, createdAt: true, lockAssignedAt: true, paymentDueAt: true, paymentConfirmedAt: true, paymentSlipImage: true }
     });
+    // ร้านของผู้ใช้ (มีได้หลายร้าน) — คำขอเก่าที่ไม่มี shopId เป็นของร้านหลัก
+    const myShops = await getUserShops(userId, { select: { id: true, shopName: true } });
+    const primaryShopId = myShops[0] ? myShops[0].id : null;
 
     // ล็อกของฉัน: คำขอล่าสุดที่ได้ล็อกแล้วเป็นตัวกำหนดสถานะของล็อกนั้น
     const requestByCode = new Map();
@@ -83,12 +86,12 @@ async function buildSellerHome(userId, now = new Date()) {
             if (id && !startByRequestId.has(id)) startByRequestId.set(id, b.rentalStartDate);
         });
     }
-    const [stallRows, health, openStatus, viewStats, notices, repairs, announcement] = await Promise.all([
+    const [stallRows, health, closedByShop, viewStats, notices, repairs, announcement] = await Promise.all([
         codes.length
             ? prisma.stall.findMany({ where: { stallCode: { in: codes } }, select: { stallCode: true, status: true, bookingEndDate: true, row: { select: { zone: { select: { code: true } } } } } })
             : [],
         buildMyStallHealth(userId, codes),
-        getOpenStatus(userId, now),
+        getClosedShopsToday(myShops.map((s) => s.id), now),
         getShopViewStats(userId),
         prisma.stallRenewalNotice.findMany({ where: { userId, createdAt: { gte: new Date(now.getTime() - 7 * DAY_MS) } }, orderBy: { createdAt: 'desc' }, take: 20 }),
         prisma.maintenanceReport.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 3, select: { id: true, category: true, location: true, status: true, createdAt: true } }),
@@ -108,6 +111,7 @@ async function buildSellerHome(userId, now = new Date()) {
         return {
             code,
             requestId: request.id,
+            shopId: request.shopId || primaryShopId,
             zone: stall.row?.zone?.code || code.charAt(0),
             requestStatus: request.status,
             requestText: REQUEST_STATUS[request.status]?.text || request.status,
@@ -128,6 +132,18 @@ async function buildSellerHome(userId, now = new Date()) {
 
     // นับถอยหลังถึงเส้นตาย 20:00 ของล็อกที่ใกล้หมดสิทธิ์ที่สุด (ยังต่อได้)
     const countdownStall = stalls.find((s) => s.cutoffAt && (s.phase === 'active' || s.phase === 'grace') && s.requestStatus === 'SUCCESS');
+
+    const currentShopIds = new Set(stalls.filter((st) => st.isCurrent).map((st) => st.shopId).filter(Boolean));
+    const openShops = myShops.filter((s) => currentShopIds.has(s.id)).map((s) => {
+        const closedAt = closedByShop.get(s.id) || null;
+        return {
+            shopId: s.id,
+            name: s.shopName || 'ยังไม่ได้ตั้งชื่อร้าน',
+            codes: stalls.filter((st) => st.isCurrent && st.shopId === s.id).map((st) => st.code),
+            isOpen: !closedAt,
+            closedAt
+        };
+    });
 
     const profile = buildProfileChecks(shop);
     const currentZones = stalls.filter((s) => s.isCurrent).map((s) => s.zone);
@@ -254,8 +270,10 @@ async function buildSellerHome(userId, now = new Date()) {
             tags: profile.tags,
             menuCount: (shop.menuImages || []).length
         },
-        // ปุ่มปิดร้านมีความหมายเฉพาะร้านที่มีล็อกใช้งานอยู่ (สัญญายังไม่หมด/ยังไม่ถูกปล่อย)
-        openStatus: stalls.some((st) => st.isCurrent) ? openStatus : null,
+        // ปุ่มปิดร้านมีความหมายเฉพาะร้านที่มีล็อกใช้งานอยู่ (สัญญายังไม่หมด/ยังไม่ถูกปล่อย) — แยกต่อร้าน
+        // openStatus = ร้านแรก (แถบหัวหน้า) / openShops = ทุกร้านที่มีล็อกใช้งาน (มีมากกว่า 1 ร้านจะแสดงปุ่มแยกร้าน)
+        openStatus: openShops[0] || null,
+        openShops,
         stalls,
         countdown: countdownStall ? { code: countdownStall.code, cutoffAt: countdownStall.cutoffAt, endLabel: countdownStall.endLabel } : null,
         todo,

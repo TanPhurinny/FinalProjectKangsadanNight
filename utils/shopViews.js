@@ -1,5 +1,6 @@
 const prisma = require('../config/prismaClient');
 const { toStartOfDay, addDays } = require('./bookingRound');
+const { shopsOfRequests } = require('./shops');
 
 // สถิติการเปิดดูร้านจากผังตลาด (ตาราง ShopViewEvent) — ใช้ทั้งหน้าร้านค้าของฉันและการ์ดล็อกของผู้ขายบนผัง
 const VIEW_KINDS = ['card', 'menu', 'share'];
@@ -12,13 +13,17 @@ async function getStallOwnerIndex() {
     if (Date.now() - ownerCache.at < OWNER_CACHE_MS) return ownerCache.byCode;
     const requests = await prisma.bookingRequest.findMany({
         where: { status: { in: ['APPROVED', 'IN_PROGRESS', 'SUCCESS'] }, assignedStallCode: { not: null } },
-        select: { assignedStallCode: true, userId: true, productName: true }
+        select: { id: true, assignedStallCode: true, userId: true, shopId: true, productName: true }
     });
+    // ร้านของล็อก = shopId ของคำขอ (คำขอเก่าที่ไม่มี shopId ใช้ร้านหลักของเจ้าของ)
+    const shopByRequest = await shopsOfRequests(requests);
     const byCode = new Map();
     requests.forEach((request) => {
+        const shop = shopByRequest.get(request.id);
         String(request.assignedStallCode || '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean).forEach((code) => {
             byCode.set(code, {
                 userId: request.userId || null,
+                shopId: shop ? shop.id : null,
                 shopName: request.productName || '-'
             });
         });

@@ -823,15 +823,19 @@ model InspectionAssignment {
   @@index([businessDate, assignedToId])
 }
 
+// "ปิดร้านวันนี้" แยกต่อร้าน (ผู้ใช้ 1 คนมีหลายร้าน) — 1 แถว = ร้านที่กดปิดใน 1 วันขาย (ดู utils/shopOpenStatus.js)
+// shopId null = แถวเก่าก่อนแยกร้าน (ถือเป็นร้านหลักของ userId)
 model ShopOpenStatus {
   id           Int       @id @default(autoincrement())
   userId       Int
+  shopId       Int?
   businessDate DateTime
   openedAt     DateTime
   closedAt     DateTime?
   updatedAt    DateTime  @updatedAt
 
-  @@unique([userId, businessDate])
+  @@unique([shopId, businessDate])
+  @@index([userId, businessDate])
   @@index([businessDate])
 }
 

@@ -1395,8 +1395,11 @@ router.post('/shop-promo', isSellerOnly, async (req, res) => {
 router.post('/shop-status', isSellerOnly, async (req, res) => {
     try {
         const open = req.body?.open === true || req.body?.open === 'true';
-        const status = await setOpenStatus(req.user.id, open);
-        return res.json({ success: true, ...status });
+        // ปิดแยกต่อร้าน — ไม่ส่ง shopId มา = ร้านหลัก / ส่งร้านที่ไม่ใช่ของตัวเองมา = ไม่พบร้าน
+        const shop = await resolveShopForUser(req.user.id, req.body?.shopId);
+        if (!shop) return res.status(404).json({ success: false, message: 'ไม่พบร้านของคุณ' });
+        const status = await setOpenStatus(shop, open);
+        return res.json({ success: true, shopId: shop.id, ...status });
     } catch (error) {
         console.error('Shop open status error:', error);
         return res.status(500).json({ success: false, message: 'บันทึกสถานะร้านไม่สำเร็จ กรุณาลองใหม่' });

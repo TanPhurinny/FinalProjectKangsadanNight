@@ -823,7 +823,7 @@ function myStallHealthHtml(id, stall) {
         repairs.length ? repairs.map((r) => `${r.category} (${REPAIR_STATUS_LABELS[r.status] || r.status})`).join(', ') : 'ทุกงานเสร็จแล้ว',
         repairs.length ? 'warn' : 'good']);
 
-    const os = VIEWER.openStatus || {};
+    const os = myShopOpenStatus(id);
     const openRow = `
         <div class="ich-open${os.isOpen === false ? ' is-closed' : ''}">
             <span><b>${os.isOpen === false ? 'ปิดร้านแล้ววันนี้' : 'ร้านเปิดอยู่'}</b>${os.isOpen === false
@@ -839,18 +839,32 @@ function myStallHealthHtml(id, stall) {
         </div>`).join('')}</div>`;
 }
 
+// สถานะเปิด/ปิดวันนี้ของร้านที่ถือล็อกนี้ (ผู้ใช้ 1 คนมีหลายร้านได้ — ปิดแยกต่อร้าน)
+function myShopOpenStatus(code) {
+    const shopId = (VIEWER.myStallShop || {})[code];
+    return (shopId && (VIEWER.openStatusByShop || {})[shopId]) || { isOpen: true, closedAt: null };
+}
+
 // ผู้ขายกดปิดร้านวันนี้ (หรือยกเลิกการปิด) จากการ์ดล็อกตัวเอง — ใช้ endpoint เดียวกับหน้าแรกผู้ขาย (POST /shop-status)
+// ปิดเฉพาะร้านของล็อกนี้ ล็อกอื่นของร้านเดียวกันปิดตามไปด้วย
 async function saveMyShopOpen(open, code) {
+    const shopId = (VIEWER.myStallShop || {})[code] || null;
     try {
         const response = await fetch('/shop-status', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ open })
+            body: JSON.stringify({ open, shopId })
         });
         const payload = await response.json();
         if (!response.ok || !payload.success) throw new Error(payload.message || 'บันทึกไม่สำเร็จ');
-        VIEWER.openStatus = payload;
-        MY_STALLS.forEach((c) => { if (BOOKING_BY_STALL[c]) BOOKING_BY_STALL[c].closedAt = payload.isOpen ? null : payload.closedAt; });
+        if (shopId) {
+            VIEWER.openStatusByShop = VIEWER.openStatusByShop || {};
+            VIEWER.openStatusByShop[shopId] = { isOpen: payload.isOpen, closedAt: payload.closedAt };
+        }
+        MY_STALLS.forEach((c) => {
+            if ((VIEWER.myStallShop || {})[c] !== shopId) return;
+            if (BOOKING_BY_STALL[c]) BOOKING_BY_STALL[c].closedAt = payload.isOpen ? null : payload.closedAt;
+        });
         updateQuickTagCounts();
         if (activeZone) renderGrid(activeZone);
         showInfo(code);
@@ -861,7 +875,7 @@ async function saveMyShopOpen(open, code) {
 }
 
 function toggleMyShopOpen(code) {
-    const isOpen = !(VIEWER.openStatus && VIEWER.openStatus.isOpen === false);
+    const isOpen = myShopOpenStatus(code).isOpen !== false;
     if (!isOpen) { saveMyShopOpen(true, code); return; }
     window.showConfirmDialog({
         title: 'ปิดร้านวันนี้?',

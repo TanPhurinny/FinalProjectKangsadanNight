@@ -5,7 +5,7 @@ const { getRoundTimeline } = require('./bookingRound');
 
 // ข้อมูลหน้าแรกสาธารณะ (/) สำหรับคนที่ยังไม่ล็อกอิน: จำนวนร้านคืนนี้ + รอบจองถัดไป
 // ตัวเลขเป็นยอดรวมทั้งตลาดเท่านั้น ไม่บอกล็อกว่าง/วันหมดสัญญา/ราคาแผง (ข้อมูลภายใน ดู getMarketMapPage)
-// ร้าน = เจ้าของล็อก (ร้านหลายล็อกนับ 1) ที่สัญญาครอบคลุมวันขายนี้ ไม่นับบูธกิจกรรมโซน G
+// ร้าน = ร้านของล็อก (ร้านหลายล็อกนับ 1) ที่สัญญาครอบคลุมวันขายนี้ ไม่นับบูธกิจกรรมโซน G
 // เปิดคืนนี้ = ร้านเหล่านั้นที่ไม่ได้กด "ปิดร้านวันนี้" (ทุกร้านเปิดเป็นค่าเริ่มต้น — utils/shopOpenStatus.js)
 async function buildPublicHome(now = new Date()) {
     const businessDate = businessDateOf(now);
@@ -25,18 +25,19 @@ async function buildPublicHome(now = new Date()) {
         getStallOwnerIndex()
     ]);
 
+    // นับต่อร้าน (ผู้ใช้ 1 คนมีหลายร้านได้ ร้านเดียวหลายล็อกนับ 1)
     const shopKeys = new Set();
-    const ownerIds = new Set();
+    const shopIds = new Set();
     stalls.forEach((stall) => {
         const owner = ownerByCode.get(String(stall.stallCode).toUpperCase());
-        if (owner && owner.userId) {
-            shopKeys.add(`u${owner.userId}`);
-            ownerIds.add(owner.userId);
+        if (owner && owner.shopId) {
+            shopKeys.add(`h${owner.shopId}`);
+            shopIds.add(owner.shopId);
         } else {
             shopKeys.add(`s${stall.stallCode}`);
         }
     });
-    const closed = await getClosedShopsToday([...ownerIds], now);
+    const closed = await getClosedShopsToday([...shopIds], now);
 
     return {
         shopCount: shopKeys.size,
