@@ -2188,17 +2188,23 @@ async function loadAdminRenewalNotices(userId) {
         const stallByCode = new Map(stalls.map((s) => [s.stallCode, s]));
         const seen = new Set();
         const entries = [];
+        // แอดมินกดย้ำได้หลายครั้ง — ใช้แถวล่าสุด (id/เวลาใหม่ การ์ดจึงกลับเป็นยังไม่อ่าน) และนับจำนวนครั้งของสัญญาเดียวกัน
+        const sameContract = (notice, stall) => toStartOfDay(stall.bookingEndDate)?.getTime() === toStartOfDay(notice.bookingEndDate)?.getTime();
         notices.forEach((notice) => {
             const stall = stallByCode.get(notice.stallCode);
             if (!stall || seen.has(notice.stallCode)) return;
-            if (toStartOfDay(stall.bookingEndDate)?.getTime() !== toStartOfDay(notice.bookingEndDate)?.getTime()) return;
+            if (!sameContract(notice, stall)) return;
             seen.add(notice.stallCode);
+            const nudgeCount = notices.filter((n) => n.stallCode === notice.stallCode && sameContract(n, stall)).length;
             const renewal = getRenewalOptions(stall.bookingEndDate, new Date());
             const closed = !renewal || !renewal.isOpen;
             entries.push({
                 id: `renewal-notice-${notice.id}`,
                 type: 'pending-review',
-                title: `ผู้ดูแลตลาดแจ้ง: ต่อล็อก ${notice.stallCode} ไหม?`,
+                title: nudgeCount > 1
+                    ? `ผู้ดูแลตลาดย้ำเตือนครั้งที่ ${nudgeCount}: ต่อล็อก ${notice.stallCode} ไหม?`
+                    : `ผู้ดูแลตลาดแจ้ง: ต่อล็อก ${notice.stallCode} ไหม?`,
+                nudgeCount,
                 desc: closed
                     ? `ล็อก ${notice.stallCode} เลยเวลา 20:00 น. วันที่ ${formatDateThai(stall.bookingEndDate)} แล้ว หมดสิทธิ์ต่อและถูกเปิดให้คนอื่นจอง`
                     : `ล็อก ${notice.stallCode} ขายวันสุดท้ายวันที่ ${formatDateThai(stall.bookingEndDate)} กด "ต่อล็อก" แล้วชำระเงิน ล็อกเดิมเป็นของคุณต่อทันที ไม่ต้องรอแอดมินจัดล็อกใหม่ ต้องต่อก่อน 20:00 น. ของวันนั้น เลยเวลาแล้วล็อกจะถูกเปิดให้คนอื่นจอง`,

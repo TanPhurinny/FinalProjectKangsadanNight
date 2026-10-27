@@ -1649,6 +1649,16 @@ kbd {
     color: #fff;
 }
 
+.qa-btn.qa-again {
+    border-color: #c98a2e;
+    color: #a86f1c;
+}
+
+.qa-btn.qa-again:hover {
+    background: #c98a2e;
+    color: #fff;
+}
+
 .qa-btn.qa-danger {
     border-color: var(--db-red);
     color: var(--db-red);
