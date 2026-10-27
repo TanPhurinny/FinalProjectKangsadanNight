@@ -28,6 +28,7 @@ exports.getPage = async (req, res) => {
         const now = new Date();
         const today = businessDateOf(now);
         const days = await rain.listRainDays();
+        const selectableDays = (await rain.listSelectableDays(now)).map((day) => ({ ...day, dateKey: toDateKey(day.date) }));
 
         // ขั้นดูรายชื่อก่อนประกาศ (?date=YYYY-MM-DD&percent=..)
         let preview = null;
@@ -56,6 +57,7 @@ exports.getPage = async (req, res) => {
         return res.render('admin/rainCompensation', {
             user: req.user,
             days,
+            selectableDays,
             preview,
             now,
             todayKey: toDateKey(today),

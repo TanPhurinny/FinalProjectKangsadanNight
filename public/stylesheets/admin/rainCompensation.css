@@ -77,3 +77,27 @@
     .rain-pick-form,
     .rain-announce-form { grid-template-columns: 1fr; }
 }
+
+/* ปุ่มเลือกวันย้อนหลัง 7 วัน พร้อมจำนวนร้านที่มีสิทธิ์ */
+.rain-days { margin-top: 16px; }
+.rain-days__list { display: flex; flex-wrap: wrap; gap: 8px; }
+.rain-day-chip {
+    display: inline-flex;
+    flex-direction: column;
+    min-width: 96px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    background: #fff;
+    transition: 0.15s;
+}
+.rain-day-chip small { font-size: 12px; font-weight: 400; color: var(--sub); font-variant-numeric: tabular-nums; }
+a.rain-day-chip:hover { border-color: var(--primary); }
+.rain-day-chip.is-current { border-color: var(--text); background: var(--text); color: #fff; }
+.rain-day-chip.is-current small { color: #cfe0e4; }
+.rain-day-chip.is-disabled { color: #9aa8ad; background: #f6f8f8; cursor: default; }
+.rain-days__empty { font-size: 13px; color: var(--sub); margin: 10px 0 0; }

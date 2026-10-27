@@ -16,7 +16,7 @@
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/admin/bookingHolidays.css">
-        <link rel="stylesheet" href="/stylesheets/admin/rainCompensation.css">
+        <link rel="stylesheet" href="/stylesheets/admin/rainCompensation.css?v=20261027-days">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
     <%
@@ -93,6 +93,28 @@
                             </div>
                             <button type="submit" class="btn-submit">ดูรายชื่อร้าน</button>
                         </form>
+
+                        <%# วันที่ประกาศได้ (ย้อนหลัง 7 วัน) พร้อมจำนวนร้านที่ชำระเงินแล้วและมีล็อกวันนั้น — กดเพื่อดูรายชื่อได้เลย %>
+                        <div class="rain-days">
+                            <span class="field-label">หรือกดเลือกวัน (จำนวนร้านที่มีสิทธิ์)</span>
+                            <div class="rain-days__list">
+                                <% selectableDays.forEach(function (d) {
+                                    const isCurrent = preview && preview.dateKey === d.dateKey;
+                                    const label = new Date(d.date).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+                                    const state = d.announced ? 'ประกาศแล้ว' : d.holiday ? 'วันหยุด' : `${d.shopCount} ร้าน`;
+                                    const disabled = d.announced || d.holiday || !d.shopCount;
+                                %>
+                                <% if (disabled) { %>
+                                <span class="rain-day-chip is-disabled"><%= label %><small><%= state %></small></span>
+                                <% } else { %>
+                                <a class="rain-day-chip <%= isCurrent ? 'is-current' : '' %>" href="/admin/rain-compensation?date=<%= d.dateKey %>&percent=<%= preview ? preview.percent : 100 %>"><%= label %><small><%= state %></small></a>
+                                <% } %>
+                                <% }) %>
+                            </div>
+                            <% if (!selectableDays.some(function (d) { return d.shopCount && !d.announced && !d.holiday; })) { %>
+                            <p class="rain-days__empty">7 วันที่ผ่านมาไม่มีร้านที่ชำระเงินแล้วและมีล็อกเลย (ตรงกับผังตลาด) จึงยังไม่มีร้านให้ชดเชย</p>
+                            <% } %>
+                        </div>
                     </div>
                 </div>
 
@@ -103,7 +125,7 @@
                         <% if (preview.error) { %>
                         <div class="notice notice-danger mb-0"><%= preview.error %></div>
                         <% } else if (!preview.shops.length) { %>
-                        <div class="notice mb-0">ไม่มีร้านที่ชำระเงินแล้วและมีล็อกในวันนี้</div>
+                        <div class="notice notice-danger mb-0">วันนี้ไม่มีร้านที่ชำระเงินแล้วและมีล็อก จึงไม่มีร้านให้ชดเชย (ร้านที่ยังไม่จ่ายเงินหรือสัญญาหมดแล้วไม่นับ) — เลือกวันอื่นจากปุ่มด้านบน</div>
                         <% } else { %>
                         <form method="POST" action="/admin/rain-compensation" class="js-announce-form">
                             <input type="hidden" name="date" value="<%= preview.dateKey %>">

@@ -162,6 +162,40 @@ async function findEligibleShops(date, now = new Date()) {
         .sort((a, b) => a.stallCodes[0].localeCompare(b.stallCodes[0]));
 }
 
+// วันที่ประกาศได้ (วันนี้ย้อนหลัง MAX_PAST_DAYS วัน) พร้อมจำนวนร้านที่มีสิทธิ์แต่ละวัน — ใช้ทำปุ่มเลือกวันในหน้าแอดมิน
+// นับแบบเดียวกับ findEligibleShops (Booking SUCCESS ไม่รวมบูธกิจกรรม) แต่ query ครั้งเดียวทั้งช่วง
+async function listSelectableDays(now = new Date()) {
+    const today = toStartOfDay(now);
+    const from = addDays(today, -MAX_PAST_DAYS);
+    const [bookings, announced, holidays] = await Promise.all([
+        prisma.booking.findMany({
+            where: { status: 'SUCCESS', rentalStartDate: { lte: addDays(today, 1) }, rentalEndDate: { gte: from } },
+            select: { userId: true, rentalStartDate: true, rentalEndDate: true, slot: { select: { slotNumber: true } } }
+        }),
+        prisma.rainCompensationDay.findMany({ where: { date: { gte: from, lte: today } }, select: { date: true } }),
+        prisma.bookingHoliday.findMany({ where: { date: { gte: from, lte: today } }, select: { date: true } })
+    ]);
+    const announcedSet = new Set(announced.map((d) => toStartOfDay(d.date).getTime()));
+    const holidaySet = new Set(holidays.map((d) => toStartOfDay(d.date).getTime()));
+    const days = [];
+    for (let offset = 0; offset <= MAX_PAST_DAYS; offset += 1) {
+        const day = addDays(today, -offset);
+        const users = new Set();
+        bookings.forEach((b) => {
+            const code = String(b.slot?.slotNumber || '');
+            if (!code || isEventBoothCode(code)) return;
+            if (toStartOfDay(b.rentalStartDate) <= day && toStartOfDay(b.rentalEndDate) >= day) users.add(b.userId);
+        });
+        days.push({
+            date: day,
+            shopCount: users.size,
+            announced: announcedSet.has(day.getTime()),
+            holiday: holidaySet.has(day.getTime())
+        });
+    }
+    return days;
+}
+
 // ตรวจวันที่ก่อนประกาศ คืนข้อความ error ภาษาไทย หรือ null ถ้าใช้ได้
 async function validateRainDate(date, now = new Date()) {
     if (!date) return 'กรุณาเลือกวันที่ฝนตก';
@@ -434,6 +468,7 @@ module.exports = {
     defaultAnnounceAt,
     computeExpiresAt,
     parseDateKey,
+    listSelectableDays,
     validateRainDate,
     previewRainDay,
     announceRainDay,
