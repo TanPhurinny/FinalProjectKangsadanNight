@@ -9,6 +9,8 @@ const { getShopViewStats, getShopViewInsights } = require('./shopViews');
 const { getPromo, PROMO_MAX_LENGTH } = require('./shopPromo');
 const { buildProfileChecks } = require('./shopCompleteness');
 const { getAnnouncementsForUser } = require('../controllers/announcementController');
+const { getAvailableCredits } = require('./rainCompensation');
+const { getSellerReviewPanel } = require('./shopReviews');
 
 // ข้อมูลหน้าแรกผู้ขาย (/seller): สถานะร้านคืนนี้, สิ่งที่ต้องทำ (เรียงตามความด่วน), ล็อกของฉัน,
 // ตัวเลขสรุป และความเคลื่อนไหวล่าสุด — รวมไว้ที่เดียวให้ route บางลง
@@ -126,9 +128,11 @@ async function buildSellerHome(userId, now = new Date()) {
 
     const profile = buildProfileChecks(shop);
     const currentZones = stalls.filter((s) => s.isCurrent).map((s) => s.zone);
-    const [viewInsights, promo] = await Promise.all([
+    const [viewInsights, promo, rain, reviewPanel] = await Promise.all([
         getShopViewInsights(userId, currentZones.length ? currentZones : stalls.map((s) => s.zone), now),
-        getPromo(userId, now)
+        getPromo(userId, now),
+        getAvailableCredits(userId, now),
+        getSellerReviewPanel(userId)
     ]);
 
     // ---------- สิ่งที่ต้องทำ เรียงจากด่วนสุด ----------
@@ -167,6 +171,13 @@ async function buildSellerHome(userId, now = new Date()) {
         href: `/market-map?stall=${s.code}`, cta: 'ดูรายละเอียด'
     }));
     const pendingReq = requests.find((r) => r.status === 'PENDING' || r.status === 'APPROVED');
+    // มีเครดิตชดเชยฝนตก + มีบิลรอชำระ: ใช้เป็นส่วนลดได้ในหน้าสถานะการจอง
+    if (rain.count && stalls.some((s) => s.paymentDeadline && new Date(s.paymentDeadline) > now)) todo.push({
+        tone: 'good', icon: 'bi-cloud-rain',
+        title: `ใช้ส่วนลดชดเชยฝนตก ฿${rain.total.toLocaleString('th-TH')}`,
+        desc: `มีเครดิต ${rain.count} ใบ หักจากบิลที่รอชำระได้ก่อนแนบสลิป`,
+        href: '/booking-status', cta: 'ใช้ส่วนลด'
+    });
     if (pendingReq) todo.push({
         tone: 'info', icon: 'bi-hourglass-split',
         title: REQUEST_STATUS[pendingReq.status].text,
@@ -245,6 +256,25 @@ async function buildSellerHome(userId, now = new Date()) {
         promo: stalls.some((st) => st.isCurrent) ? { text: promo ? promo.text : '', maxLength: PROMO_MAX_LENGTH } : null,
         profile,
         roundTimeline: getRoundTimeline(now),
+        // กระเป๋าเครดิตชดเชยฝนตก (utils/rainCompensation.js) — เรียงจากใบที่หมดอายุก่อน
+        rain: {
+            total: rain.total,
+            count: rain.count,
+            nextExpiryLabel: rain.nextExpiry ? fmtDate(rain.nextExpiry) : null,
+            daysToExpiry: rain.nextExpiry ? Math.max(0, Math.ceil((new Date(rain.nextExpiry) - now) / DAY_MS)) : null,
+            credits: rain.credits.slice(0, 5).map((c) => ({ amount: c.amount, dayLabel: fmtDate(c.day.date), expiresLabel: fmtDate(c.expiresAt) }))
+        },
+        // สรุปรีวิวร้าน (utils/shopReviews.js) + รีวิวล่าสุดที่มีข้อความ
+        reviews: {
+            avg: reviewPanel.avg,
+            count: reviewPanel.count,
+            newThisWeek: reviewPanel.newThisWeek,
+            unanswered: reviewPanel.unanswered,
+            latest: (() => {
+                const r = reviewPanel.reviews.find((x) => !x.isHidden && x.comment);
+                return r ? { rating: r.rating, comment: r.comment, author: r.author, when: fmtDate(r.createdAt), replied: !!r.reply } : null;
+            })()
+        },
         announcement: announcement ? { ...announcement, when: fmtDate(announcement.createdAt) } : null,
         activity
     };

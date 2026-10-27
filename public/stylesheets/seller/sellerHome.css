@@ -1,13 +1,13 @@
 /* ========================================
    หน้าหลักผู้ขาย (/seller) — gridgeist
-   แนวคิด: "แผงควบคุมคืนนี้ของแม่ค้า" ส่วนหลักส่วนเดียว (คืนนี้ + ต้องทำ) แล้วตามด้วยตัวเลขแบบบัญชี
-   คั่นด้วยเส้นบาง ส้มเป็นสีเน้นสีเดียว เริ่มออกแบบที่มือถือ ขยายเป็นกริด 12 คอลัมน์บนจอใหญ่
+   แนวคิด: "แผงควบคุมคืนนี้ของแม่ค้า" หัวหน้าเป็นแถบมืดแบบตลาดกลางคืน (ไฟประดับ + ป้ายเปิด/ปิดร้าน + ตั๋วล็อก)
+   ส่วนที่เหลือเป็นกระดาษสว่างบนกริด 12 คอลัมน์ คั่นด้วยเส้นบาง ส้มเป็นสีเน้นสีเดียว เริ่มออกแบบที่มือถือ
    ======================================== */
 :root {
     --sh-ink: #12303a;
     --sh-soft: #5b7a84;
     --sh-line: #d7e3e6;
-    --sh-bg: #f6f8f8;
+    --sh-bg: #f4f7f7;
     --sh-paper: #fff;
     --sh-accent: #e67e22;
     --sh-accent-ink: #a84800;
@@ -15,16 +15,22 @@
     --sh-warn: #a0620f;
     --sh-bad: #c0392b;
     --sh-info: #1f6f80;
-    --sh-mono: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
+    --sh-night: #0d2530;
+    --sh-night-2: #143845;
+    --sh-night-line: rgba(255, 255, 255, .12);
+    --sh-night-soft: #9db7bf;
+    --sh-neon: #3ee083;
+    --sh-font: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif;
     --sh-gap: 14px;
+    --sh-ease: cubic-bezier(.2, .7, .2, 1);
 }
 
-body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif; color: var(--sh-ink); }
+body { background: var(--sh-bg); font-family: var(--sh-font); color: var(--sh-ink); }
 
 .sh {
     max-width: 1240px;
     margin: 0 auto;
-    padding: 18px 14px 48px;
+    padding: 14px 14px 56px;
     display: flex;
     flex-direction: column;
     gap: var(--sh-gap);
@@ -33,14 +39,15 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
 /* ---------- ชิ้นส่วนกลาง ---------- */
 .sh-kicker, .sh-label {
     margin: 0;
-    font-family: var(--sh-mono);
     font-size: 11px;
     letter-spacing: .06em;
     text-transform: uppercase;
     color: var(--sh-soft);
 }
 .sh-link { color: var(--sh-info); font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; }
-.sh-link:hover { text-decoration: underline; }
+.sh-link:hover { text-decoration: underline; color: var(--sh-info); }
+.sh-link i { transition: transform .15s var(--sh-ease); display: inline-block; }
+.sh-link:hover i.bi-arrow-right { transform: translateX(3px); }
 .sh-btn {
     display: inline-flex;
     align-items: center;
@@ -57,15 +64,22 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
     text-decoration: none;
     cursor: pointer;
     white-space: nowrap;
+    transition: background-color .15s, color .15s;
 }
 .sh-btn:hover { background: #0b1f26; color: #fff; }
+.sh-btn:disabled { opacity: .6; cursor: wait; }
+.sh-btn[hidden] { display: none; }
 .sh-btn--ghost { background: var(--sh-paper); color: var(--sh-ink); }
 .sh-btn--ghost:hover { background: var(--sh-bg); color: var(--sh-ink); }
-.sh-sechead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-.sh-sechead h2 { margin: 0; font-size: 17px; font-weight: 700; }
-.sh-count { font-family: var(--sh-mono); font-size: 13px; padding: 0 8px; border: 1px solid var(--sh-ink); }
-.sh-empty { margin: 0; padding: 14px 0; color: var(--sh-soft); font-size: 14px; }
+.sh-btn--accent { background: var(--sh-accent); border-color: var(--sh-accent-ink); }
+.sh-btn--accent:hover { background: #cf6d16; }
+.sh-btn--block { display: flex; width: 100%; margin-top: 12px; }
+.sh-sechead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.sh-sechead h2 { margin: 0; font-size: 17px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; }
+.sh-count { font-size: 12px; font-weight: 700; min-width: 24px; padding: 1px 7px; border: 1px solid var(--sh-ink); text-align: center; }
+.sh-empty { margin: 0; padding: 12px 0; color: var(--sh-soft); font-size: 14px; }
 .sh-empty i { margin-right: 6px; }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid rgba(230, 126, 34, .55); outline-offset: 2px; }
 
 /* โทนสถานะ (ข้อความใช้สีหมึก มีแถบสีช่วยบอกระดับ) */
 .sh-tone--good { --tone: var(--sh-good); }
@@ -74,42 +88,116 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
 .sh-tone--info { --tone: var(--sh-info); }
 .sh-tone--neutral, .sh-tone--muted { --tone: var(--sh-soft); }
 
-/* ---------- 01 หัวหน้า ---------- */
-.sh-head { display: flex; flex-direction: column; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--sh-line); }
-.sh-title { margin: 2px 0 4px; font-size: 24px; font-weight: 700; line-height: 1.2; }
-.sh-shopline { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 14px; color: var(--sh-soft); }
-.sh-shopline b { color: var(--sh-ink); font-size: 15px; }
-.sh-shopline span { font-family: var(--sh-mono); font-size: 11px; padding: 1px 6px; border: 1px solid var(--sh-line); }
-.sh-verified { color: var(--sh-info); }
-.sh-head-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.sh-head-actions .sh-btn:last-child { grid-column: 1 / -1; background: var(--sh-accent); border-color: var(--sh-accent-ink); }
-.sh-head-actions .sh-btn:last-child:hover { background: #cf6d16; }
-
-/* ---------- 02 คืนนี้ + ต้องทำ ---------- */
-.sh-hero { display: grid; gap: var(--sh-gap); }
-.sh-tonight {
-    background: var(--sh-paper);
-    border: 2px solid var(--sh-ink);
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+/* ---------- 01 หัวหน้า "คืนนี้" (แถบมืด) ---------- */
+.sh-mast {
+    --state: var(--sh-neon);
+    position: relative;
+    overflow: hidden;
+    color: #fff;
+    background-color: var(--sh-night);
+    /* กริดจางๆ แบบพิมพ์เขียว ให้รู้สึกเป็นผังตลาด */
+    background-image:
+        linear-gradient(var(--sh-night-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--sh-night-line) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: -1px -1px;
+    border: 1px solid var(--sh-night);
+    border-bottom: 4px solid var(--state);
+    transition: border-color .3s;
 }
-.sh-open { display: flex; flex-direction: column; gap: 12px; padding: 12px; border-left: 6px solid var(--sh-good); background: #f1fbf5; }
-.sh-open.is-closed { border-left-color: var(--sh-soft); background: var(--sh-bg); }
-.sh-open.is-empty { border-left-color: var(--sh-accent); background: #fff8ee; }
-.sh-open__state { display: flex; gap: 12px; align-items: flex-start; }
-.sh-open__dot { flex-shrink: 0; width: 16px; height: 16px; margin-top: 8px; border: 2px solid var(--sh-ink); background: #2ecc71; }
-.sh-open.is-open .sh-open__dot { animation: shPulse 1.6s ease-in-out infinite; }
-.sh-open.is-closed .sh-open__dot { background: var(--sh-soft); }
-.sh-open.is-empty .sh-open__dot { background: var(--sh-accent); }
-@keyframes shPulse { 50% { box-shadow: 0 0 0 6px rgba(46, 204, 113, .25); } }
-.sh-open__label { margin: 0; font-size: 26px; font-weight: 700; line-height: 1.15; }
-.sh-open__sub { margin: 4px 0 0; font-size: 13px; color: var(--sh-soft); }
-.sh-open__btn {
+.sh-mast.is-closed { --state: #7f98a0; }
+.sh-mast.is-empty { --state: var(--sh-accent); }
+
+/* ไฟประดับตลาดนัด (ตกแต่ง) */
+.sh-mast__lights {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 10px;
+    height: 18px;
+    background: linear-gradient(transparent 5px, rgba(255, 255, 255, .25) 5px, rgba(255, 255, 255, .25) 6px, transparent 6px);
+}
+.sh-mast__lights i {
+    width: 8px;
+    height: 8px;
+    margin-top: 6px;
+    border-radius: 50%;
+    background: #ffd27a;
+    box-shadow: 0 0 8px 1px rgba(255, 210, 122, .65);
+    animation: shTwinkle 2.4s ease-in-out infinite;
+}
+.sh-mast__lights i:nth-child(3n + 2) { background: #ff9f5a; box-shadow: 0 0 8px 1px rgba(255, 159, 90, .6); animation-delay: .8s; }
+.sh-mast__lights i:nth-child(3n) { background: #8de8b0; box-shadow: 0 0 8px 1px rgba(141, 232, 176, .55); animation-delay: 1.6s; }
+.sh-mast__lights i:nth-child(n + 15) { display: none; }
+.sh-mast.is-closed .sh-mast__lights i { animation: none; opacity: .3; box-shadow: none; }
+@keyframes shTwinkle { 50% { opacity: .35; } }
+
+.sh-mast__bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--sh-night-line);
+    font-size: 12px;
+    color: var(--sh-night-soft);
+}
+.sh-mast__clock { margin-left: auto; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.sh-mast__round { padding: 1px 8px; border: 1px solid var(--sh-night-line); }
+
+.sh-mast__grid { display: grid; }
+.sh-mast__who { display: flex; gap: 14px; align-items: center; padding: 18px 16px; min-width: 0; }
+.sh-avatar {
+    position: relative;
+    flex-shrink: 0;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--sh-night-2);
+    border: 1px solid rgba(255, 255, 255, .35);
+}
+.sh-avatar span { font-size: 28px; font-weight: 700; color: var(--sh-night-soft); }
+.sh-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sh-mast__text { min-width: 0; }
+.sh-mast__greet { margin: 0; font-size: 13px; color: var(--sh-night-soft); }
+.sh-mast__title { margin: 0 0 4px; font-size: 26px; font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; }
+.sh-mast__shop { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 14px; }
+.sh-mast__shop .bi-patch-check-fill { color: #7fd3e4; }
+.sh-mast__type { font-size: 11px; padding: 1px 6px; border: 1px solid var(--sh-night-line); color: var(--sh-night-soft); }
+.sh-mast__rate { color: #ffd27a; font-weight: 700; text-decoration: none; font-size: 13px; }
+.sh-mast__rate small { color: var(--sh-night-soft); font-weight: 400; }
+.sh-mast__rate:hover { color: #ffe3a8; text-decoration: underline; }
+
+/* ป้ายสถานะร้าน */
+.sh-sign {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 16px;
+    border-top: 1px solid var(--sh-night-line);
+    background: rgba(255, 255, 255, .03);
+}
+.sh-sign__kicker { margin: 0; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--sh-night-soft); }
+.sh-sign__state { display: flex; align-items: center; gap: 12px; }
+.sh-sign__dot { position: relative; flex-shrink: 0; width: 14px; height: 14px; border-radius: 50%; background: var(--state); }
+.sh-mast.is-open .sh-sign__dot::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2px solid var(--state);
+    animation: shRing 1.8s ease-out infinite;
+}
+@keyframes shRing { from { transform: scale(.5); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+.sh-sign__label { margin: 0; font-size: 28px; font-weight: 700; line-height: 1.1; color: var(--state); }
+.sh-mast.is-open .sh-sign__label { text-shadow: 0 0 18px rgba(62, 224, 131, .35); }
+.sh-sign__sub { margin: 0; font-size: 13px; color: var(--sh-night-soft); }
+.sh-sign__btn {
+    margin-top: 6px;
     min-height: 48px;
     padding: 10px 20px;
-    border: 1px solid #8e2a1f;
+    border: 1px solid #e3584a;
     background: var(--sh-bad);
     color: #fff;
     font-family: inherit;
@@ -118,57 +206,153 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
     text-align: center;
     text-decoration: none;
     cursor: pointer;
+    transition: background-color .15s;
 }
-.sh-open__btn:disabled { opacity: .6; cursor: wait; }
-.sh-open.is-closed .sh-open__btn { background: var(--sh-ink); border-color: var(--sh-ink); }
-.sh-open__btn--go { background: var(--sh-accent); border-color: var(--sh-accent-ink); color: #fff; }
+.sh-sign__btn:hover { background: #a93226; color: #fff; }
+.sh-sign__btn:disabled { opacity: .6; cursor: wait; }
+.sh-mast.is-closed .sh-sign__btn { background: transparent; border-color: rgba(255, 255, 255, .6); }
+.sh-mast.is-closed .sh-sign__btn:hover { background: rgba(255, 255, 255, .1); }
+.sh-sign__btn--go { background: var(--sh-accent); border-color: #ffb066; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.sh-sign__btn--go:hover { background: #cf6d16; }
 
-.sh-countdown { border-top: 1px solid var(--sh-line); padding-top: 12px; }
-.sh-countdown__digits { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 8px; border: 1px solid var(--sh-ink); }
-.sh-countdown__digits span { display: flex; flex-direction: column; align-items: center; padding: 8px 4px; border-right: 1px solid var(--sh-line); }
-.sh-countdown__digits span:last-child { border-right: 0; }
-.sh-countdown__digits b { font-family: var(--sh-mono); font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.sh-countdown__digits small { font-size: 11px; color: var(--sh-soft); }
-.sh-countdown.is-urgent .sh-countdown__digits { border-color: var(--sh-bad); background: #fff3f1; }
-.sh-countdown.is-urgent b { color: var(--sh-bad); }
-.sh-countdown.is-over .sh-countdown__digits { opacity: .5; }
+/* แถบล่าง: ตั๋วล็อก + นับถอยหลัง */
+.sh-mast__strip { display: grid; border-top: 1px solid var(--sh-night-line); }
+.sh-mast__strip > * { padding: 14px 16px; min-width: 0; }
+.sh-mast__label { margin: 0; font-size: 11px; letter-spacing: .04em; color: var(--sh-night-soft); }
+.sh-mast__link { color: #ffd27a; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.sh-mast__link:hover { color: #ffe3a8; text-decoration: underline; }
 
-.sh-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.sh-chip {
-    display: inline-flex;
+.sh-tickets { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.sh-tickets::-webkit-scrollbar { display: none; }
+.sh-ticket {
+    position: relative;
+    flex: 0 0 auto;
+    display: flex;
     flex-direction: column;
-    min-width: 92px;
-    padding: 6px 10px;
-    border: 1px solid var(--sh-ink);
-    border-top: 4px solid var(--tone, var(--sh-good));
-    background: var(--sh-paper);
+    min-width: 116px;
+    padding: 8px 14px 8px 12px;
+    background: #fff;
     color: var(--sh-ink);
     text-decoration: none;
-    font-size: 12px;
+    border-left: 5px solid var(--tone, var(--sh-good));
+    transition: transform .15s var(--sh-ease);
 }
-.sh-chip b { font-family: var(--sh-mono); font-size: 15px; }
-.sh-chip span { color: var(--sh-soft); }
-.sh-chip--good { --tone: var(--sh-good); }
-.sh-chip--warn { --tone: var(--sh-warn); }
-.sh-chip--bad { --tone: var(--sh-bad); }
-.sh-chip--info { --tone: var(--sh-info); }
-.sh-chip:hover { background: var(--sh-bg); }
+/* รอยปรุตั๋ว */
+.sh-ticket::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    right: 6px;
+    border-right: 2px dotted var(--sh-line);
+}
+.sh-ticket:hover { transform: translateY(-2px); color: var(--sh-ink); }
+.sh-ticket small { font-size: 10px; color: var(--sh-soft); }
+.sh-ticket b { font-size: 22px; line-height: 1.1; letter-spacing: .02em; }
+.sh-ticket span { font-size: 12px; font-weight: 600; color: var(--tone); }
 
-.sh-todo { background: var(--sh-paper); border: 1px solid var(--sh-ink); padding: 16px; }
-.sh-todo__list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--sh-ink); }
+.sh-countdown__head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.sh-countdown__digits { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+.sh-countdown__digits span { display: flex; flex-direction: column; align-items: center; padding: 6px 4px; background: rgba(255, 255, 255, .06); border: 1px solid var(--sh-night-line); }
+.sh-countdown__digits b { font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.sh-countdown__digits small { font-size: 11px; color: var(--sh-night-soft); }
+.sh-countdown__track { height: 3px; margin-top: 8px; background: var(--sh-night-line); }
+.sh-countdown__track i { display: block; height: 100%; width: 100%; background: #ffd27a; transform-origin: left; transition: transform 1s linear; }
+.sh-countdown.is-urgent .sh-countdown__digits span { border-color: rgba(255, 120, 100, .6); background: rgba(192, 57, 43, .18); }
+.sh-countdown.is-urgent b { color: #ff9b8f; }
+.sh-countdown.is-urgent .sh-countdown__track i { background: #ff7b6b; }
+.sh-countdown.is-over .sh-countdown__digits { opacity: .45; }
+
+.sh-nextround__row { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 8px; border: 1px solid var(--sh-night-line); }
+.sh-nextround__row > div { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border-right: 1px solid var(--sh-night-line); min-width: 0; }
+.sh-nextround__row > div:last-child { border-right: 0; }
+.sh-nextround__row span { font-size: 11px; color: var(--sh-night-soft); }
+.sh-nextround__row b { font-size: 16px; }
+.sh-nextround__row > div:first-child b { color: #ffb066; }
+.sh-nextround__row small { font-size: 11px; color: #ffb066; }
+.sh-nextround__note { margin: 8px 0 0; font-size: 12px; color: var(--sh-night-soft); }
+
+/* ---------- 02 ทางลัด ---------- */
+.sh-quick {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: var(--sh-paper);
+    border: 1px solid var(--sh-ink);
+}
+.sh-quick__item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 78px;
+    padding: 10px 4px;
+    border-right: 1px solid var(--sh-line);
+    border-bottom: 1px solid var(--sh-line);
+    color: var(--sh-ink);
+    text-decoration: none;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.25;
+    transition: background-color .15s, color .15s;
+}
+.sh-quick__item:nth-child(4n) { border-right: 0; }
+.sh-quick__item:nth-last-child(-n + 4) { border-bottom: 0; }
+.sh-quick__item i { font-size: 22px; color: var(--sh-info); transition: transform .2s var(--sh-ease); }
+.sh-quick__item:hover { background: var(--sh-ink); color: #fff; }
+.sh-quick__item:hover i { color: #ffd27a; transform: translateY(-2px); }
+.sh-quick__item em {
+    position: absolute;
+    top: 8px;
+    right: calc(50% - 26px);
+    min-width: 18px;
+    padding: 0 5px;
+    font-style: normal;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    background: var(--sh-bad);
+    color: #fff;
+}
+.sh-quick__item.is-hot { background: var(--sh-accent); color: #fff; }
+.sh-quick__item.is-hot i { color: #fff; animation: shSpin 3s var(--sh-ease) infinite; }
+.sh-quick__item.is-hot:hover { background: #cf6d16; }
+@keyframes shSpin { 0%, 70% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
+
+/* ---------- กริดเนื้อหา ---------- */
+.sh-grid { display: grid; gap: var(--sh-gap); }
+.sh-stack { display: flex; flex-direction: column; gap: var(--sh-gap); min-width: 0; }
+.sh-panel { background: var(--sh-paper); border: 1px solid var(--sh-line); padding: 16px; min-width: 0; }
+.sh-panel--key { border-color: var(--sh-ink); border-top-width: 3px; }
+
+/* เผยทีละส่วนตอนเลื่อน (มีผลเฉพาะเมื่อ JS ทำงาน) */
+.sh-js .sh-reveal { opacity: 0; transform: translateY(12px); transition: opacity .45s var(--sh-ease), transform .45s var(--sh-ease); }
+.sh-js .sh-reveal.is-in { opacity: 1; transform: none; }
+
+/* ---------- 03 ต้องทำ ---------- */
+.sh-urgency { margin: 0; display: flex; gap: 12px; font-size: 12px; color: var(--sh-soft); }
+.sh-urgency span { display: inline-flex; align-items: center; gap: 5px; }
+.sh-urgency i { width: 8px; height: 8px; background: var(--tone); }
+.sh-urgency__bar { display: flex; gap: 2px; height: 6px; margin-bottom: 4px; }
+.sh-urgency__bar i { background: var(--tone); }
+.sh-todo { list-style: none; margin: 0; padding: 0; }
 .sh-todo__item {
     display: grid;
-    grid-template-columns: 30px 1fr;
-    gap: 4px 10px;
+    grid-template-columns: 26px 22px 1fr;
+    gap: 4px 8px;
     padding: 12px 0;
     border-bottom: 1px solid var(--sh-line);
 }
-.sh-todo__num { grid-row: span 2; font-family: var(--sh-mono); font-size: 12px; font-weight: 600; padding-top: 3px; border-top: 3px solid var(--tone); align-self: start; text-align: center; }
+.sh-todo__item:last-child { border-bottom: 0; padding-bottom: 0; }
+.sh-todo__num { font-size: 12px; font-weight: 700; color: var(--sh-soft); padding-top: 2px; }
+.sh-todo__icon { color: var(--tone); font-size: 17px; line-height: 1.3; }
 .sh-todo__title { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.35; }
-.sh-todo__title i { color: var(--tone); margin-right: 2px; }
 .sh-todo__desc { margin: 2px 0 0; font-size: 13px; color: var(--sh-soft); line-height: 1.5; }
 .sh-todo__cta {
-    grid-column: 2;
+    grid-column: 3;
     justify-self: start;
     margin-top: 6px;
     padding: 6px 12px;
@@ -177,28 +361,112 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
     font-size: 13px;
     font-weight: 600;
     text-decoration: none;
+    white-space: nowrap;
+    transition: background-color .15s, color .15s;
 }
 .sh-todo__cta:hover { background: var(--sh-ink); color: #fff; }
 .sh-todo__item.sh-tone--bad .sh-todo__cta { background: var(--sh-bad); border-color: #8e2a1f; color: #fff; }
+.sh-todo__item.sh-tone--bad .sh-todo__cta:hover { background: #a93226; }
+.sh-todo__item.sh-tone--warn .sh-todo__cta { background: var(--sh-accent); border-color: var(--sh-accent-ink); color: #fff; }
+.sh-todo__item.sh-tone--warn .sh-todo__cta:hover { background: #cf6d16; }
+.sh-allclear { display: flex; align-items: center; gap: 14px; padding: 14px; background: #f1fbf5; border-left: 4px solid var(--sh-good); }
+.sh-allclear i { font-size: 30px; color: var(--sh-good); }
+.sh-allclear div { display: flex; flex-direction: column; }
+.sh-allclear b { font-size: 16px; }
+.sh-allclear span { font-size: 13px; color: var(--sh-soft); }
 
-/* ---------- 03 ตัวเลขสรุป ---------- */
+/* ---------- โปรวันนี้ ---------- */
+.sh-promo-wrap { display: grid; gap: 14px; }
+.sh-promo input {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 6px;
+    padding: 8px 12px;
+    border: 1px solid var(--sh-ink);
+    font-family: inherit;
+    font-size: 16px;
+}
+.sh-promo input:focus { outline: 3px solid rgba(230, 126, 34, .35); outline-offset: 0; border-color: var(--sh-accent-ink); }
+.sh-promo.has-promo input { background: #fff8ee; border-left: 5px solid var(--sh-accent); }
+.sh-promo__meter { height: 3px; background: var(--sh-line); }
+.sh-promo__meter i { display: block; height: 100%; background: var(--sh-accent); transition: width .15s; }
+.sh-promo__meta { margin: 4px 0 0; display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--sh-soft); }
+.sh-promo__meta #promoStatus { color: var(--sh-accent-ink); font-weight: 600; }
+.sh-promo__chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
+.sh-promo__chips button {
+    padding: 5px 10px;
+    border: 1px dashed var(--sh-soft);
+    background: var(--sh-paper);
+    color: var(--sh-ink);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color .15s, background-color .15s;
+}
+.sh-promo__chips button:hover { border-style: solid; border-color: var(--sh-accent-ink); background: #fff8ee; }
+.sh-promo__chips button::before { content: '+ '; color: var(--sh-accent-ink); font-weight: 700; }
+.sh-promo__row { display: flex; gap: 8px; }
+.sh-promo__row .sh-btn--accent { flex: 1; }
+
+.sh-promo-preview { padding: 12px; background: var(--sh-bg); border: 1px dashed var(--sh-line); }
+.sh-mapcard { margin-top: 8px; padding: 10px 12px; background: #fff; border: 1px solid var(--sh-ink); border-left: 3px solid #2C93A8; }
+.sh-mapcard__name { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: #1f6f80; }
+.sh-mapcard__promo { margin: 0 0 6px; padding: 5px 8px; background: #fff3e3; border-left: 3px solid var(--sh-accent); font-size: 13px; font-weight: 600; color: var(--sh-accent-ink); overflow-wrap: anywhere; }
+.sh-mapcard__promo.is-empty { background: var(--sh-bg); border-left-color: var(--sh-line); color: var(--sh-soft); font-weight: 400; }
+.sh-mapcard__promo.is-pop { animation: shPop .3s var(--sh-ease); }
+@keyframes shPop { 50% { transform: scale(1.03); } }
+.sh-mapcard__tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.sh-mapcard__tags span { padding: 0 6px; border: 1px solid var(--sh-ink); font-size: 11px; }
+
+/* ---------- กระเป๋าชดเชยฝนตก ---------- */
+.sh-wallet { position: relative; overflow: hidden; }
+.sh-wallet.has-credit { border-color: var(--sh-info); border-top: 3px solid var(--sh-info); }
+.sh-wallet .sh-sechead h2 i { color: var(--sh-info); }
+.sh-wallet__total { margin: 0; display: flex; align-items: baseline; gap: 4px; }
+.sh-wallet__total b { font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
+.sh-wallet__total small { font-size: 18px; color: var(--sh-soft); }
+.sh-wallet:not(.has-credit) .sh-wallet__total b { color: var(--sh-soft); }
+.sh-wallet__slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin: 10px 0; }
+.sh-wallet__slots i { height: 8px; border: 1px solid var(--sh-info); }
+.sh-wallet__slots i.on { background: var(--sh-info); }
+.sh-wallet__note { margin: 0 0 8px; font-size: 13px; color: var(--sh-soft); }
+.sh-wallet__note.is-soon { color: var(--sh-bad); font-weight: 600; }
+.sh-wallet__list { list-style: none; margin: 0 0 10px; padding: 0; border-top: 1px solid var(--sh-line); }
+.sh-wallet__list li { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; padding: 6px 0; border-bottom: 1px dashed var(--sh-line); font-size: 13px; }
+.sh-wallet__list b { text-align: right; }
+.sh-wallet__list small { grid-column: 1 / -1; font-size: 11px; color: var(--sh-soft); }
+
+/* ---------- รีวิว ---------- */
+.sh-rating { display: flex; align-items: center; gap: 14px; }
+.sh-rating__avg { font-size: 44px; line-height: 1; }
+.sh-rating > div { display: flex; flex-direction: column; gap: 2px; }
+.sh-rating__meta { font-size: 12px; color: var(--sh-soft); }
+.sh-stars { color: #e5a00d; font-size: 16px; letter-spacing: 1px; }
+.sh-stars--sm { font-size: 12px; }
+.sh-quote { margin: 12px 0 0; padding: 10px 12px; background: var(--sh-bg); border-left: 3px solid #e5a00d; }
+.sh-quote p { margin: 4px 0; font-size: 13px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.sh-quote footer { font-size: 11px; color: var(--sh-soft); }
+
+/* ---------- 04 ตัวเลขสรุป ---------- */
 .sh-ledger {
     display: grid;
     grid-template-columns: 1fr 1fr;
     background: var(--sh-paper);
     border: 1px solid var(--sh-ink);
 }
-.sh-cell { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-right: 1px solid var(--sh-line); border-bottom: 1px solid var(--sh-line); min-width: 0; }
+.sh-cell { display: flex; flex-direction: column; gap: 2px; padding: 14px; border-right: 1px solid var(--sh-line); border-bottom: 1px solid var(--sh-line); min-width: 0; }
 .sh-cell:nth-child(2n) { border-right: 0; }
 .sh-cell:nth-child(n + 3) { border-bottom: 0; }
 .sh-cell__label { font-size: 12px; color: var(--sh-soft); }
-.sh-cell__value { font-family: var(--sh-mono); font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.sh-cell__value small { font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif; font-size: 14px; color: var(--sh-soft); }
+.sh-cell__value { font-size: 32px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.sh-cell__value small { font-size: 14px; color: var(--sh-soft); font-weight: 400; }
 .sh-cell__sub { font-size: 12px; color: var(--sh-soft); }
 .sh-spark { display: flex; align-items: flex-end; gap: 3px; height: 34px; margin: 4px 0 2px; border-bottom: 1px solid var(--sh-line); }
-.sh-spark__bar { position: relative; flex: 1; background: var(--sh-accent); border-radius: 3px 3px 0 0; min-height: 3px; }
+.sh-spark__bar { position: relative; flex: 1; height: var(--h); background: var(--sh-accent); min-height: 3px; transform-origin: bottom; }
 .sh-spark__bar:hover { background: var(--sh-accent-ink); }
-.sh-spark__bar:hover::after {
+
+/* tooltip ร่วมของกราฟแท่ง */
+.sh-spark__bar:hover::after, .sh-hours__col:hover::after {
     content: attr(data-tip);
     position: absolute;
     bottom: calc(100% + 4px);
@@ -210,24 +478,67 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
     font-size: 11px;
     white-space: nowrap;
     z-index: 2;
+    pointer-events: none;
 }
 
-/* ---------- 04/05 แผงหลัก + แผงข้าง ---------- */
-.sh-grid { display: grid; gap: var(--sh-gap); }
-.sh-panel { background: var(--sh-paper); border: 1px solid var(--sh-line); padding: 16px; min-width: 0; }
+/* ---------- 05 ลูกค้าดูร้านช่วงไหน (24 ชม.) ---------- */
+.sh-peak { margin: 0 0 10px; font-size: 14px; }
+.sh-peak b { color: var(--sh-accent-ink); }
+.sh-hours { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; height: 120px; margin-bottom: 22px; align-items: end; border-bottom: 1px solid var(--sh-ink); }
+.sh-hours__col { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+.sh-hours__bar { display: block; height: var(--h); background: #f0b27a; transform-origin: bottom; }
+.sh-hours__col.is-peak .sh-hours__bar { background: var(--sh-accent-ink); }
+.sh-hours__col.is-now { background: repeating-linear-gradient(0deg, transparent 0 4px, rgba(31, 111, 128, .12) 4px 5px); }
+.sh-hours__col.is-now::before {
+    content: 'ตอนนี้';
+    position: absolute;
+    top: calc(100% + 16px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--sh-info);
+    white-space: nowrap;
+}
+.sh-hours__label { position: absolute; top: calc(100% + 4px); left: 0; font-size: 10px; color: var(--sh-soft); }
+.sh-hours__col:hover .sh-hours__bar { filter: brightness(.85); }
+.sh-legend { margin: 6px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 12px; color: var(--sh-soft); }
+.sh-legend span { display: inline-block; width: 10px; height: 10px; margin-right: -8px; }
+.sh-legend span.is-peak { background: var(--sh-accent-ink); }
+.sh-legend span.is-now { background: rgba(31, 111, 128, .3); }
 
-/* ล็อกของฉัน: มือถือเป็นการ์ดต่อแถว / จอใหญ่เป็นตาราง */
+/* เทียบกับร้านในโซน */
+.sh-compare__headline { margin: 0 0 10px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.sh-compare__headline b { font-size: 32px; line-height: 1; }
+.sh-compare__headline b i { font-size: 22px; }
+.sh-compare__headline.is-up b { color: var(--sh-good); }
+.sh-compare__headline.is-down b { color: var(--sh-bad); }
+.sh-compare__headline span { font-size: 13px; color: var(--sh-soft); }
+.sh-compare { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.sh-compare > div { display: grid; grid-template-columns: 64px 1fr 40px; align-items: center; gap: 8px; font-size: 12px; }
+.sh-compare i { display: block; height: 12px; width: var(--w); background: #c9d3d6; min-width: 2px; transform-origin: left; }
+.sh-compare i.is-mine { background: var(--sh-accent); }
+.sh-compare b { text-align: right; }
+
+/* กราฟค่อยๆ ขึ้นเมื่อส่วนนั้นเลื่อนเข้าจอ */
+.sh-js .sh-reveal .sh-hours__bar, .sh-js .sh-reveal .sh-spark__bar { transform: scaleY(0); transition: transform .6s var(--sh-ease); }
+.sh-js .sh-reveal .sh-compare i { transform: scaleX(0); transition: transform .6s var(--sh-ease); }
+.sh-js .sh-reveal.is-in .sh-hours__bar, .sh-js .sh-reveal.is-in .sh-spark__bar, .sh-js .sh-reveal.is-in .sh-compare i { transform: none; }
+.sh-js .sh-reveal.is-in .sh-hours__col:nth-child(n + 12) .sh-hours__bar { transition-delay: .1s; }
+
+/* ---------- 06 ล็อกของฉัน: มือถือเป็นการ์ดต่อแถว / จอใหญ่เป็นตาราง ---------- */
 .sh-table { border-top: 1px solid var(--sh-ink); }
 .sh-tr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 0; padding: 12px 0; border-bottom: 1px solid var(--sh-line); font-size: 13px; }
 .sh-tr.sh-tr--head { display: none; }
-/* มือถือ: แถวบน = รหัสล็อก + สถานะ / แถวกลาง = สัญญา·ความสะอาด·ไฟเกิน 3 ช่อง / แถวล่าง = ปุ่ม */
 .sh-tr > span[data-label] { display: flex; flex-direction: column; padding: 0 8px; border-left: 1px solid var(--sh-line); color: var(--sh-ink); }
 .sh-tr > span[data-label="สัญญาถึง"] { padding-left: 0; border-left: 0; }
 .sh-tr > span[data-label]::before { content: attr(data-label); font-size: 11px; color: var(--sh-soft); }
 .sh-code { grid-column: span 2; display: flex; align-items: baseline; gap: 8px; }
 .sh-tr > span:nth-child(2) { justify-self: end; }
-.sh-code b { font-family: var(--sh-mono); font-size: 18px; }
+.sh-code b { font-size: 18px; }
 .sh-code small { color: var(--sh-soft); }
+.sh-ok { color: var(--sh-good); }
+.sh-ng { color: var(--sh-bad); }
 .sh-tag { font-style: normal; font-size: 12px; font-weight: 700; padding: 2px 8px; border: 1px solid var(--tone); color: var(--tone); white-space: nowrap; }
 .sh-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
 .sh-mini { padding: 6px 10px; border: 1px solid var(--sh-ink); color: var(--sh-ink); font-size: 12px; font-weight: 600; text-decoration: none; min-height: 34px; display: inline-flex; align-items: center; }
@@ -238,13 +549,14 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
 .sh-past summary { cursor: pointer; color: var(--sh-soft); font-weight: 600; padding: 6px 0; }
 .sh-past ul { list-style: none; margin: 0; padding: 0; border-top: 1px dashed var(--sh-line); }
 .sh-past li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--sh-line); color: var(--sh-soft); }
-.sh-past li b { font-family: var(--sh-mono); color: var(--sh-ink); min-width: 48px; }
+.sh-past li b { color: var(--sh-ink); min-width: 48px; }
 
 /* ลูกค้าเห็นร้านคุณแบบนี้ (ตัวอย่างการ์ดร้านบนผัง) */
 .sh-preview { border: 1px solid var(--sh-ink); border-left: 3px solid #2C93A8; padding: 12px; }
-.sh-preview__img { position: relative; height: 120px; margin-bottom: 10px; background: var(--sh-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.sh-preview__img { position: relative; height: 140px; margin-bottom: 10px; background: var(--sh-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .sh-preview__img span { font-size: 40px; font-weight: 700; color: var(--sh-soft); }
-.sh-preview__img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sh-preview__img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .4s var(--sh-ease); }
+.sh-preview:hover .sh-preview__img img { transform: scale(1.04); }
 .sh-preview__name { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: #1f6f80; }
 .sh-preview__tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
 .sh-preview__tags span { padding: 1px 8px; border: 1px solid var(--sh-ink); font-size: 12px; }
@@ -259,13 +571,29 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
 .sh-complete p { margin: 6px 0 0; display: flex; justify-content: space-between; font-size: 13px; }
 .sh-share { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 
-/* ความเคลื่อนไหวล่าสุด */
-.sh-feed { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--sh-ink); }
-.sh-feed__item { display: grid; grid-template-columns: 18px 1fr; gap: 2px 10px; padding: 10px 0; border-bottom: 1px solid var(--sh-line); }
-.sh-feed__when { grid-column: 2; font-family: var(--sh-mono); font-size: 11px; color: var(--sh-soft); }
-.sh-feed__icon { grid-row: 1 / span 2; grid-column: 1; color: var(--tone); padding-top: 2px; }
+/* ---------- 07 ความเคลื่อนไหว ---------- */
+.sh-feed { list-style: none; margin: 0; padding: 0 0 0 4px; }
+.sh-feed__item { position: relative; display: grid; grid-template-columns: 24px 1fr; gap: 2px 12px; padding: 0 0 14px; }
+/* เส้นเวลาเชื่อมไอคอน */
+.sh-feed__item::before { content: ''; position: absolute; left: 11px; top: 24px; bottom: 0; border-left: 1px solid var(--sh-line); }
+.sh-feed__item:last-child::before { display: none; }
+.sh-feed__when { grid-column: 2; font-size: 11px; color: var(--sh-soft); }
+.sh-feed__icon {
+    grid-row: 1 / span 2;
+    grid-column: 1;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--tone);
+    border: 1px solid var(--tone);
+    background: var(--sh-paper);
+}
 .sh-feed__text { grid-column: 2; display: flex; flex-direction: column; color: var(--sh-ink); text-decoration: none; font-size: 14px; }
 .sh-feed__text span { font-size: 12px; color: var(--sh-soft); }
+.sh-feed__text:hover { color: var(--sh-ink); }
 .sh-feed__text:hover b { text-decoration: underline; }
 
 /* รอบจองถัดไป (แนวตั้ง) */
@@ -274,10 +602,12 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
 .sh-round li { position: relative; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 6px 0 6px 14px; font-size: 13px; color: var(--sh-soft); }
 .sh-round li::before { content: ''; position: absolute; left: -6px; top: 11px; width: 10px; height: 10px; background: var(--sh-paper); border: 2px solid var(--sh-line); }
 .sh-round__label { font-weight: 600; color: var(--sh-ink); }
+.sh-round li.is-past::before { background: var(--sh-line); }
 .sh-round li.is-past .sh-round__label { color: var(--sh-soft); text-decoration: line-through; }
 .sh-round li.is-active::before { background: var(--sh-accent); border-color: var(--sh-accent-ink); }
 .sh-round li.is-active .sh-round__label { color: var(--sh-accent-ink); }
 .sh-round em { font-style: normal; font-size: 11px; font-weight: 700; padding: 0 6px; background: var(--sh-accent); color: #fff; }
+.sh-round__links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; }
 
 .sh-ann { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--sh-line); }
 .sh-ann__title { margin: 4px 0; font-size: 15px; font-weight: 700; line-height: 1.35; }
@@ -285,7 +615,9 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
 
 /* QR dialog + toast */
 .sh-dialog { width: min(380px, calc(100vw - 24px)); padding: 16px; border: 1px solid var(--sh-ink); box-shadow: 0 8px 24px rgba(18, 48, 58, .18); text-align: center; }
-.sh-dialog::backdrop { background: rgba(18, 48, 58, .55); }
+.sh-dialog[open] { animation: shDialogIn .2s var(--sh-ease); }
+@keyframes shDialogIn { from { opacity: 0; transform: translateY(10px); } }
+.sh-dialog::backdrop { background: rgba(13, 37, 48, .6); }
 .sh-dialog .sh-sechead { text-align: left; }
 .sh-dialog img { width: min(240px, 70vw); aspect-ratio: 1; border: 1px solid var(--sh-ink); }
 .sh-dialog p { font-size: 13px; color: var(--sh-soft); }
@@ -299,34 +631,42 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
 
 /* ---------- แท็บเล็ตขึ้นไป ---------- */
 @media (min-width: 768px) {
-    .sh { padding: 24px 20px 56px; gap: 18px; }
-    .sh-head { flex-direction: row; align-items: flex-end; justify-content: space-between; }
-    .sh-title { font-size: 30px; }
-    .sh-head-actions { display: flex; }
-    .sh-open { flex-direction: row; align-items: center; justify-content: space-between; }
-    .sh-open__label { font-size: 30px; }
+    .sh { padding: 20px 20px 64px; gap: 18px; }
+    .sh-mast__lights i:nth-child(n + 15) { display: block; }
+    .sh-mast__bar { padding: 8px 20px; }
+    .sh-mast__grid { grid-template-columns: 7fr 5fr; }
+    .sh-mast__who { padding: 26px 20px; gap: 18px; }
+    .sh-avatar { width: 84px; height: 84px; }
+    .sh-mast__title { font-size: 34px; }
+    .sh-sign { border-top: 0; border-left: 1px solid var(--sh-night-line); padding: 20px; align-content: center; }
+    .sh-sign__label { font-size: 32px; }
+    .sh-mast__strip { grid-template-columns: 7fr 5fr; }
+    .sh-mast__strip > * { padding: 14px 20px; }
+    .sh-mast__strip > .sh-countdown { border-left: 1px solid var(--sh-night-line); }
+    .sh-mast__strip > :only-child { grid-column: 1 / -1; }
+    .sh-promo-wrap { grid-template-columns: 1.3fr 1fr; align-items: start; }
     .sh-ledger { grid-template-columns: repeat(4, 1fr); }
-    .sh-cell { border-bottom: 0; }
+    .sh-cell { border-bottom: 0; padding: 16px 18px; }
     .sh-cell:nth-child(2n) { border-right: 1px solid var(--sh-line); }
     .sh-cell:last-child { border-right: 0; }
-    .sh-todo__item { grid-template-columns: 30px 1fr auto; }
-    .sh-todo__num { grid-row: auto; }
-    .sh-todo__cta { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin-top: 0; }
+    .sh-todo__item { grid-template-columns: 26px 22px 1fr auto; align-items: center; }
+    .sh-todo__num, .sh-todo__icon { align-self: start; }
+    .sh-todo__cta { grid-column: 4; grid-row: 1; margin-top: 0; }
 }
 
 /* ---------- จอใหญ่: กริด 12 คอลัมน์ ---------- */
 @media (min-width: 992px) {
-    .sh-hero { grid-template-columns: repeat(12, 1fr); align-items: start; }
-    .sh-tonight { grid-column: span 7; padding: 20px; }
-    .sh-todo { grid-column: span 5; }
-    .sh-grid { grid-template-columns: repeat(12, 1fr); align-items: start; }
-    .sh-grid > .sh-panel--wide { grid-column: span 8; }
-    .sh-grid > .sh-panel:not(.sh-panel--wide) { grid-column: span 4; }
-    .sh-todo__item { grid-template-columns: 30px 1fr; }
-    .sh-todo__cta { grid-column: 2; grid-row: auto; justify-self: start; margin-top: 6px; }
+    .sh-quick { grid-template-columns: repeat(8, 1fr); }
+    .sh-quick__item { border-bottom: 0; }
+    .sh-quick__item:nth-child(4n) { border-right: 1px solid var(--sh-line); }
+    .sh-quick__item:last-child { border-right: 0; }
 
-    .sh-tr--head { font-size: 11px; color: var(--sh-soft); font-family: var(--sh-mono); text-transform: uppercase; padding: 8px 0; }
-    .sh-tr { grid-template-columns: 1.1fr 1fr .9fr 1.1fr .8fr 1.6fr; align-items: center; gap: 6px 12px; }
+    .sh-grid { grid-template-columns: repeat(12, 1fr); align-items: start; }
+    .sh-span-8 { grid-column: span 8; }
+    .sh-span-4 { grid-column: span 4; }
+
+    .sh-tr--head { font-size: 11px; color: var(--sh-soft); text-transform: uppercase; padding: 8px 0; }
+    .sh-tr { grid-template-columns: 1.1fr 1fr .9fr 1.2fr .8fr 1.6fr; align-items: center; gap: 6px 12px; }
     .sh-tr.sh-tr--head { display: grid; }
     .sh-code { grid-column: auto; }
     .sh-tr > span:nth-child(2) { justify-self: start; }
@@ -335,82 +675,15 @@ body { background: var(--sh-bg); font-family: 'Inter', 'Prompt', -apple-system, 
     .sh-actions { grid-column: auto; justify-content: flex-end; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .sh-open.is-open .sh-open__dot { animation: none; }
-    .sh-toast { transition: none; }
-}
-
-/* ไม่มีล็อกที่ใช้งาน: แถบรอบจองถัดไปใน "คืนนี้" */
-.sh-nextround { border-top: 1px solid var(--sh-line); padding-top: 12px; }
-.sh-nextround__row { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 8px; border: 1px solid var(--sh-ink); }
-.sh-nextround__row > div { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border-right: 1px solid var(--sh-line); min-width: 0; }
-.sh-nextround__row > div:last-child { border-right: 0; }
-.sh-nextround__row span { font-size: 11px; color: var(--sh-soft); }
-.sh-nextround__row b { font-size: 16px; }
-.sh-nextround__row > div:first-child b { color: var(--sh-accent-ink); }
-.sh-nextround__row small { font-family: var(--sh-mono); font-size: 11px; color: var(--sh-accent-ink); }
-.sh-nextround__note { margin: 8px 0 0; font-size: 12px; color: var(--sh-soft); }
 @media (max-width: 420px) {
     .sh-nextround__row { grid-template-columns: 1fr 1fr; }
-    .sh-nextround__row > div:first-child { grid-column: 1 / -1; border-right: 0; border-bottom: 1px solid var(--sh-line); }
-}
-
-/* ---------- โปรวันนี้ ---------- */
-.sh-promo { border-top: 1px solid var(--sh-line); padding-top: 12px; }
-.sh-promo .sh-label span { text-transform: none; letter-spacing: 0; margin-left: 6px; }
-.sh-promo__row { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-top: 8px; }
-.sh-promo__row input {
-    grid-column: 1 / -1;
-    min-height: 46px;
-    padding: 8px 12px;
-    border: 1px solid var(--sh-ink);
-    font-family: inherit;
-    font-size: 16px;
-}
-.sh-promo__row input:focus { outline: 3px solid rgba(230, 126, 34, .35); outline-offset: 0; border-color: var(--sh-accent-ink); }
-.sh-promo.has-promo .sh-promo__row input { background: #fff8ee; border-left: 5px solid var(--sh-accent); }
-.sh-promo__row .sh-btn[hidden] { display: none; }
-.sh-promo__meta { margin: 4px 0 0; font-family: var(--sh-mono); font-size: 11px; color: var(--sh-soft); }
-.sh-promo__meta #promoStatus { font-family: 'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', Roboto, 'Sukhumvit Set', 'Noto Sans Thai', sans-serif; color: var(--sh-accent-ink); font-weight: 600; }
-.sh-countdown__head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.sh-round__links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; }
-
-/* ---------- ลูกค้าดูร้านช่วงไหน (24 ชม.) ---------- */
-.sh-peak { margin: 0 0 10px; font-size: 14px; }
-.sh-peak b { color: var(--sh-accent-ink); }
-.sh-hours { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; height: 120px; align-items: end; border-bottom: 1px solid var(--sh-ink); }
-.sh-hours__col { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
-.sh-hours__bar { display: block; background: #f0b27a; border-radius: 3px 3px 0 0; }
-.sh-hours__col.is-peak .sh-hours__bar { background: var(--sh-accent-ink); }
-.sh-hours__label { position: absolute; top: calc(100% + 4px); left: 0; font-family: var(--sh-mono); font-size: 10px; color: var(--sh-soft); }
-.sh-hours { margin-bottom: 20px; }
-.sh-hours__col:hover .sh-hours__bar { filter: brightness(.85); }
-.sh-hours__col:hover::after {
-    content: attr(data-tip);
-    position: absolute;
-    bottom: calc(100% + 4px);
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 2px 6px;
-    background: var(--sh-ink);
-    color: #fff;
-    font-size: 11px;
-    white-space: nowrap;
-    z-index: 2;
-}
-
-/* ---------- เทียบกับร้านในโซน ---------- */
-.sh-compare__headline { margin: 0 0 10px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.sh-compare__headline b { font-family: var(--sh-mono); font-size: 30px; line-height: 1; }
-.sh-compare__headline.is-up b { color: var(--sh-good); }
-.sh-compare__headline.is-down b { color: var(--sh-bad); }
-.sh-compare__headline span { font-size: 13px; color: var(--sh-soft); }
-.sh-compare { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-.sh-compare > div { display: grid; grid-template-columns: 64px 1fr 40px; align-items: center; gap: 8px; font-size: 12px; }
-.sh-compare i { display: block; height: 12px; background: #c9d3d6; border-radius: 0 3px 3px 0; min-width: 2px; }
-.sh-compare i.is-mine { background: var(--sh-accent); }
-.sh-compare b { font-family: var(--sh-mono); text-align: right; }
-
-@media (max-width: 480px) {
+    .sh-nextround__row > div:first-child { grid-column: 1 / -1; border-right: 0; border-bottom: 1px solid var(--sh-night-line); }
     .sh-hours { height: 96px; }
+    .sh-mast__round { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sh-mast__lights i, .sh-mast.is-open .sh-sign__dot::after, .sh-quick__item.is-hot i, .sh-dialog[open], .sh-mapcard__promo.is-pop { animation: none; }
+    .sh-js .sh-reveal, .sh-js .sh-reveal .sh-hours__bar, .sh-js .sh-reveal .sh-spark__bar, .sh-js .sh-reveal .sh-compare i { opacity: 1; transform: none; transition: none; }
+    .sh-toast, .sh-ticket, .sh-countdown__track i { transition: none; }
 }
