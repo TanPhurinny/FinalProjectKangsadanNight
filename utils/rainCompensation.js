@@ -1,6 +1,7 @@
 // ระบบชดเชยกรณีฝนตก — กติกาทั้งหมดอยู่ที่ไฟล์นี้
-// - แอดมินเป็นคนประกาศ "วันฝนตก" เอง (ฝนตกต่อเนื่องช่วง 17:00–20:00 จนค้าขายไม่ได้ ใช้ดุลยพินิจ ระบบไม่ตัดสินเอง)
-// - ได้ชดเชย 50–100% ของค่าเช่าล็อกวันนั้น (ค่าเช่าอย่างเดียว ไม่รวมค่าไฟ/เครื่องใช้ไฟฟ้า) ปัดเศษขึ้นเป็นบาทเต็ม
+// - แอดมินเป็นคนประกาศ "วันฝนตก" เอง โดยเลือกระดับฝนตาม "ตารางประเมินชดเชยฝนตก" (RAIN_LEVELS) ระบบไม่ตัดสินเอง
+//   ฝนเล็กน้อย 50% / ฝนปานกลาง 75% / ฝนหนักมาก 100% / เงื่อนไขพิเศษ = แอดมินเลือก % เองตามดุลยพินิจ (ต้องใส่เหตุผล)
+// - % ใช้กับค่าเช่าล็อกวันนั้น (ค่าเช่าอย่างเดียว ไม่รวมค่าไฟ/เครื่องใช้ไฟฟ้า) ทุกร้านเท่ากัน ปัดเศษขึ้นเป็นบาทเต็ม
 // - ผู้ขายเห็นผลตั้งแต่ announceAt (ค่าเริ่มต้น 21:30 ของวันนั้น) — ไม่ต้องมี job ตั้งเวลา กรองตอนอ่านแทน
 // - ให้เฉพาะเจ้าของคำขอจองที่ชำระเงินแล้ว (Booking SUCCESS ครอบวันนั้น) ผูกกับบัญชีผู้ขาย โอนให้คนอื่นไม่ได้
 //   ร้านที่กด "ปิดร้านวันนี้" (ShopOpenStatus) ไม่ได้โดยค่าเริ่มต้น แต่แอดมินติ๊กเพิ่มกลับได้ตอนดูรายชื่อ
@@ -14,7 +15,28 @@ const { isDateHoliday } = require('./bookingHolidays');
 const { extractBookingRequestId } = require('./bookingRequestTag');
 const { isEventBoothCode } = require('./eventBooth');
 
-const MIN_PERCENT = 50;
+// ตารางประเมินชดเชยฝนตกของตลาด — percent = null คือแอดมินเลือกเอง (SPECIAL_PERCENTS)
+const RAIN_LEVELS = [
+    {
+        code: 'LIGHT', label: 'ฝนเล็กน้อย', scale: 'ระดับ 1–2', percent: 50,
+        criteria: ['มีลม ฝนตกปรอยๆ ไม่หยุดหรือตกเป็นระยะ', 'ปริมาณลูกค้าน้อย เป็นอุปสรรคต่อการซื้อ', 'ฝนตกต่อเนื่องไม่ต่ำกว่า 30 นาที ช่วง 17:00–20:00 น.']
+    },
+    {
+        code: 'MODERATE', label: 'ฝนปานกลาง', scale: 'ระดับ 3–4', percent: 75,
+        criteria: ['มีลมแรง ฝนตกจนเกิดน้ำท่วมขัง', 'ปริมาณลูกค้าน้อย ไม่สามารถขายของได้', 'ฝนตกต่อเนื่องมากกว่า 1 ชั่วโมง ช่วง 17:00–20:00 น.']
+    },
+    {
+        code: 'HEAVY', label: 'ฝนหนักมาก', scale: 'ระดับ 5', percent: 100,
+        criteria: ['มีลมแรง ฝนตกแรง มีพายุฟ้าคะนอง ไฟดับ', 'ไม่มีลูกค้า ขายไม่ได้เลย', 'ฝนตกหนักต่อเนื่องเป็นเวลานาน ช่วง 17:00–20:00 น.']
+    },
+    {
+        code: 'SPECIAL', label: 'เงื่อนไขพิเศษ', scale: 'ดุลยพินิจของทางตลาด', percent: null,
+        criteria: ['ฝนตกไม่อยู่ในช่วง 17:00–20:00 น. หรืออาจเป็นอุปสรรคต่อการขาย หรือก้ำกึ่ง', 'พิจารณาตามความเหมาะสม ต้องระบุเหตุผล']
+    }
+];
+const SPECIAL_PERCENTS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+
+const MIN_PERCENT = 10;
 const MAX_PERCENT = 100;
 const EXPIRY_DAYS = 45;
 const MAX_ACTIVE_CREDITS = 5;
@@ -25,11 +47,25 @@ const MAX_PAST_DAYS = 7;
 // เตือนผู้ขายเมื่อเครดิตเหลืออายุไม่เกินนี้
 const EXPIRY_WARN_DAYS = 7;
 
-// % ชดเชยเป็นทีละ 10 เท่านั้น (50, 60, ... 100) ตรงกับตัวเลือกในหน้าแอดมิน — ค่าอื่นปัดเข้าหลักสิบที่ใกล้ที่สุด
+// % ของเงื่อนไขพิเศษเป็นทีละ 10 เท่านั้น ตรงกับตัวเลือกในหน้าแอดมิน — ค่าอื่นปัดเข้าหลักสิบที่ใกล้ที่สุด
 function clampPercent(value, fallback = MAX_PERCENT) {
     const n = Number.parseInt(value, 10);
     if (!Number.isInteger(n)) return fallback;
     return Math.min(MAX_PERCENT, Math.max(MIN_PERCENT, Math.round(n / 10) * 10));
+}
+
+function getRainLevel(code) {
+    return RAIN_LEVELS.find((level) => level.code === String(code || '').toUpperCase()) || null;
+}
+
+// ระดับฝน (+ % ที่แอดมินเลือกถ้าเป็นเงื่อนไขพิเศษ) → { level, percent } — ระดับไม่ถูกต้อง = null
+function resolveRainLevel(code, rawPercent) {
+    const level = getRainLevel(code);
+    if (!level) return null;
+    if (level.percent !== null) return { level, percent: level.percent };
+    const n = Number.parseInt(rawPercent, 10);
+    if (!SPECIAL_PERCENTS.includes(n)) return null;
+    return { level, percent: n };
 }
 
 function creditAmount(baseRent, percent) {
@@ -219,7 +255,8 @@ async function previewRainDay(date, percent, now = new Date()) {
 }
 
 // selections: { [userId]: { include: boolean } } จากฟอร์มตัวอย่าง — ทุกร้านได้ % เดียวกันของวันนั้น คำนวณยอดใหม่ฝั่ง server เสมอ
-async function announceRainDay({ date, percent, note, announceAt, createdBy, selections }, now = new Date()) {
+// level = รหัสระดับฝนใน RAIN_LEVELS, percent = % ที่ได้จาก resolveRainLevel
+async function announceRainDay({ date, level, percent, note, announceAt, createdBy, selections }, now = new Date()) {
     await releaseCreditsOfRejectedRequests();
     const error = await validateRainDate(date, now);
     if (error) return { error };
@@ -232,7 +269,7 @@ async function announceRainDay({ date, percent, note, announceAt, createdBy, sel
     const expiresAt = computeExpiresAt(at);
     const day = await prisma.$transaction(async (tx) => {
         const created = await tx.rainCompensationDay.create({
-            data: { date, percent, note: note || null, announceAt: at, createdBy: createdBy || null }
+            data: { date, level: level || null, percent, note: note || null, announceAt: at, createdBy: createdBy || null }
         });
         for (const shop of chosen) {
             await tx.rainCredit.create({
@@ -391,7 +428,7 @@ async function buildRainNotifications(userId, now = new Date()) {
     const since = addDays(now, -EXPIRY_DAYS - 1);
     const credits = await prisma.rainCredit.findMany({
         where: { userId, status: { in: ['ACTIVE', 'USED', 'SKIPPED_CAP'] }, day: { announceAt: { lte: now, gte: since } } },
-        include: { day: { select: { date: true, announceAt: true } } },
+        include: { day: { select: { date: true, announceAt: true, level: true } } },
         orderBy: { createdAt: 'desc' }
     });
 
@@ -422,7 +459,7 @@ async function buildRainNotifications(userId, now = new Date()) {
         return {
             ...base,
             title: `ได้รับส่วนลดชดเชยฝนตก ${credit.amount.toLocaleString('th-TH')} บาท`,
-            desc: `ฝนตกวันที่ ${thaiDate(credit.day.date)} ล็อก ${credit.stallCodes.replace(/,/g, ', ')} ได้ชดเชย ${credit.percent}% ของค่าเช่า — ใช้เป็นส่วนลดตอนชำระเงินการจองครั้งถัดไป ${credit.status === 'USED' ? '(ใช้แล้ว)' : expired ? '(หมดอายุแล้ว)' : `ภายใน ${thaiDate(credit.expiresAt)}`}`,
+            desc: `${getRainLevel(credit.day.level)?.label || 'ฝนตก'} วันที่ ${thaiDate(credit.day.date)} ล็อก ${credit.stallCodes.replace(/,/g, ', ')} ได้ชดเชย ${credit.percent}% ของค่าเช่า — ใช้เป็นส่วนลดตอนชำระเงินการจองครั้งถัดไป ${credit.status === 'USED' ? '(ใช้แล้ว)' : expired ? '(หมดอายุแล้ว)' : `ภายใน ${thaiDate(credit.expiresAt)}`}`,
             ...(credit.status !== 'ACTIVE' || expired ? { isRead: true, isNew: false } : {})
         };
     });
@@ -458,11 +495,15 @@ async function buildRainNotifications(userId, now = new Date()) {
 }
 
 module.exports = {
+    RAIN_LEVELS,
+    SPECIAL_PERCENTS,
     MIN_PERCENT,
     MAX_PERCENT,
     EXPIRY_DAYS,
     MAX_ACTIVE_CREDITS,
     clampPercent,
+    getRainLevel,
+    resolveRainLevel,
     creditAmount,
     defaultAnnounceAt,
     computeExpiresAt,

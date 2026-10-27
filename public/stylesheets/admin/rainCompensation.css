@@ -3,7 +3,6 @@
    ต่อยอดจาก bookingHolidays.css (โครงหน้า/ตาราง/ปุ่มเดียวกัน) เพิ่มเฉพาะตารางรายชื่อร้านและประวัติรายวัน
    ======================================== */
 
-.rain-pick-form { grid-template-columns: 1fr 1fr auto; }
 .rain-announce-form { grid-template-columns: 180px 1fr auto; margin-top: 16px; }
 
 .mono { font-variant-numeric: tabular-nums; }
@@ -68,7 +67,6 @@
 .state-revoked { background: #fbeceb; color: #922B21; }
 
 @media (max-width: 700px) {
-    .rain-pick-form,
     .rain-announce-form { grid-template-columns: 1fr; }
 }
 
@@ -95,3 +93,75 @@ a.rain-day-chip:hover { border-color: var(--primary); }
 .rain-day-chip.is-current small { color: #cfe0e4; }
 .rain-day-chip.is-disabled { color: #9aa8ad; background: #f6f8f8; cursor: default; }
 .rain-days__empty { font-size: 13px; color: var(--sub); margin: 10px 0 0; }
+
+/* การ์ดระดับฝนตาม "ตารางประเมินชดเชยฝนตก" — สีแถบซ้ายตรงกับป้ายของตลาด (เหลือง/ส้ม/แดง/ฟ้า) */
+:root {
+    --rain-light: #d9a520;
+    --rain-moderate: #e07a5a;
+    --rain-heavy: #d0443a;
+    --rain-special: #1d9ad6;
+}
+.rain-date-field { max-width: 260px; margin-bottom: 16px; }
+.rain-levels {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.rain-level {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border: 1px solid var(--border);
+    border-left: 6px solid var(--lv);
+    border-radius: 4px;
+    padding: 12px 14px;
+    cursor: pointer;
+    background: #fff;
+    transition: 0.15s;
+}
+.rain-level--light { --lv: var(--rain-light); }
+.rain-level--moderate { --lv: var(--rain-moderate); }
+.rain-level--heavy { --lv: var(--rain-heavy); }
+.rain-level--special { --lv: var(--rain-special); }
+.rain-level input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+.rain-level:hover { border-color: var(--lv); }
+.rain-level:has(input:checked) {
+    border-color: var(--lv);
+    background: color-mix(in srgb, var(--lv) 8%, #fff);
+    outline: 2px solid var(--lv);
+    outline-offset: -2px;
+}
+.rain-level__head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.rain-level__name { font-size: 15px; font-weight: 700; color: var(--text); }
+.rain-level__pct { font-size: 22px; font-weight: 700; color: var(--lv); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rain-level--special .rain-level__pct { font-size: 13px; }
+.rain-level__scale { font-size: 12px; color: var(--sub); }
+.rain-level__criteria { margin: 0; padding-left: 18px; font-size: 12px; color: var(--text); line-height: 1.5; }
+.rain-level__select { margin-top: auto; padding: 6px 8px; }
+.rain-level__select:disabled { opacity: 0.5; }
+
+.rain-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--lv);
+}
+.rain-tag--light { --lv: var(--rain-light); }
+.rain-tag--moderate { --lv: var(--rain-moderate); }
+.rain-tag--heavy { --lv: var(--rain-heavy); }
+.rain-tag--special { --lv: var(--rain-special); }
+
+.rain-confirm__criteria { margin: 0 0 0 26px; padding-left: 16px; font-size: 13px; color: var(--sub); }
+
+@media (max-width: 1000px) {
+    .rain-levels { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+    .rain-levels { grid-template-columns: 1fr; }
+}
+.rain-pick-hint { margin-left: 12px; font-size: 13px; color: var(--rain-moderate); font-weight: 600; }

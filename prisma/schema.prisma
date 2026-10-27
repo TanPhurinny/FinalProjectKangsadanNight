@@ -898,11 +898,13 @@ model NotificationRead {
 }
 
 // วันฝนตกที่แอดมินประกาศชดเชย (ฝนตกต่อเนื่องช่วง 17:00–20:00 จนค้าขายไม่ได้ — แอดมินใช้ดุลยพินิจ ระบบไม่ตัดสินเอง)
-// date = วันขาย (เที่ยงคืน), percent = % ชดเชยของวันนั้น (50–100 ทีละ 10) ทุกร้านได้เท่ากัน
+// date = วันขาย (เที่ยงคืน), level = ระดับฝนตามตารางประเมิน (LIGHT/MODERATE/HEAVY/SPECIAL ดู RAIN_LEVELS)
+// percent = % ชดเชยของวันนั้น ทุกร้านได้เท่ากัน (50/75/100 ตามระดับ หรือแอดมินเลือกเองถ้าเป็น SPECIAL)
 // announceAt = เวลาที่ผู้ขายเริ่มเห็นผล (ค่าเริ่มต้น 21:30 ของวันนั้น) — ดู utils/rainCompensation.js
 model RainCompensationDay {
   id         Int          @id @default(autoincrement())
   date       DateTime     @unique
+  level      String?      @db.VarChar(16)
   percent    Int
   note       String?      @db.Text
   announceAt DateTime

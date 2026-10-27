@@ -16,7 +16,7 @@
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
         <link rel="stylesheet" href="/stylesheets/admin/bookingHolidays.css">
-        <link rel="stylesheet" href="/stylesheets/admin/rainCompensation.css?v=20261027-days">
+        <link rel="stylesheet" href="/stylesheets/admin/rainCompensation.css?v=20261027-levels">
         <link rel="stylesheet" href="/stylesheets/responsive.css">
     </head>
     <%
@@ -24,9 +24,11 @@
         const fmtShort = (d) => new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
         const fmtTime = (d) => new Date(d).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
         const money = (n) => Number(n || 0).toLocaleString('th-TH');
-        // ตัวเลือก % ชดเชย ทีละ 10 (50, 60, ... 100) — ให้กดเลือก ไม่ต้องพิมพ์
-        const percentOptions = [];
-        for (let p = limits.min; p <= limits.max; p += 10) percentOptions.push(p);
+        const levelOf = (code) => levels.find((l) => l.code === code) || null;
+        // query ของระดับที่เลือกอยู่ — ใช้ต่อท้ายลิงก์ปุ่มวัน ให้เปลี่ยนวันแล้วไม่ต้องเลือกระดับใหม่
+        const levelQuery = pick.level && levelOf(pick.level)
+            ? `&level=${pick.level}${pick.level === 'SPECIAL' && pick.percent ? `&percent=${pick.percent}` : ''}`
+            : '';
         const STATUS = {
             ACTIVE: ['ใช้ได้', 'state-upcoming'],
             USED: ['ใช้แล้ว', 'state-used'],
@@ -48,8 +50,8 @@
 
             <div class="container">
                 <p class="page-sub">
-                    ชดเชยเมื่อฝนตกช่วง 17:00–20:00 น. <strong>และ</strong> ตกต่อเนื่องจนค้าขายไม่ได้ (ฝนตกปรอยๆ แล้วหยุดไม่เข้าเงื่อนไข) —
-                    ร้านที่ชำระเงินแล้วได้ส่วนลด <%= limits.min %>–<%= limits.max %>% ของค่าเช่าล็อกวันนั้น ปัดเศษขึ้น
+                    ประเมินระดับฝนตามตารางประเมินชดเชยฝนตก (ฝนเล็กน้อย 50% / ฝนปานกลาง 75% / ฝนหนักมาก 100% / เงื่อนไขพิเศษตามดุลยพินิจ) —
+                    ร้านที่ชำระเงินแล้วได้ส่วนลดตาม % ของค่าเช่าล็อกวันนั้น ทุกร้านเท่ากัน ปัดเศษขึ้น
                     ใช้กับการจองครั้งถัดไปภายใน <%= limits.expiryDays %> วัน ต้องใช้ทั้งหมดในครั้งเดียว และสะสมได้ไม่เกิน <%= limits.maxActive %> ครั้ง
                 </p>
 
@@ -76,22 +78,42 @@
                 </div>
 
                 <div class="panel">
-                    <div class="panel-title">1. เลือกวันที่ฝนตก</div>
+                    <div class="panel-title">1. เลือกวันและระดับฝน</div>
                     <div class="panel-body">
-                        <form method="GET" action="/admin/rain-compensation" class="holiday-form rain-pick-form">
-                            <div>
+                        <form method="GET" action="/admin/rain-compensation" class="js-pick-form">
+                            <div class="rain-date-field">
                                 <label class="field-label">วันขายที่ฝนตก</label>
-                                <input type="date" class="field-input" name="date" max="<%= todayKey %>" value="<%= preview ? preview.dateKey : todayKey %>" required>
+                                <input type="date" class="field-input" name="date" max="<%= todayKey %>" value="<%= pick.dateKey || todayKey %>" required>
                             </div>
-                            <div>
-                                <label class="field-label">ชดเชย (%)</label>
-                                <select class="field-input" name="percent" required>
-                                    <% percentOptions.forEach(function (p) { %>
-                                    <option value="<%= p %>" <%= (preview ? preview.percent : 100) === p ? 'selected' : '' %>><%= p %>%</option>
-                                    <% }) %>
-                                </select>
+
+                            <%# ตารางประเมินชดเชยฝนตก (RAIN_LEVELS ใน utils/rainCompensation.js) — กดการ์ดเพื่อเลือกระดับ % ตามระดับ %>
+                            <span class="field-label">ระดับฝน (ตามตารางประเมินชดเชยฝนตก)</span>
+                            <div class="rain-levels">
+                                <% levels.forEach(function (lv) { %>
+                                <label class="rain-level rain-level--<%= lv.code.toLowerCase() %>">
+                                    <input type="radio" name="level" value="<%= lv.code %>" <%= pick.level === lv.code ? 'checked' : '' %> required>
+                                    <span class="rain-level__head">
+                                        <span class="rain-level__name"><%= lv.label %></span>
+                                        <span class="rain-level__pct"><%= lv.percent !== null ? `${lv.percent}%` : 'เลือก %' %></span>
+                                    </span>
+                                    <span class="rain-level__scale"><%= lv.scale %></span>
+                                    <ul class="rain-level__criteria">
+                                        <% lv.criteria.forEach(function (c) { %><li><%= c %></li><% }) %>
+                                    </ul>
+                                    <% if (lv.percent === null) { %>
+                                    <select class="field-input rain-level__select js-special-percent" name="percent" <%= pick.level === 'SPECIAL' ? '' : 'disabled' %>>
+                                        <% specialPercents.forEach(function (p) { %>
+                                        <option value="<%= p %>" <%= (pick.level === 'SPECIAL' ? pick.percent : 50) === p ? 'selected' : '' %>><%= p %>%</option>
+                                        <% }) %>
+                                    </select>
+                                    <% } %>
+                                </label>
+                                <% }) %>
                             </div>
-                            <button type="submit" class="btn-submit">ดูรายชื่อร้าน</button>
+                            <button type="submit" class="btn-submit rain-pick-submit">ดูรายชื่อร้าน</button>
+                            <% if (pick.dateKey && !preview) { %>
+                            <span class="rain-pick-hint">เลือกระดับฝนแล้วกด "ดูรายชื่อร้าน"</span>
+                            <% } %>
                         </form>
 
                         <%# วันที่ประกาศได้ (ย้อนหลัง 7 วัน) พร้อมจำนวนร้านที่ชำระเงินแล้วและมีล็อกวันนั้น — กดเพื่อดูรายชื่อได้เลย %>
@@ -99,7 +121,7 @@
                             <span class="field-label">หรือกดเลือกวัน (จำนวนร้านที่มีสิทธิ์)</span>
                             <div class="rain-days__list">
                                 <% selectableDays.forEach(function (d) {
-                                    const isCurrent = preview && preview.dateKey === d.dateKey;
+                                    const isCurrent = pick.dateKey === d.dateKey;
                                     const label = new Date(d.date).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
                                     const state = d.announced ? 'ประกาศแล้ว' : d.holiday ? 'วันหยุด' : `${d.shopCount} ร้าน`;
                                     const disabled = d.announced || d.holiday || !d.shopCount;
@@ -107,7 +129,7 @@
                                 <% if (disabled) { %>
                                 <span class="rain-day-chip is-disabled"><%= label %><small><%= state %></small></span>
                                 <% } else { %>
-                                <a class="rain-day-chip <%= isCurrent ? 'is-current' : '' %>" href="/admin/rain-compensation?date=<%= d.dateKey %>&percent=<%= preview ? preview.percent : 100 %>"><%= label %><small><%= state %></small></a>
+                                <a class="rain-day-chip <%= isCurrent ? 'is-current' : '' %>" href="/admin/rain-compensation?date=<%= d.dateKey %><%= levelQuery %>"><%= label %><small><%= state %></small></a>
                                 <% } %>
                                 <% }) %>
                             </div>
@@ -120,7 +142,7 @@
 
                 <% if (preview) { %>
                 <div class="panel">
-                    <div class="panel-title">2. ตรวจรายชื่อแล้วประกาศ — <%= fmtDate(preview.date) %> · ชดเชย <%= preview.percent %>% ทุกร้าน</div>
+                    <div class="panel-title">2. ตรวจรายชื่อแล้วประกาศ — <%= fmtDate(preview.date) %> · <span class="rain-tag rain-tag--<%= preview.level.code.toLowerCase() %>"><%= preview.level.label %></span> ชดเชย <%= preview.percent %>% ทุกร้าน</div>
                     <div class="panel-body">
                         <% if (preview.error) { %>
                         <div class="notice notice-danger mb-0"><%= preview.error %></div>
@@ -129,6 +151,7 @@
                         <% } else { %>
                         <form method="POST" action="/admin/rain-compensation" class="js-announce-form">
                             <input type="hidden" name="date" value="<%= preview.dateKey %>">
+                            <input type="hidden" name="level" value="<%= preview.level.code %>">
                             <input type="hidden" name="percent" value="<%= preview.percent %>">
 
                             <div class="table-wrap rain-table-wrap">
@@ -169,8 +192,10 @@
                             </div>
 
                             <div class="rain-confirm">
-                                <label class="check-line"><input type="checkbox" name="confirmTime" value="1" required> ฝนตกในช่วง 17:00–20:00 น.</label>
-                                <label class="check-line"><input type="checkbox" name="confirmContinuous" value="1" required> ฝนตกต่อเนื่องจนเป็นอุปสรรค ค้าขายไม่ได้ (ไม่ใช่ตกปรอยๆ แล้วหยุด)</label>
+                                <label class="check-line"><input type="checkbox" name="confirmLevel" value="1" required> ตรวจสภาพฝนแล้ว ตรงตามเกณฑ์ "<%= preview.level.label %>" (<%= preview.level.scale %>)</label>
+                                <ul class="rain-confirm__criteria">
+                                    <% preview.level.criteria.forEach(function (c) { %><li><%= c %></li><% }) %>
+                                </ul>
                             </div>
 
                             <div class="holiday-form rain-announce-form">
@@ -185,8 +210,9 @@
                                     </select>
                                 </div>
                                 <div class="rain-note-field">
-                                    <label class="field-label">หมายเหตุ <span>(ไม่บังคับ)</span></label>
-                                    <input type="text" class="field-input" name="note" maxlength="500" value="<%= preview.note %>" placeholder="เช่น ฝนตกหนัก 17:30–19:45">
+                                    <% const isSpecial = preview.level.code === 'SPECIAL'; %>
+                                    <label class="field-label"><%= isSpecial ? 'เหตุผล (เงื่อนไขพิเศษต้องระบุ)' : 'หมายเหตุ' %> <span><%= isSpecial ? '' : '(ไม่บังคับ)' %></span></label>
+                                    <input type="text" class="field-input" name="note" maxlength="500" value="<%= preview.note %>" placeholder="<%= isSpecial ? 'เช่น ฝนตก 20:30–22:00 ลูกค้าน้อยมาก' : 'เช่น ฝนตกหนัก 17:30–19:45' %>" <%= isSpecial ? 'required' : '' %>>
                                 </div>
                                 <button type="submit" class="btn-submit">ประกาศชดเชย</button>
                             </div>
@@ -209,6 +235,8 @@
                 <details class="rain-day">
                     <summary>
                         <span class="cell-date"><%= fmtDate(day.date) %></span>
+                        <% const dayLevel = levelOf(day.level); %>
+                        <% if (dayLevel) { %><span class="rain-tag rain-tag--<%= dayLevel.code.toLowerCase() %>"><%= dayLevel.label %></span><% } %>
                         <span class="rain-day__meta"><%= day.percent %>% · <%= granted.length %> ร้าน · <span class="mono"><%= money(sum) %></span> บาท</span>
                         <span class="state-badge <%= announced ? 'state-upcoming' : 'state-past' %>"><%= announced ? `ประกาศแล้ว ${fmtTime(day.announceAt)}` : `จะประกาศ ${fmtTime(day.announceAt)}` %></span>
                     </summary>
@@ -259,6 +287,18 @@
         <script src="/js/common/dialogs.js"></script>
         <script>
             (function () {
+                // ช่องเลือก % ของเงื่อนไขพิเศษใช้ได้เฉพาะตอนเลือกการ์ดนั้น (ช่องที่ disabled จะไม่ถูกส่งไปกับฟอร์ม)
+                var pickForm = document.querySelector('.js-pick-form');
+                if (pickForm) {
+                    var specialSelect = pickForm.querySelector('.js-special-percent');
+                    var syncSpecial = function () {
+                        var checked = pickForm.querySelector('input[name="level"]:checked');
+                        if (specialSelect) specialSelect.disabled = !(checked && checked.value === 'SPECIAL');
+                    };
+                    pickForm.addEventListener('change', syncSpecial);
+                    syncSpecial();
+                }
+
                 var form = document.querySelector('.js-announce-form');
                 if (form) {
                     var rows = Array.prototype.slice.call(form.querySelectorAll('tbody tr'));
@@ -289,7 +329,7 @@
                         event.preventDefault();
                         window.showConfirmDialog({
                             title: 'ประกาศชดเชยฝนตก',
-                            message: 'ให้ส่วนลดชดเชย ' + form.querySelector('.js-count').textContent + ' ร้าน รวม ' + form.querySelector('.js-total').textContent + ' บาท\nผู้ขายจะเห็นตามเวลาที่ตั้งไว้ ตรวจรายชื่อให้ครบก่อนยืนยัน',
+                            message: '<%= preview ? `${preview.level.label} ชดเชย ${preview.percent}%` : '' %>\nให้ส่วนลดชดเชย ' + form.querySelector('.js-count').textContent + ' ร้าน รวม ' + form.querySelector('.js-total').textContent + ' บาท\nผู้ขายจะเห็นตามเวลาที่ตั้งไว้ ตรวจรายชื่อให้ครบก่อนยืนยัน',
                             confirmText: 'ประกาศชดเชย',
                             onConfirm: function () { form.dataset.confirmed = '1'; form.submit(); }
                         });
