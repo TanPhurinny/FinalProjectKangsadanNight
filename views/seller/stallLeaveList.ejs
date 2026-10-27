@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
     <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
-    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028">
+    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-sublet">
 </head>
 <body class="eb-body">
     <script src="/js/common/tabSession.js"></script>
@@ -18,6 +18,9 @@
     <%
         const successMessages = {
             created: 'ส่งคำขอแล้ว รอแอดมินพิจารณา ผลจะแจ้งในหน้าแจ้งเตือน',
+            sublet_sent: 'ส่งคำขอให้ร้านผู้รับเช่าช่วงแล้ว รอร้านนั้นตอบรับ แล้วคำขอจะส่งต่อให้แอดมิน',
+            accepted: 'ตอบรับแล้ว คำขอส่งให้แอดมินพิจารณา',
+            declined: 'ปฏิเสธการรับเช่าช่วงแล้ว ร้านเจ้าของแผงได้รับแจ้ง',
             cancelled: 'ยกเลิกคำขอแล้ว'
         };
         const pillClass = { WAITING_SUBTENANT: 'eb-pill--pending', PENDING: 'eb-pill--pending', APPROVED: 'eb-pill--success', REJECTED: 'eb-pill--danger' };
@@ -30,7 +33,10 @@
                 <h1 class="eb-title">ลาหยุด / เช่าช่วงแผง</h1>
                 <p class="eb-lead">คำขอของแผงที่ร้านคุณเช่าอยู่ ยกเลิกได้ก่อนถึงวันเริ่ม</p>
             </div>
-            <a class="eb-btn" href="/stall-leave/new"><i class="fa-solid fa-plus"></i> แจ้งลาหยุด</a>
+            <div class="eb-req-actions" style="border:0;padding:0">
+                <a class="eb-btn" href="/stall-leave/new"><i class="fa-solid fa-plus"></i> แจ้งลาหยุด</a>
+                <a class="eb-btn eb-btn--ghost" href="/stall-leave/new?kind=sublet"><i class="fa-solid fa-handshake"></i> ปล่อยเช่าช่วง</a>
+            </div>
         </header>
 
         <% if (success && successMessages[success]) { %>
@@ -44,6 +50,7 @@
         <div class="eb-empty">ยังไม่มีคำขอ</div>
         <% } %>
 
+        <h2 class="eb-section-title" style="margin:8px 0 12px">คำขอของแผงร้านคุณ</h2>
         <% rows.forEach(function (r) { %>
         <article class="eb-req" id="leave-<%= r.id %>">
             <div class="eb-req-head">
@@ -71,6 +78,44 @@
             <% } %>
         </article>
         <% }) %>
+
+        <% if (incoming.length) { %>
+        <section class="sl-incoming" id="incoming" aria-labelledby="incomingTitle">
+            <h2 id="incomingTitle">คำขอให้ร้านคุณเช่าช่วง</h2>
+            <p>ร้านอื่นขอให้ร้านคุณไปขายที่แผงของเขาชั่วคราว ตอบรับแล้วคำขอจะส่งให้แอดมินพิจารณา (เงินค่าเช่าช่วงตกลงกับร้านเจ้าของแผงเอง)</p>
+            <% incoming.forEach(function (r) { %>
+            <article class="eb-req" id="incoming-<%= r.id %>">
+                <div class="eb-req-head">
+                    <div>
+                        <h2 class="eb-req-title">แผง <%= r.stallCode %> · จากร้าน <%= r.shopName %></h2>
+                        <div class="eb-req-sub">#<%= r.id %> · ให้ร้าน <%= r.subShopName %> · ส่งเมื่อ <%= r.createdText %></div>
+                    </div>
+                    <span class="eb-pill <%= pillClass[r.status] || '' %>"><%= r.status === 'WAITING_SUBTENANT' ? 'รอคุณตอบรับ' : r.statusLabel %></span>
+                </div>
+                <div class="eb-req-body">
+                    <div class="eb-req-cell"><small>วันที่</small><span><%= r.rangeText %></span></div>
+                    <div class="eb-req-cell"><small>ดูตำแหน่ง</small><span><a href="/market-map?stall=<%= r.stallCode %>">แผง <%= r.stallCode %> บนผัง</a></span></div>
+                </div>
+                <div class="eb-req-desc">ข้อความจากเจ้าของแผง: <%= r.reason %></div>
+                <% if (r.status === 'REJECTED' && r.rejectReason) { %>
+                <div class="eb-req-desc" style="color:var(--eb-danger)"><%= r.rejectReason %></div>
+                <% } %>
+                <% if (r.canRespond) { %>
+                <div class="eb-req-actions">
+                    <form method="POST" action="/stall-leave/<%= r.id %>/respond">
+                        <input type="hidden" name="accept" value="1">
+                        <button type="submit" class="eb-btn eb-btn--sm"><i class="fa-solid fa-check"></i> ตอบรับ</button>
+                    </form>
+                    <form method="POST" action="/stall-leave/<%= r.id %>/respond" data-confirm-title="ปฏิเสธการรับเช่าช่วง?" data-confirm-message="แผง <%= r.stallCode %> · <%= r.rangeText %>&#10;ร้าน <%= r.shopName %> จะได้รับแจ้ง">
+                        <input type="hidden" name="accept" value="0">
+                        <button type="submit" class="eb-btn eb-btn--danger eb-btn--sm">ปฏิเสธ</button>
+                    </form>
+                </div>
+                <% } %>
+            </article>
+            <% }) %>
+        </section>
+        <% } %>
     </main>
 
     <script src="/js/common/dialogs.js?v=20261023-input"></script>
@@ -83,7 +128,7 @@
                     title: form.dataset.confirmTitle,
                     message: form.dataset.confirmMessage,
                     tone: 'danger',
-                    confirmText: 'ยกเลิกคำขอ',
+                    confirmText: form.querySelector('[name="accept"]') ? 'ปฏิเสธ' : 'ยกเลิกคำขอ',
                     onConfirm: () => { form.dataset.confirmed = '1'; form.submit(); }
                 });
             });

@@ -36,7 +36,8 @@
     'rain-credit-capped': ['bi-cloud-rain', 'info'],
     'rain-credit-expiring': ['bi-hourglass-split', 'warn'],
     'stall-leave-approved': ['bi-calendar2-check', 'ok'],
-    'stall-leave-rejected': ['bi-calendar2-x', 'bad']
+    'stall-leave-rejected': ['bi-calendar2-x', 'bad'],
+    'stall-sublet-request': ['bi-shop-window', 'warn']
   };
 
   const STEP_LABELS = { 1: 'ส่งคำขอจองแล้ว', 2: 'จัดล็อก / ชำระเงิน', 3: 'จองสำเร็จ' };

@@ -1,7 +1,12 @@
 // ลาหยุด / ปล่อยเช่าช่วงแผง — ร้าน: /stall-leave (รายการ) + /stall-leave/new (ฟอร์ม) / แอดมิน: /admin/stall-leaves
 // กติกาทั้งหมดอยู่ที่ utils/stallLeave.js
+const prisma = require('../config/prismaClient');
 const stallLeave = require('../utils/stallLeave');
+const stallSpacing = require('../utils/stallSpacing');
+const stallOccupancy = require('../utils/stallOccupancy');
 const { getUserShops, resolveShopForUser } = require('../utils/shops');
+
+const KINDS = ['LEAVE', 'SUBLET_MEMBER'];
 
 function errorCodeOf(error) {
     if (error instanceof stallLeave.StallLeaveError) return error.code;
@@ -9,17 +14,28 @@ function errorCodeOf(error) {
     return 'action_failed';
 }
 
-function refreshBell(req, userId) {
-    if (userId && req.app.locals.clearSellerNotificationCache) req.app.locals.clearSellerNotificationCache(userId);
+function refreshBell(req, ...userIds) {
+    if (!req.app.locals.clearSellerNotificationCache) return;
+    userIds.filter(Boolean).forEach((id) => req.app.locals.clearSellerNotificationCache(id));
+}
+
+async function ownerOfShop(shopId) {
+    if (!shopId) return null;
+    const shop = await prisma.shopDetail.findUnique({ where: { id: shopId }, select: { userId: true } });
+    return shop ? shop.userId : null;
 }
 
 // --- ร้าน ---
 
 exports.getMyRequests = async (req, res) => {
-    const rows = await stallLeave.listForOwner(req.user.id);
+    const [rows, incoming] = await Promise.all([
+        stallLeave.listForOwner(req.user.id),
+        stallLeave.listIncoming(req.user.id)
+    ]);
     res.render('seller/stallLeaveList', {
         user: req.user,
         rows,
+        incoming,
         success: req.query.success || null,
         error: req.query.error ? (stallLeave.ERROR_MESSAGES[req.query.error] || 'เกิดข้อผิดพลาด') : null
     });
@@ -33,6 +49,13 @@ async function renderForm(req, res, { status = 200, error = null, values = {} } 
     ]);
     const stalls = shop ? await stallLeave.loadShopStalls(req.user.id, shop.id) : [];
     const earliest = stallLeave.earliestStartDate();
+    const kind = KINDS.includes(values.kind) ? values.kind : (req.query.kind === 'sublet' ? 'SUBLET_MEMBER' : 'LEAVE');
+    // ร้านผู้รับเช่าช่วงที่เลือกไว้แล้ว (ส่งฟอร์มไม่ผ่านแล้วกลับมาหน้าเดิม)
+    let subShop = null;
+    if (values.subShopId) {
+        const found = await stallLeave.searchMemberShopById(values.subShopId, req.user.id);
+        subShop = found || null;
+    }
     return res.status(status).render('seller/stallLeaveForm', {
         user: req.user,
         shops,
@@ -46,6 +69,8 @@ async function renderForm(req, res, { status = 200, error = null, values = {} } 
         earliestKey: stallLeave.toDateKey(earliest),
         cutoffHour: stallLeave.NOTICE_CUTOFF_HOUR,
         maxDays: stallLeave.MAX_RANGE_DAYS,
+        kind,
+        subShop,
         values: { stallCode: values.stallCode || String(req.query.stall || '').toUpperCase(), ...values },
         error
     });
@@ -55,16 +80,24 @@ exports.getForm = (req, res) => renderForm(req, res);
 
 exports.submitForm = async (req, res) => {
     const values = {
+        kind: KINDS.includes(req.body.kind) ? req.body.kind : 'LEAVE',
         shopId: req.body.shopId,
         stallCode: String(req.body.stallCode || '').trim().toUpperCase(),
         startDate: req.body.startDate,
         endDate: req.body.endDate,
-        reason: req.body.reason
+        reason: req.body.reason,
+        subShopId: req.body.subShopId
     };
     try {
         const shop = await resolveShopForUser(req.user.id, values.shopId, { select: { id: true, userId: true } });
         if (!shop) throw new stallLeave.StallLeaveError('invalid_stall');
-        await stallLeave.createLeave({ user: req.user, shop, stallCode: values.stallCode, startKey: values.startDate, endKey: values.endDate, reason: values.reason });
+        const input = { user: req.user, shop, stallCode: values.stallCode, startKey: values.startDate, endKey: values.endDate, reason: values.reason };
+        if (values.kind === 'SUBLET_MEMBER') {
+            const row = await stallLeave.createMemberSublet({ ...input, subShopId: values.subShopId });
+            refreshBell(req, await ownerOfShop(row.subShopId));
+            return res.redirect('/stall-leave?success=sublet_sent');
+        }
+        await stallLeave.createLeave(input);
         req.app.locals.clearAdminTodoCache?.();
         return res.redirect('/stall-leave?success=created');
     } catch (error) {
@@ -75,18 +108,87 @@ exports.submitForm = async (req, res) => {
 
 exports.cancel = async (req, res) => {
     try {
-        await stallLeave.cancelRequest(req.user.id, req.params.id);
+        const row = await stallLeave.cancelRequest(req.user.id, req.params.id);
         req.app.locals.clearAdminTodoCache?.();
+        refreshBell(req, await ownerOfShop(row.subShopId));
         return res.redirect('/stall-leave?success=cancelled');
     } catch (error) {
         return res.redirect(`/stall-leave?error=${errorCodeOf(error)}`);
     }
 };
 
+// ร้านผู้รับเช่าช่วง (สมาชิก) ตอบรับ/ปฏิเสธ
+exports.respond = async (req, res) => {
+    try {
+        const accept = req.body.accept === '1' || req.body.accept === 'true';
+        const row = await stallLeave.respondAsSubtenant(req.user.id, req.params.id, accept);
+        req.app.locals.clearAdminTodoCache?.();
+        refreshBell(req, row.userId, req.user.id);
+        return res.redirect(`/stall-leave?success=${accept ? 'accepted' : 'declined'}#incoming`);
+    } catch (error) {
+        return res.redirect(`/stall-leave?error=${errorCodeOf(error)}#incoming`);
+    }
+};
+
+// ค้นร้านสมาชิกสำหรับฟอร์มเช่าช่วง (JSON)
+exports.searchMembers = async (req, res) => {
+    try {
+        const shops = await stallLeave.searchMemberShops(req.query.q, req.user.id);
+        return res.json({ success: true, shops });
+    } catch (error) {
+        console.error('Member search error:', error);
+        return res.status(500).json({ success: false, message: 'ค้นหาไม่สำเร็จ กรุณาลองใหม่' });
+    }
+};
+
 // --- แอดมิน/staff ---
+
+// ข้อมูลช่วยตัดสินคำขอเช่าช่วง: ร้านผู้รับ (ประเภท/ชนิดสินค้า/ติดต่อ) + ร้านใกล้ๆ ที่ขายของชนิดเดียวกันเกินระยะที่แนะนำ
+async function attachSubletInsights(rows) {
+    const sublets = rows.filter((r) => r.kind !== 'LEAVE');
+    if (!sublets.length) return;
+    const subShopIds = [...new Set(sublets.map((r) => r.subShopId).filter(Boolean))];
+    const subShops = subShopIds.length
+        ? await prisma.shopDetail.findMany({
+            where: { id: { in: subShopIds } },
+            select: { id: true, shopName: true, productType: true, productSubtype: true, productDetail: true, logoImage: true, productImage: true, user: { select: { name: true, phoneNumber: true, isBlacklisted: true } } }
+        })
+        : [];
+    const subShopById = new Map(subShops.map((s) => [s.id, s]));
+
+    // ผังทั้งตลาด + ชนิดสินค้าของร้านที่อยู่แต่ละแผง (ใช้กติกาเว้นระยะเดียวกับตอนจัดล็อก utils/stallSpacing.js)
+    const { buildZonesData } = require('./marketController');
+    const zonesData = await buildZonesData();
+    const occupantInfoByCode = (await stallOccupancy.attachOccupantDetails(zonesData)) || {};
+    const occupantSubtypeByCode = {};
+    Object.entries(occupantInfoByCode).forEach(([code, info]) => {
+        if (info.productSubtype) occupantSubtypeByCode[code] = info.productSubtype;
+    });
+
+    sublets.forEach((row) => {
+        const sub = row.kind === 'SUBLET_MEMBER' ? subShopById.get(row.subShopId) : null;
+        const productType = sub ? sub.productType : row.guestProductType;
+        const productSubtype = sub ? sub.productSubtype : row.guestProductSubtype;
+        row.subtenant = sub
+            ? { name: sub.shopName || '-', contact: sub.user?.name || '-', phone: sub.user?.phoneNumber || '', productType: sub.productType || '-', productSubtype: sub.productSubtype || '-', productDetail: sub.productDetail || '', image: sub.logoImage || sub.productImage || null, blacklisted: !!sub.user?.isBlacklisted }
+            : null;
+        const zone = zonesData.find((z) => z.columns.some((c) => c.stalls.some((s) => String(s.code).toUpperCase() === row.stallCode)));
+        row.conflicts = zone && productSubtype
+            ? stallSpacing.findConflicts({ zoneColumns: zone.columns, candidateCode: row.stallCode, productSubtype, productType, occupantSubtypeByCode })
+                .map((c) => ({ code: c.code, distance: c.distance, shared: c.sharedSubtypes.join(', '), shopName: occupantInfoByCode[c.code]?.shopName || '' }))
+            : [];
+        row.conflictChecked = Boolean(zone && productSubtype);
+    });
+}
 
 exports.getAdminPage = async (req, res) => {
     const page = await stallLeave.loadAdminPage(req.query.tab);
+    try {
+        await attachSubletInsights(page.rows);
+    } catch (error) {
+        // ข้อมูลช่วยตัดสินพังก็ยังเปิดหน้าได้ แค่ไม่มีคำเตือนสินค้าซ้ำ
+        console.error('Sublet insight error:', error);
+    }
     res.render('admin/stallLeaves', {
         user: req.user,
         ...page,
@@ -99,7 +201,7 @@ exports.getAdminPage = async (req, res) => {
 exports.approve = async (req, res) => {
     try {
         const row = await stallLeave.approveRequest(req.body.requestId, req.user);
-        refreshBell(req, row.userId);
+        refreshBell(req, row.userId, await ownerOfShop(row.subShopId));
         return res.redirect('/admin/stall-leaves?success=approved');
     } catch (error) {
         return res.redirect(`/admin/stall-leaves?error=${errorCodeOf(error)}&focus=${Number(req.body.requestId) || ''}`);
@@ -109,7 +211,7 @@ exports.approve = async (req, res) => {
 exports.reject = async (req, res) => {
     try {
         const row = await stallLeave.rejectRequest(req.body.requestId, req.user, req.body.reason);
-        refreshBell(req, row.userId);
+        refreshBell(req, row.userId, await ownerOfShop(row.subShopId));
         return res.redirect('/admin/stall-leaves?success=rejected');
     } catch (error) {
         return res.redirect(`/admin/stall-leaves?error=${errorCodeOf(error)}&focus=${Number(req.body.requestId) || ''}`);

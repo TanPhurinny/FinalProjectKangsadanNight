@@ -7,3 +7,31 @@
 .sl-stall:has(input:checked) { background: var(--eb-soft); box-shadow: inset 3px 0 0 var(--eb-primary); }
 .sl-stall:has(input:focus-visible) { outline: 2px solid var(--eb-primary); outline-offset: -2px; }
 .eb-page > .shop-switch { margin-bottom: 16px; }
+.sl-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); border-top: 1px solid var(--eb-line); border-left: 1px solid var(--eb-line); }
+.sl-kinds .sl-stall b { font-size: 15px; }
+
+/* ค้นร้านสมาชิก */
+.sl-search { position: relative; }
+.sl-results { list-style: none; margin: 0; padding: 0; border: 1px solid var(--eb-line); border-top: 0; max-height: 320px; overflow-y: auto; }
+.sl-results:empty { display: none; }
+.sl-results li + li { border-top: 1px solid var(--eb-line-soft); }
+.sl-result { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; background: #fff; font: inherit; text-align: left; cursor: pointer; }
+.sl-result:hover, .sl-result:focus-visible { background: var(--eb-soft); outline: none; }
+.sl-result img, .sl-result__ph { flex-shrink: 0; width: 40px; height: 40px; object-fit: cover; border: 1px solid var(--eb-line); display: inline-flex; align-items: center; justify-content: center; color: var(--eb-sub); }
+.sl-result span { display: flex; flex-direction: column; min-width: 0; }
+.sl-result b { color: var(--eb-navy); font-size: 14px; }
+.sl-result small { color: var(--eb-sub); font-size: 12px; overflow-wrap: anywhere; }
+.sl-results__empty { padding: 10px 12px; font-size: 13px; color: var(--eb-sub); }
+.sl-picked { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border: 1px solid var(--eb-primary); background: var(--eb-soft); }
+.sl-picked[hidden], .sl-search[hidden], .eb-section[hidden] { display: none; }
+
+/* คำขอให้ร้านคุณเช่าช่วง / ข้อมูลผู้รับเช่าช่วงในหน้าแอดมิน */
+.sl-incoming { margin: 28px 0 0; }
+.sl-incoming > h2 { font-size: 17px; font-weight: 600; color: var(--eb-navy); margin: 0 0 4px; }
+.sl-incoming > p { font-size: 13px; color: var(--eb-sub); margin: 0 0 12px; }
+.sl-sub { display: grid; grid-template-columns: 56px 1fr; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--eb-line-soft); }
+.sl-sub img, .sl-sub__ph { width: 56px; height: 56px; object-fit: cover; border: 1px solid var(--eb-line); display: inline-flex; align-items: center; justify-content: center; color: var(--eb-sub); }
+.sl-sub small { display: block; color: var(--eb-sub); font-size: 12px; }
+.sl-warn { margin: 0; padding: 10px 16px; border-top: 1px solid var(--eb-line-soft); font-size: 13px; color: var(--eb-warning); background: #fdf8ef; }
+.sl-warn--bad { color: var(--eb-danger); background: #fdf2f1; }
+.sl-ok { margin: 0; padding: 10px 16px; border-top: 1px solid var(--eb-line-soft); font-size: 13px; color: var(--eb-success); }

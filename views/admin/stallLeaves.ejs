@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
     <link rel="stylesheet" href="/stylesheets/admin/theme.css">
     <link rel="stylesheet" href="/stylesheets/eventBooth.css?v=20261026">
+    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-sublet">
 </head>
 <body class="eb-body">
     <script src="/js/common/tabSession.js"></script>
@@ -69,6 +70,29 @@
                 <% if (r.reviewedText) { %><div class="eb-req-cell"><small>พิจารณาเมื่อ</small><span><%= r.reviewedText %><%= r.reviewedByName ? ` · ${r.reviewedByName}` : '' %></span></div><% } %>
             </div>
             <div class="eb-req-desc">เหตุผลของร้าน: <%= r.reason %></div>
+            <% if (r.subtenant) { const st = r.subtenant; %>
+            <div class="sl-sub">
+                <% if (st.image) { %><a href="<%= st.image %>" target="_blank" rel="noopener"><img src="<%= st.image %>" alt=""></a><% } else { %><span class="sl-sub__ph"><i class="fa-solid fa-store"></i></span><% } %>
+                <div>
+                    <b>ผู้รับเช่าช่วง: ร้าน <%= st.name %></b> (สมาชิก)<%= r.subtenantAcceptedAt ? ' · ตอบรับแล้ว' : '' %>
+                    <small>สินค้า <%= st.productType %> · <%= st.productSubtype %></small>
+                    <small>ติดต่อ <%= st.contact %><% if (st.phone) { %> · <a href="tel:<%= st.phone %>"><%= st.phone %></a><% } %></small>
+                    <% if (st.productDetail) { %><small><%= st.productDetail %></small><% } %>
+                </div>
+            </div>
+            <% if (st.blacklisted) { %><p class="sl-warn sl-warn--bad"><i class="fa-solid fa-ban"></i> ผู้รับเช่าช่วงถูกระงับสิทธิ์ (blacklist) อยู่ — อนุมัติไม่ได้</p><% } %>
+            <% } %>
+            <% if (r.kind !== 'LEAVE') { %>
+                <% if (r.conflicts && r.conflicts.length) { %>
+                <p class="sl-warn"><i class="fa-solid fa-triangle-exclamation"></i> ขายของชนิดเดียวกับร้านใกล้ๆ:
+                    <% r.conflicts.forEach(function (c, i) { %><%= i ? ', ' : '' %>แผง <b><%= c.code %></b><%= c.shopName ? ` (${c.shopName})` : '' %> ห่าง <%= c.distance %> ล็อก ซ้ำ "<%= c.shared %>"<% }) %>
+                </p>
+                <% } else if (r.conflictChecked) { %>
+                <p class="sl-ok"><i class="fa-solid fa-check"></i> ไม่พบร้านใกล้ๆ ที่ขายของชนิดเดียวกัน</p>
+                <% } else { %>
+                <p class="sl-warn"><i class="fa-solid fa-circle-info"></i> ผู้รับเช่าช่วงไม่ได้ระบุชนิดสินค้า ตรวจสินค้าซ้ำกับร้านข้างๆ เอง</p>
+                <% } %>
+            <% } %>
             <% if (r.status === 'REJECTED' && r.rejectReason) { %>
             <div class="eb-req-desc" style="color:var(--eb-danger)">ไม่อนุมัติ: <%= r.rejectReason %></div>
             <% } %>
