@@ -82,7 +82,7 @@
                         <% } else if (!today.shopCount) { %>
                         <div class="notice notice-danger">วันนี้ไม่มีร้านที่ชำระเงินแล้วและมีล็อก จึงไม่มีร้านให้ชดเชย (ร้านที่ยังไม่จ่ายเงินหรือสัญญาหมดแล้วไม่นับ)</div>
                         <% } else { %>
-                        <div class="notice">วันนี้มีร้านที่ชำระเงินแล้วและมีล็อก <strong><%= today.shopCount %> ร้าน</strong> — เลือกระดับฝนแล้วกด "ดูรายชื่อร้าน"</div>
+                        <div class="notice">วันนี้มีร้านที่ชำระเงินแล้วและมีล็อก <strong><%= today.shopCount %> ร้าน</strong> — เลือกระดับฝนแล้วกด "ยืนยันระดับฝน"</div>
                         <% } %>
                         <form method="GET" action="/admin/rain-compensation" class="js-pick-form">
 
@@ -110,7 +110,7 @@
                                 </label>
                                 <% }) %>
                             </div>
-                            <button type="submit" class="btn-submit rain-pick-submit" <%= today.error || !today.shopCount ? 'disabled' : '' %>>ดูรายชื่อร้าน</button>
+                            <button type="submit" class="btn-submit rain-pick-submit" <%= today.error || !today.shopCount ? 'disabled' : '' %>>ยืนยันระดับฝน</button>
                         </form>
 
                     </div>
