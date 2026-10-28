@@ -506,3 +506,101 @@
     .ms-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .ms-btn { justify-content: center; padding: 0 6px; }
 }
+
+/* ── หัวร้าน: ร้านที่กำลังแก้ + สมัครเปิดร้านเพิ่ม + สลับร้าน (กรอบเส้น navy แบบเดียวกับแผงของร้านนี้) ── */
+.shop-head { margin: 0 0 20px; border: 1px solid var(--navy); }
+.shop-head__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+}
+.shop-head__who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.shop-head__label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+}
+.shop-head__name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--navy);
+    overflow-wrap: anywhere;
+}
+.shop-head__add {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    padding: 9px 16px;
+    border: 1px solid var(--navy);
+    background: #fff;
+    color: var(--navy);
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+}
+.shop-head__add:hover,
+.shop-head__add:focus-visible { background: var(--navy); color: #fff; }
+.shop-head__add:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+/* แถบสลับร้านต่อท้ายในกรอบเดียวกัน — ไม่ซ้อนกรอบ */
+.shop-head .shop-switch { margin: 0; border: 0; border-top: 1px solid var(--navy); }
+.shop-head__pending {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px 14px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    border-top: 1px solid var(--navy);
+    background: #fbf1e2;
+    font-size: 0.84rem;
+    color: #7a4f12;
+}
+.shop-head__pending b { color: #5c3a0a; }
+.shop-head__pending a { font-weight: 600; color: #7a4f12; text-decoration: none; white-space: nowrap; }
+.shop-head__pending a:hover { text-decoration: underline; }
+.shop-head__note {
+    margin: 0;
+    padding: 8px 16px;
+    border-top: 1px dashed var(--line);
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+}
+.shop-head__note i { margin-right: 6px; }
+
+/* ── เอกสารร้านค้า: รายการลิงก์คั่นเส้น แทนปุ่มลอยสองปุ่ม ── */
+.doc-links { border: 1px solid var(--navy); }
+.doc-link {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-bottom: 1px dashed var(--line);
+    color: var(--ink);
+    text-decoration: none;
+    transition: background 0.15s;
+}
+.doc-link:last-child { border-bottom: 0; }
+.doc-link:hover,
+.doc-link:focus-visible { background: #f4f8f9; color: var(--ink); }
+.doc-link:focus-visible { outline: 2px solid var(--navy); outline-offset: -2px; }
+.doc-link__icon { color: var(--navy); font-size: 1rem; text-align: center; }
+.doc-link__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.doc-link__text b { font-size: 0.95rem; color: var(--navy); }
+.doc-link__text small { font-size: 0.8rem; color: var(--ink-soft); }
+.doc-link__go { color: var(--ink-soft); transition: transform 0.15s; }
+.doc-link:hover .doc-link__go { transform: translateX(3px); color: var(--navy); }
+
+@media (max-width: 575px) {
+    .shop-head__top { flex-direction: column; align-items: stretch; }
+    .shop-head__add { justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .doc-link__go, .shop-head__add, .doc-link { transition: none; }
+}

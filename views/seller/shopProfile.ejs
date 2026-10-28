@@ -13,7 +13,7 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/seller/repair.css">
-        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261028-stalls2">
+        <link rel="stylesheet" href="/stylesheets/seller/shopProfile.css?v=20261028-head">
         <link rel="stylesheet" href="/stylesheets/partials/shopSwitch.css?v=20261028">
     </head>
 
@@ -59,11 +59,32 @@
                 const maxMenuImagesCount = (typeof maxMenuImages !== 'undefined' && maxMenuImages) ? maxMenuImages : 4;
                 %>
 
-                <%- include('../partials/shopSwitch', { shops: profileShops, selectedShopId: shopRecord.id, href: function (id) { return '/shop-profile?shop=' + id; }, label: 'ร้านของฉัน' }) %>
-                <% if (profileShops.length > 1) { %>
-                <p class="text-muted small mb-3"><i class="fa-solid fa-circle-info me-1"></i>รีวิวและสถิติคนเปิดดูร้านด้านล่างยังรวมทุกร้านของคุณ</p>
-                <% } %>
-                <p class="mb-3"><a href="/shop-application?new=1" class="small"><i class="fa-solid fa-plus me-1"></i>สมัครเปิดร้านเพิ่ม</a></p>
+                <%
+                const pendingList = (typeof pendingShops !== 'undefined' && pendingShops) || [];
+                const shopIndex = profileShops.findIndex((s) => s.id === shopRecord.id);
+                %>
+                <!-- หัวร้าน: ร้านที่กำลังแก้ + สมัครเปิดร้านเพิ่ม + สลับร้าน + ใบสมัครร้านใหม่ที่ยังรอ -->
+                <section class="shop-head" aria-labelledby="shopHeadName">
+                    <div class="shop-head__top">
+                        <div class="shop-head__who">
+                            <span class="shop-head__label">ร้านที่กำลังแก้ไข<% if (profileShops.length > 1 && shopIndex >= 0) { %> · <%= shopIndex + 1 %>/<%= profileShops.length %><% } %></span>
+                            <strong class="shop-head__name" id="shopHeadName"><%= currentShopName || 'ยังไม่ได้ตั้งชื่อร้าน' %></strong>
+                        </div>
+                        <a href="/shop-application?new=1" class="shop-head__add">
+                            <i class="fa-solid fa-plus" aria-hidden="true"></i> สมัครเปิดร้านเพิ่ม
+                        </a>
+                    </div>
+                    <%- include('../partials/shopSwitch', { shops: profileShops, selectedShopId: shopRecord.id, href: function (id) { return '/shop-profile?shop=' + id; }, label: 'สลับร้าน' }) %>
+                    <% pendingList.forEach((p) => { %>
+                    <div class="shop-head__pending">
+                        <span><b><%= p.shopName || 'ร้านใหม่' %></b> ใบสมัครรอตรวจ — จองแผงได้เลย ระบบเปิดร้านให้เมื่อแอดมินยืนยันสลิป</span>
+                        <a href="/select-zone?shop=<%= encodeURIComponent(p.id) %>">จองแผงให้ร้านนี้ <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                    </div>
+                    <% }) %>
+                    <% if (profileShops.length > 1) { %>
+                    <p class="shop-head__note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> รีวิวและสถิติคนเปิดดูร้านด้านล่างยังรวมทุกร้านของคุณ</p>
+                    <% } %>
+                </section>
 
                 <% if (successMsg) { %>
                 <div class="form-alert form-alert--success">
@@ -391,13 +412,30 @@
                 </form>
             </div>
 
+            <% const docShopQuery = (typeof shops !== 'undefined' && shops && shops.length > 1 && shop) ? `?shop=${shop.id}` : ''; %>
             <div class="form-card">
-                <div class="section-title">เอกสารร้านค้า</div>
-                <p class="text-muted small mb-3">ขอใบกำกับภาษี และขอสัญญาเช่า ย้ายไปอยู่ที่หน้า "ขอเอกสาร" แล้ว ดูยอดเช่าและยอดชำระทุกรอบได้ที่รายงานการเช่า</p>
-                <div class="d-flex flex-wrap gap-2">
-                    <a href="/documents" class="btn btn-primary"><i class="fa-solid fa-folder-open me-1"></i> ขอเอกสาร (ใบกำกับภาษี / สัญญาเช่า)</a>
-                    <a href="/rental-statement" class="btn btn-outline-primary"><i class="fa-solid fa-file-invoice-dollar me-1"></i> รายงานการเช่าและชำระเงิน</a>
-                </div>
+                <section class="doc-links" aria-labelledby="docLinksTitle">
+                    <div class="pm-head">
+                        <span class="pm-title" id="docLinksTitle">เอกสารร้านค้า</span>
+                        <span class="pm-score">ขอเอกสาร · รายงาน</span>
+                    </div>
+                    <a class="doc-link" href="/documents">
+                        <i class="fa-solid fa-folder-open doc-link__icon" aria-hidden="true"></i>
+                        <span class="doc-link__text">
+                            <b>ขอเอกสาร</b>
+                            <small>ใบกำกับภาษี และสัญญาเช่า (ออก 1 ฉบับต่อ 1 ร้าน)</small>
+                        </span>
+                        <i class="fa-solid fa-arrow-right doc-link__go" aria-hidden="true"></i>
+                    </a>
+                    <a class="doc-link" href="/rental-statement<%= docShopQuery %>">
+                        <i class="fa-solid fa-file-invoice-dollar doc-link__icon" aria-hidden="true"></i>
+                        <span class="doc-link__text">
+                            <b>รายงานการเช่าและชำระเงิน</b>
+                            <small>ยอดเช่าและยอดชำระทุกรอบ<%= docShopQuery ? 'ของร้านนี้' : '' %></small>
+                        </span>
+                        <i class="fa-solid fa-arrow-right doc-link__go" aria-hidden="true"></i>
+                    </a>
+                </section>
             </div>
         </div>
 

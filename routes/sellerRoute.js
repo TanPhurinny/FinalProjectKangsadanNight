@@ -1245,18 +1245,21 @@ router.get('/shop-profile', isSellerOnly, async (req, res) => {
     const { shops, shop } = await loadProfileShop(req);
 
     // ขอใบกำกับภาษีย้ายไปอยู่หน้า /documents/tax-invoice (รวมกับขอสัญญาเช่าที่ /documents)
-    const [viewStats, reviewPanel, myStalls] = await Promise.all([
+    const [viewStats, reviewPanel, myStalls, pendingShops] = await Promise.all([
         getShopViewStats(req.user.id),
         // รีวิวร้านจากสมาชิก — ผู้ขายตอบ/รายงานรีวิวได้ (public/js/seller/shopReviews.js)
         getSellerReviewPanel(req.user.id),
         // แผงของร้านนี้ + สถานะเปิด/ปิดวันนี้ + คำขอลาหยุดที่ยังมีผล
-        loadShopStallPanel(req.user.id, shop)
+        loadShopStallPanel(req.user.id, shop),
+        // ใบสมัครเปิดร้านใหม่ที่ยังรอตรวจ — จองแผงได้เลย ร้านจริงสร้างตอนยืนยันสลิป (utils/shops.js)
+        pendingShopsOfUser(req.user.id)
     ]);
 
     res.render('seller/shopProfile', {
         user: req.user,
         shop: shop || null,
         shops,
+        pendingShops,
         profile: buildProfileChecks(shop),
         maxProductImages: MAX_SHOP_PRODUCT_IMAGES,
         maxMenuImages: MAX_SHOP_MENU_IMAGES,
