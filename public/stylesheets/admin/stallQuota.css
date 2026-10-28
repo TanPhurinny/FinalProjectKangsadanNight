@@ -1,0 +1,94 @@
+/* ========================================
+   STALL QUOTA PAGE — gridgeist
+   ต่อยอดจาก bookingHolidays.css + productSubtypes.css (header / summary / panel / table / ปุ่มในแถว)
+   ======================================== */
+
+.quota-form {
+    display: grid;
+    grid-template-columns: minmax(0, 260px) auto;
+    gap: 14px;
+    align-items: end;
+}
+
+.quota-meta {
+    margin: 12px 0 0;
+    font-size: 12px;
+    color: var(--sub);
+}
+
+.quota-search {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.quota-search .field-input { max-width: 360px; }
+
+.quota-clear {
+    text-decoration: none;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--sub);
+}
+
+.quota-hint {
+    font-weight: 400;
+    color: var(--sub);
+}
+
+.quota-sub {
+    font-size: 12px;
+    color: var(--sub);
+}
+
+.quota-value {
+    display: inline-block;
+    min-width: 22px;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+}
+
+.quota-row-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.quota-input {
+    width: 90px;
+    padding: 6px 10px;
+}
+
+.quota-table .row-custom td:first-child {
+    box-shadow: inset 3px 0 0 #c98a2e;
+}
+
+@media (max-width: 640px) {
+    .quota-form { grid-template-columns: 1fr; }
+
+    .quota-table thead { display: none; }
+    .quota-table tbody tr {
+        display: block;
+        border-bottom: 1px solid var(--border);
+        padding: 8px 0;
+    }
+    .quota-table tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        border-bottom: none;
+        padding: 6px 16px;
+    }
+    .quota-table tbody td::before {
+        content: attr(data-label);
+        font-size: 12px;
+        color: var(--sub);
+        flex-shrink: 0;
+    }
+    .quota-table .empty-row td::before { content: none; }
+    .quota-table tbody td > div,
+    .quota-table tbody td > form { text-align: right; }
+    .quota-table .row-custom td:first-child { box-shadow: none; }
+    .quota-table .row-custom { box-shadow: inset 3px 0 0 #c98a2e; }
+}

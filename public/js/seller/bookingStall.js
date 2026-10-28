@@ -303,8 +303,8 @@
     function stallError(r) {
         if (IS_FASHION) return '';
         const limit = stallLimit(r);
-        if (limit <= 0) return `รอบนี้คุณมีคำขอ/ล็อกครบ ${MAX_STALLS} ล็อกแล้ว จองเพิ่มไม่ได้ (เลือกรอบอื่นได้)`;
-        if (readStallCount() > limit) return `จองเพิ่มได้อีกไม่เกิน ${limit} ล็อกในรอบนี้ (รวมทุกโซน ไม่เกิน ${MAX_STALLS} ล็อก/คน/รอบ)`;
+        if (limit <= 0) return `รอบนี้ร้านนี้มีคำขอ/ล็อกครบ ${MAX_STALLS} ล็อกแล้ว จองเพิ่มไม่ได้ (เลือกรอบอื่นได้)`;
+        if (readStallCount() > limit) return `จองเพิ่มได้อีกไม่เกิน ${limit} ล็อกในรอบนี้ (รวมทุกโซน ไม่เกิน ${MAX_STALLS} ล็อก/ร้าน/รอบ)`;
         return '';
     }
     function renderQuota(r) {

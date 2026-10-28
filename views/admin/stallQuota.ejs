@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>โควตาแผงต่อร้าน — Admin</title>
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet" />
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet" />
+        <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
+        <link rel="stylesheet" href="/stylesheets/admin/theme.css">
+        <link rel="stylesheet" href="/stylesheets/admin/bookingHolidays.css">
+        <link rel="stylesheet" href="/stylesheets/admin/productSubtypes.css?v=20261023">
+        <link rel="stylesheet" href="/stylesheets/admin/stallQuota.css?v=20261028">
+        <link rel="stylesheet" href="/stylesheets/responsive.css">
+    </head>
+    <body class="bg-light">
+        <script src="/js/common/tabSession.js"></script>
+        <%- include('../partials/navbar') %>
+
+        <%
+            const errorMessages = {
+                invalid: message || 'จำนวนแผงไม่ถูกต้อง',
+                not_found: 'ไม่พบร้านนี้',
+                save_failed: 'บันทึกไม่สำเร็จ กรุณาลองใหม่'
+            };
+            const successMessages = {
+                default_saved: 'บันทึกค่ากลางแล้ว มีผลกับการจองครั้งถัดไปของร้านที่ไม่ได้ตั้งค่าเฉพาะ (อาจใช้เวลาไม่เกิน 1 นาที)',
+                shop_saved: `บันทึกโควตาของ "${message || ''}" แล้ว`
+            };
+            const fmtDateTime = (value) => new Date(value).toLocaleString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' });
+        %>
+
+        <div class="holidays-page">
+            <header class="page-header">
+                <a href="javascript:history.back()" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+                <h2 class="header-title">โควตาแผงต่อร้าน</h2>
+                <div class="header-spacer"></div>
+            </header>
+
+            <div class="container">
+                <p class="page-sub">
+                    จำนวนแผงสูงสุดที่ 1 ร้านจองได้ต่อรอบ (รวมทุกโซน) นับแยกต่อร้าน ผู้ใช้ที่มีหลายร้านจะได้โควตาของแต่ละร้านแยกกัน
+                    ร้านที่ไม่ได้ตั้งค่าเฉพาะใช้ค่ากลาง ส่วนร้านแฟชั่นไม่ถูกจำกัดตอนจอง แอดมินพิจารณาเองตอนจัดล็อก
+                </p>
+
+                <% if (error) { %>
+                <div class="notice notice-danger"><%= errorMessages[error] || 'เกิดข้อผิดพลาด กรุณาลองใหม่' %></div>
+                <% } %>
+                <% if (success) { %>
+                <div class="notice notice-success"><%= successMessages[success] || 'บันทึกเรียบร้อย' %></div>
+                <% } %>
+
+                <div class="summary-cards">
+                    <div class="summary-card summary-upcoming">
+                        <div class="summary-count"><%= settings.defaultMaxStalls %></div>
+                        <div class="summary-label">ค่ากลาง (แผง/ร้าน/รอบ)</div>
+                    </div>
+                    <div class="summary-card summary-suggest">
+                        <div class="summary-count"><%= customCount %></div>
+                        <div class="summary-label">ร้านที่ตั้งค่าเฉพาะ<%= q ? ' (ในผลค้นหา)' : '' %></div>
+                    </div>
+                    <div class="summary-card summary-past">
+                        <div class="summary-count"><%= shops.length %></div>
+                        <div class="summary-label"><%= q ? 'ร้านที่ค้นเจอ' : 'ร้านทั้งหมด' %></div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title">ค่ากลาง</div>
+                    <div class="panel-body">
+                        <form method="POST" action="/admin/stall-quota/default" class="quota-form">
+                            <div>
+                                <label class="field-label" for="defaultMaxStalls">จำนวนแผงสูงสุดต่อร้านต่อรอบ <span>(<%= minStalls %>–<%= maxStalls %>)</span></label>
+                                <input type="number" class="field-input" id="defaultMaxStalls" name="defaultMaxStalls"
+                                    min="<%= minStalls %>" max="<%= maxStalls %>" step="1" value="<%= settings.defaultMaxStalls %>" required>
+                            </div>
+                            <button type="submit" class="btn-submit">บันทึกค่ากลาง</button>
+                        </form>
+                        <% if (settings.updatedAt) { %>
+                        <p class="quota-meta">แก้ล่าสุด <%= fmtDateTime(settings.updatedAt) %><%= settings.updatedByName ? ` โดย ${settings.updatedByName}` : '' %></p>
+                        <% } %>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title">ค่าเฉพาะร้าน</div>
+                    <div class="panel-body">
+                        <form method="GET" action="/admin/stall-quota" class="quota-search">
+                            <input type="search" class="field-input" name="q" value="<%= q %>" placeholder="ค้นชื่อร้านหรือชื่อเจ้าของ">
+                            <button type="submit" class="btn-row-action">ค้นหา</button>
+                            <% if (q) { %><a href="/admin/stall-quota" class="btn-row-cancel quota-clear">ล้าง</a><% } %>
+                        </form>
+                    </div>
+                    <div class="table-wrap table-wrap--flush">
+                        <table class="holidays-table quota-table">
+                            <thead>
+                                <tr>
+                                    <th>ร้าน</th>
+                                    <th>เจ้าของ</th>
+                                    <th>โควตาที่ใช้</th>
+                                    <th>ตั้งค่าเฉพาะร้าน <span class="quota-hint">(ว่าง = ใช้ค่ากลาง)</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% if (!shops.length) { %>
+                                <tr class="empty-row"><td colspan="4"><%= q ? 'ไม่พบร้านที่ค้นหา' : 'ยังไม่มีร้านในระบบ' %></td></tr>
+                                <% } %>
+                                <% shops.forEach((shop) => {
+                                    const isFashion = String(shop.productType || '').toUpperCase() === 'FASHION';
+                                    const custom = shop.maxStallsPerRound !== null;
+                                %>
+                                <tr class="<%= custom ? 'row-custom' : '' %>">
+                                    <td data-label="ร้าน">
+                                        <div class="cell-name"><%= shop.shopName || `ร้าน #${shop.id}` %></div>
+                                        <div class="quota-sub"><%= productTypeLabels[shop.productType] || shop.productType || '-' %></div>
+                                    </td>
+                                    <td data-label="เจ้าของ">
+                                        <div><%= shop.user?.name || '-' %></div>
+                                        <div class="quota-sub"><%= shop.user?.username || '' %></div>
+                                    </td>
+                                    <td data-label="โควตาที่ใช้">
+                                        <% if (isFashion) { %>
+                                        <span class="state-badge state-past">ไม่จำกัด (แฟชั่น)</span>
+                                        <% } else { %>
+                                        <strong class="quota-value"><%= custom ? shop.maxStallsPerRound : settings.defaultMaxStalls %></strong>
+                                        <span class="state-badge <%= custom ? 'state-suggest' : 'state-upcoming' %>"><%= custom ? 'ค่าเฉพาะร้าน' : 'ค่ากลาง' %></span>
+                                        <% } %>
+                                    </td>
+                                    <td data-label="ตั้งค่าเฉพาะร้าน">
+                                        <form method="POST" action="/admin/stall-quota/shops/<%= shop.id %>" class="quota-row-form">
+                                            <input type="hidden" name="q" value="<%= q %>">
+                                            <input type="number" class="field-input quota-input" name="maxStallsPerRound"
+                                                min="<%= minStalls %>" max="<%= maxStalls %>" step="1"
+                                                value="<%= custom ? shop.maxStallsPerRound : '' %>" placeholder="<%= settings.defaultMaxStalls %>"
+                                                aria-label="โควตาของ <%= shop.shopName || '' %>">
+                                            <button type="submit" class="btn-row-action">บันทึก</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="panel-foot">มีผลกับคำขอจองใหม่เท่านั้น คำขอที่ส่งมาแล้วไม่เปลี่ยน — ลดโควตาต่ำกว่าที่ร้านจองไว้แล้ว ร้านจะจองเพิ่มในรอบนั้นไม่ได้</p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

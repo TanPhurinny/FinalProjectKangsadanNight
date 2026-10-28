@@ -24,6 +24,7 @@ const rentalStatementCtrl = require('../controllers/rentalStatementController');
 const leaseContractCtrl = require('../controllers/leaseContractController');
 const shopReviewCtrl = require('../controllers/shopReviewController');
 const rainCompensationCtrl = require('../controllers/rainCompensationController');
+const stallQuotaCtrl = require('../controllers/stallQuotaController');
 
 // --- 2. การตั้งค่า Multer สำหรับอัปโหลดรูปประกาศ ---
 const storage = createImageStorage({ folder: 'announcements', prefix: 'ann' });
@@ -114,6 +115,11 @@ router.get('/rain-compensation', isAdminOnly, rainCompensationCtrl.getPage);
 router.post('/rain-compensation', isAdminOnly, rainCompensationCtrl.announce);
 router.post('/rain-compensation/credits/:id/revoke', isAdminOnly, rainCompensationCtrl.revokeCredit);
 router.post('/rain-compensation/:id/delete', isAdminOnly, rainCompensationCtrl.deleteDay);
+
+// --- 6.4 โควตาแผงต่อร้านต่อรอบ (ค่ากลาง + ค่าเฉพาะร้าน) ดู utils/stallQuota.js ---
+router.get('/stall-quota', isAdminOnly, stallQuotaCtrl.getPage);
+router.post('/stall-quota/default', isAdminOnly, stallQuotaCtrl.updateDefault);
+router.post('/stall-quota/shops/:id', isAdminOnly, stallQuotaCtrl.updateShop);
 
 // รายการ "ขายอะไรบ้าง" ที่แอดมินเพิ่มเองจากคำที่ผู้ขายพิมพ์ในช่อง "อื่นๆ (ระบุเอง)"
 router.get('/product-subtypes', isAdminOnly, productSubtypeCtrl.getProductSubtypesPage);

@@ -192,6 +192,8 @@ model ShopDetail {
   shopZoneLabel String?
   shopTags      String? @db.Text
   isVerified    Boolean @default(false)
+  // จำนวนแผงสูงสุดที่ร้านนี้จองได้ต่อรอบ (แอดมินตั้งที่ /admin/stall-quota) — null = ใช้ค่ากลาง ดู utils/stallQuota.js
+  maxStallsPerRound Int?
   userId        Int
   user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   productImages ShopProductImage[]

@@ -128,9 +128,8 @@ const uploadShopProfile = multer({
 const LIGHT_UNIT_PRICE = 15;
 const SMALL_APPLIANCE_PRICE = APPLIANCE_KINDS.SMALL.price;
 const LARGE_APPLIANCE_PRICE = APPLIANCE_KINDS.LARGE.price;
-// จำกัดจำนวนล็อคต่อ user ต่อรอบ (รวมทุกโซน) กันคนเดียวกวาดหลายล็อคแล้วปล่อยเช่าต่อ
-// เพื่อเปิดที่ให้ร้านใหม่ — FASHION ยกเว้นให้ขึ้นกับดุลยพินิจแอดมิน (ดูจุดใช้งานใน POST /booking-stall)
-const MAX_STALLS_PER_SELLER = 2;
+// จำนวนล็อคสูงสุดต่อร้านต่อรอบ — แอดมินตั้งได้ ดู utils/stallQuota.js (ใช้ใน POST /booking-stall)
+const { getStallQuotaSettings, getShopQuota, countShopStallsInRound } = require('../utils/stallQuota');
 // ตัวเลือกค่าธรรมเนียมแผงหัวมุม/แผงพิเศษ เรียงจากทำเลธรรมดาไปทำเลเด่นที่สุด
 const CORNER_ZONE_OPTIONS = [
     { value: 20, label: 'ทำเลริมทางเดิน', desc: 'มองเห็นง่ายกว่าแผงทั่วไปเล็กน้อย' },
@@ -1889,14 +1888,10 @@ async function renderBookingStallPage(req, res, { status = 200, zoneCode = '', e
         });
     }
 
-    const countLocks = (round) => prisma.booking.count({
-        where: {
-            userId: req.user.id,
-            status: { not: 'REJECTED' },
-            rentalStartDate: { gte: round.cycleStart, lte: round.cycleEnd }
-        }
-    });
-    const [currentLockCount, nextLockCount, holidaysInView, roundBookings, recentBookings] = await Promise.all([
+    // โควตานับต่อร้าน (ดู utils/stallQuota.js)
+    const countLocks = (round) => countShopStallsInRound(req.user.id, shop?.id, round);
+    const [stallQuotaSettings, currentLockCount, nextLockCount, holidaysInView, roundBookings, recentBookings] = await Promise.all([
+        getStallQuotaSettings(),
         countLocks(bookingRoundInfo),
         countLocks(nextRoundInfo),
         getHolidaysInRange(bookingRoundInfo.cycleStart, nextRoundInfo.cycleEnd),
@@ -1983,7 +1978,7 @@ async function renderBookingStallPage(req, res, { status = 200, zoneCode = '', e
         allowedZoneCount: allowedZones.length,
         pricing: {
             lightUnitPrice: LIGHT_UNIT_PRICE,
-            maxStallsPerSeller: MAX_STALLS_PER_SELLER,
+            maxStallsPerSeller: getShopQuota(shop, stallQuotaSettings),
             isFashionSeller: zoneAccess.normalizeProductType(productType) === 'FASHION',
             cornerZoneOptions: CORNER_ZONE_OPTIONS,
             applianceKinds: APPLIANCE_KINDS,
@@ -2125,27 +2120,21 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
             return rejectBooking('ช่วงวันที่เลือกเป็นวันหยุดทั้งหมด ไม่สามารถจองได้ กรุณาเลือกวันอื่น');
         }
 
-        // จำกัดจำนวนล็อคต่อ user (นับรวมทุกโซนในรอบเดียวกัน) กันคนเดียวกวาดหลายล็อคแล้วปล่อยเช่าต่อ
-        // เพื่อเปิดที่ให้ร้านใหม่ — FOOD บังคับไม่เกิน 2 เสมอ, FASHION ให้แอดมินใช้ดุลยพินิจ (ไม่บล็อกตรงนี้
-        // แต่ปล่อยให้แอดมินเห็น/ตัดสินใจตอนจัดล็อก), ประเภทอื่น (เช่น EVENT_BOOTH) ใช้ cap แบบ FOOD ไว้ก่อน
-        // เพื่อความปลอดภัย (อ้างอิง MAX_STALLS_PER_SELLER ด้านบนไฟล์)
+        // จำกัดจำนวนล็อคต่อร้าน (นับรวมทุกโซนในรอบเดียวกัน) กันร้านเดียวกวาดหลายล็อคแล้วปล่อยเช่าต่อ
+        // โควตา = ค่าที่แอดมินตั้งให้ร้านนี้ หรือค่ากลาง (utils/stallQuota.js, /admin/stall-quota) — FASHION ให้แอดมิน
+        // ใช้ดุลยพินิจ (ไม่บล็อกตรงนี้ แต่ปล่อยให้แอดมินเห็น/ตัดสินใจตอนจัดล็อก)
         const sellerProductType = zoneAccess.normalizeProductType(productType);
         const isUncappedFashion = sellerProductType === 'FASHION';
+        const shopQuota = getShopQuota(bookingShop, await getStallQuotaSettings());
 
-        if (stallCount > MAX_STALLS_PER_SELLER && !isUncappedFashion) {
-            return rejectBooking(`1 ร้านค้าจองได้ไม่เกิน ${MAX_STALLS_PER_SELLER} ล็อคต่อคำขอ (ติดกันหรือไม่ติดกันก็ได้) ยกเว้นร้านแฟชั่นที่ขึ้นอยู่กับดุลยพินิจแอดมิน`);
+        if (stallCount > shopQuota && !isUncappedFashion) {
+            return rejectBooking(`ร้านนี้จองได้ไม่เกิน ${shopQuota} ล็อคต่อคำขอ (ติดกันหรือไม่ติดกันก็ได้) ยกเว้นร้านแฟชั่นที่ขึ้นอยู่กับดุลยพินิจแอดมิน`);
         }
 
         if (!isUncappedFashion) {
-            const existingLockCount = await prisma.booking.count({
-                where: {
-                    userId: req.user.id,
-                    status: { not: 'REJECTED' },
-                    rentalStartDate: { gte: targetRoundMeta.cycleStart, lte: targetRoundMeta.cycleEnd }
-                }
-            });
-            if (existingLockCount + stallCount > MAX_STALLS_PER_SELLER) {
-                return rejectBooking(`คุณมีล็อคอยู่แล้ว ${existingLockCount} ล็อคในรอบนี้ จองเพิ่มได้อีกไม่เกิน ${Math.max(0, MAX_STALLS_PER_SELLER - existingLockCount)} ล็อคเท่านั้น (รวมทุกโซน ไม่เกิน ${MAX_STALLS_PER_SELLER} ล็อค/คน/รอบ)`);
+            const existingLockCount = await countShopStallsInRound(req.user.id, bookingShop?.id, targetRoundMeta);
+            if (existingLockCount + stallCount > shopQuota) {
+                return rejectBooking(`ร้านนี้มีล็อคอยู่แล้ว ${existingLockCount} ล็อคในรอบนี้ จองเพิ่มได้อีกไม่เกิน ${Math.max(0, shopQuota - existingLockCount)} ล็อคเท่านั้น (รวมทุกโซน ไม่เกิน ${shopQuota} ล็อค/ร้าน/รอบ)`);
             }
         }
 
