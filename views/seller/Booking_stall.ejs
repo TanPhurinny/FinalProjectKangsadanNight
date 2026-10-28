@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
-  <link rel="stylesheet" href="/stylesheets/seller/bookingStall.css?v=20261023-final">
+  <link rel="stylesheet" href="/stylesheets/seller/bookingStall.css?v=20261028">
   <link rel="stylesheet" href="/stylesheets/common/datePicker.css?v=20261023-thai">
 </head>
 <body>
@@ -85,7 +85,7 @@
       <div class="identity-bar">
         <div class="identity-bar__who">
           <% if (shop) { %>
-          <strong><i class="fa-solid fa-store"></i> <%= shop.shopName || 'ร้านยังไม่ตั้งชื่อ' %></strong>
+          <strong><i class="fa-solid fa-store"></i> <%= shop.shopName || 'ร้านยังไม่ตั้งชื่อ' %><% if (shop.isPending) { %> <span class="identity-bar__pending">ร้านใหม่ · รอยืนยันสลิป</span><% } %></strong>
           <span><%= user ? user.name : '-' %> · <%= user ? (user.phoneNumber || '-') : '-' %></span>
           <% } else { %>
           <strong><%= user ? user.name : '-' %></strong>
@@ -407,7 +407,7 @@
       window.BOOKING_DATA = {
         userId: <%= user && user.id ? Number(user.id) : 0 %>,
         zone: <%- safeJson(zone) %>,
-        shopId: <%= shop ? Number(shop.id) : 'null' %>,
+        shopId: <%- JSON.stringify(shop ? String(shop.id) : null) %>,
         zonePrice: <%= Number(zonePrice || 0) %>,
         lightUnitPrice: <%= Number(pricing.lightUnitPrice || 15) %>,
         maxStallsPerSeller: <%= maxStallsVal %>,

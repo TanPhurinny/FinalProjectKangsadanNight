@@ -4,7 +4,7 @@
 // ทั้งสองค่าแอดมินแก้ได้ที่ /admin/stall-quota — ร้านแฟชั่นยังไม่ถูกบล็อกตอนจอง (แอดมินใช้ดุลยพินิจตอนจัดล็อก)
 const prisma = require('../config/prismaClient');
 const { BOOKING_REQUEST_TAG_PREFIX, extractBookingRequestId } = require('./bookingRequestTag');
-const { getPrimaryShop } = require('./shops');
+const { getPrimaryShop, PENDING_SHOP_PREFIX } = require('./shops');
 
 const SETTING_KEY = 'stallQuota';
 const DEFAULT_SETTINGS = { defaultMaxStalls: 2 };
@@ -77,7 +77,8 @@ function getShopQuota(shop, settings = DEFAULT_SETTINGS) {
 }
 
 // นับแผงที่ร้านนี้จองไว้แล้วในรอบ (Booking 1 แถว = 1 แผง, ไม่นับ REJECTED)
-// Booking ไม่มี shopId — ดูร้านจากคำขอที่แท็กไว้ใน storeDetailSnapshot; คำขอเก่าที่ shopId = null
+// Booking ไม่มี shopId — ดูร้านจากคำขอที่แท็กไว้ใน storeDetailSnapshot; คำขอที่จองด้วยใบสมัครร้านใหม่
+// นับเป็นของร้านชั่วคราว `app-<id>` (shopId ส่งเป็น id นั้นได้) ส่วนคำขอเก่าที่ shopId = null
 // หรือ Booking ที่ไม่มีแท็กคำขอ นับเป็นของร้านหลักของผู้ใช้
 async function countShopStallsInRound(userId, shopId, round) {
     const bookings = await prisma.booking.findMany({
@@ -99,20 +100,23 @@ async function countShopStallsInRound(userId, shopId, round) {
         .filter(Boolean)));
     const [requests, primary] = await Promise.all([
         requestIds.length
-            ? prisma.bookingRequest.findMany({ where: { id: { in: requestIds } }, select: { id: true, shopId: true } })
+            ? prisma.bookingRequest.findMany({ where: { id: { in: requestIds } }, select: { id: true, shopId: true, sellerApplicationId: true } })
             : [],
         getPrimaryShop(Number(userId), { select: { id: true } })
     ]);
     const primaryId = primary?.id || null;
-    const shopByRequest = new Map(requests.map((request) => [request.id, request.shopId || primaryId]));
+    const shopByRequest = new Map(requests.map((request) => [
+        request.id,
+        request.shopId || (request.sellerApplicationId ? `${PENDING_SHOP_PREFIX}${request.sellerApplicationId}` : primaryId)
+    ]));
 
-    const target = Number(shopId);
+    const target = String(shopId);
     return bookings.filter((booking) => {
         const requestId = String(booking.storeDetailSnapshot || '').startsWith(BOOKING_REQUEST_TAG_PREFIX)
             ? extractBookingRequestId(booking.storeDetailSnapshot)
             : null;
         const owner = requestId && shopByRequest.has(requestId) ? shopByRequest.get(requestId) : primaryId;
-        return owner === target;
+        return owner !== null && String(owner) === target;
     }).length;
 }
 

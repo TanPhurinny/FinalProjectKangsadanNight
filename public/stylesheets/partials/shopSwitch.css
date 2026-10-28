@@ -42,3 +42,13 @@
   .shop-switch__label { width: 100%; border-right: 0; border-bottom: 1px solid #d7e3e6; }
   .shop-switch__item { flex: 1 1 50%; border-bottom: 1px solid #d7e3e6; }
 }
+/* ใบสมัครร้านใหม่ที่ยังรอตรวจ — จองได้ ร้านจริงสร้างตอนยืนยันสลิป */
+.shop-switch__pending {
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #a66d1c;
+  background: #fbf1e2;
+  border: 1px solid #e8cfa6;
+}
+.shop-switch__item.is-active .shop-switch__pending { color: #12303a; background: #fbf1e2; }

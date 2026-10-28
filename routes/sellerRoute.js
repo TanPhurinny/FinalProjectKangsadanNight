@@ -56,7 +56,7 @@ const taxInvoiceCtrl = require('../controllers/taxInvoiceController');
 const { buildCommunityNotifications } = require('../utils/communityNotifications');
 const { applyReadState, markRead, markUnread } = require('../utils/notificationReads');
 const { EVENT_ZONE_CODE } = require('../utils/eventBooth');
-const { SHOP_ORDER, shopsRelation, primaryShop, getPrimaryShop, getUserShops, resolveShopForUser } = require('../utils/shops');
+const { SHOP_ORDER, shopsRelation, primaryShop, getPrimaryShop, getUserShops, resolveShopForUser, pendingShopsOfUser } = require('../utils/shops');
 const rainCompensation = require('../utils/rainCompensation');
 
 // รูปแจ้งซ่อม (เก็บที่ Cloudinary หรือดิสก์ตาม utils/imageStorage.js)
@@ -1783,21 +1783,28 @@ const zoneAccess = require('../utils/zoneAccess');
 
 // ร้านที่กำลังจองให้ — 1 ผู้ใช้มีได้หลายร้าน เลือกด้วย ?shop= (หน้าเลือกโซน/ฟอร์มจอง) หรือ shopId (POST)
 // ไม่ระบุ/ไม่ใช่ร้านของผู้ใช้ = ร้านหลัก / ผู้สมัครที่ยังไม่มีร้าน = null (ใช้ข้อมูลจากใบสมัครแทนเหมือนเดิม)
+// ใบสมัครเปิดร้านใหม่ที่ยังรอตรวจเลือกจองได้ด้วย (id `app-<id>`, ดู pendingShopsOfUser ใน utils/shops.js)
+// — ร้านจริงสร้างตอนแอดมินยืนยันสลิป เหมือนร้านแรกของผู้สมัครใหม่
 const ALL_SHOPS_INCLUDE = { shops: SHOP_ORDER };
+async function loadBookingUser(userId) {
+    const [record, pendingShops] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId }, include: ALL_SHOPS_INCLUDE }),
+        pendingShopsOfUser(userId)
+    ]);
+    if (record) record.bookingShops = [...(record.shops || []), ...pendingShops];
+    return record;
+}
 function pickBookingShop(userRecord, rawShopId) {
-    const shops = userRecord?.shops || [];
-    const id = Number.parseInt(rawShopId, 10);
-    return shops.find((shop) => shop.id === id) || shops[0] || null;
+    const shops = userRecord?.bookingShops || userRecord?.shops || [];
+    const wanted = String(rawShopId ?? '').trim();
+    return (wanted && shops.find((shop) => String(shop.id) === wanted)) || shops[0] || null;
 }
 
 router.get("/select-zone", isAuthenticated, isSellerOrApplicant, async (req, res) => {
     try {
         // ดึงข้อมูลผู้ขายจากฐานข้อมูล (รวมถึง shop.productType ของร้านที่เลือก)
         // ถ้ายังไม่ใช่ SELLER จริง (สมัครแล้วรออนุมัติอยู่) ใช้ productType จากใบสมัครแทน
-        const userRecord = await prisma.user.findUnique({
-            where: { id: req.user.id },
-            include: ALL_SHOPS_INCLUDE
-        });
+        const userRecord = await loadBookingUser(req.user.id);
         const selectedShop = pickBookingShop(userRecord, req.query.shop);
 
         const productType = selectedShop?.productType || req.sellerApplication?.productType || null;
@@ -1807,7 +1814,7 @@ router.get("/select-zone", isAuthenticated, isSellerOrApplicant, async (req, res
 
         res.render("seller/select_zone", {
             user: req.user,
-            shops: userRecord?.shops || [],
+            shops: userRecord?.bookingShops || [],
             selectedShop,
             productType,
             allowedZones,
@@ -1857,7 +1864,7 @@ function toDateKey(dateValue) {
 // render หน้าจองแผงจากจุดเดียว (GET และทุกกรณีที่ POST ตีกลับ) ให้ข้อมูลรอบ/ราคา/โควตาครบเสมอ
 // gate (ถูกระงับสิทธิ์ / ไม่ได้เลือกโซน / ไม่มีสิทธิ์โซน / ไม่มีราคา) จะซ่อนฟอร์มและบอกเหตุผลแทน
 async function renderBookingStallPage(req, res, { status = 200, zoneCode = '', error = null, userRecord = null, formValues = null, cornerParam = null, shopId = null } = {}) {
-    const record = userRecord || await prisma.user.findUnique({ where: { id: req.user.id }, include: ALL_SHOPS_INCLUDE });
+    const record = userRecord || await loadBookingUser(req.user.id);
     const shop = pickBookingShop(record, shopId);
     const productType = shop?.productType || req.sellerApplication?.productType || null;
     const allowedZones = zoneAccess.allowedZonesFor(productType).map((z) => String(z).toUpperCase());
@@ -1959,7 +1966,7 @@ async function renderBookingStallPage(req, res, { status = 200, zoneCode = '', e
         gateError: null,
         defaultStoreDetail: shop?.productDetail || shop?.shopSummary || req.sellerApplication?.productDetail || '',
         shop,
-        shopCount: (record?.shops || []).length,
+        shopCount: (record?.bookingShops || record?.shops || []).length,
         formValues,
         cornerZoneValue: resolveCornerZonePrice(formValues ? formValues.cornerZone : cornerParam),
         roundOptions: [
@@ -2005,7 +2012,7 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
     const rejectBooking = (message, status = 400) => renderBookingStallPage(req, res, { status, zoneCode, error: message, userRecord, formValues, shopId: req.body.shopId });
 
     try {
-        userRecord = await prisma.user.findUnique({ where: { id: req.user.id }, include: ALL_SHOPS_INCLUDE });
+        userRecord = await loadBookingUser(req.user.id);
         const bookingShop = pickBookingShop(userRecord, req.body.shopId);
         if (req.body.shopId && bookingShop && String(bookingShop.id) !== String(req.body.shopId)) {
             return rejectBooking('ไม่พบร้านที่เลือก กรุณาเลือกร้านใหม่จากหน้าเลือกโซน');
@@ -2177,8 +2184,10 @@ router.post('/booking-stall', isSellerOrApplicant, async (req, res) => {
                     zone: zoneCode,
                     productImage: bookingShop?.productImage || req.sellerApplication?.shopCoverImage || null,
                     userId: req.user.id,
-                    // ผู้สมัครที่ยังไม่มีร้าน = null แล้วผูกร้านให้ตอนแอดมินยืนยันสลิป (approvalController.markPaymentConfirmed)
-                    shopId: bookingShop?.id || null,
+                    // ผู้สมัครที่ยังไม่มีร้าน / จองด้วยใบสมัครร้านใหม่ = null แล้วผูกร้านให้ตอนแอดมินยืนยันสลิป
+                    // (approvalController.markPaymentConfirmed ใช้ sellerApplicationId หาใบสมัครที่จะสร้างร้าน)
+                    shopId: bookingShop && !bookingShop.isPending ? bookingShop.id : null,
+                    sellerApplicationId: bookingShop?.isPending ? bookingShop.applicationId : null,
                     status: 'PENDING'
                 }
             });

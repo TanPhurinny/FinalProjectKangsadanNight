@@ -32,12 +32,52 @@ async function resolveShopForUser(userId, shopId, options = {}) {
     return prisma.shopDetail.findFirst({ where: { id, userId: Number(userId) }, ...options });
 }
 
-// ร้านของคำขอจอง: shopId ของคำขอก่อน ถ้าเป็นคำขอเก่า (null) ใช้ร้านหลักของเจ้าของ — โหลดเป็นชุดเดียว
-// คืน Map<requestId, ShopDetail|null>
+// ใบสมัครเปิดร้านใหม่ที่ยังรอตรวจ (shopId = null) ทำเป็น "ร้านชั่วคราว" ให้เลือกจองได้เหมือนร้านจริง
+// ร้านจริงจะถูกสร้างตอนแอดมินยืนยันสลิปของคำขอที่จองด้วยใบสมัครนี้ (BookingRequest.sellerApplicationId)
+// id เป็นข้อความ `app-<id>` กันชนกับ id ร้านจริง — ห้ามเอาไป query ShopDetail
+const PENDING_SHOP_PREFIX = 'app-';
+
+function applicationAsShop(application, id) {
+    return {
+        id,
+        applicationId: application.id,
+        isPending: true,
+        userId: application.userId,
+        shopName: application.shopName,
+        productType: application.productType,
+        productSubtype: application.productSubtype,
+        productDetail: application.productDetail,
+        shopSummary: application.shopSummary,
+        productImage: application.shopCoverImage || null,
+        maxStallsPerRound: null
+    };
+}
+
+async function pendingShopsOfUser(userId) {
+    if (!userId) return [];
+    const applications = await prisma.sellerApplication.findMany({
+        where: { userId: Number(userId), status: 'PENDING', shopId: null },
+        orderBy: { createdAt: 'asc' }
+    });
+    return applications.map((application) => applicationAsShop(application, `${PENDING_SHOP_PREFIX}${application.id}`));
+}
+
+// ร้านของคำขอจอง: shopId ของคำขอก่อน / คำขอที่จองด้วยใบสมัครร้านใหม่ที่ยังรอตรวจ = ข้อมูลจากใบสมัคร (id = null)
+// ที่เหลือ (คำขอเก่าก่อนมีหลายร้าน) ใช้ร้านหลักของเจ้าของ — โหลดเป็นชุดเดียว คืน Map<requestId, ShopDetail|null>
 async function shopsOfRequests(requests, ownerOf = (request) => request.userId) {
     const list = (requests || []).filter(Boolean);
     const shopIds = Array.from(new Set(list.map((r) => r.shopId).filter(Boolean)));
-    const ownerIds = Array.from(new Set(list.filter((r) => !r.shopId).map(ownerOf).filter(Boolean)));
+    const unlinkedIds = list.filter((r) => !r.shopId && r.id).map((r) => r.id);
+    const appLinks = unlinkedIds.length
+        ? await prisma.bookingRequest.findMany({
+            where: { id: { in: unlinkedIds }, sellerApplicationId: { not: null } },
+            select: { id: true, sellerApplication: true }
+        })
+        : [];
+    const appShopByRequest = new Map(appLinks
+        .filter((row) => row.sellerApplication)
+        .map((row) => [row.id, applicationAsShop(row.sellerApplication, null)]));
+    const ownerIds = Array.from(new Set(list.filter((r) => !r.shopId && !appShopByRequest.has(r.id)).map(ownerOf).filter(Boolean)));
     const [byId, owned] = await Promise.all([
         shopIds.length ? prisma.shopDetail.findMany({ where: { id: { in: shopIds } } }) : [],
         ownerIds.length ? prisma.shopDetail.findMany({ where: { userId: { in: ownerIds } }, ...SHOP_ORDER }) : []
@@ -47,7 +87,9 @@ async function shopsOfRequests(requests, ownerOf = (request) => request.userId) 
     owned.forEach((s) => { if (!primaryByUser.has(s.userId)) primaryByUser.set(s.userId, s); });
     const result = new Map();
     list.forEach((r) => {
-        result.set(r.id, r.shopId ? (shopById.get(r.shopId) || null) : (primaryByUser.get(ownerOf(r)) || null));
+        if (r.shopId) result.set(r.id, shopById.get(r.shopId) || null);
+        else if (appShopByRequest.has(r.id)) result.set(r.id, appShopByRequest.get(r.id));
+        else result.set(r.id, primaryByUser.get(ownerOf(r)) || null);
     });
     return result;
 }
@@ -59,5 +101,7 @@ module.exports = {
     getUserShops,
     getPrimaryShop,
     resolveShopForUser,
-    shopsOfRequests
+    shopsOfRequests,
+    PENDING_SHOP_PREFIX,
+    pendingShopsOfUser
 };

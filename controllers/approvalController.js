@@ -846,8 +846,13 @@ async function markPaymentConfirmed(requestRecord, actorName, actionLabel = 'ย
             // ประเภทสินค้าเองใหม่ใน /shop-profile จนไม่ตรงกับที่สมัครมา
             // 1 ผู้ใช้มีได้หลายร้าน: คำขอที่ระบุร้าน (shopId) ใช้ใบสมัครของร้านนั้น / คำขอที่ยังไม่ระบุร้าน
             // (ผู้สมัครใหม่จองระหว่างรอตรวจใบสมัคร) ใช้ใบสมัครล่าสุดของผู้ใช้
+            // คำขอที่จองด้วยใบสมัครเปิดร้านใหม่ (sellerApplicationId) ใช้ใบสมัครนั้นตรงๆ — ผู้ขายที่มีร้านอยู่แล้ว
+            // อาจมีใบสมัครอื่นที่ใหม่กว่า ห้ามเดาจากใบล่าสุด
             const requestShopId = requestRecord.shopId || null;
-            const latestApplication = await prisma.sellerApplication.findFirst({
+            const linkedApplication = !requestShopId && requestRecord.sellerApplicationId
+                ? await prisma.sellerApplication.findFirst({ where: { id: requestRecord.sellerApplicationId, userId: paidBooking.userId } })
+                : null;
+            const latestApplication = linkedApplication || await prisma.sellerApplication.findFirst({
                 where: { userId: paidBooking.userId, ...(requestShopId ? { shopId: requestShopId } : {}) },
                 orderBy: { createdAt: 'desc' }
             });

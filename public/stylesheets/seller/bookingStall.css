@@ -773,3 +773,17 @@ body.has-sticky-total .main-content { margin-bottom: 140px; }
 .ap-kind-card { flex-direction: column; gap: 6px; }
 .ap-kind-card > i { margin-top: 0; text-align: left; }
 .ap-kind-card__body { padding-right: 0; width: 100%; }
+
+/* จองด้วยใบสมัครร้านใหม่ที่ยังรอตรวจ */
+.identity-bar__who strong .identity-bar__pending {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #a66d1c;
+  background: #fbf1e2;
+  border: 1px solid #e8cfa6;
+  vertical-align: middle;
+}

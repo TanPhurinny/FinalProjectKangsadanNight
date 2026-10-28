@@ -93,7 +93,7 @@ exports.approveSellerApplication = async (req, res) => {
 
         const application = await prisma.sellerApplication.findUnique({
             where: { id: applicationId },
-            select: { id: true, userId: true, shopName: true, productType: true, productSubtype: true, productSubtypeOther: true, productDetail: true, shopCoverImage: true, logoImage: true, status: true }
+            select: { id: true, userId: true, shopId: true, shopName: true, productType: true, productSubtype: true, productSubtypeOther: true, productDetail: true, shopCoverImage: true, logoImage: true, status: true }
         });
 
         if (!application) {

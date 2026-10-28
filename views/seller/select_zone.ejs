@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
   <link rel="stylesheet" href="/stylesheets/seller/selectZone.css?v=20261026-event">
-  <link rel="stylesheet" href="/stylesheets/partials/shopSwitch.css?v=20261027">
+  <link rel="stylesheet" href="/stylesheets/partials/shopSwitch.css?v=20261028">
 </head>
 
 <body>
@@ -258,7 +258,7 @@
     window.ALLOWED_ZONES = <%- (typeof allowedZones !== 'undefined' ? JSON.stringify(allowedZones) : '[]') %>;
     window.ZONE_DETAILS = <%- (typeof zoneDetails !== 'undefined' ? JSON.stringify(zoneDetails) : '{}') %>;
     window.SELLER_PRODUCT_TYPE = "<%= typeof productType !== 'undefined' ? productType : '' %>";
-    window.SELECTED_SHOP_ID = <%= (typeof selectedShop !== 'undefined' && selectedShop) ? Number(selectedShop.id) : 'null' %>;
+    window.SELECTED_SHOP_ID = <%- JSON.stringify((typeof selectedShop !== 'undefined' && selectedShop) ? String(selectedShop.id) : null) %>;
   </script>
   <script src="/js/common/dialogs.js"></script>
   <script src="/js/market-map.js"></script>

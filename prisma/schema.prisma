@@ -159,6 +159,7 @@ model SellerApplication {
   shopId            Int?
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   shop              ShopDetail? @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  bookingRequests   BookingRequest[]
 
   @@index([userId], map: "SellerApplication_userId_fkey")
   @@index([shopId], map: "SellerApplication_shopId_fkey")
@@ -240,6 +241,9 @@ model BookingRequest {
   userId       Int?
   // ร้านที่จอง (ผู้ใช้ 1 คนมีหลายร้านได้) — null = คำขอเก่าก่อนมีหลายร้าน ใช้ร้านหลักของ userId แทน (shopOfRequest)
   shopId       Int?
+  // ใบสมัครเปิดร้านใหม่ที่ยังไม่อนุมัติซึ่งใช้จองคำขอนี้ (shopId = null ระหว่างนั้น) — ยืนยันสลิปแล้วสร้างร้านจากใบสมัครนี้
+  // แล้วเติม shopId (approvalController.markPaymentConfirmed) ดู pendingShopsOfUser ใน utils/shops.js
+  sellerApplicationId Int?
   status       Status   @default(PENDING)
   createdAt    DateTime @default(now())
   // เวลาที่แอดมินจัดล็อกให้ (ตั้งสถานะเป็น IN_PROGRESS) — ใช้คำนวณกำหนดชำระเงินภายใน 6 ชม.
@@ -261,11 +265,13 @@ model BookingRequest {
   seller       Seller?  @relation(fields: [sellerId], references: [id], onDelete: SetNull)
   user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   shop         ShopDetail? @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  sellerApplication SellerApplication? @relation(fields: [sellerApplicationId], references: [id], onDelete: SetNull)
   taxInvoiceRequestItems TaxInvoiceRequestItem[]
 
   @@index([sellerId], map: "BookingRequest_sellerId_fkey")
   @@index([userId], map: "BookingRequest_userId_fkey")
   @@index([shopId], map: "BookingRequest_shopId_fkey")
+  @@index([sellerApplicationId], map: "BookingRequest_sellerApplicationId_fkey")
 }
 
 model BookingRound {

@@ -1,6 +1,7 @@
 <%
 // แถบเลือกร้าน (1 ผู้ใช้มีได้หลายร้าน) — แสดงเมื่อมีมากกว่า 1 ร้าน
 // ส่ง: shops, selectedShopId, href(shopId) → URL, label, allHref (ไม่บังคับ: ปุ่ม "ทุกร้าน" active เมื่อ selectedShopId ว่าง)
+// ร้านที่ isPending = ใบสมัครร้านใหม่ที่ยังรอตรวจ (id `app-<id>`) — ขึ้นเฉพาะหน้าจอง
 const switchShops = (typeof shops !== 'undefined' && shops) || [];
 const switchLabel = (typeof label !== 'undefined' && label) || 'ร้าน';
 const switchAllHref = (typeof allHref !== 'undefined' && allHref) || null;
@@ -11,9 +12,9 @@ const switchAllHref = (typeof allHref !== 'undefined' && allHref) || null;
   <% if (switchAllHref) { %>
   <a class="shop-switch__item<%= selectedShopId ? '' : ' is-active' %>" href="<%= switchAllHref %>"<%- selectedShopId ? '' : ' aria-current="page"' %>>ทุกร้าน</a>
   <% } %>
-  <% switchShops.forEach(function (s) { const active = Number(selectedShopId) === s.id; %>
+  <% switchShops.forEach(function (s) { const active = selectedShopId !== null && selectedShopId !== undefined && String(selectedShopId) === String(s.id); %>
   <a class="shop-switch__item<%= active ? ' is-active' : '' %>" href="<%= href(s.id) %>"<%- active ? ' aria-current="page"' : '' %>>
-    <i class="fa-solid fa-store" aria-hidden="true"></i> <%= s.shopName || 'ร้านยังไม่ตั้งชื่อ' %>
+    <i class="fa-solid fa-store" aria-hidden="true"></i> <%= s.shopName || 'ร้านยังไม่ตั้งชื่อ' %><% if (s.isPending) { %> <span class="shop-switch__pending">ร้านใหม่</span><% } %>
   </a>
   <% }) %>
 </nav>
