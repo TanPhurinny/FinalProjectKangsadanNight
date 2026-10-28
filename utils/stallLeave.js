@@ -2,6 +2,7 @@
 // - ทำได้เฉพาะแผงที่ร้านเช่าและชำระแล้ว (Booking SUCCESS ครอบทุกวันในช่วงที่ขอ) และแผงยังไม่ถูกปล่อย (Stall.status = BOOKED)
 // - วันแรกต้องยังไม่เลยเส้นตาย: แจ้งวันนี้ได้ถึง NOTICE_CUTOFF_HOUR:00 ของวันขายนั้น เลยแล้วเริ่มได้พรุ่งนี้ (วันขายตัดตี 5 เหมือน shopOpenStatus)
 // - ช่วงวันห้ามซ้อนกับคำขอที่ยังมีผล (รอ/อนุมัติแล้ว) ของแผงเดียวกัน
+// - เจ้าของแผงยกเลิก/แก้ไขได้จนถึง CHANGE_CUTOFF_HOUR:00 ของวันเริ่ม (เวลาตลาดเปิด) เลยแล้วล็อกคำขอไว้
 // - ไม่มีเงินเข้าออก: ลาหยุดไม่คืนค่าเช่า, เช่าช่วงร้านตกลงเงินกันเอง ใบกำกับภาษียังเป็นของเจ้าของแผง
 // - ไม่ใช้กับบูธกิจกรรมโซน G
 const prisma = require('../config/prismaClient');
@@ -14,6 +15,8 @@ const crypto = require('crypto');
 const { PRODUCT_TYPE_LABELS, loadCustomSubtypes, isAllowedSubtype } = require('./productSubtypes');
 
 const NOTICE_CUTOFF_HOUR = 12;
+// ตลาดเปิด 15:00 — หลังจากนี้ของวันเริ่ม ร้านที่มาขายแทน/เจ้าหน้าที่ตรวจตลาดยึดตามคำขอแล้ว ยกเลิกหรือแก้ไม่ได้
+const CHANGE_CUTOFF_HOUR = 15;
 const MAX_RANGE_DAYS = 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
 // สถานะที่ยังกันช่วงวันของแผงไว้ (ห้ามขอซ้อน)
@@ -47,7 +50,7 @@ const ERROR_MESSAGES = {
     event_booth: 'บูธกิจกรรมโซน G ลาหยุด/ให้เช่าช่วงไม่ได้',
     missing_reason: 'กรุณากรอกเหตุผล',
     not_found: 'ไม่พบคำขอ',
-    cannot_cancel: 'คำขอนี้ยกเลิกไม่ได้แล้ว (ถึงวันเริ่มแล้วหรือปิดไปแล้ว)',
+    cannot_cancel: `คำขอนี้ยกเลิกหรือแก้ไขไม่ได้แล้ว (เลย ${CHANGE_CUTOFF_HOUR}:00 น. ของวันเริ่ม ตลาดเปิดแล้ว หรือคำขอปิดไปแล้ว)`,
     not_pending: 'คำขอนี้ไม่ได้อยู่ในขั้นรอแอดมินแล้ว',
     stall_released: 'แผงนี้ถูกปล่อย/สัญญาหมดแล้ว อนุมัติไม่ได้',
     missing_subtenant: 'กรุณาเลือกร้านที่จะให้เช่าช่วง',
@@ -458,9 +461,13 @@ async function guestBlacklistHit(row) {
     return byPhone + byId > 0;
 }
 
-// เจ้าของแผงยกเลิกได้ก่อนถึงวันเริ่ม (ที่อนุมัติแล้วก็ยกเลิกได้ถ้ายังไม่ถึงวันเริ่ม)
+// เส้นตายยกเลิก/แก้ไข = 15:00 ของวันเริ่ม (ที่อนุมัติแล้วก็ยกเลิก/แก้ได้ถ้ายังไม่ถึงเวลานี้)
+function changeDeadlineOf(row) {
+    return new Date(toStartOfDay(row.startDate).getTime() + CHANGE_CUTOFF_HOUR * 60 * 60 * 1000);
+}
+
 function canCancel(row, now = new Date()) {
-    return ACTIVE_STATUSES.includes(row.status) && toStartOfDay(row.startDate) > businessDateOf(now);
+    return ACTIVE_STATUSES.includes(row.status) && now < changeDeadlineOf(row);
 }
 
 async function cancelRequest(userId, id, now = new Date()) {
@@ -468,6 +475,61 @@ async function cancelRequest(userId, id, now = new Date()) {
     if (!row) throw new StallLeaveError('not_found');
     if (!canCancel(row, now)) throw new StallLeaveError('cannot_cancel');
     return prisma.stallLeaveRequest.update({ where: { id: row.id }, data: { status: 'CANCELLED', cancelledAt: now } });
+}
+
+// เจ้าของแผงแก้คำขอ (วันที่ เหตุผล ร้านผู้รับเช่าช่วง) — ประเภทคำขอและแผงแก้ไม่ได้ (ยกเลิกแล้วขอใหม่)
+// แก้แล้วต้องผ่านขั้นตอนใหม่: ลาหยุด → รอแอดมิน / เช่าช่วงสมาชิกที่เปลี่ยนวันหรือร้าน → รอร้านผู้รับตอบรับใหม่
+// (แก้แค่เหตุผล → รอแอดมิน) / คนนอกที่กรอกข้อมูลแล้ว → รอแอดมิน ยังไม่กรอก → รอเหมือนเดิม
+async function updateRequest(userId, id, { startKey, endKey, reason, subShopId }, now = new Date()) {
+    await expireStale(now);
+    const row = await prisma.stallLeaveRequest.findFirst({ where: { id: Number(id) || 0, userId } });
+    if (!row) throw new StallLeaveError('not_found');
+    if (!canCancel(row, now)) throw new StallLeaveError('cannot_cancel');
+    const text = cleanReason(reason);
+    const start = parseDateKey(startKey);
+    const end = parseDateKey(endKey || startKey);
+    if (!start || !end || end < start) throw new StallLeaveError('invalid_dates');
+    if (dayCount(start, end) > MAX_RANGE_DAYS) throw new StallLeaveError('range_too_long');
+    const oldStart = toStartOfDay(row.startDate);
+    const oldEnd = toStartOfDay(row.endDate);
+    // วันเริ่มเดิมแก้อย่างอื่นได้ถึง 15:00 / ย้ายวันเริ่มต้องผ่านกติกาแจ้งล่วงหน้าเหมือนคำขอใหม่
+    if (start.getTime() !== oldStart.getTime() && start < earliestStartDate(now)) throw new StallLeaveError('too_late');
+    const stall = (await loadShopStalls(row.userId, row.shopId, now)).find((s) => s.code === row.stallCode);
+    if (!stall) throw new StallLeaveError('invalid_stall');
+    const bookingRequestId = checkCoverage(stall, start, end);
+    await assertNoOverlap(row.stallCode, start, end, row.id);
+
+    let nextSubShopId = row.subShopId;
+    if (row.kind === 'SUBLET_MEMBER') {
+        if (!subShopId) throw new StallLeaveError('missing_subtenant');
+        const subShop = await findSubtenantShop(subShopId, userId);
+        if (!subShop) throw new StallLeaveError('invalid_subtenant');
+        nextSubShopId = subShop.id;
+    }
+    const termsChanged = start.getTime() !== oldStart.getTime() || end.getTime() !== oldEnd.getTime() || nextSubShopId !== row.subShopId;
+    let status = 'PENDING';
+    if (row.kind === 'SUBLET_MEMBER' && (termsChanged || row.status === 'WAITING_SUBTENANT')) status = 'WAITING_SUBTENANT';
+    if (row.kind === 'SUBLET_GUEST' && !row.guestName) status = 'WAITING_SUBTENANT';
+    // รอผู้รับเช่าช่วงแต่เลยเวลาแจ้งของวันเริ่มแล้ว จะหมดอายุทันที (expireStale) — ให้เลือกวันใหม่แทน
+    if (status === 'WAITING_SUBTENANT' && start < earliestStartDate(now)) throw new StallLeaveError('too_late');
+
+    const updated = await prisma.stallLeaveRequest.update({
+        where: { id: row.id },
+        data: {
+            startDate: start,
+            endDate: end,
+            reason: text,
+            bookingRequestId,
+            subShopId: nextSubShopId,
+            status,
+            ...(row.kind === 'SUBLET_MEMBER' && status === 'WAITING_SUBTENANT' ? { subtenantAcceptedAt: null } : {}),
+            reviewedById: null,
+            reviewedByName: null,
+            reviewedAt: null,
+            rejectReason: null
+        }
+    });
+    return { row: updated, previous: row };
 }
 
 // แอดมินอนุมัติ: ตรวจซ้ำว่าแผงยังเป็นของร้านนี้ครบทุกวัน และไม่ชนคำขอที่อนุมัติไปแล้ว
@@ -522,7 +584,8 @@ function decorate(row, shopNames, now = new Date()) {
         days: dayCount(row.startDate, row.endDate),
         createdText: `${thaiDate(row.createdAt)} ${thaiTime(row.createdAt)}`,
         reviewedText: row.reviewedAt ? `${thaiDate(row.reviewedAt)} ${thaiTime(row.reviewedAt)}` : null,
-        canCancel: canCancel(row, now)
+        canCancel: canCancel(row, now),
+        changeDeadlineText: `${thaiDate(changeDeadlineOf(row))} ${CHANGE_CUTOFF_HOUR}:00 น.`
     };
 }
 
@@ -707,6 +770,7 @@ async function buildLeaveNotifications(userId, now = new Date()) {
 
 module.exports = {
     NOTICE_CUTOFF_HOUR,
+    CHANGE_CUTOFF_HOUR,
     MAX_RANGE_DAYS,
     ACTIVE_STATUSES,
     KIND_LABEL,
@@ -736,7 +800,9 @@ module.exports = {
     guestBlacklistHit,
     isValidThaiId,
     canCancel,
+    changeDeadlineOf,
     cancelRequest,
+    updateRequest,
     approveRequest,
     rejectRequest,
     countPendingLeaves,

@@ -200,6 +200,9 @@ function stallMatchesFilter(id, stall) {
         // อิงสถานะ ณ วันที่กำลังดู (stall.dayState/freedFromToday/occupant จาก getSlotsPage ฝั่ง server)
         if (currentStatusFilter === 'FREED') return !!stall.freedFromToday;
         if (currentStatusFilter === 'NEW') return stall.status === 'BOOKED' && !!(stall.occupant && stall.occupant.isNewCustomer);
+        // ลาหยุด/เช่าช่วงที่อนุมัติแล้ว ณ วันที่กำลังดู (stall.leave จาก utils/stallDayStatus.js)
+        if (currentStatusFilter === 'SUBLET') return !!(stall.leave && stall.leave.kind !== 'LEAVE');
+        if (currentStatusFilter === 'LEAVE') return !!(stall.leave && stall.leave.kind === 'LEAVE');
         return stall.status === currentStatusFilter;
     }
     if (currentQuery) {
@@ -656,7 +659,7 @@ window.notifyExpiring = notifyExpiring;
 
 const STATUS_LABELS = {
     EMPTY: 'แผงว่าง', BOOKED: 'แผงที่จองแล้ว', MAINTENANCE: 'แผงซ่อมบำรุง', NEAR_EXPIRY: 'แผงใกล้/หมดสัญญา', SPECIAL: 'แผงมุมพิเศษ',
-    FREED: 'ว่างเพิ่มจากวันนี้', NEW: 'ร้านใหม่'
+    FREED: 'ว่างเพิ่มจากวันนี้', NEW: 'ร้านใหม่', SUBLET: 'แผงที่ปล่อยเช่าช่วง', LEAVE: 'แผงที่ลาหยุด'
 };
 
 function refreshFilterResults() {

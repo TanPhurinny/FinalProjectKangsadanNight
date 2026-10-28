@@ -73,6 +73,8 @@
 
 .legend-swatch.legend-issue { background: var(--danger-color); }
 .legend-swatch.legend-normal { background: var(--success-color); }
+.legend-swatch.legend-sublet { background: #e9dff0; outline: 2px dashed #6c3483; outline-offset: -2px; }
+.legend-swatch.legend-leave { background: repeating-linear-gradient(45deg, #ece6f0, #ece6f0 3px, #d9cfe0 3px, #d9cfe0 6px); }
 .legend-swatch.legend-vacant { background: var(--muted-color); }
 .legend-swatch.legend-pending { background: var(--warning-color, #f0ad4e); }
 
@@ -387,6 +389,21 @@
 
 .insp-stall-cell.status-issue {
     background: var(--danger-color);
+}
+
+/* ลาหยุด/เช่าช่วงที่แอดมินอนุมัติแล้ววันนี้ — สีเดียวกับผังแอดมิน (ลาย = ลาหยุด, ม่วงเส้นประ = เช่าช่วง) */
+.insp-stall-cell.status-sublet {
+    background: #e9dff0;
+    color: #4a235a;
+    outline: 2px dashed #6c3483;
+    outline-offset: -3px;
+}
+
+.insp-stall-cell.status-leave {
+    background: repeating-linear-gradient(45deg, #ece6f0, #ece6f0 4px, #d9cfe0 4px, #d9cfe0 8px);
+    color: #6c3483;
+    cursor: default;
+    pointer-events: none;
 }
 
 /* สถานะผลตรวจความสะอาด (โหมดงานตรวจความสะอาด) */

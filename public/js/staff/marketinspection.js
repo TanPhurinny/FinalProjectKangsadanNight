@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('inspectionSearch');
     const zoneFilter = document.getElementById('zoneFilter');
     const issueFilter = document.getElementById('issueFilter');
+    // แผงที่ลาหยุด/ปล่อยเช่าช่วง (อนุมัติแล้ว) วันนี้ — ซ่อนแถวที่ไม่ตรง ต่างจาก issueFilter ที่แค่ไฮไลต์คอลัมน์
+    const dayStatusFilter = document.getElementById('dayStatusFilter');
     const table = document.getElementById('inspectionTable');
     const flowHint = document.getElementById('inspectionFlowHint');
     const totalCountEl = document.getElementById('totalCount');
@@ -79,8 +81,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const passZone = zone === 'ALL' || rowZone === zone;
             // ถ้าเลือกหัวข้อเฉพาะ: แสดงทั้งหมดแต่ไฮไลต์คอลัมน์นั้น (ไม่ซ่อน row)
             const passIssue = issue === 'ALL' ? true : true;
+            const dayStatus = String(dayStatusFilter?.value || 'ALL');
+            const passDayStatus = dayStatus === 'ALL' || row.dataset.dayStatus === dayStatus;
 
-            const shouldShow = passSearch && passZone && passIssue;
+            const shouldShow = passSearch && passZone && passIssue && passDayStatus;
             row.style.display = shouldShow ? '' : 'none';
             if (shouldShow) {
                 visibleRows.push(row);
@@ -193,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (searchInput) searchInput.addEventListener('input', debounceApplyFilter);
     if (zoneFilter) zoneFilter.addEventListener('change', applyFilter);
     if (issueFilter) issueFilter.addEventListener('change', applyFilter);
+    if (dayStatusFilter) dayStatusFilter.addEventListener('change', applyFilter);
 
     // --- แผงบันทึกเครื่องใช้ไฟฟ้าเกิน (popover บน desktop / bottom sheet บนมือถือ) ---
     const excessBackdrop = document.getElementById('excessPanelBackdrop');

@@ -37,12 +37,15 @@
     }
     const isFree = (stall) => stall.status !== 'BOOKED' && stall.status !== 'MAINTENANCE';
     const isExpiring = (stall) => ['near', 'critical', 'expired'].includes(stall.expiryState);
+    // ลาหยุด/เช่าช่วงที่อนุมัติแล้ว ณ วันที่กำลังดู
+    const isSublet = (stall) => !!(stall.leave && stall.leave.kind !== 'LEAVE');
+    const isOnLeave = (stall) => !!(stall.leave && stall.leave.kind === 'LEAVE');
 
     // ---------- สรุปตัวเลขทั้งตลาด ----------
     let inspectOn = false;
 
     function computeStats() {
-        const stats = { total: 0, free: 0, booked: 0, maintenance: 0, expiring: 0, checked: 0, issues: 0, inspTotal: 0, zones: {} };
+        const stats = { total: 0, free: 0, booked: 0, maintenance: 0, expiring: 0, sublet: 0, leave: 0, checked: 0, issues: 0, inspTotal: 0, zones: {} };
         forEachStall((zone, stall) => {
             const z = stats.zones[zone] || (stats.zones[zone] = { free: 0, expiring: 0, issues: 0, pending: 0 });
             stats.total += 1;
@@ -50,6 +53,8 @@
             else if (stall.status === 'MAINTENANCE') stats.maintenance += 1;
             else { stats.free += 1; z.free += 1; }
             if (isExpiring(stall)) { stats.expiring += 1; z.expiring += 1; }
+            if (isSublet(stall)) stats.sublet += 1;
+            if (isOnLeave(stall)) stats.leave += 1;
             const insp = INSPECT_BY_CODE[stall.code];
             if (insp && stall.status === 'BOOKED') {
                 stats.inspTotal += 1;
@@ -97,7 +102,9 @@
             chip('ว่าง', s.free, '', () => clickQuickTag('.qtag-empty'), 'ok', status === 'EMPTY'),
             chip('จองแล้ว', s.booked, '', () => clickQuickTag('.qtag-booked'), '', status === 'BOOKED'),
             chip('ซ่อมบำรุง', s.maintenance, '', () => clickQuickTag('.qtag-maintenance'), 'warn', status === 'MAINTENANCE'),
-            chip('ใกล้/หมดสัญญา', s.expiring, '', () => clickQuickTag('.qtag-near-expiry'), s.expiring ? 'bad' : '', status === 'NEAR_EXPIRY')
+            chip('ใกล้/หมดสัญญา', s.expiring, '', () => clickQuickTag('.qtag-near-expiry'), s.expiring ? 'bad' : '', status === 'NEAR_EXPIRY'),
+            chip('เช่าช่วง', s.sublet, api.IS_TODAY_VIEW ? 'วันนี้' : 'วันที่ดู', () => api.setStatusFilter('SUBLET'), s.sublet ? 'sublet' : '', status === 'SUBLET'),
+            chip('ลาหยุด', s.leave, api.IS_TODAY_VIEW ? 'วันนี้' : 'วันที่ดู', () => api.setStatusFilter('LEAVE'), '', status === 'LEAVE')
         );
         // ผลตรวจเป็นของวันนี้เท่านั้น — เปลี่ยนไปดูวันอื่นในหน้าเดิมแล้วไม่ต้องโชว์
         if (api.IS_TODAY_VIEW && Object.keys(INSPECT_BY_CODE).length) {
@@ -109,7 +116,7 @@
     // หน้าตาเดียวกับแถบสรุปของหน้าโซน (chip) แต่นับเฉพาะโซนที่เปิด และเป็นของวันที่กำลังดู
     // กดช่องไหน = กรองล็อกแบบนั้น ตัวกรองตัวเดียวกับ "ค้นหาด่วน" ของหน้าโซน เข้า/ออกโซนแล้วยังกรองอยู่
     function countZone(zoneCode) {
-        const c = { total: 0, free: 0, booked: 0, unpaid: 0, fresh: 0, expiring: 0, maintenance: 0, freed: 0 };
+        const c = { total: 0, free: 0, booked: 0, unpaid: 0, fresh: 0, expiring: 0, maintenance: 0, freed: 0, sublet: 0, leave: 0 };
         forEachStall((zone, stall) => {
             if (zone !== zoneCode) return;
             c.total += 1;
@@ -124,6 +131,8 @@
             }
             if (isExpiring(stall)) c.expiring += 1;
             if (stall.freedFromToday) c.freed += 1;
+            if (isSublet(stall)) c.sublet += 1;
+            if (isOnLeave(stall)) c.leave += 1;
         });
         return c;
     }
@@ -142,7 +151,9 @@
             chip('จองแล้ว', c.booked, c.unpaid ? `รอจ่าย ${c.unpaid}` : '', pick('BOOKED'), '', status === 'BOOKED'),
             chip('ร้านใหม่', c.fresh, '', pick('NEW'), '', status === 'NEW'),
             chip('ซ่อมบำรุง', c.maintenance, '', pick('MAINTENANCE'), 'warn', status === 'MAINTENANCE'),
-            chip('ใกล้/หมดสัญญา', c.expiring, '', pick('NEAR_EXPIRY'), c.expiring ? 'bad' : '', status === 'NEAR_EXPIRY')
+            chip('ใกล้/หมดสัญญา', c.expiring, '', pick('NEAR_EXPIRY'), c.expiring ? 'bad' : '', status === 'NEAR_EXPIRY'),
+            chip('เช่าช่วง', c.sublet, '', pick('SUBLET'), c.sublet ? 'sublet' : '', status === 'SUBLET'),
+            chip('ลาหยุด', c.leave, '', pick('LEAVE'), '', status === 'LEAVE')
         );
         // ดูวันอื่น: ล็อกที่วันนี้ยังมีร้านแต่วันนั้นว่างแล้ว
         if (!api.IS_TODAY_VIEW) {

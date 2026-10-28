@@ -56,6 +56,8 @@ router.get('/stall-leave', isSellerOnly, stallLeaveCtrl.getMyRequests);
 router.get('/stall-leave/new', isSellerOnly, stallLeaveCtrl.getForm);
 router.post('/stall-leave', isSellerOnly, stallLeaveCtrl.submitForm);
 router.post('/stall-leave/:id/cancel', isSellerOnly, stallLeaveCtrl.cancel);
+router.get('/stall-leave/:id/edit', isSellerOnly, stallLeaveCtrl.getEditForm);
+router.post('/stall-leave/:id/edit', isSellerOnly, stallLeaveCtrl.submitEdit);
 // ร้านผู้รับเช่าช่วง (สมาชิก) ตอบรับ/ปฏิเสธ
 router.post('/stall-leave/:id/respond', isSellerOnly, stallLeaveCtrl.respond);
 

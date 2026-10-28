@@ -197,6 +197,9 @@ a.sl-stat.is-active b, a.sl-stat.is-active small { color: var(--sl-accent-dark);
 .sl-row__side small { font-size: 12px; color: var(--sl-sub); line-height: 1.5; }
 .sl-row__side form { margin: 0; display: flex; flex-direction: column; gap: var(--sl-s2); }
 .sl-row__side .sl-btn { width: 100%; }
+.sl-row__actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sl-s2); }
+.sl-row__actions form { margin: 0; }
+.sl-row__side .sl-row__deadline { font-variant-numeric: tabular-nums; }
 
 /* ข้อมูลเสริมเต็มความกว้างใต้แถว (ลิงก์ให้คนนอก / ข้อมูลผู้รับเช่าช่วง / ปุ่มแอดมิน) */
 .sl-row__extra { grid-column: 2 / -1; display: flex; flex-direction: column; gap: var(--sl-s3); padding: 0 var(--sl-s4) var(--sl-s4) var(--sl-s5); min-width: 0; }
@@ -362,7 +365,8 @@ textarea.sl-input { min-height: 96px; resize: vertical; line-height: 1.6; }
     .sl-row__side { display: contents; }
     .sl-row__side .sl-status { grid-column: 2; grid-row: 1; align-self: start; padding: var(--sl-s4) var(--sl-s4) 0 0; }
     .sl-row__side > small { grid-column: 1 / -1; grid-row: 4; padding: 0 var(--sl-s4) var(--sl-s3); }
-    .sl-row__side > form, .sl-row__side > .sl-btn { grid-column: 1 / -1; grid-row: 5; margin: 0 var(--sl-s4) var(--sl-s4); }
+    .sl-row__side > form, .sl-row__side > .sl-btn, .sl-row__side > .sl-row__actions { grid-column: 1 / -1; grid-row: 5; margin: 0 var(--sl-s4) var(--sl-s2); }
+    .sl-row__side > small.sl-row__deadline { grid-row: 6; padding-top: 0; }
     .sl-row__date { font-size: 16px; }
     .sl-link { grid-template-columns: 1fr 1fr; }
     .sl-link input { grid-column: 1 / -1; }

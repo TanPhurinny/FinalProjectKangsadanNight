@@ -10,26 +10,43 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
     <link rel="stylesheet" href="/stylesheets/partials/shopSwitch.css?v=20261028">
-    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-ledger2">
+    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-edit2">
 </head>
 <body class="sl-body">
     <script src="/js/common/tabSession.js"></script>
     <%- include('../partials/navbarSeller') %>
-    <% const SUBMIT_TEXT = { LEAVE: 'ส่งคำขอลาหยุด', SUBLET_MEMBER: 'ส่งคำขอเช่าช่วง', SUBLET_GUEST: 'สร้างลิงก์ให้คนนอกกรอกข้อมูล' }; %>
+    <%
+        const isEdit = typeof editing !== 'undefined' && editing;
+        const SUBMIT_TEXT = isEdit
+            ? { LEAVE: 'บันทึกการแก้ไข', SUBLET_MEMBER: 'บันทึกการแก้ไข', SUBLET_GUEST: 'บันทึกการแก้ไข' }
+            : { LEAVE: 'ส่งคำขอลาหยุด', SUBLET_MEMBER: 'ส่งคำขอเช่าช่วง', SUBLET_GUEST: 'สร้างลิงก์ให้คนนอกกรอกข้อมูล' };
+        // หลังแก้ คำขอต้องผ่านขั้นตอนใหม่ (utils/stallLeave.js updateRequest)
+        const EDIT_NOTE = {
+            LEAVE: 'บันทึกแล้วคำขอกลับไปรอแอดมินพิจารณาใหม่',
+            SUBLET_MEMBER: 'ถ้าเปลี่ยนวันหรือเปลี่ยนร้าน ร้านผู้รับต้องกดตอบรับใหม่ แล้วจึงส่งต่อให้แอดมิน · แก้แค่เหตุผล คำขอกลับไปรอแอดมิน',
+            SUBLET_GUEST: 'ถ้าคนนอกกรอกข้อมูลแล้ว คำขอกลับไปรอแอดมินพิจารณาใหม่ · ยังไม่กรอก ลิงก์เดิมใช้ต่อได้'
+        };
+    %>
 
     <main class="sl-page">
         <header class="sl-head">
             <div>
                 <p class="sl-kicker">จัดการร้าน · แผงของฉัน</p>
-                <h1 class="sl-title">ลาหยุด / ปล่อยเช่าช่วง</h1>
+                <h1 class="sl-title"><%= isEdit ? `แก้ไขคำขอ #${editing.id}` : 'ลาหยุด / ปล่อยเช่าช่วง' %></h1>
+                <% if (isEdit) { %>
+                <p class="sl-lead">สถานะตอนนี้: <b><%= editing.statusLabel %></b> · แก้ได้ถึง <%= changeCutoffHour %>:00 น. ของวันเริ่ม (เวลาตลาดเปิด) · <%= EDIT_NOTE[kind] %> · เปลี่ยนประเภทคำขอหรือแผงไม่ได้ ให้ยกเลิกแล้วขอใหม่</p>
+                <% } else { %>
                 <p class="sl-lead">แผงยังเป็นของร้านคุณตามสัญญาเดิม ไม่มีการคืนค่าเช่าผ่านระบบ ค่าเช่าช่วงตกลงกันเองระหว่างร้าน แอดมินพิจารณาทุกคำขอก่อนมีผล</p>
+                <% } %>
             </div>
             <div class="sl-head__actions">
                 <a class="sl-btn sl-btn--line" href="/stall-leave"><i class="fa-solid fa-list" aria-hidden="true"></i> คำขอของฉัน</a>
             </div>
         </header>
 
+        <% if (!isEdit) { %>
         <%- include('../partials/shopSwitch', { shops: shops, selectedShopId: shop && shop.id, href: function (id) { return '/stall-leave/new?shop=' + id + ({ SUBLET_MEMBER: '&kind=sublet', SUBLET_GUEST: '&kind=guest' }[kind] || ''); }, label: 'ร้าน' }) %>
+        <% } %>
 
         <% if (error) { %>
         <div class="sl-notice sl-notice--bad" role="alert"><%= error %></div>
@@ -38,29 +55,29 @@
         <% if (!stalls.length) { %>
         <div class="sl-empty" style="margin-top:24px"><b>ร้าน<%= shop && shop.shopName ? ` ${shop.shopName}` : '' %>ยังไม่มีแผงที่ใช้ได้</b>ต้องมีแผงที่ชำระเงินแล้วและสัญญายังไม่หมด ถึงจะแจ้งลาหยุดหรือปล่อยเช่าช่วงได้ · <a href="/select-zone<%= shop ? `?shop=${shop.id}` : '' %>">จองแผง</a></div>
         <% } else { %>
-        <form method="POST" action="/stall-leave" class="sl-form" id="stallLeaveForm">
+        <form method="POST" action="<%= isEdit ? `/stall-leave/${editing.id}/edit` : '/stall-leave' %>" class="sl-form" id="stallLeaveForm">
             <input type="hidden" name="shopId" value="<%= shop.id %>">
 
             <section class="sl-step" aria-labelledby="stepKind">
                 <span class="sl-step__num">1</span>
                 <div>
                     <h2 class="sl-step__title" id="stepKind">ต้องการทำอะไร</h2>
-                    <p class="sl-step__hint">วันที่ได้รับอนุมัติ ผังตลาดจะแสดงสถานะของแผงให้ลูกค้าและเจ้าหน้าที่เห็น</p>
+                    <p class="sl-step__hint"><%= isEdit ? 'ประเภทคำขอแก้ไม่ได้ ถ้าต้องการเปลี่ยนให้ยกเลิกคำขอนี้แล้วขอใหม่' : 'วันที่ได้รับอนุมัติ ผังตลาดจะแสดงสถานะของแผงให้ลูกค้าและเจ้าหน้าที่เห็น' %></p>
                     <div class="sl-choices" role="radiogroup" aria-labelledby="stepKind">
                         <label class="sl-choice">
-                            <input type="radio" name="kind" value="LEAVE" <%= kind === 'LEAVE' ? 'checked' : '' %>>
+                            <input type="radio" name="kind" value="LEAVE" <%= kind === 'LEAVE' ? 'checked' : '' %> <%= isEdit && kind !== 'LEAVE' ? 'disabled' : '' %>>
                             <i class="fa-solid fa-calendar-minus" aria-hidden="true"></i>
                             <b>ลาหยุด</b>
                             <small>ไม่มาขาย ผังขึ้นว่าร้านลาหยุด และไม่ต้องตรวจตลาดวันนั้น</small>
                         </label>
                         <label class="sl-choice">
-                            <input type="radio" name="kind" value="SUBLET_MEMBER" <%= kind === 'SUBLET_MEMBER' ? 'checked' : '' %>>
+                            <input type="radio" name="kind" value="SUBLET_MEMBER" <%= kind === 'SUBLET_MEMBER' ? 'checked' : '' %> <%= isEdit && kind !== 'SUBLET_MEMBER' ? 'disabled' : '' %>>
                             <i class="fa-solid fa-handshake" aria-hidden="true"></i>
                             <b>ให้ร้านสมาชิกเช่าช่วง</b>
                             <small>ร้านอื่นในตลาดมาขายแทน ร้านนั้นต้องกดตอบรับก่อน</small>
                         </label>
                         <label class="sl-choice">
-                            <input type="radio" name="kind" value="SUBLET_GUEST" <%= kind === 'SUBLET_GUEST' ? 'checked' : '' %>>
+                            <input type="radio" name="kind" value="SUBLET_GUEST" <%= kind === 'SUBLET_GUEST' ? 'checked' : '' %> <%= isEdit && kind !== 'SUBLET_GUEST' ? 'disabled' : '' %>>
                             <i class="fa-solid fa-link" aria-hidden="true"></i>
                             <b>ให้คนนอกตลาดเช่าช่วง</b>
                             <small>ได้ลิงก์ส่งให้เขากรอกข้อมูลและรูปสินค้าเอง</small>
@@ -108,7 +125,7 @@
                 <span class="sl-step__num" data-step-num><%= kind === 'SUBLET_MEMBER' ? '4' : '3' %></span>
                 <div>
                     <h2 class="sl-step__title" id="stepDate">วันที่ และเหตุผล</h2>
-                    <p class="sl-step__hint">แจ้งวันนี้ได้ถึง <%= cutoffHour %>:00 น. · ครั้งละไม่เกิน <%= maxDays %> วัน · วันเดียวให้เลือกวันเริ่มกับวันสิ้นสุดเป็นวันเดียวกัน</p>
+                    <p class="sl-step__hint">แจ้งวันนี้ได้ถึง <%= cutoffHour %>:00 น. · ยกเลิก/แก้ไขได้ถึง <%= changeCutoffHour %>:00 น. ของวันเริ่ม · ครั้งละไม่เกิน <%= maxDays %> วัน · วันเดียวให้เลือกวันเริ่มกับวันสิ้นสุดเป็นวันเดียวกัน</p>
                     <div class="sl-fields">
                         <div class="sl-field">
                             <label for="startDate">วันเริ่ม <em>*</em></label>
@@ -128,7 +145,8 @@
 
             <div class="sl-submit">
                 <button type="submit" class="sl-btn" id="submitBtn"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> <span><%= SUBMIT_TEXT[kind] %></span></button>
-                <small>ผลการพิจารณาจะแจ้งในหน้าแจ้งเตือน</small>
+                <% if (isEdit) { %><a class="sl-btn sl-btn--line" href="/stall-leave#leave-<%= editing.id %>">ยกเลิกการแก้ไข</a><% } %>
+                <small><%= isEdit ? EDIT_NOTE[kind] : 'ผลการพิจารณาจะแจ้งในหน้าแจ้งเตือน' %></small>
             </div>
         </form>
         <% } %>

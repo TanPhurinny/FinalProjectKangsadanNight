@@ -97,6 +97,9 @@ body {
     font-size: 0.85rem;
 }
 
+.stats-chip--sublet { color: #6c3483; border-color: #c9b3d6; }
+.stats-chip--sublet b { color: #4a235a; }
+
 .btn-submit-day {
     display: inline-flex;
     align-items: center;

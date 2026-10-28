@@ -43,6 +43,7 @@
 .stat-chip.tone-ok { border-left-color: #27AE60; }
 .stat-chip.tone-warn { border-left-color: #c98a2e; }
 .stat-chip.tone-bad { border-left-color: #c0392b; }
+.stat-chip.tone-sublet { border-left-color: #6c3483; }
 
 /* ---------- แถบเครื่องมือ ---------- */
 .tool-bar {

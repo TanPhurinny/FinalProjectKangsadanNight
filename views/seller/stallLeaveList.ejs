@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
-    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-ledger2">
+    <link rel="stylesheet" href="/stylesheets/seller/stallLeave.css?v=20261028-edit2">
 </head>
 <body class="sl-body">
     <script src="/js/common/tabSession.js"></script>
@@ -21,7 +21,8 @@
             guest_link: 'สร้างลิงก์แล้ว คัดลอกหรือแชร์ลิงก์ในแถวด้านล่างให้คนที่จะมาขายแทนกรอกข้อมูล (ใช้ได้ 72 ชม. และไม่เกินวันเริ่ม)',
             accepted: 'ตอบรับแล้ว คำขอส่งให้แอดมินพิจารณา',
             declined: 'ปฏิเสธการรับเช่าช่วงแล้ว ร้านเจ้าของแผงได้รับแจ้ง',
-            cancelled: 'ยกเลิกคำขอแล้ว'
+            cancelled: 'ยกเลิกคำขอแล้ว',
+            edited: 'บันทึกการแก้ไขแล้ว คำขอต้องผ่านการพิจารณาใหม่ (ดูสถานะในแถวด้านล่าง)'
         };
         const toneOf = { WAITING_SUBTENANT: 'tone-wait', PENDING: 'tone-wait', APPROVED: 'tone-ok', REJECTED: 'tone-bad' };
         const kindShort = { LEAVE: 'ลาหยุด', SUBLET_MEMBER: 'เช่าช่วง · สมาชิก', SUBLET_GUEST: 'เช่าช่วง · คนนอก' };
@@ -36,7 +37,7 @@
             <div>
                 <p class="sl-kicker">จัดการร้าน · แผงของฉัน</p>
                 <h1 class="sl-title">ลาหยุด / เช่าช่วงแผง</h1>
-                <p class="sl-lead">ไม่สะดวกมาขายบางวันในช่วงสัญญา แจ้งลาหยุด หรือให้ร้านอื่นมาขายแทนชั่วคราว ทุกคำขอต้องผ่านแอดมิน และยกเลิกได้ก่อนถึงวันเริ่ม</p>
+                <p class="sl-lead">ไม่สะดวกมาขายบางวันในช่วงสัญญา แจ้งลาหยุด หรือให้ร้านอื่นมาขายแทนชั่วคราว ทุกคำขอต้องผ่านแอดมิน ยกเลิกหรือแก้ไขได้ถึง 15:00 น. ของวันเริ่ม (เวลาตลาดเปิด)</p>
             </div>
             <div class="sl-head__actions">
                 <a class="sl-btn" href="/stall-leave/new"><i class="fa-solid fa-calendar-minus" aria-hidden="true"></i> แจ้งลาหยุด</a>
@@ -89,9 +90,15 @@
                         <span class="sl-status"><%= r.statusLabel %></span>
                         <% if (r.reviewedText) { %><small>พิจารณา <%= r.reviewedText %><%= r.reviewedByName ? ` · ${r.reviewedByName}` : '' %></small><% } %>
                         <% if (r.canCancel) { %>
-                        <form method="POST" action="/stall-leave/<%= r.id %>/cancel" data-confirm-title="ยกเลิกคำขอนี้?" data-confirm-message="<%= r.kindLabel %> แผง <%= r.stallCode %> · <%= r.rangeText %>" data-confirm-text="ยกเลิกคำขอ">
-                            <button type="submit" class="sl-btn sl-btn--danger sl-btn--sm">ยกเลิกคำขอ</button>
-                        </form>
+                        <div class="sl-row__actions">
+                            <a class="sl-btn sl-btn--line sl-btn--sm" href="/stall-leave/<%= r.id %>/edit"><i class="fa-solid fa-pen" aria-hidden="true"></i> แก้ไข</a>
+                            <form method="POST" action="/stall-leave/<%= r.id %>/cancel" data-confirm-title="ยกเลิกคำขอนี้?" data-confirm-message="<%= r.kindLabel %> แผง <%= r.stallCode %> · <%= r.rangeText %>" data-confirm-text="ยกเลิกคำขอ">
+                                <button type="submit" class="sl-btn sl-btn--danger sl-btn--sm">ยกเลิก</button>
+                            </form>
+                        </div>
+                        <small class="sl-row__deadline">แก้/ยกเลิกได้ถึง <%= r.changeDeadlineText %></small>
+                        <% } else if (r.status === 'APPROVED' || r.status === 'PENDING' || r.status === 'WAITING_SUBTENANT') { %>
+                        <small class="sl-row__deadline">เลย <%= r.changeDeadlineText %> แล้ว ตลาดเปิด แก้/ยกเลิกไม่ได้</small>
                         <% } %>
                     </div>
                     <% if (r.kind === 'SUBLET_GUEST' && r.status === 'WAITING_SUBTENANT' && r.guestToken) { const link = guestBaseUrl + r.guestToken; %>

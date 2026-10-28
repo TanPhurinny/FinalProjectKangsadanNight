@@ -10,7 +10,7 @@ const { buildPreferredWalkOrder } = require('../utils/inspectionWalkOrder');
 const { stripInternalTags } = require('../utils/bookingRequestTag');
 const inspectionAssignment = require('../utils/inspectionAssignment');
 const { businessDateOf } = require('../utils/shopOpenStatus');
-const { shopsRelation, primaryShop } = require('../utils/shops');
+const { shopsOfRequests } = require('../utils/shops');
 
 // ใช้แกะ requestId จาก Booking.storeDetailSnapshot เหมือน scoreReportController.js เพื่อย้อนกลับไปหา
 // BookingRequest.assignedStallCode จริงของรอบที่ดูอยู่ (Booking มีช่วงวันเช่า แต่ไม่มีล็อคที่ได้จริง)
@@ -65,17 +65,14 @@ async function isStallFoodType(stallCode) {
             status: 'SUCCESS',
             assignedStallCode: { contains: normalizedCode }
         },
-        select: { assignedStallCode: true, sellerName: true }
+        select: { id: true, userId: true, shopId: true, assignedStallCode: true }
     });
     const match = candidates.find((request) => parseStallCodes(request.assignedStallCode).includes(normalizedCode));
     if (!match) return false;
 
-    const sellerUser = await prisma.user.findFirst({
-        where: { role: 'SELLER', name: match.sellerName },
-        select: { shops: shopsRelation({ select: { productType: true } }) }
-    });
-
-    return normalizeProductType(primaryShop(sellerUser)?.productType) === 'FOOD';
+    // ร้านของคำขอนี้ (1 ผู้ใช้มีหลายร้าน — ห้ามจับคู่จากชื่อผู้ขายหรือใช้ร้านหลักของผู้ใช้)
+    const shop = (await shopsOfRequests([match])).get(match.id);
+    return normalizeProductType(shop?.productType) === 'FOOD';
 }
 
 // ดูข้อมูลรอบเก่า/รอบถัดไปแบบย้อนหลัง (อ่านอย่างเดียว) — ต่างจาก bookingByStallCode ของรอบปัจจุบัน
@@ -90,14 +87,9 @@ async function buildHistoricalBookingByStallCode(cycleStart, cycleEnd) {
         },
         select: {
             createdAt: true,
+            userId: true,
             storeDetailSnapshot: true,
-            user: {
-                select: {
-                    name: true,
-                    phoneNumber: true,
-                    shops: shopsRelation({ select: { shopName: true, productType: true, productDetail: true } })
-                }
-            }
+            user: { select: { name: true, phoneNumber: true } }
         }
     });
 
@@ -113,12 +105,19 @@ async function buildHistoricalBookingByStallCode(cycleStart, cycleEnd) {
     const requests = requestIds.length
         ? await prisma.bookingRequest.findMany({
             where: { id: { in: requestIds } },
-            select: { id: true, assignedStallCode: true }
+            select: { id: true, userId: true, shopId: true, assignedStallCode: true }
         })
         : [];
     const stallCodesByRequestId = new Map(
         requests.map((request) => [request.id, parseStallCodes(request.assignedStallCode)])
     );
+    // ร้านของแต่ละคำขอ (shopId) — คำขอเก่าที่ไม่มี userId ใช้เจ้าของ Booking แทน
+    const ownerByRequestId = new Map();
+    bookings.forEach((booking) => {
+        const match = String(booking.storeDetailSnapshot || '').match(REQUEST_TAG_REGEX);
+        if (match) ownerByRequestId.set(Number.parseInt(match[1], 10), booking.userId);
+    });
+    const shopByRequestId = await shopsOfRequests(requests, (request) => request.userId || ownerByRequestId.get(request.id));
 
     const bookingByStallCode = {};
     bookings.forEach((booking) => {
@@ -128,7 +127,7 @@ async function buildHistoricalBookingByStallCode(cycleStart, cycleEnd) {
         const stallCodes = requestId ? (stallCodesByRequestId.get(requestId) || []) : [];
         if (!stallCodes.length) return;
 
-        const shop = primaryShop(booking.user) || {};
+        const shop = shopByRequestId.get(requestId) || {};
         stallCodes.forEach((stallCode) => {
             if (bookingByStallCode[stallCode]) return;
             bookingByStallCode[stallCode] = {
@@ -203,6 +202,9 @@ exports.getMarketInspectionPage = async (req, res) => {
                     assignedStallCode: { not: null }
                 },
                 select: {
+                    id: true,
+                    userId: true,
+                    shopId: true,
                     assignedStallCode: true,
                     sellerName: true,
                     phone: true,
@@ -210,17 +212,18 @@ exports.getMarketInspectionPage = async (req, res) => {
                     description: true,
                     zone: true,
                     createdAt: true,
-                    status: true,
-                    user: { select: { shops: shopsRelation({ select: { shopName: true, productType: true, productDetail: true } }) } }
+                    status: true
                 },
                 orderBy: { createdAt: 'desc' }
             });
+            // ร้านของแต่ละคำขอจาก shopId (ผู้ใช้ที่มีหลายร้าน แผงแต่ละแผงเป็นของร้านที่จองมา ไม่ใช่ร้านหลัก)
+            const shopByRequestId = await shopsOfRequests(activeRequests);
 
             activeRequests.forEach((request) => {
                 const stallCodes = parseStallCodes(request.assignedStallCode);
                 if (!stallCodes.length) return;
 
-                const shop = primaryShop(request.user) || {};
+                const shop = shopByRequestId.get(request.id) || {};
                 const productDetail = shop.productDetail || stripInternalTags(request.description) || '-';
                 const productType = shop.productType || '';
 
@@ -308,6 +311,8 @@ exports.getMarketInspectionPage = async (req, res) => {
                 isVacant,
                 // รอบเก่า/รอบถัดไปเปิดดูได้อย่างเดียว บันทึก/แก้ไขได้เฉพาะรอบปัจจุบันเท่านั้น
                 inspectionEnabled: !isVacant && isCurrentRound && !onLeave,
+                // ลาหยุด/เช่าช่วงที่อนุมัติแล้ววันนี้ — ตัวกรอง "แผงวันนี้" และสีบนผังของหน้าตรวจตลาด
+                leaveKind: leave ? leave.kind : null,
                 leaveNote: leave
                     ? (leave.kind === 'LEAVE'
                         ? `ลาหยุดวันนี้ (แอดมินอนุมัติแล้ว · ${leave.rangeText}) ไม่ต้องตรวจ`
@@ -393,6 +398,7 @@ exports.getMarketInspectionPage = async (req, res) => {
                 id: stall.id,
                 isVacant: stall.isVacant,
                 inspectionEnabled: stall.inspectionEnabled,
+                leaveKind: stall.leaveKind,
                 hasIssue
             };
         });

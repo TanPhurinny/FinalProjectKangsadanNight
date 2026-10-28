@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const zoneSelect = document.getElementById('walkZoneFilter');
     const searchInput = document.getElementById('walkSearch');
     const jumpSelect = document.getElementById('walkJump');
+    const dayStatusSelect = document.getElementById('walkDayStatusFilter');
     const progressText = document.getElementById('walkProgressText');
     const progressFill = document.getElementById('walkProgressFill');
     const teamBar = document.getElementById('walkTeamBar');
@@ -69,6 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 id: row.dataset.stallId,
                 code,
                 zone: row.dataset.zone,
+                // ปล่อยเช่าช่วงที่แอดมินอนุมัติแล้ววันนี้ ('sublet') — ตรวจตามปกติ แต่ไม่ต้องติ๊ก "ปล่อยเช่าช่วง"
+                dayStatus: row.dataset.dayStatus || 'normal',
                 isFood: !!cleanRow,
                 cleanRow,
                 headMain: row.querySelector('.stall-main')?.textContent.trim() || code,
@@ -485,13 +488,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }).observe(it.electricBtn, { attributes: true, childList: true, subtree: true });
     });
 
-    // --- กรองรายการ: โซน + ค้นหา (รหัสล็อก/ชื่อร้าน/ชื่อผู้ขาย) ---
+    // --- กรองรายการ: โซน + ค้นหา (รหัสล็อก/ชื่อร้าน/ชื่อผู้ขาย) + แผงวันนี้ (ปล่อยเช่าช่วง) ---
     function applyFilter(openItem) {
         const zone = zoneSelect ? zoneSelect.value : 'ALL';
         const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        const dayStatus = dayStatusSelect ? dayStatusSelect.value : 'ALL';
         const current = openItem || currentItem();
         visible = items.filter((it) =>
             (zone === 'ALL' || String(it.zone).toUpperCase() === zone.toUpperCase()) &&
+            (dayStatus === 'ALL' || it.dayStatus === dayStatus) &&
             (!query || it.searchText.includes(query)));
         const keep = current ? visible.indexOf(current) : -1;
         if (keep !== -1) {
@@ -504,6 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (zoneSelect) zoneSelect.addEventListener('change', () => applyFilter());
+    if (dayStatusSelect) dayStatusSelect.addEventListener('change', () => applyFilter());
     if (searchInput) {
         let timer = null;
         searchInput.addEventListener('input', () => {
@@ -524,6 +530,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- ผังภาพรวม (ตัวสร้างผังเดียวกับโหมดอื่น) สีตามผลตรวจของทั้งทีม แตะล็อกเพื่อเปิดการ์ดร้านนั้น ---
     const itemByCode = {};
     items.forEach((it) => { itemByCode[it.code] = it; });
+    // แผงที่ลาหยุดวันนี้ไม่อยู่ในรายการตรวจ (ปิดการบันทึกไว้) — จำไว้แยกเพื่อระบายลายบนผัง
+    const leaveCodes = new Set(Array.from(document.querySelectorAll('#inspectionTable .inspection-row[data-day-status="leave"]')).map((row) => row.dataset.stallCode));
 
     const walkMap = typeof window.createInspectionMap === 'function' ? window.createInspectionMap({
         ids: {
@@ -534,25 +542,29 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         resolveStatus(code) {
             const it = itemByCode[code];
-            if (!it) return 'vacant';
+            if (!it) return leaveCodes.has(code) ? 'leave' : 'vacant';
             const info = walkInfo(it);
-            if (!info) return 'pending';
+            if (!info) return it.dayStatus === 'sublet' ? 'sublet' : 'pending';
             return info.hasIssue ? 'failed' : 'passed';
         },
         statusLabel(status) {
             if (status === 'passed') return 'ตรวจแล้ว ปกติ';
             if (status === 'failed') return 'ตรวจแล้ว มีปัญหา';
             if (status === 'pending') return 'ยังไม่ตรวจ';
+            if (status === 'sublet') return 'เช่าช่วงวันนี้ · ยังไม่ตรวจ';
+            if (status === 'leave') return 'ลาหยุดวันนี้';
             return 'ว่าง';
         },
         tooltipMeta(status, code) {
             if (status === 'vacant') return 'ล็อคว่าง';
+            if (status === 'leave') return 'แอดมินอนุมัติลาหยุดแล้ว ไม่ต้องตรวจ';
+            if (status === 'sublet') return 'ร้านอื่นขายแทน (อนุมัติแล้ว) — ตรวจตามปกติ ไม่ต้องติ๊กปล่อยเช่าช่วง · คลิกเพื่อตรวจ';
             const it = itemByCode[code];
             const info = it ? walkInfo(it) : null;
             if (info) return esc(`ตรวจโดย ${info.mine ? 'คุณ' : info.inspectorName} ${timeLabel(info.inspectedAt)} · คลิกเพื่อเปิดร้านนี้`);
             return 'คลิกเพื่อตรวจร้านนี้';
         },
-        isClickable: (status) => status !== 'vacant',
+        isClickable: (status) => status !== 'vacant' && status !== 'leave',
         onCellClick(code, api) {
             const it = itemByCode[code];
             if (!it) return;
@@ -561,6 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!visible.includes(it)) {
                 if (zoneSelect) zoneSelect.value = 'ALL';
                 if (searchInput) searchInput.value = '';
+                if (dayStatusSelect) dayStatusSelect.value = 'ALL';
             }
             applyFilter(it);
             api.setViewMode('table');

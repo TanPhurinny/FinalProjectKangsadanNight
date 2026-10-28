@@ -261,6 +261,7 @@ const LAYERS = {
                 <button type="button" class="qtag lf-btn lf-issue" data-layer-filter="INSP_ISSUE">! มีปัญหา <b>${issue}</b></button>
                 <button type="button" class="qtag lf-btn lf-pending" data-layer-filter="INSP_PENDING">ยังไม่ตรวจ <b>${pending}</b></button>
                 <button type="button" class="qtag lf-btn lf-notopen" data-layer-filter="INSP_CLOSED" title="ร้านที่ผู้ขายกดปิดร้านวันนี้ ไม่ต้องเดินไปตรวจ">แจ้งปิดร้าน <b>${allStalls().filter((st) => st.status === 'BOOKED' && isClosedToday(st.code)).length}</b></button>
+                <button type="button" class="qtag lf-btn lf-sublet" data-layer-filter="INSP_SUBLET" title="แผงที่แอดมินอนุมัติให้ร้านอื่นขายแทนวันนี้ — ตรวจตามปกติ แต่ไม่ต้องติ๊กปล่อยเช่าช่วง">เช่าช่วงวันนี้ <b>${allStalls().filter((st) => st.status === 'BOOKED' && isSubletToday(st.code)).length}</b></button>
                 ${IS_STAFF ? `<button type="button" class="qtag lf-btn lf-walk${walkMode ? ' active' : ''}" data-action="walk"><i class="fa-solid fa-person-walking"></i> ${walkMode ? 'กำลังเดินตรวจ' : 'เริ่มเดินตรวจ'}</button>` : ''}`;
         }
     }
@@ -662,6 +663,12 @@ function toggleFavorite(code) {
 function isClosedToday(code) {
     const d = BOOKING_BY_STALL[code];
     return !!(d && d.closedAt);
+}
+
+// แผงที่แอดมินอนุมัติเช่าช่วงวันนี้ (applyStallLeavesToday ใน marketController.js ใส่ d.sublet ให้)
+function isSubletToday(code) {
+    const d = BOOKING_BY_STALL[code];
+    return !!(d && d.sublet);
 }
 
 function formatClock(value) {
@@ -1200,6 +1207,7 @@ function stallMatchesFilter(id, stall) {
         if (currentStatusFilter === 'PROMO') return stall.status === 'BOOKED' && hasPromo(id);
         if (currentStatusFilter === 'TOP_RATED') return stall.status === 'BOOKED' && hasTopRating(id);
         if (currentStatusFilter === 'INSP_CLOSED') return stall.status === 'BOOKED' && isClosedToday(id);
+        if (currentStatusFilter === 'INSP_SUBLET') return stall.status === 'BOOKED' && isSubletToday(id);
         if (currentStatusFilter === 'REP_ANY') return !!repairStatusOf(id);
         if (currentStatusFilter === 'EMPTY') {
             if (!CAN_SEE_VACANCY) return false;
@@ -2374,6 +2382,7 @@ const STATUS_LABELS = {
     PROMO: 'ร้านที่มีโปรวันนี้',
     TOP_RATED: 'ร้านที่ได้รีวิว 4 ดาวขึ้นไป',
     INSP_CLOSED: 'ร้านที่แจ้งปิดร้านวันนี้',
+    INSP_SUBLET: 'แผงที่ปล่อยเช่าช่วงวันนี้',
     REP_ANY: 'ล็อกที่มีงานซ่อมค้าง'
 };
 

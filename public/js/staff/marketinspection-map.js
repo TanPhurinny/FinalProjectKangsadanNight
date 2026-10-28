@@ -272,20 +272,27 @@
                 overview: 'inspectionZoneOverview', detail: 'inspectionZoneDetail',
                 detailTitle: 'zoneDetailTitle', canvas: 'inspectionZoneCanvas'
             },
-            // ลำดับความสำคัญของสี: มีปัญหา > ปกติ > ว่าง
+            // ลำดับความสำคัญของสี: ลาหยุด > มีปัญหา > เช่าช่วงวันนี้ > ปกติ > ว่าง
             resolveStatus(code) {
                 const info = STATUS_BY_CODE[code];
+                if (info && !info.isVacant && info.leaveKind === 'LEAVE') return 'leave';
                 if (!info || info.isVacant || !info.inspectionEnabled) return 'vacant';
                 if (info.hasIssue) return 'issue';
+                if (info.leaveKind) return 'sublet';
                 return 'normal';
             },
             statusLabel(status) {
                 if (status === 'issue') return 'มีปัญหา';
                 if (status === 'normal') return 'ปกติ';
+                if (status === 'sublet') return 'เช่าช่วงวันนี้';
+                if (status === 'leave') return 'ลาหยุดวันนี้';
                 return 'ว่าง';
             },
-            tooltipMeta: (status) => (status === 'vacant' ? 'ล็อคว่าง' : 'คลิกเพื่อเลื่อนไปแถวในตาราง'),
-            isClickable: (status) => status !== 'vacant',
+            tooltipMeta: (status) => (status === 'vacant' ? 'ล็อคว่าง'
+                : status === 'leave' ? 'แอดมินอนุมัติลาหยุดแล้ว ไม่ต้องตรวจ'
+                : status === 'sublet' ? 'ร้านอื่นขายแทน (อนุมัติแล้ว) — คลิกเพื่อเลื่อนไปแถวในตาราง'
+                : 'คลิกเพื่อเลื่อนไปแถวในตาราง'),
+            isClickable: (status) => status !== 'vacant' && status !== 'leave',
             onCellClick(code, api) {
                 const row = document.querySelector(`#inspectionTable .inspection-row[data-stall-code="${window.CSS && CSS.escape ? CSS.escape(code) : code}"]`);
                 if (!row) return;

@@ -49,15 +49,19 @@ exports.getMyRequests = async (req, res) => {
     });
 };
 
-async function renderForm(req, res, { status = 200, error = null, values = {} } = {}) {
-    const shopParam = values.shopId || req.query.shop;
+// editing = คำขอเดิม (หน้าแก้ไข /stall-leave/:id/edit) — ล็อกประเภทคำขอ ร้าน และแผงไว้ตามคำขอเดิม
+async function renderForm(req, res, { status = 200, error = null, values = {}, editing = null } = {}) {
+    const shopParam = editing ? editing.shopId : (values.shopId || req.query.shop);
     const [shops, shop] = await Promise.all([
         getUserShops(req.user.id, { select: { id: true, shopName: true } }),
         resolveShopForUser(req.user.id, shopParam, { select: { id: true, userId: true, shopName: true } })
     ]);
-    const stalls = shop ? await stallLeave.loadShopStalls(req.user.id, shop.id) : [];
-    const earliest = stallLeave.earliestStartDate();
-    const kind = KINDS.includes(values.kind) ? values.kind : ({ sublet: 'SUBLET_MEMBER', guest: 'SUBLET_GUEST' }[req.query.kind] || 'LEAVE');
+    let stalls = shop ? await stallLeave.loadShopStalls(req.user.id, shop.id) : [];
+    if (editing) stalls = stalls.filter((s) => s.code === editing.stallCode);
+    let earliest = stallLeave.earliestStartDate();
+    // วันเริ่มเดิมของคำขอที่กำลังแก้ยังคงไว้ได้ แม้เลยเวลาแจ้งของวันนั้นแล้ว (จนถึง 15:00)
+    if (editing && editing.startDate < earliest) earliest = editing.startDate;
+    const kind = editing ? editing.kind : KINDS.includes(values.kind) ? values.kind : ({ sublet: 'SUBLET_MEMBER', guest: 'SUBLET_GUEST' }[req.query.kind] || 'LEAVE');
     // ร้านผู้รับเช่าช่วงที่เลือกไว้แล้ว (ส่งฟอร์มไม่ผ่านแล้วกลับมาหน้าเดิม)
     let subShop = null;
     if (values.subShopId) {
@@ -76,6 +80,8 @@ async function renderForm(req, res, { status = 200, error = null, values = {} } 
         })),
         earliestKey: stallLeave.toDateKey(earliest),
         cutoffHour: stallLeave.NOTICE_CUTOFF_HOUR,
+        changeCutoffHour: stallLeave.CHANGE_CUTOFF_HOUR,
+        editing: editing ? { id: editing.id, status: editing.status, statusLabel: stallLeave.STATUS_LABEL[editing.status], kind: editing.kind } : null,
         maxDays: stallLeave.MAX_RANGE_DAYS,
         kind,
         subShop,
@@ -115,6 +121,55 @@ exports.submitForm = async (req, res) => {
     } catch (error) {
         const code = errorCodeOf(error);
         return renderForm(req, res, { status: 400, error: stallLeave.ERROR_MESSAGES[code] || 'เกิดข้อผิดพลาด', values });
+    }
+};
+
+// --- แก้คำขอ (ถึง 15:00 ของวันเริ่ม) ---
+async function loadEditable(req) {
+    const row = await prisma.stallLeaveRequest.findFirst({ where: { id: Number(req.params.id) || 0, userId: req.user.id } });
+    if (!row) throw new stallLeave.StallLeaveError('not_found');
+    if (!stallLeave.canCancel(row)) throw new stallLeave.StallLeaveError('cannot_cancel');
+    return row;
+}
+
+exports.getEditForm = async (req, res) => {
+    try {
+        const row = await loadEditable(req);
+        return renderForm(req, res, {
+            editing: row,
+            values: {
+                stallCode: row.stallCode,
+                startDate: stallLeave.toDateKey(row.startDate),
+                endDate: stallLeave.toDateKey(row.endDate),
+                reason: row.reason,
+                subShopId: row.subShopId
+            }
+        });
+    } catch (error) {
+        return res.redirect(`/stall-leave?error=${errorCodeOf(error)}`);
+    }
+};
+
+exports.submitEdit = async (req, res) => {
+    const values = {
+        startDate: req.body.startDate,
+        endDate: req.body.endDate,
+        reason: req.body.reason,
+        subShopId: req.body.subShopId
+    };
+    let row;
+    try {
+        row = await loadEditable(req);
+        const { row: updated, previous } = await stallLeave.updateRequest(req.user.id, row.id, {
+            startKey: values.startDate, endKey: values.endDate, reason: values.reason, subShopId: values.subShopId
+        });
+        req.app.locals.clearAdminTodoCache?.();
+        refreshBell(req, await ownerOfShop(previous.subShopId), await ownerOfShop(updated.subShopId));
+        return res.redirect(`/stall-leave?success=edited&focus=${updated.id}#leave-${updated.id}`);
+    } catch (error) {
+        const code = errorCodeOf(error);
+        if (!row) return res.redirect(`/stall-leave?error=${code}`);
+        return renderForm(req, res, { status: 400, error: stallLeave.ERROR_MESSAGES[code] || 'เกิดข้อผิดพลาด', editing: row, values: { ...values, stallCode: row.stallCode } });
     }
 };
 

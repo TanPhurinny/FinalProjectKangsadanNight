@@ -10,8 +10,8 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="/stylesheets/partials/navbar.css?v=20261023-ios">
         <link rel="stylesheet" href="/stylesheets/admin/theme.css">
-        <link rel="stylesheet" href="/stylesheets/staff/marketinspection.css">
-        <link rel="stylesheet" href="/stylesheets/staff/marketinspection-map.css?v=20261026-event">
+        <link rel="stylesheet" href="/stylesheets/staff/marketinspection.css?v=20261028-sublet">
+        <link rel="stylesheet" href="/stylesheets/staff/marketinspection-map.css?v=20261028-sublet">
         <link rel="stylesheet" href="/stylesheets/eventZonePlan.css?v=20261026">
         <link rel="stylesheet" href="/stylesheets/zoneContext.css?v=20261026">
         <link rel="stylesheet" href="/stylesheets/staff/marketinspection-walk.css">
@@ -77,6 +77,14 @@
                                 <span class="filter-label">ข้ามไปล็อก</span>
                                 <select id="walkJump" class="filter-select" aria-label="ข้ามไปล็อก"></select>
                             </div>
+                            <% const walkSubletCount = stalls.filter((s) => s.leaveKind && s.leaveKind !== 'LEAVE').length; %>
+                            <div class="filter-row">
+                                <span class="filter-label">แผงวันนี้</span>
+                                <select id="walkDayStatusFilter" class="filter-select" aria-label="กรองแผงที่ปล่อยเช่าช่วงวันนี้">
+                                    <option value="ALL" selected>ทุกแผง</option>
+                                    <option value="sublet">ปล่อยเช่าช่วงวันนี้ (<%= walkSubletCount %>)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -96,6 +104,8 @@
                     <span class="map-legend-item"><span class="legend-swatch legend-normal"></span> ตรวจแล้ว ปกติ</span>
                     <span class="map-legend-item"><span class="legend-swatch legend-issue"></span> ตรวจแล้ว มีปัญหา</span>
                     <span class="map-legend-item"><span class="legend-swatch legend-pending"></span> ยังไม่ตรวจ</span>
+                    <span class="map-legend-item"><span class="legend-swatch legend-sublet"></span> เช่าช่วงวันนี้ ยังไม่ตรวจ</span>
+                    <span class="map-legend-item"><span class="legend-swatch legend-leave"></span> ลาหยุดวันนี้</span>
                     <span class="map-legend-item"><span class="legend-swatch legend-vacant"></span> ว่าง</span>
                 </div>
 
@@ -185,11 +195,21 @@
                                 <option value="other-issue">ปัญหาอื่นๆ</option>
                             </select>
                         </div>
+                        <% const subletTodayCount = stalls.filter((s) => s.leaveKind && s.leaveKind !== 'LEAVE').length; const leaveTodayCount = stalls.filter((s) => s.leaveKind === 'LEAVE').length; %>
+                        <div class="filter-row">
+                            <span class="filter-label">แผงวันนี้</span>
+                            <select id="dayStatusFilter" class="filter-select" aria-label="กรองแผงที่ลาหยุดหรือปล่อยเช่าช่วงวันนี้">
+                                <option value="ALL" selected>ทุกแผง</option>
+                                <option value="sublet">ปล่อยเช่าช่วงวันนี้ (<%= subletTodayCount %>)</option>
+                                <option value="leave">ลาหยุดวันนี้ (<%= leaveTodayCount %>)</option>
+                            </select>
+                        </div>
                         <div class="inspection-stats" id="inspectionStats">
                             <span class="stats-chip">ทั้งหมด <b id="totalCount">0</b></span>
                             <span class="stats-chip">ที่แสดง <b id="visibleCount">0</b></span>
                             <span class="stats-chip">ล็อคว่าง <b id="vacantCount">0</b></span>
                             <span class="stats-chip">มีปัญหา <b id="flaggedCount">0</b></span>
+                            <span class="stats-chip stats-chip--sublet" title="แอดมินอนุมัติให้ร้านอื่นขายแทน — ตรวจตามปกติ ไม่ต้องติ๊กปล่อยเช่าช่วง">เช่าช่วงวันนี้ <b><%= subletTodayCount %></b></span>
                             <% if (isCurrentRound) { %>
                             <button type="button" class="btn-submit-day" id="submitDayBtn">
                                 <i class="fas fa-paper-plane"></i> ส่งงาน
@@ -229,6 +249,7 @@
                             data-stall-id="<%= stall.id %>"
                             data-stall-code="<%= stall.stallCode %>"
                             data-search="<%= String(`${stall.stallCode} ${stall.shopName} ${stall.sellerName}`).toLowerCase() %>"
+                            data-day-status="<%= stall.leaveKind === 'LEAVE' ? 'leave' : stall.leaveKind ? 'sublet' : 'normal' %>"
                         >
                             <td>
                                 <div class="stall-main">#<%= index + 1 %> <%= stall.stallCode %> (โซน <%= stall.zoneCode %>)</div>
@@ -289,6 +310,8 @@
                 <div class="inspection-map-legend">
                     <span class="map-legend-item"><span class="legend-swatch legend-issue"></span> มีปัญหา</span>
                     <span class="map-legend-item"><span class="legend-swatch legend-normal"></span> ปกติ</span>
+                    <span class="map-legend-item"><span class="legend-swatch legend-sublet"></span> เช่าช่วงวันนี้</span>
+                    <span class="map-legend-item"><span class="legend-swatch legend-leave"></span> ลาหยุดวันนี้</span>
                     <span class="map-legend-item"><span class="legend-swatch legend-vacant"></span> ว่าง</span>
                 </div>
 
@@ -551,11 +574,11 @@
         </div>
 
         <script src="/js/common/dialogs.js"></script>
-        <script src="/js/staff/marketinspection.js"></script>
+        <script src="/js/staff/marketinspection.js?v=20261028-sublet"></script>
         <script src="/js/eventZonePlan.js?v=20261026"></script>
         <script src="/js/zoneContext.js?v=20261026"></script>
-        <script src="/js/staff/marketinspection-map.js?v=20261026-zc"></script>
+        <script src="/js/staff/marketinspection-map.js?v=20261028-sublet"></script>
         <script src="/js/staff/marketinspection-cleanliness.js"></script>
-        <% if (isCurrentRound) { %><script src="/js/staff/marketinspection-walk.js"></script><% } %>
+        <% if (isCurrentRound) { %><script src="/js/staff/marketinspection-walk.js?v=20261028-sublet"></script><% } %>
     </body>
 </html>

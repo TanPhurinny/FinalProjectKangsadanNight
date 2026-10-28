@@ -2261,6 +2261,8 @@ body.bulk-on .zoom-ctl, body.walk-on .zoom-ctl { bottom: 14px; }
 .qtag-open.active { background: #1e7a45; border-color: #145c33; color: #fff; }
 .lf-notopen { color: var(--text); border-style: dashed; }
 .lf-notopen.active { background: var(--text); color: #fff; border-style: solid; }
+.lf-sublet { color: #6c3483; border-color: #6c3483; border-style: dashed; }
+.lf-sublet.active { background: #6c3483; color: #fff; border-style: solid; }
 
 .ic-open-badge {
     display: inline-flex;
